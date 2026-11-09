@@ -131,3 +131,159 @@
 .iw-form-st .iw-danger {
     color: #ff8a80;
 }
+
+/* ===== Кнопка-блокнот =====
+   Живёт прямо на странице, чтобы её находили и копировали расширения-«папки» (STFolder и т. п.).
+   Всё привязано к #iw_fab — темы таверны не перекрашивают. Цвета — по теме дневника. */
+#iw_fab.iw-theme-diary { --iwf-bg: #fbf6ea; --iwf-paper: repeating-linear-gradient(to bottom, transparent 0 7px, #d9e3f2 7px 8px); --iwf-ink: #2b2a4a; --iwf-spine: #6b43b5; --iwf-accent: #f28cb4; }
+#iw_fab.iw-theme-dark { --iwf-bg: #1f1d26; --iwf-paper: repeating-linear-gradient(to bottom, transparent 0 7px, #2e2b39 7px 8px); --iwf-ink: #ece6f5; --iwf-spine: #c6a8ff; --iwf-accent: #ff9ec7; }
+#iw_fab.iw-theme-sims { --iwf-bg: #2f73c0; --iwf-paper: none; --iwf-ink: #ffffff; --iwf-spine: #2f73c0; --iwf-accent: #ffffff; }
+#iw_fab.iw-theme-medieval { --iwf-bg: #efe0bd; --iwf-paper: none; --iwf-ink: #8a5a2b; --iwf-spine: #7a1f14; --iwf-accent: #a3241a; }
+#iw_fab.iw-theme-cyber { --iwf-bg: #0b0d14; --iwf-paper: none; --iwf-ink: #3ef0ff; --iwf-spine: #3ef0ff; --iwf-accent: #ff3ea5; }
+#iw_fab.iw-theme-grid { --iwf-bg: #f7f8f2; --iwf-paper: linear-gradient(#cfe0e8 1px, transparent 1px) 0 0 / 6px 6px, linear-gradient(90deg, #cfe0e8 1px, transparent 1px) 0 0 / 6px 6px; --iwf-ink: #1f3a93; --iwf-spine: #1f3a93; --iwf-accent: #c0262d; }
+
+#iw_fab {
+    all: initial;
+    position: fixed;
+    z-index: 3040;
+    box-sizing: border-box;
+    display: block;
+    width: 58px;
+    height: 58px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .4));
+}
+
+#iw_fab *,
+#iw_fab *::before,
+#iw_fab *::after {
+    box-sizing: border-box;
+}
+
+#iw_fab:focus-visible {
+    outline: 3px solid var(--iwf-accent);
+    outline-offset: 4px;
+    border-radius: 12px;
+}
+
+#iw_fab .iw-fab-book {
+    position: absolute;
+    inset: 4px 6px;
+    display: block;
+    transform: rotate(-7deg);
+    transition: transform .18s ease;
+}
+
+#iw_fab:hover .iw-fab-book {
+    transform: rotate(-2deg) translateY(-2px);
+}
+
+#iw_fab.iw-dragging {
+    cursor: grabbing;
+}
+
+#iw_fab.iw-dragging .iw-fab-book {
+    transform: rotate(4deg) scale(1.08);
+    transition: none;
+}
+
+#iw_fab .iw-fab-cover {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0 0 8px;
+    margin: 0;
+    border: 2px solid var(--iwf-ink);
+    border-radius: 4px 9px 9px 4px;
+    background: var(--iwf-paper), var(--iwf-bg);
+    color: var(--iwf-accent);
+    font-size: 21px;
+    line-height: 1;
+}
+
+#iw_fab .iw-fab-heart {
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+    stroke: var(--iwf-ink);
+    stroke-width: 1.6;
+}
+
+#iw_fab .iw-fab-spine {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 9px;
+    border: 2px solid var(--iwf-ink);
+    border-right-width: 1px;
+    border-radius: 4px 0 0 4px;
+    background: var(--iwf-spine);
+}
+
+#iw_fab .iw-fab-ribbon {
+    position: absolute;
+    right: 9px;
+    bottom: -9px;
+    width: 8px;
+    height: 16px;
+    background: var(--iwf-accent);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
+
+#iw_fab .iw-fab-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2.5px solid #fff;
+    background: #ff4d4d;
+    animation: iw-fab-pulse 1.6s ease-in-out infinite;
+}
+
+#iw_fab .iw-fab-dot[hidden] {
+    display: none;
+}
+
+@keyframes iw-fab-pulse {
+    50% { transform: scale(1.25); }
+}
+
+#iw_fab.iw-theme-sims .iw-fab-book,
+#iw_fab.iw-theme-cyber .iw-fab-book { transform: none; }
+#iw_fab.iw-theme-sims .iw-fab-cover { border-color: #fff; border-radius: 14px; padding-left: 0; }
+#iw_fab.iw-theme-sims .iw-fab-heart { stroke: #2f73c0; }
+#iw_fab.iw-theme-sims .iw-fab-spine,
+#iw_fab.iw-theme-sims .iw-fab-ribbon,
+#iw_fab.iw-theme-cyber .iw-fab-spine,
+#iw_fab.iw-theme-cyber .iw-fab-ribbon { display: none; }
+#iw_fab.iw-theme-cyber .iw-fab-cover { border-radius: 0; padding-left: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+#iw_fab.iw-theme-cyber .iw-fab-heart { fill: none; stroke: #ff3ea5; }
+#iw_fab.iw-theme-medieval .iw-fab-cover { border: 3px double #8a5a2b; }
+
+/* на телефоне — маленькая */
+@media (max-width: 760px) {
+    #iw_fab {
+        width: 40px;
+        height: 40px;
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .4));
+    }
+
+    #iw_fab .iw-fab-book { inset: 3px 4px; }
+    #iw_fab .iw-fab-cover { font-size: 14px; padding-left: 5px; border-width: 1.5px; border-radius: 3px 6px 6px 3px; }
+    #iw_fab .iw-fab-spine { width: 6px; border-width: 1.5px; border-right-width: 1px; }
+    #iw_fab .iw-fab-ribbon { right: 6px; bottom: -6px; width: 6px; height: 11px; }
+    #iw_fab .iw-fab-dot { width: 11px; height: 11px; border-width: 2px; top: -3px; right: -3px; }
+}

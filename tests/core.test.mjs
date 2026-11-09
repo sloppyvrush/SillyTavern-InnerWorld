@@ -356,4 +356,14 @@ test('прозвища — только из текста лорбука', () =>
     assert.deepEqual(shownAliases(r.npc[0]), ['Рыжий']);
     assert.deepEqual(shownAliases({ name: 'Волк', aliases: ['Волков'] }), [], 'старый список без проверки не показываем');
 });
+const { repairJson } = await import('../src/core.js');
+test('сломанный ответ модели чинится', () => {
+    const cut = extractJson('{"characters":[{"name":"Роберт","mood":"зол","wants":[{"text":"чтобы сказала «да»"}]},{"name":"Лиза","mood":"ве');
+    assert.equal(cut.characters.length, 2);
+    assert.equal(cut.characters[0].wants[0].text, 'чтобы сказала «да»');
+    const quotes = extractJson('{"characters":[{"name":"Р","why":"он сказал "нет" и ушёл"},]}');
+    assert.equal(quotes.characters[0].why, 'он сказал "нет" и ушёл');
+    assert.equal(repairJson('{"a":'), null);
+    assert.equal(parseAnalysis('{"characters":[{"name":"A","traits":[{"name":"смелый"},{"name":"гор').length, 1);
+});
 console.log(`значки: ${passed} проверок прошло`);

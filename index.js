@@ -520,7 +520,7 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
         }
         const system = buildSystemPrompt(s, info);
         const user = buildUserPrompt(info, base, s.modules, present);
-        const raw = await callModel(system, user, catchUp ? Object.assign({}, s, { responseLength: Math.max(Number(s.responseLength) || 1500, 3000) }) : s);
+        const raw = await callModel(system, user, catchUp ? Object.assign({}, s, { responseLength: Math.max(Number(s.responseLength) || 1500, 4000) }) : s);
         if (chatId && c.getCurrentChatId && ctx().getCurrentChatId() !== chatId) return; // чат сменился
         let fresh = parseAnalysis(raw, { manualTurns: s.moodMode === 'manual' ? s.moodTurns : null });
         // имена приводим к тем, что в лорбуке («Волк» → «Константин Волков»)
@@ -643,7 +643,7 @@ function onGenerationStarted(type, _options, dryRun) {
 function refreshTheme() {
     currentTheme = validTheme(settings().theme);
     loadFonts(currentTheme);
-    const fab = byId('iw_fab');
+    const fab = document.getElementById('iw_fab');
     if (fab) fab.className = `iw-fab iw-theme-${currentTheme}`;
 }
 
@@ -845,8 +845,11 @@ function placeFab(btn) {
     btn.style.top = `${y}px`;
 }
 
+// Кнопка живёт прямо на странице (не в изолированном слое): так её видят и умеют копировать
+// расширения-«папки» вроде STFolder, которые собирают плавающие кнопки в одну.
+// Стили у неё в style.css и привязаны к id — темы таверны их не перебивают.
 function addFab() {
-    let btn = byId('iw_fab');
+    let btn = document.getElementById('iw_fab');
     const s = settings();
     if (!s.fab) {
         if (btn) btn.remove();
@@ -859,7 +862,7 @@ function addFab() {
     btn.title = 'Внутренний мир (можно перетащить)';
     btn.setAttribute('aria-label', 'Внутренний мир');
     btn.innerHTML = renderFab();
-    ui().appendChild(btn);
+    document.body.appendChild(btn);
     btn.className = `iw-fab iw-theme-${currentTheme}`;
     placeFab(btn);
 
@@ -893,26 +896,29 @@ function addFab() {
             };
             saveSettings();
         } else if (e.type === 'pointerup') {
+            lastToggle = Date.now();
             togglePanel();
         }
     };
+    // Нажатие, пересланное без pointer-событий (например, из папки другого расширения), — только click.
+    let lastToggle = 0;
+    btn.addEventListener('click', () => {
+        if (Date.now() - lastToggle < 400) return;
+        lastToggle = Date.now();
+        togglePanel();
+    });
     btn.addEventListener('pointerup', end);
     btn.addEventListener('pointercancel', end);
-    btn.addEventListener('keydown', e => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            togglePanel();
-        }
-    });
+    // Enter и пробел на <button> сами дают click — отдельный обработчик клавиш не нужен.
     window.addEventListener('resize', () => {
-        const b = byId('iw_fab');
+        const b = document.getElementById('iw_fab');
         if (b) placeFab(b);
     });
 }
 
 // Точка на кнопке: что-то случилось, а дневник закрыт.
 function markFab(on) {
-    const dot = ui().querySelector('#iw_fab .iw-fab-dot');
+    const dot = document.querySelector('#iw_fab .iw-fab-dot');
     if (dot) dot.hidden = !on;
 }
 

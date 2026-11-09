@@ -190,25 +190,95 @@ export function cleanCharacter(raw, opts = {}) {
 }
 
 // Достаёт JSON из ответа модели: убирает размышления, ```json, текст до и после.
+// Если ответ сломан — чинит кавычки внутри текста и аккуратно закрывает оборванный конец.
 export function extractJson(text) {
     if (text && typeof text === 'object') return text;
     let t = String(text || '');
     t = t.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, '');
-    const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fence) t = fence[1];
+    t = t.replace(/^[\s\S]*?<\/think(?:ing)?>/i, '');
+    const fence = t.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+    if (fence && fence[1].includes('{')) t = fence[1];
     const start = t.indexOf('{');
+    if (start < 0) throw new Error('В ответе модели нет JSON');
     const end = t.lastIndexOf('}');
-    if (start < 0 || end <= start) throw new Error('В ответе модели нет JSON');
-    let body = t.slice(start, end + 1);
-    try {
-        return JSON.parse(body);
-    } catch (e) {
-        body = body
-            .replace(/,\s*([}\]])/g, '$1')
-            .replace(/[“”«»]/g, '"')
-            .replace(/\/\/[^\n"]*\n/g, '\n');
-        return JSON.parse(body);
+    if (end > start) {
+        try {
+            return JSON.parse(t.slice(start, end + 1));
+        } catch { /* чиним ниже */ }
     }
+    const repaired = repairJson(t.slice(start));
+    if (repaired === null) throw new Error('модель вернула испорченный ответ — попробуй обновить ещё раз');
+    return repaired;
+}
+
+// Чинит то, что обычно ломают модели:
+// — кавычки внутри текста («он сказал "да"») — экранирует;
+// — висящие запятые;
+// — оборванный конец (кончились токены) — отрезает недописанный кусок и закрывает скобки.
+export function repairJson(src) {
+    let out = '';
+    const stack = [];
+    let inStr = false;
+    let esc = false;
+    const cuts = []; // места, где можно безопасно обрезать: после завершённого значения
+    const nextSignificant = i => {
+        for (let j = i; j < src.length; j++) {
+            const ch = src[j];
+            if (!/\s/.test(ch)) return ch;
+        }
+        return '';
+    };
+    for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
+        if (inStr) {
+            if (esc) { out += ch; esc = false; continue; }
+            if (ch === '\\') { out += ch; esc = true; continue; }
+            if (ch === '\n') { out += '\\n'; continue; }
+            if (ch === '"') {
+                const nx = nextSignificant(i + 1);
+                if (nx === '' || nx === ',' || nx === ':' || nx === '}' || nx === ']') {
+                    inStr = false;
+                    out += ch;
+                } else {
+                    out += '\\"';
+                }
+                continue;
+            }
+            out += ch;
+            continue;
+        }
+        if (ch === '"') { inStr = true; out += ch; continue; }
+        if (ch === '{' || ch === '[') { stack.push(ch); out += ch; continue; }
+        if (ch === '}' || ch === ']') {
+            out = out.replace(/,\s*$/, '');
+            stack.pop();
+            out += ch;
+            cuts.push({ len: out.length, stack: stack.slice() });
+            if (!stack.length) break;
+            continue;
+        }
+        if (ch === ',') cuts.push({ len: out.length, stack: stack.slice() });
+        out += ch;
+    }
+    const close = (body, st) => body.replace(/,\s*$/, '') + st.slice().reverse().map(c => (c === '{' ? '}' : ']')).join('');
+    const tryParse = str => {
+        try {
+            return JSON.parse(str);
+        } catch {
+            return undefined;
+        }
+    };
+    if (!inStr && !stack.length) {
+        const whole = tryParse(out);
+        if (whole !== undefined) return whole;
+    }
+    // Оборванный ответ: откатываемся к последнему завершённому значению и закрываем скобки.
+    for (let k = cuts.length - 1; k >= 0 && k >= cuts.length - 60; k--) {
+        const c = cuts[k];
+        const res = tryParse(close(out.slice(0, c.len), c.stack));
+        if (res !== undefined) return res;
+    }
+    return null;
 }
 
 export function parseAnalysis(text, opts = {}) {
