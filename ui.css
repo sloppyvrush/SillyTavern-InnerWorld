@@ -9570,3 +9570,198 @@ ol {
 @media (max-width: 760px) {
     .iw-panel .iw-tabs > .iw-tab { width: 96px; min-height: 120px; }
 }
+
+/* ---------- Где всплывают уведомления: сверху (по умолчанию) или снизу ---------- */
+/* Снизу считаем от высоты экрана, а не bottom: 0 — у таверны бывает transform на <html> */
+.iw-toasts.iw-toasts-top {
+    top: calc(var(--topBarBlockSize, 50px) + 12px);
+    bottom: auto;
+    transform: none;
+}
+
+.iw-toasts.iw-toasts-bottom {
+    top: calc(100vh - 24px);
+    top: calc(100dvh - 24px);
+    bottom: auto;
+    transform: translateY(-100%);
+}
+
+@media (max-width: 760px) {
+    .iw-toasts.iw-toasts-top,
+    #iw_panel:not([hidden]) ~ .iw-toasts.iw-toasts-top {
+        top: calc(var(--topBarBlockSize, 50px) + 8px);
+        bottom: auto;
+        transform: none;
+        left: 12px;
+        right: 12px;
+        width: auto;
+    }
+
+    .iw-toasts.iw-toasts-bottom,
+    #iw_panel:not([hidden]) ~ .iw-toasts.iw-toasts-bottom {
+        top: calc(100dvh - 86px);
+        bottom: auto;
+        transform: translateY(-100%);
+        left: 12px;
+        right: 12px;
+        width: auto;
+    }
+}
+
+/* ---------- Больше эмоций: у каждой своё лицо и свой цвет, у некоторых — переход двух цветов ---------- */
+/* --face-bg2 — второй цвет; у одноцветных он равен первому, чтобы не наследовать чужой */
+.iw-face-joy { --face-bg: #ffe066; --face-bg2: var(--face-bg); --face-ink: #7a4d00; }
+.iw-face-excited { --face-bg: #ffb36b; --face-bg2: #ff9ec4; --face-ink: #8a2d00; }
+.iw-face-pride { --face-bg: #ffd84d; --face-bg2: #ffa94d; --face-ink: #7a3a00; }
+.iw-face-hope { --face-bg: #b8e2ff; --face-bg2: #c4f0cf; --face-ink: #1b5a6e; }
+.iw-face-grateful { --face-bg: #ffd3b0; --face-bg2: #ffe9a0; --face-ink: #87461a; }
+.iw-face-calm { --face-bg: #bdeba6; --face-bg2: var(--face-bg); --face-ink: #2c6418; }
+.iw-face-love { --face-bg: #ffb8d6; --face-bg2: var(--face-bg); --face-ink: #a3164f; }
+.iw-face-desire { --face-bg: #ff9cb2; --face-bg2: #ff7396; --face-ink: #8c0f2e; }
+.iw-face-shy { --face-bg: #ffcdb8; --face-bg2: var(--face-bg); --face-ink: #a3402c; }
+.iw-face-sad { --face-bg: #b3d0fa; --face-bg2: var(--face-bg); --face-ink: #22488c; }
+.iw-face-melancholy { --face-bg: #bfcdf0; --face-bg2: #d9c8f0; --face-ink: #3a4780; }
+.iw-face-hurt { --face-bg: #ffc4d0; --face-bg2: #b9d3f7; --face-ink: #7a2a4a; }
+.iw-face-guilt { --face-bg: #dcc3dc; --face-bg2: #c3cae8; --face-ink: #5a2f5a; }
+.iw-face-angry { --face-bg: #ff9580; --face-bg2: var(--face-bg); --face-ink: #8f150a; }
+.iw-face-irritated { --face-bg: #ffb08a; --face-bg2: #ffd28a; --face-ink: #8a3510; }
+.iw-face-envy { --face-bg: #bfe58a; --face-bg2: #e6ee8a; --face-ink: #3d5a10; }
+.iw-face-disgust { --face-bg: #c9d58e; --face-bg2: var(--face-bg); --face-ink: #4a5512; }
+.iw-face-contempt { --face-bg: #cfc4de; --face-bg2: #bdb6c9; --face-ink: #46385a; }
+.iw-face-fear { --face-bg: #d8c4f7; --face-bg2: var(--face-bg); --face-ink: #4b2a86; }
+.iw-face-anxious { --face-bg: #e2d3f7; --face-bg2: #c9d6f0; --face-ink: #4a3a7e; }
+.iw-face-suspicious { --face-bg: #b8d3d4; --face-bg2: var(--face-bg); --face-ink: #2f4d52; }
+.iw-face-tired { --face-bg: #dcd5ca; --face-bg2: var(--face-bg); --face-ink: #554b41; }
+.iw-face-bored { --face-bg: #d7dbe2; --face-bg2: var(--face-bg); --face-ink: #4f5560; }
+.iw-face-focus { --face-bg: #a3dde6; --face-bg2: var(--face-bg); --face-ink: #0c5563; }
+.iw-face-surprise { --face-bg: #ffcb8c; --face-bg2: var(--face-bg); --face-ink: #8a4200; }
+.iw-face-confused { --face-bg: #f6cfb6; --face-bg2: #dcc9f4; --face-ink: #6a3a5a; }
+.iw-face-curious { --face-bg: #ffe39e; --face-bg2: #a8e0e8; --face-ink: #6a4a00; }
+.iw-face-neutral { --face-bg: #e9e3d8; --face-bg2: var(--face-bg); --face-ink: #574e45; }
+
+.iw-theme-cyber .iw-face-joy { --face-bg: #ffe600; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-excited { --face-bg: #ff9a3e; --face-bg2: #ff4fa8; }
+.iw-theme-cyber .iw-face-pride { --face-bg: #ffd400; --face-bg2: #ff9a00; }
+.iw-theme-cyber .iw-face-hope { --face-bg: #5ad1ff; --face-bg2: #5affb0; }
+.iw-theme-cyber .iw-face-grateful { --face-bg: #ffb37a; --face-bg2: #ffe066; }
+.iw-theme-cyber .iw-face-calm { --face-bg: #39ff9e; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-love { --face-bg: #ff4fd8; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-desire { --face-bg: #ff3d7a; --face-bg2: #ff2a5f; }
+.iw-theme-cyber .iw-face-shy { --face-bg: #ff9a7a; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-sad { --face-bg: #4fb3ff; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-melancholy { --face-bg: #6f8cff; --face-bg2: #b36bff; }
+.iw-theme-cyber .iw-face-hurt { --face-bg: #ff6fae; --face-bg2: #4fb3ff; }
+.iw-theme-cyber .iw-face-guilt { --face-bg: #c86bff; --face-bg2: #6f8cff; }
+.iw-theme-cyber .iw-face-angry { --face-bg: #ff3b3b; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-irritated { --face-bg: #ff7a3e; --face-bg2: #ffb000; }
+.iw-theme-cyber .iw-face-envy { --face-bg: #a8ff3e; --face-bg2: #e6ff3e; }
+.iw-theme-cyber .iw-face-disgust { --face-bg: #b8d900; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-contempt { --face-bg: #b9a8d9; --face-bg2: #8f86a6; }
+.iw-theme-cyber .iw-face-fear { --face-bg: #b36bff; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-anxious { --face-bg: #c79bff; --face-bg2: #7fb2ff; }
+.iw-theme-cyber .iw-face-suspicious { --face-bg: #3ed9c9; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-tired { --face-bg: #8a93a6; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-bored { --face-bg: #9aa3b2; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-focus { --face-bg: #3ef0ff; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-surprise { --face-bg: #ffa53e; --face-bg2: var(--face-bg); }
+.iw-theme-cyber .iw-face-confused { --face-bg: #ff9a7a; --face-bg2: #b36bff; }
+.iw-theme-cyber .iw-face-curious { --face-bg: #ffd23e; --face-bg2: #3ef0ff; }
+.iw-theme-cyber .iw-face-neutral { --face-bg: #c9d3e0; --face-bg2: var(--face-bg); }
+.iw-theme-cyber [class*="iw-face-"] { --face-ink: #0b0d14; }
+
+:where(.iw-panel) {
+    --fb-joy: #ffe066; --fi-joy: #7a4d00;
+    --fb-excited: #ffb36b; --fi-excited: #8a2d00;
+    --fb-pride: #ffd84d; --fi-pride: #7a3a00;
+    --fb-hope: #b8e2ff; --fi-hope: #1b5a6e;
+    --fb-grateful: #ffd3b0; --fi-grateful: #87461a;
+    --fb-calm: #bdeba6; --fi-calm: #2c6418;
+    --fb-love: #ffb8d6; --fi-love: #a3164f;
+    --fb-desire: #ff9cb2; --fi-desire: #8c0f2e;
+    --fb-shy: #ffcdb8; --fi-shy: #a3402c;
+    --fb-sad: #b3d0fa; --fi-sad: #22488c;
+    --fb-melancholy: #bfcdf0; --fi-melancholy: #3a4780;
+    --fb-hurt: #ffc4d0; --fi-hurt: #7a2a4a;
+    --fb-guilt: #dcc3dc; --fi-guilt: #5a2f5a;
+    --fb-angry: #ff9580; --fi-angry: #8f150a;
+    --fb-irritated: #ffb08a; --fi-irritated: #8a3510;
+    --fb-envy: #bfe58a; --fi-envy: #3d5a10;
+    --fb-disgust: #c9d58e; --fi-disgust: #4a5512;
+    --fb-contempt: #cfc4de; --fi-contempt: #46385a;
+    --fb-fear: #d8c4f7; --fi-fear: #4b2a86;
+    --fb-anxious: #e2d3f7; --fi-anxious: #4a3a7e;
+    --fb-suspicious: #b8d3d4; --fi-suspicious: #2f4d52;
+    --fb-tired: #dcd5ca; --fi-tired: #554b41;
+    --fb-bored: #d7dbe2; --fi-bored: #4f5560;
+    --fb-focus: #a3dde6; --fi-focus: #0c5563;
+    --fb-surprise: #ffcb8c; --fi-surprise: #8a4200;
+    --fb-confused: #f6cfb6; --fi-confused: #6a3a5a;
+    --fb-curious: #ffe39e; --fi-curious: #6a4a00;
+    --fb-neutral: #e9e3d8; --fi-neutral: #574e45;
+}
+.iw-theme-cyber {
+    --fb-joy: #ffe600; --fb-excited: #ff9a3e; --fb-pride: #ffd400; --fb-hope: #5ad1ff; --fb-grateful: #ffb37a; --fb-calm: #39ff9e; --fb-love: #ff4fd8; --fb-desire: #ff3d7a; --fb-shy: #ff9a7a; --fb-sad: #4fb3ff; --fb-melancholy: #6f8cff; --fb-hurt: #ff6fae; --fb-guilt: #c86bff; --fb-angry: #ff3b3b; --fb-irritated: #ff7a3e; --fb-envy: #a8ff3e; --fb-disgust: #b8d900; --fb-contempt: #b9a8d9; --fb-fear: #b36bff; --fb-anxious: #c79bff; --fb-suspicious: #3ed9c9; --fb-tired: #8a93a6; --fb-bored: #9aa3b2; --fb-focus: #3ef0ff; --fb-surprise: #ffa53e; --fb-confused: #ff9a7a; --fb-curious: #ffd23e; --fb-neutral: #c9d3e0;
+}
+
+/* фон карточки эмоции и плашка силы — тоже переходом */
+.iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 34%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 34%, transparent));
+}
+
+.iw-theme-dark .iw-feels .iw-feel[class*="iw-face-"],
+.iw-theme-cyber .iw-feels .iw-feel[class*="iw-face-"],
+.iw-theme-grimoire .iw-feels .iw-feel[class*="iw-face-"],
+.iw-theme-logbook .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
+}
+
+.iw-theme-bimbo .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 30%, #fff), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 30%, #fff));
+}
+
+.iw-feel[class*="iw-face-"] .iw-feel-power {
+    background: linear-gradient(120deg, var(--face-bg), var(--face-bg2, var(--face-bg)));
+}
+
+.iw-theme-pixel .iw-mood-word .iw-hl {
+    background: linear-gradient(90deg, var(--face-bg, #ffd35c), var(--face-bg2, var(--face-bg, #ffd35c)));
+}
+
+/* ---------- Ещё эмоции как в «Симс»: озорство, бодрость, вдохновение, уверенность, флирт, дискомфорт, оглушённость ---------- */
+.iw-face-playful { --face-bg: #ffd36b; --face-bg2: #8fe0c8; --face-ink: #7a4a00; }
+.iw-face-energized { --face-bg: #c8f56a; --face-bg2: #ffe94d; --face-ink: #3f5a00; }
+.iw-face-inspired { --face-bg: #a6ecf0; --face-bg2: #d4b8ff; --face-ink: #284a7a; }
+.iw-face-confident { --face-bg: #a9b8ff; --face-bg2: #c7a9ff; --face-ink: #2b2a8a; }
+.iw-face-flirty { --face-bg: #ffb3e0; --face-bg2: #e0b8ff; --face-ink: #8a1d6a; }
+.iw-face-uncomfortable { --face-bg: #e0d6a8; --face-bg2: #c9d0b0; --face-ink: #5a5020; }
+.iw-face-dazed { --face-bg: #d9cfe8; --face-bg2: #f2c8dc; --face-ink: #5a4070; }
+.iw-theme-cyber .iw-face-playful { --face-bg: #ffd23e; --face-bg2: #3effc0; }
+.iw-theme-cyber .iw-face-energized { --face-bg: #b6ff2e; --face-bg2: #ffee00; }
+.iw-theme-cyber .iw-face-inspired { --face-bg: #3ef0ff; --face-bg2: #c27bff; }
+.iw-theme-cyber .iw-face-confident { --face-bg: #6f8cff; --face-bg2: #a86bff; }
+.iw-theme-cyber .iw-face-flirty { --face-bg: #ff5fd0; --face-bg2: #c46bff; }
+.iw-theme-cyber .iw-face-uncomfortable { --face-bg: #d9c35a; --face-bg2: #a8b878; }
+.iw-theme-cyber .iw-face-dazed { --face-bg: #b8a3e6; --face-bg2: #ff9ad0; }
+.iw-theme-cyber [class*="iw-face-"] { --face-ink: #0b0d14; }
+:where(.iw-panel) {
+    --fb-playful: #ffd36b; --fi-playful: #7a4a00;
+    --fb-energized: #c8f56a; --fi-energized: #3f5a00;
+    --fb-inspired: #a6ecf0; --fi-inspired: #284a7a;
+    --fb-confident: #a9b8ff; --fi-confident: #2b2a8a;
+    --fb-flirty: #ffb3e0; --fi-flirty: #8a1d6a;
+    --fb-uncomfortable: #e0d6a8; --fi-uncomfortable: #5a5020;
+    --fb-dazed: #d9cfe8; --fi-dazed: #5a4070;
+}
+.iw-theme-cyber { --fb-playful: #ffd23e; --fb-energized: #b6ff2e; --fb-inspired: #3ef0ff; --fb-confident: #6f8cff; --fb-flirty: #ff5fd0; --fb-uncomfortable: #d9c35a; --fb-dazed: #b8a3e6; }
+
+/* ---------- Летопись: обычный текст — читаемым книжным шрифтом, плотнее и темнее (заголовки прежние) ---------- */
+.iw-theme-medieval {
+    --iw-body-font: 'Alegreya', 'Cormorant Garamond', Georgia, serif;
+    --iw-text-size: 17px;
+    --iw-ink: #33200e;
+    --iw-muted: #5e3d1c;
+}
+
+.iw-theme-medieval :where(.iw-body, .iw-foot, .iw-toast-card) {
+    font-weight: 500;
+}

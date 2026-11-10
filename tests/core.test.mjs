@@ -300,7 +300,12 @@ test('кириллица и латиница, пустой главный, бы�
     assert.ok(html.includes('data-iw-view="main:Иван Соколов"'));
     const ros = parseRoster(JSON.stringify({ main: ['Иван Соколов'], npc: [{ name: 'Хромой', who: 'главарь' }, { name: 'Зоя' }] }));
     const roster = Object.assign({}, ros, { find: n => rosterFind(ros, n) });
-    const list = renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: 'npc', mains: ['Иван Соколов'], npcKeys: [], roster, seenOnly: [ros.npc[0]] });
+    const emptyNpc = renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: 'npc', mains: ['Иван Соколов'], npcKeys: [], roster, seenOnly: [ros.npc[0]] });
+    assert.ok(emptyNpc.includes('Дневник ещё не заполнен') && !emptyNpc.includes('iw-npc-title'), 'пустой дневник: на вкладке НПС та же подсказка, без имени');
+    const emptyMe = renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: 'me:Ева', mains: ['Иван Соколов'], npcKeys: [], roster, persona: { key: 'Ева', name: 'Ева', avatar: '' } });
+    assert.ok(emptyMe.includes('Дневник ещё не заполнен'));
+    const filled = applyAnalysis(emptyState(), one({ name: 'Иван Соколов', mood: 'спокоен' }), all).state;
+    const list = renderPanel({ state: filled, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'npc', mains: ['Иван Соколов'], npcKeys: [], roster, seenOnly: [ros.npc[0]] });
     assert.ok(list.includes('ждёт разбора'));
     assert.ok(list.includes('iw-npc-badge'), 'у НПС значок вместо фото');
     assert.ok(!list.includes('iw-photo"'), 'фото у НПС нет');
@@ -423,23 +428,33 @@ test('доизученный лорбук дополняет НПС, а не с�
 });
 
 test('у каждой эмоции своё лицо и цвет', () => {
-    assert.equal(guessFace('беспокойство'), 'fear');
+    assert.equal(guessFace('беспокойство'), 'anxious');
+    assert.equal(guessFace('испуг'), 'fear');
     assert.equal(guessFace('спокойствие'), 'calm');
-    assert.equal(guessFace('недовольство'), 'angry');
-    assert.equal(guessFace('озадаченность'), 'surprise');
+    assert.equal(guessFace('недовольство'), 'irritated');
+    assert.equal(guessFace('самодовольство'), 'pride');
+    assert.equal(guessFace('безнадёжность'), 'sad');
+    assert.equal(guessFace('надежда'), 'hope');
+    assert.equal(guessFace('зависть'), 'envy');
+    assert.equal(guessFace('озадаченность'), 'confused');
+    assert.equal(guessFace('гордость'), 'pride');
+    assert.equal(guessFace('горд'), 'pride');
+    assert.equal(guessFace('горе'), 'sad');
+    assert.equal(guessFace('сердечность'), 'love');
+    assert.equal(guessFace('одиночество'), 'melancholy');
     assert.equal(guessFace('сосредоточен'), 'focus');
     assert.equal(guessFace('что-то странное', 'good'), 'joy');
     const st = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'встревожен', moodlets: [{ emotion: 'ревность', why: 'она ушла с другим' }, { emotion: 'нежность', face: 'love' }] }), all).state;
     const ml = st.characters['Роберт'].moodlets;
-    assert.equal(ml[0].face, 'angry');
+    assert.equal(ml[0].face, 'envy');
     assert.equal(ml[1].face, 'love');
     const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'bimbo', view: 'main:Роберт', busy: false, status: '', mains: ['Роберт'], npcKeys: [], roster: null });
-    assert.ok(html.includes('iw-face-angry') && html.includes('iw-feel-face'));
+    assert.ok(html.includes('iw-face-envy') && html.includes('iw-feel-face'));
     assert.ok(html.includes('Проанализируем, зай?'));
 });
 
 test('общее состояние: цвет из эмоций, смешанное — два цвета', () => {
-    assert.deepEqual(moodFaces({ mood: 'встревожен', moodlets: [] }), ['fear']);
+    assert.deepEqual(moodFaces({ mood: 'встревожен', moodlets: [] }), ['anxious']);
     assert.deepEqual(moodFaces({ mood: 'странно', moodlets: [{ emotion: 'горе', weight: 'deep', left: 5 }, { emotion: 'радость', weight: 'light', left: 1 }] }), ['sad']);
     assert.deepEqual(moodFaces({ mood: 'растерян', face: 'surprise', moodlets: [{ emotion: 'нежность', weight: 'medium', left: 3 }, { emotion: 'тревога', weight: 'medium', left: 2 }] }), ['surprise', 'love']);
     assert.deepEqual(moodFaces({}), []);
@@ -619,6 +634,15 @@ test('персона игрока: ведётся отдельно, не вли�
     assert.ok(sys.includes('персона игрока') && sys.includes('отношение к Роберт'));
     const html = renderPanel({ state: on, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'me:Ева', mains: ['Роберт'], npcKeys: [], persona: { key: 'Ева', name: 'Ева', avatar: '' } });
     assert.ok(html.includes('iw-tab-persona') && html.includes('Как она относится к нему') && html.includes('iw-shopbar') && html.includes('iw-shop-sticker'));
+});
+
+test('тип личности и темперамент — в роде персонажа', () => {
+    const st = applyAnalysis(emptyState(), one({ name: 'Ева Лянь', g: 'f', mood: 'спокойна', ptype: 'INFP-T', temper: 'melancholic' }), all).state;
+    const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Ева Лянь', mains: ['Ева Лянь'], npcKeys: [] });
+    assert.ok(html.includes('Мечтательница') && html.includes('Чуткая и глубокая') && html.includes('ранима') && html.includes('Беспокойная'));
+    const st2 = applyAnalysis(emptyState(), one({ name: 'Олег', g: 'm', mood: 'спокоен', temper: 'phlegmatic' }), all).state;
+    const h2 = renderPanel({ state: st2, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Олег', mains: ['Олег'], npcKeys: [] });
+    assert.ok(h2.includes('Спокойный и ровный') && !h2.includes('к нервам'));
 });
 
 console.log(`значки: ${passed} проверок прошло`);

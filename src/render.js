@@ -155,7 +155,7 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
              <span class="iw-npc-sticker-count">${npc.met}${npc.known ? ` из ${npc.known}` : ''}</span>
            </button>`
         : '';
-    // карточка персоны игрока — такая же, как у персонажа, с подписью «твой герой»
+    // карточка персоны игрока — такая же, как у персонажа (без подписи: и так понятно, чья она)
     let me = '';
     if (persona) {
         const pc = (persona.key && state.characters[persona.key]) || { name: persona.name };
@@ -163,7 +163,7 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
         const photo = persona.avatar
             ? `<span class="iw-photo" style="background-image:url('${esc(persona.avatar)}')"></span>`
             : `<span class="iw-photo iw-photo-letter">${esc((pc.name || '?').slice(0, 1).toUpperCase())}</span>`;
-        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет"><span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-cap">твой герой</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${esc(pc.mood)}</span>` : ''}</button>`;
+        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет"><span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${esc(pc.mood)}</span>` : ''}</button>`;
     }
     return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind)}</div>`;
 }
@@ -323,13 +323,13 @@ function dreamTools(c, busy) {
 
 function renderDream(c, L, opts = {}) {
     if (!c.dream) {
-        return `<section class="iw-block iw-b-dream">${blockHead('dream', esc(L.dream), dreamTools(c, opts.dreamBusy))}<div class="iw-muted">ещё не ясна</div></section>`;
+        return `<section class="iw-block iw-b-dream">${blockHead('dream', esc(L.dream), dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key)))}<div class="iw-muted">ещё не ясна</div></section>`;
     }
     const steps = c.dream.steps;
     const done = steps.filter(s => s.done).length;
     return `
     <section class="iw-block iw-b-dream${c.dream.pinned ? ' pinned' : ''}">
-      ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy)}`)}
+      ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key))}`)}
       <div class="iw-dream-title">${esc(c.dream.title)}${c.dream.plus ? ` <span class="iw-dream-plus">${esc(c.dream.plus)}</span>` : ''}</div>
       <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${esc(s.text)}</span></li>`).join('')}</ol>
     </section>`;
@@ -364,46 +364,53 @@ function traitChip(t, i) {
 
 // Тип личности (16 типов) и темперамент — отдельный блок «про персонажа»:
 // общее описание типа и то, как он проявляется именно в этом персонаже.
+// Общие описания — в роде персонажа: [он, она].
 const PTYPE_TEXT = {
-    INTJ: 'Стратег с планом на всё: независим, рационален, видит систему там, где другие видят хаос.',
-    INTP: 'Изобретательный мыслитель: любопытен, ищет логику во всём, легко уходит в свои мысли.',
-    ENTJ: 'Прирождённый лидер: решителен, требователен, умеет вести людей к цели.',
-    ENTP: 'Остроумный спорщик: любит идеи и вызовы, ломает шаблоны, быстро соображает.',
-    INFJ: 'Тихий идеалист: глубоко чувствует людей, живёт по внутренним принципам, стремится помогать.',
-    INFP: 'Мечтатель с большим сердцем: живёт ценностями, раним, ищет смысл и гармонию.',
-    ENFJ: 'Вдохновляющий лидер: харизматичен, заботится о других и умеет их сплотить.',
-    ENFP: 'Энтузиаст: открыт, общителен, загорается идеями и людьми.',
-    ISTJ: 'Надёжный и последовательный: ценит факты, порядок и данное слово.',
-    ISFJ: 'Тёплый хранитель: внимателен к близким, предан, тихо заботится.',
-    ESTJ: 'Организатор: любит порядок и правила, берёт ответственность на себя.',
-    ESFJ: 'Душа компании: заботлив, общителен, ему важно, чтобы всем было хорошо.',
-    ISTP: 'Практик: хладнокровен, изобретателен, лучше всего понимает мир руками.',
-    ISFP: 'Свободный художник: живёт моментом, чуток к красоте, не любит рамок.',
-    ESTP: 'Человек действия: смел, азартен, хорошо чувствует обстановку здесь и сейчас.',
-    ESFP: 'Звезда момента: спонтанен, энергичен, любит людей и внимание.',
+    INTJ: ['Стратег с планом на всё: независим, рационален, видит систему там, где другие видят хаос.', 'Стратег с планом на всё: независима, рациональна, видит систему там, где другие видят хаос.'],
+    INTP: ['Изобретательный мыслитель: любопытен, ищет логику во всём, легко уходит в свои мысли.', 'Изобретательный ум: любопытна, ищет логику во всём, легко уходит в свои мысли.'],
+    ENTJ: ['Прирождённый лидер: решителен, требователен, умеет вести людей к цели.', 'Прирождённый лидер: решительна, требовательна, умеет вести людей к цели.'],
+    ENTP: ['Остроумный спорщик: любит идеи и вызовы, ломает шаблоны, быстро соображает.', 'Остроумная спорщица: любит идеи и вызовы, ломает шаблоны, быстро соображает.'],
+    INFJ: ['Тихий идеалист: глубоко чувствует людей, живёт по внутренним принципам, стремится помогать.', 'Тихая идеалистка: глубоко чувствует людей, живёт по внутренним принципам, стремится помогать.'],
+    INFP: ['Мечтатель с большим сердцем: живёт ценностями, раним, ищет смысл и гармонию.', 'Мечтательница с большим сердцем: живёт ценностями, ранима, ищет смысл и гармонию.'],
+    ENFJ: ['Вдохновляющий лидер: харизматичен, заботится о других и умеет их сплотить.', 'Вдохновляющий лидер: харизматична, заботится о других и умеет их сплотить.'],
+    ENFP: ['Энтузиаст: открыт, общителен, загорается идеями и людьми.', 'Энтузиастка: открыта, общительна, загорается идеями и людьми.'],
+    ISTJ: ['Надёжный и последовательный: ценит факты, порядок и данное слово.', 'Надёжная и последовательная: ценит факты, порядок и данное слово.'],
+    ISFJ: ['Тёплый хранитель: внимателен к близким, предан, тихо заботится.', 'Тёплая хранительница: внимательна к близким, предана, тихо заботится.'],
+    ESTJ: ['Организатор: любит порядок и правила, берёт ответственность на себя.', 'Организатор: любит порядок и правила, берёт ответственность на себя.'],
+    ESFJ: ['Душа компании: заботлив, общителен, ему важно, чтобы всем было хорошо.', 'Душа компании: заботлива, общительна, ей важно, чтобы всем было хорошо.'],
+    ISTP: ['Практик: хладнокровен, изобретателен, лучше всего понимает мир руками.', 'Практик: хладнокровна, изобретательна, лучше всего понимает мир руками.'],
+    ISFP: ['Свободный художник: живёт моментом, чуток к красоте, не любит рамок.', 'Свободная творческая душа: живёт моментом, чутка к красоте, не любит рамок.'],
+    ESTP: ['Человек действия: смел, азартен, хорошо чувствует обстановку здесь и сейчас.', 'Человек действия: смела, азартна, хорошо чувствует обстановку здесь и сейчас.'],
+    ESFP: ['Звезда момента: спонтанен, энергичен, любит людей и внимание.', 'Звезда момента: спонтанна, энергична, любит людей и внимание.'],
 };
-const PTYPE_TAIL = { A: 'уверенный: спокойно держит удар', T: 'беспокойный: требователен к себе, остро переживает' };
+const PTYPE_TAIL = {
+    A: [['уверенный', 'спокойно держит удар'], ['уверенная', 'спокойно держит удар']],
+    T: [['беспокойный', 'требователен к себе, остро переживает'], ['беспокойная', 'требовательна к себе, остро переживает']],
+};
 const TEMPER_TEXT = {
-    choleric: 'Быстрый и горячий: решителен, вспыльчив, легко заводится и так же быстро остывает.',
-    sanguine: 'Живой и лёгкий: общителен, оптимистичен, быстро переключается и не держит зла.',
-    phlegmatic: 'Спокойный и ровный: медленно раскачивается, но надёжен и устойчив к нервам.',
-    melancholic: 'Чуткий и глубокий: остро переживает, раним, внимателен к мелочам и настроениям.',
+    choleric: ['Быстрый и горячий: решителен, вспыльчив, легко заводится и так же быстро остывает.', 'Быстрая и горячая: решительна, вспыльчива, легко заводится и так же быстро остывает.'],
+    sanguine: ['Живой и лёгкий: общителен, оптимистичен, быстро переключается и не держит зла.', 'Живая и лёгкая: общительна, оптимистична, быстро переключается и не держит зла.'],
+    phlegmatic: ['Спокойный и ровный: раскачивается не сразу, зато надёжен и почти никогда не теряет самообладания.', 'Спокойная и ровная: раскачивается не сразу, зато надёжна и почти никогда не теряет самообладания.'],
+    melancholic: ['Чуткий и глубокий: остро переживает, раним, внимателен к мелочам и настроениям.', 'Чуткая и глубокая: остро переживает, ранима, внимательна к мелочам и настроениям.'],
 };
+const byGender = (pair, g) => (Array.isArray(pair) ? pair[g === 'f' ? 1 : 0] : pair || '');
 
 function renderPersona(c, L) {
     const code = c.ptype ? c.ptype.slice(0, 4) : '';
     const name = PTYPES[code];
     const grp = ptypeGroup(code);
     const tail = c.ptype && c.ptype.length > 5 ? c.ptype.slice(5) : '';
+    const g = genderOf(c.g, c.name, c.who);
+    const tailPair = tail && PTYPE_TAIL[tail] ? byGender(PTYPE_TAIL[tail], g) : null;
     const cards = [];
     if (name) {
         cards.push(`
         <div class="iw-persona-card iw-pt-${grp}">
           <div class="iw-persona-top">
             <span class="iw-persona-code">${esc(code)}${tail ? `<i>-${esc(tail)}</i>` : ''}</span>
-            <span class="iw-persona-name">${esc(name)}<small>${esc(PTYPE_GROUPS[grp] || '')}${tail ? ` · ${esc(PTYPE_TAIL[tail].split(':')[0])}` : ''}</small></span>
+            <span class="iw-persona-name">${esc(name)}<small>${esc(PTYPE_GROUPS[grp] || '')}${tailPair ? ` · ${esc(tailPair[0])}` : ''}</small></span>
           </div>
-          <p class="iw-persona-general">${esc(PTYPE_TEXT[code])}${tail ? ` ${esc(PTYPE_TAIL[tail].charAt(0).toUpperCase() + PTYPE_TAIL[tail].slice(1))}.` : ''}</p>
+          <p class="iw-persona-general">${esc(byGender(PTYPE_TEXT[code], g))}${tailPair ? ` ${esc(tailPair[0].charAt(0).toUpperCase() + tailPair[0].slice(1))}: ${esc(tailPair[1])}.` : ''}</p>
           ${c.ptypeNote ? `<p class="iw-persona-own">${esc(c.ptypeNote)}</p>` : ''}
         </div>`);
     }
@@ -414,13 +421,12 @@ function renderPersona(c, L) {
             <span class="iw-persona-code">${icon('flame')}</span>
             <span class="iw-persona-name">${esc(TEMPERS[c.temper])}<small>темперамент</small></span>
           </div>
-          <p class="iw-persona-general">${esc(TEMPER_TEXT[c.temper])}</p>
+          <p class="iw-persona-general">${esc(byGender(TEMPER_TEXT[c.temper], g))}</p>
           ${c.temperNote ? `<p class="iw-persona-own">${esc(c.temperNote)}</p>` : ''}
         </div>`);
     }
     const z = ZODIAC[c.zodiac];
     if (z || c.born) {
-        const g = genderOf(c.g, c.name, c.who);
         const born = c.born ? `${gw(g, 'родился', 'родилась', 'день рождения:')} ${esc(bornText(c.born))}` : 'дата рождения не указана';
         cards.push(`
         <div class="iw-persona-card iw-zd-${z ? z.el : 'none'}">
@@ -613,7 +619,11 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     const showNpc = settings.showNpc !== false;
     let body;
     let current = null;
-    if (view === 'npc' && showNpc) {
+    // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
+    const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
+    if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
+        body = renderWaiting(mains[0] || '', settings, theme, roster);
+    } else if (view === 'npc' && showNpc) {
         body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly });
     } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)]) {
         const key = view.slice(4);
@@ -651,7 +661,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
             current = key;
             body = `<div class="iw-persona-note">${icon('eye')}<span>Дневник твоего героя — только для тебя: на ответы бота он не влияет.</span></div>${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG }, opts))}`;
         } else {
-            body = `<div class="iw-waiting"><div class="iw-waiting-text"><div class="iw-npc-title">${esc((persona && persona.name) || 'Твой герой')}</div><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
+            body = `<div class="iw-waiting"><div class="iw-waiting-text"><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
         }
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
@@ -735,7 +745,6 @@ function renderWaiting(name, s, theme, roster) {
     return `
 <div class="iw-waiting">
   <div class="iw-waiting-text">
-    <div class="iw-npc-title${nameFit(name)}">${esc(name)}</div>
     <p>Дневник ещё не заполнен. Отправь сообщение, и я запишу, что ${him} на душе. Или нажми кнопку разбора справа сверху:</p>
     <ul class="iw-waiting-list">
       <li><b>«Чат»</b> — прочитаю историю и восстановлю настроение, желания, страхи и отношение к тебе;</li>

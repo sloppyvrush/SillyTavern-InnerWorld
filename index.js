@@ -210,12 +210,8 @@ async function collectLoreSources(onlyBook = '') {
         return out;
     }
     const ch = c.characters && c.characters[c.characterId];
-    try {
-        const f = c.getCharacterCardFields ? c.getCharacterCardFields() : {};
-        const card = [f.description, f.personality, f.scenario].filter(Boolean).join('\n');
-        if (card.trim()) out.push({ title: `Карточка: ${c.name2}`, text: cleanMessageText(card, 5000) });
-    } catch { /* без карточки */ }
-    if (c.chat && c.chat[0] && !c.chat[0].is_user && c.chat[0].mes) out.push({ title: 'Первое сообщение', text: cleanMessageText(c.chat[0].mes, 2000) });
+    const card = cardDescription(c);
+    if (card.trim()) out.push({ title: `Карточка: ${c.name2}`, text: cleanMessageText(card, 5000) });
     const persona = c.powerUserSettings && c.powerUserSettings.persona_description;
     if (persona) out.push({ title: `Игрок: ${c.name1}`, text: cleanMessageText(persona, 1500) });
 
@@ -455,18 +451,39 @@ function isFreshReply(messageId, type) {
     return chat.slice(0, messageId).some(m => m && m.is_user);
 }
 
-function cardText(c) {
+// Из карточки дневник читает только описание персонажа, резюме личности и заметку о персонаже
+// (если они заполнены). Сценарий, примеры диалогов, заметки автора, системный промпт — не трогает.
+// Поля читаем напрямую: если карточка сохранена криво (поле записано массивом), берём первый
+// непустой текст, а не падаем.
+function cardField(v) {
+    if (Array.isArray(v)) v = v.find(x => typeof x === 'string' && x.trim()) || '';
+    return typeof v === 'string' ? v.trim() : '';
+}
+
+function cardDescription(c) {
     try {
         if (c.characterId === undefined || c.characterId === null) return '';
-        const f = c.getCharacterCardFields ? c.getCharacterCardFields() : null;
-        const ch = c.characters[c.characterId] || {};
-        const parts = f
-            ? [f.description, f.personality, f.scenario]
-            : [ch.description, ch.personality, ch.scenario];
-        return cleanMessageText(parts.filter(Boolean).join('\n'), 2000);
+        const ch = (c.characters && c.characters[c.characterId]) || {};
+        const d = ch.data || {};
+        const ext = d.extensions || {};
+        const parts = [
+            cardField(d.description !== undefined ? d.description : ch.description),
+            cardField(d.personality !== undefined ? d.personality : ch.personality),
+            cardField(ext.depth_prompt && ext.depth_prompt.prompt),
+        ];
+        const text = [
+            parts[0],
+            parts[1] && `Резюме личности: ${parts[1]}`,
+            parts[2] && `Заметка о персонаже: ${parts[2]}`,
+        ].filter(Boolean).join('\n\n');
+        return text && typeof c.substituteParams === 'function' ? c.substituteParams(text) : text;
     } catch {
         return '';
     }
+}
+
+function cardText(c) {
+    return cleanMessageText(cardDescription(c), 2500);
 }
 
 function personaText(c) {
@@ -599,7 +616,9 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const catchUpCount = Math.min(40, Math.max(4, Number(s.catchUpMessages) || 12));
         const count = catchUp ? Math.max(catchUpCount, Number(s.contextMessages) || 6) : Math.max(2, Number(s.contextMessages) || 6);
         let firstInWindow = messageId;
-        for (let i = messageId; i >= 0 && msgs.length < count; i--) {
+        // «Лорбук» разбирает только карточку и лорбуки: сообщения чата (и первое сообщение тоже) сюда не идут —
+        // их читают «Чат» и «Всё сразу»
+        for (let i = messageId; kind !== 'lore' && i >= 0 && msgs.length < count; i--) {
             const m = chat[i];
             if (!m || m.is_system || !m.mes) continue;
             msgs.unshift(`#${i} ${m.name}: ${cleanMessageText(m.mes, catchUp ? CATCHUP_MSG_CHARS : 1500)}`);
@@ -741,7 +760,7 @@ function toastBox() {
         box.setAttribute('aria-live', 'polite');
         ui().appendChild(box);
     }
-    box.className = `iw-toasts iw-theme-${currentTheme}`;
+    box.className = `iw-toasts iw-toasts-${settings().toastPos === 'bottom' ? 'bottom' : 'top'} iw-theme-${currentTheme}`;
     return box;
 }
 
@@ -1196,7 +1215,7 @@ async function onDreamAction(action) {
     if (action === 'regen' && !dreamBusy) {
         if (ch.dream && ch.dream.pinned) return;
         const my = runId;
-        dreamBusy = true;
+        dreamBusy = key; // крутится только кнопка этого персонажа
         renderAll();
         try {
             const info = analysisInfo(6);
