@@ -4,13 +4,15 @@ import {
     buildSystemPrompt, buildUserPrompt, buildInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
+    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward,
 } from './src/core.js';
+import { playSound } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontsUrl } from './src/themes.js';
 import { renderPanel, renderToast, renderFab, esc } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
 const SETTINGS_KEY = 'innerWorld';
@@ -20,6 +22,9 @@ const KEEP_SNAPSHOTS = 12;
 const SKIP_TYPES = ['first_message', 'command', 'extension', 'impersonate', 'quiet'];
 
 let busy = false;
+let busyKind = '';         // какая кнопка разбора сейчас крутится: chat | lore | all
+let dreamBusy = false;
+let shopBusy = false;
 let pending = null;
 let view = '';            // 'main:<имя>' | 'npc' | 'npc:<имя>' | 'settings'
 let lastView = '';
@@ -175,9 +180,20 @@ function excerptAround(text, names, radius = 350) {
     return (from > 0 ? '… ' : '') + clean.slice(from, at + radius) + (at + radius < clean.length ? ' …' : '');
 }
 
-async function collectLoreSources() {
+// onlyBook — разобрать только одну выбранную книгу (доп. лорбук, книгу памяти).
+async function collectLoreSources(onlyBook = '') {
     const c = ctx();
     const out = [];
+    if (onlyBook) {
+        try {
+            const data = await c.loadWorldInfo(onlyBook);
+            const text = loreText(data && data.entries, 14000);
+            if (text) out.push({ title: `Лорбук: ${onlyBook}`, text });
+        } catch (e) {
+            console.warn('[Внутренний мир] лорбук не прочитан', onlyBook, e);
+        }
+        return out;
+    }
     const ch = c.characters && c.characters[c.characterId];
     try {
         const f = c.getCharacterCardFields ? c.getCharacterCardFields() : {};
@@ -199,6 +215,9 @@ async function collectLoreSources() {
     if (c.chatMetadata && c.chatMetadata.world_info) books.add(c.chatMetadata.world_info);
     const personaBook = c.powerUserSettings && c.powerUserSettings.persona_description_lorebook;
     if (personaBook) books.add(personaBook);
+    // книги, которые пользователь доизучил вручную
+    const r = settings().rosters[rosterKey()];
+    for (const b of (r && r.books) || []) books.add(b);
     const per = Math.max(3000, Math.floor(14000 / Math.max(1, books.size)));
     for (const name of books) {
         try {
@@ -212,38 +231,53 @@ async function collectLoreSources() {
     return out;
 }
 
-async function studyLore() {
+// Разбор карточки и лорбуков: список НПС (дополняется, а не заменяется) и сведения для главного персонажа.
+// mode: 'lore' — только лорбук; 'all' — лорбук, а потом весь чат; book — доизучить одну книгу.
+async function studyLore({ mode = 'lore', book = '' } = {}) {
     const c = ctx();
     const key = rosterKey();
     if (!key || !hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
-    if (rosterBusy) return;
+    if (rosterBusy || busy) return;
     rosterBusy = true;
-    status = 'Читаю карточку и лорбук…';
+    busyKind = mode === 'all' ? 'all' : 'lore';
+    status = book ? `Читаю лорбук «${book}»…` : 'Читаю карточку и лорбуки…';
     renderAll();
+    let sources = [];
     try {
-        const sources = await collectLoreSources();
-        if (!sources.length) throw new Error('нечего читать: карточка и лорбук пустые');
-        const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
-        const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2500 }));
-        const r = verifyAliases(parseRoster(raw, c.name1), sources.map(x => x.text).join('\n'));
-        settings().rosters[key] = { main: r.main, npc: r.npc, at: Date.now() };
-        saveSettings();
-        status = `Знаю персонажей мира: ${r.npc.length}`;
-        view = 'npc';
-        historyCache.key = '';
+        sources = await collectLoreSources(book);
+        if (!sources.length) throw new Error(book ? 'в этом лорбуке нет включённых записей' : 'нечего читать: карточка и лорбук пустые');
+        if (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at)) {
+            const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
+            const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2500 }));
+            const fresh = verifyAliases(parseRoster(raw, c.name1), sources.map(x => x.text).join('\n'));
+            const old = settings().rosters[key];
+            const merged = old && old.at ? mergeRoster(old, fresh) : { main: fresh.main, npc: fresh.npc };
+            const books = new Set((old && old.books) || []);
+            if (book) books.add(book);
+            settings().rosters[key] = { main: merged.main, npc: merged.npc, at: Date.now(), books: [...books] };
+            saveSettings();
+            status = `Знаю персонажей мира: ${merged.npc.length}`;
+            historyCache.key = '';
+        }
     } catch (err) {
         console.error('[Внутренний мир]', err);
         status = 'Не получилось изучить: ' + (err && err.message ? err.message : err);
         toastr.error(status, 'Внутренний мир');
-    } finally {
         rosterBusy = false;
+        busyKind = '';
         renderAll();
+        return;
     }
-    // если чат не новый — сразу отмечаем тех, кто уже встречался по истории
+    rosterBusy = false;
+    renderAll();
+    // сведения из карточки и лорбука — главному персонажу и тем, кто в сцене
     const last = lastBotMessageId();
-    if (settings().rosters[key] && last >= 2 && (ctx().chat || []).some(m => m && m.is_user)) {
-        await analyze(last, { manual: true });
+    if (last >= 0) {
+        await analyze(last, { manual: true, fromLore: sources.map(x => `[${x.title}]\n${x.text}`), kind: mode === 'all' ? 'all' : 'lore' });
     }
+    busyKind = '';
+    syncSettingsForm();
+    renderAll();
 }
 
 // ---------- Где хранится состояние ----------
@@ -420,7 +454,7 @@ async function callModel(system, user, s) {
     return await c.generateRaw({ systemPrompt: system, prompt: user, responseLength: Number(s.responseLength) || 1500, trimNames: false });
 }
 
-async function analyze(messageId, { manual = false, catchUp = null } = {}) {
+async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat' } = {}) {
     const s = settings();
     const c = ctx();
     if (!MODEL_MODULES.some(m => s.modules[m])) {
@@ -433,7 +467,8 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
     }
     const chatId = c.getCurrentChatId && c.getCurrentChatId();
     busy = true;
-    status = 'Пишу в дневник…';
+    if (manual) busyKind = kind;
+    status = fromLore ? 'Дополняю дневник по карточке и лорбуку…' : 'Пишу в дневник…';
     renderAll();
     try {
         const chat = c.chat;
@@ -442,7 +477,7 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
         // «Догоняющий» режим: дневник заполняется впервые для уже идущей истории
         // или в истории есть НПС из лорбука, которых в дневнике ещё нет.
         const ros0 = roster();
-        if (catchUp === null && (manual || base.order.length === 0)) {
+        if (catchUp === null && (kind !== 'lore') && (manual || base.order.length === 0)) {
             const { placeholders } = splitCast(base);
             const missing = [...placeholders];
             if (s.showNpc !== false) {
@@ -491,6 +526,8 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
             messages: msgs,
             mainNames: mn,
             catchUp,
+            fromLore: !!fromLore,
+            loreMain: fromLore ? fromLore.map(t => cleanMessageText(t, 6000)).slice(0, 6) : [],
             history,
             knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name)].slice(0, 40),
             lore: [],
@@ -520,7 +557,7 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
         }
         const system = buildSystemPrompt(s, info);
         const user = buildUserPrompt(info, base, s.modules, present);
-        const raw = await callModel(system, user, catchUp ? Object.assign({}, s, { responseLength: Math.max(Number(s.responseLength) || 1500, 4000) }) : s);
+        const raw = await callModel(system, user, (catchUp || fromLore) ? Object.assign({}, s, { responseLength: Math.max(Number(s.responseLength) || 1500, catchUp ? 4000 : 3000) }) : s);
         if (chatId && c.getCurrentChatId && ctx().getCurrentChatId() !== chatId) return; // чат сменился
         let fresh = parseAnalysis(raw, { manualTurns: s.moodMode === 'manual' ? s.moodTurns : null });
         // имена приводим к тем, что в лорбуке («Волк» → «Константин Волков»)
@@ -537,7 +574,7 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false });
         writeRecord(messageId, state);
         if (catchUp) {
             // кого проверили по истории, но в сцене лично не было — не перепроверяем, пока не упомянут снова
@@ -547,8 +584,11 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
             ctx().saveMetadataDebounced?.();
         }
         await ctx().saveChat();
-        status = catchUp ? `Дневник заполнен по истории чата (до сообщения #${messageId})` : `Обновлено после сообщения #${messageId}`;
-        if (s.toasts && !catchUp) events.forEach((ev, i) => showEvent(ev, i * 450));
+        status = fromLore ? 'Дневник дополнен по карточке и лорбуку' : (catchUp ? `Дневник заполнен по истории чата (до сообщения #${messageId})` : `Обновлено после сообщения #${messageId}`);
+        if (!catchUp && !fromLore) {
+            if (s.toasts) events.forEach((ev, i) => showEvent(ev, i * 450));
+            else if (s.sound !== false && events.length) playSound(events[0].type, currentTheme);
+        }
         if (events.length && !isOpen()) markFab(true);
         if (!view) view = '';
     } catch (err) {
@@ -557,6 +597,7 @@ async function analyze(messageId, { manual = false, catchUp = null } = {}) {
         if (manual) toastr.error(status, 'Внутренний мир');
     } finally {
         busy = false;
+        if (manual && kind === 'chat') busyKind = '';
         updateInjection();
         renderAll();
         if (pending) {
@@ -598,6 +639,7 @@ function showEvent(ev, delay = 0) {
             close();
         });
         box.appendChild(wrap);
+        if (settings().sound !== false) playSound(ev.type, currentTheme);
         setTimeout(close, 9000);
     }, delay);
 }
@@ -644,7 +686,14 @@ function refreshTheme() {
     currentTheme = validTheme(settings().theme);
     loadFonts(currentTheme);
     const fab = document.getElementById('iw_fab');
-    if (fab) fab.className = `iw-fab iw-theme-${currentTheme}`;
+    if (fab) setFabTheme(fab);
+}
+
+// Меняем только класс темы: чужие классы (например, «спрятано в папку» от STFolder) не трогаем.
+function setFabTheme(fab) {
+    fab.classList.add('iw-fab');
+    for (const cls of [...fab.classList]) if (cls.startsWith('iw-theme-') && cls !== `iw-theme-${currentTheme}`) fab.classList.remove(cls);
+    fab.classList.add(`iw-theme-${currentTheme}`);
 }
 
 function loadFonts(theme) {
@@ -697,6 +746,7 @@ function panelEl() {
         else ui().appendChild(el);
         el.addEventListener('click', onPanelClick);
         el.addEventListener('change', onPanelChange);
+        el.addEventListener('toggle', e => rememberSection('diary', e.target), true);
     }
     return el;
 }
@@ -720,6 +770,7 @@ function renderPanelNow() {
     const showNpc = s.showNpc !== false;
     const valid = view === 'settings'
         || (view.startsWith('main:') && mains.includes(view.slice(5)))
+        || (view.startsWith('shop:') && !!state.characters[view.slice(5)])
         || (showNpc && view === 'npc')
         || (showNpc && view.startsWith('npc:') && npcKeys.includes(view.slice(4)));
     if (!valid) view = mains.length ? 'main:' + mains[0] : (showNpc ? 'npc' : '');
@@ -729,7 +780,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, status, avatarFor, mains, npcKeys, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '' });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '' });
     const body = el.querySelector('.iw-body');
     if (body) body.scrollTop = keepScroll;
 }
@@ -771,13 +822,37 @@ async function onPanelClick(e) {
         view = view === 'settings' ? lastView || '' : (lastView = view, 'settings');
         return renderPanelNow();
     }
-    if (t.dataset.iwAction) return onSettingsAction(t.dataset.iwAction);
-    if (t.classList.contains('iw-refresh')) {
-        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
-        const id = lastBotMessageId();
-        if (id < 0) return toastr.info('В чате ещё нет ответа персонажа.', 'Внутренний мир');
-        return analyze(id, { manual: true });
+    if (t.dataset.iwAction) return onSettingsAction(t.dataset.iwAction, t);
+    if (t.dataset.iwLang) return setLanguage(t.dataset.iwLang);
+    if (t.classList.contains('iw-sound')) {
+        s.sound = s.sound === false;
+        saveSettings();
+        if (s.sound) playSound('trait_up', currentTheme);
+        syncSettingsForm();
+        return renderAll();
     }
+    if (t.dataset.iwAnalyze) {
+        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        const kind = t.dataset.iwAnalyze;
+        // карандаш «пишет» один раз — только на нажатие кнопки, не на автообновления
+        if (!busy && s.sound !== false) playSound('write', currentTheme);
+        if (kind === 'chat') {
+            const id = lastBotMessageId();
+            if (id < 0) return toastr.info('В чате ещё нет ответа персонажа.', 'Внутренний мир');
+            return analyze(id, { manual: true, kind: 'chat' });
+        }
+        return studyLore({ mode: kind });
+    }
+    if (t.dataset.iwTheme) {
+        s.theme = t.dataset.iwTheme;
+        saveSettings();
+        refreshTheme();
+        syncSettingsForm();
+        return renderAll();
+    }
+    if (t.dataset.iwDream) return onDreamAction(t.dataset.iwDream);
+    if (t.dataset.iwShop) return regenShop();
+    if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
     if (t.dataset.iwMod) {
         const m = t.dataset.iwMod;
         s.modules[m] = !s.modules[m];
@@ -792,7 +867,7 @@ async function onPanelClick(e) {
         if (body) body.scrollTop = 0;
         return renderPanelNow();
     }
-    if (t.dataset.iwStudy) return studyLore();
+    if (t.dataset.iwStudy) return studyLore({ mode: 'lore' });
     if (t.dataset.iwDel) {
         const [kind, idx] = t.dataset.iwDel.split(':');
         const state = currentState();
@@ -817,16 +892,119 @@ async function onPanelClick(e) {
     }
 }
 
+// Ключ персонажа, чья страница открыта.
+function viewKey() {
+    return view.includes(':') ? view.slice(view.indexOf(':') + 1) : null;
+}
+
+function analysisInfo(n = 6) {
+    const c = ctx();
+    const chat = c.chat || [];
+    const msgs = [];
+    for (let i = chat.length - 1; i >= 0 && msgs.length < n; i--) {
+        const m = chat[i];
+        if (m && !m.is_system && m.mes) msgs.unshift(`#${i} ${m.name}: ${cleanMessageText(m.mes, 1200)}`);
+    }
+    return { botName: c.name2, userName: c.name1, card: cardText(c), messages: msgs, loreMain: [] };
+}
+
+async function onDreamAction(action) {
+    const key = viewKey();
+    const state = currentState();
+    const ch = key && state.characters[key];
+    if (!ch) return;
+    if (action === 'pin') {
+        if (!ch.dream) return;
+        ch.dream.pinned = !ch.dream.pinned;
+        await saveEditedState(state);
+        return renderAll();
+    }
+    if (action === 'regen' && !dreamBusy) {
+        if (ch.dream && ch.dream.pinned) return;
+        dreamBusy = true;
+        renderAll();
+        try {
+            const info = analysisInfo(6);
+            const lore = await collectLoreSources().catch(() => []);
+            info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
+            const { system, user } = buildDreamPrompt(info, ch, settings().language);
+            const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 1200 }));
+            const dream = parseDream(raw);
+            const st = currentState();
+            const c2 = st.characters[key];
+            if (!c2) return;
+            const prev = c2.dream;
+            c2.dream = Object.assign(dream, { pinned: false, history: prev ? ((prev.history || []).concat([{ title: prev.title, plus: prev.plus || '' }])).slice(-4) : [] });
+            c2.dreamChangedAt = c2.cycle || 0;
+            c2.log = [{ type: 'dream_change', text: `«${dream.title}» — придумана заново`, m: null }].concat(c2.log || []).slice(0, 40);
+            await saveEditedState(st);
+            updateInjection();
+            if (settings().sound !== false) playSound('dream_change', currentTheme);
+        } catch (err) {
+            console.error('[Внутренний мир]', err);
+            toastr.error('Мечта не придумалась: ' + (err && err.message ? err.message : err), 'Внутренний мир');
+        } finally {
+            dreamBusy = false;
+            renderAll();
+        }
+    }
+}
+
+async function regenShop() {
+    const key = viewKey();
+    if (!key || shopBusy) return;
+    const ch = currentState().characters[key];
+    if (!ch) return;
+    shopBusy = true;
+    renderAll();
+    try {
+        const { system, user } = buildRewardsPrompt(analysisInfo(4), ch, settings().language);
+        const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2000 }));
+        const rewards = parseRewards(raw);
+        if (!rewards.length) throw new Error('модель не вернула наград');
+        const st = currentState();
+        if (!st.characters[key]) return;
+        st.characters[key].shop = rewards;
+        await saveEditedState(st);
+    } catch (err) {
+        console.error('[Внутренний мир]', err);
+        toastr.error('Награды не подобрались: ' + (err && err.message ? err.message : err), 'Внутренний мир');
+    } finally {
+        shopBusy = false;
+        renderAll();
+    }
+}
+
+async function buy(id) {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    if (!ch) return;
+    const reward = (ch.shop || []).find(r => r.id === id);
+    const err = buyReward(ch, reward);
+    if (err) return toastr.info(err, 'Внутренний мир');
+    await saveEditedState(st);
+    updateInjection();
+    if (settings().sound !== false) playSound('reward', currentTheme);
+    if (settings().toasts) showEvent({ type: 'reward', who: ch.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : 'действует'}` });
+    renderAll();
+}
+
+function setLanguage(lang) {
+    const s = settings();
+    if (s.language === lang) return;
+    s.language = lang;
+    saveSettings();
+    syncSettingsForm();
+    renderAll();
+}
+
 async function onPanelChange(e) {
     const el = e.target;
     if (el.closest && el.closest('.iw-form')) {
         const body = panelEl().querySelector('.iw-body');
         const keep = body ? body.scrollTop : 0;
-        const form = panelEl().querySelector('.iw-form');
-        const open = form ? openSections(form) : {};
         await onSettingsChanged(el);
-        const form2 = panelEl().querySelector('.iw-form');
-        if (form2) restoreSections(form2, open);
         const body2 = panelEl().querySelector('.iw-body');
         if (body2) body2.scrollTop = keep;
     }
@@ -863,13 +1041,22 @@ function addFab() {
     btn.setAttribute('aria-label', 'Внутренний мир');
     btn.innerHTML = renderFab();
     document.body.appendChild(btn);
-    btn.className = `iw-fab iw-theme-${currentTheme}`;
+    setFabTheme(btn);
     placeFab(btn);
 
+    // Перетаскивание: двигаем через transform раз в кадр — на телефоне так не лагает;
+    // настоящие left/top выставляем один раз, когда палец отпустили.
     let drag = null;
+    let frame = 0;
+    let lastToggle = 0;
+    const paint = () => {
+        frame = 0;
+        if (!drag) return;
+        btn.style.transform = `translate3d(${drag.x - drag.bx}px, ${drag.y - drag.by}px, 0)`;
+    };
     btn.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
-        drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, bx: btn.offsetLeft, by: btn.offsetTop, moved: false };
+        drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, bx: btn.offsetLeft, by: btn.offsetTop, x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight, moved: false };
         btn.setPointerCapture(e.pointerId);
     });
     btn.addEventListener('pointermove', e => {
@@ -877,19 +1064,25 @@ function addFab() {
         const dx = e.clientX - drag.sx;
         const dy = e.clientY - drag.sy;
         if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+        if (!drag.moved) btn.classList.add('iw-dragging');
         drag.moved = true;
-        btn.classList.add('iw-dragging');
-        const x = Math.min(Math.max(drag.bx + dx, 4), window.innerWidth - btn.offsetWidth - 4);
-        const y = Math.min(Math.max(drag.by + dy, 4), window.innerHeight - btn.offsetHeight - 4);
-        btn.style.left = `${x}px`;
-        btn.style.top = `${y}px`;
+        drag.x = Math.min(Math.max(drag.bx + dx, 4), window.innerWidth - drag.w - 4);
+        drag.y = Math.min(Math.max(drag.by + dy, 4), window.innerHeight - drag.h - 4);
+        if (!frame) frame = requestAnimationFrame(paint);
     });
     const end = e => {
         if (!drag || e.pointerId !== drag.id) return;
         const moved = drag.moved;
+        const fin = drag;
         drag = null;
+        if (frame) cancelAnimationFrame(frame);
+        frame = 0;
         btn.classList.remove('iw-dragging');
         if (moved) {
+            lastToggle = Date.now(); // после перетаскивания браузер шлёт click — его не считаем нажатием
+            btn.style.transform = '';
+            btn.style.left = `${fin.x}px`;
+            btn.style.top = `${fin.y}px`;
             settings().fabPos = {
                 x: (btn.offsetLeft + btn.offsetWidth / 2) / window.innerWidth,
                 y: (btn.offsetTop + btn.offsetHeight / 2) / window.innerHeight,
@@ -901,7 +1094,6 @@ function addFab() {
         }
     };
     // Нажатие, пересланное без pointer-событий (например, из папки другого расширения), — только click.
-    let lastToggle = 0;
     btn.addEventListener('click', () => {
         if (Date.now() - lastToggle < 400) return;
         lastToggle = Date.now();
@@ -953,23 +1145,29 @@ function profileList() {
     }
 }
 
-// Какие разделы формы раскрыты — чтобы после перерисовки ничего не схлопывалось.
-function openSections(root) {
-    const out = {};
-    root.querySelectorAll('details[data-iw-sec]').forEach(d => { out[d.dataset.iwSec] = d.open; });
-    return out;
-}
+// Какие разделы формы раскрыты — запоминаем, чтобы после перерисовки (проверка подключения,
+// выбор модели) ничего не схлопывалось.
+const sectionOpen = { st: {}, diary: {} };
 
-function restoreSections(root, open) {
-    root.querySelectorAll('details[data-iw-sec]').forEach(d => {
-        if (open[d.dataset.iwSec] !== undefined) d.open = open[d.dataset.iwSec];
-    });
+function rememberSection(variant, el) {
+    if (el && el.matches && el.matches('details[data-iw-sec]')) sectionOpen[variant][el.dataset.iwSec] = el.open;
 }
 
 let apiStatus = '';
+let worldNames = [];
+
+async function loadWorldNames() {
+    try {
+        const wi = await import('/scripts/world-info.js');
+        worldNames = Array.isArray(wi.world_names) ? wi.world_names.slice() : [];
+    } catch {
+        worldNames = [];
+    }
+}
 
 function settingsFormHtml(variant) {
-    return renderSettingsForm(settings(), { variant, profiles: profileList(), apiStatus });
+    const r = settings().rosters[rosterKey()];
+    return renderSettingsForm(settings(), { variant, profiles: profileList(), apiStatus, books: worldNames, studied: (r && r.books) || [], open: sectionOpen[variant] });
 }
 
 function refreshForms() {
@@ -1000,9 +1198,7 @@ function settingsHtml() {
 function syncSettingsForm() {
     const holder = document.querySelector('.iw-settings-form');
     if (!holder) return;
-    const open = openSections(holder);
     holder.innerHTML = settingsFormHtml('st');
-    restoreSections(holder, open);
 }
 
 // Общий обработчик изменений — и для таверны, и для дневника.
@@ -1025,7 +1221,7 @@ async function onSettingsChanged(el) {
     return true;
 }
 
-async function onSettingsAction(action) {
+async function onSettingsAction(action, el) {
     const s = settings();
     if (action === 'loadModels') {
         apiStatus = 'Загружаю список моделей…';
@@ -1053,8 +1249,16 @@ async function onSettingsAction(action) {
         }
         return refreshForms();
     }
+    if (action === 'studyBook') {
+        const form = el && el.closest('.iw-form');
+        const sel = form && form.querySelector('select[data-iw-book]');
+        const book = sel ? sel.value : '';
+        if (!busy && settings().sound !== false) playSound('write', currentTheme);
+        await studyLore({ mode: 'lore', book });
+        return;
+    }
     if (action === 'study') {
-        await studyLore();
+        await studyLore({ mode: 'lore' });
         openPanel();
     } else if (action === 'reset') {
         await resetChat();
@@ -1067,9 +1271,12 @@ function addSettings() {
     host.insertAdjacentHTML('beforeend', settingsHtml());
     const root = host.querySelector('.iw-settings');
     root.addEventListener('change', e => onSettingsChanged(e.target));
+    root.addEventListener('toggle', e => rememberSection('st', e.target), true);
     root.addEventListener('click', e => {
         const b = e.target.closest('[data-iw-action]');
-        if (b) onSettingsAction(b.dataset.iwAction);
+        if (b) onSettingsAction(b.dataset.iwAction, b);
+        const l = e.target.closest('[data-iw-lang]');
+        if (l) setLanguage(l.dataset.iwLang);
     });
     root.querySelector('#iw_set_open').addEventListener('click', openPanel);
 }
@@ -1118,6 +1325,8 @@ function registerCommands() {
 async function onChatChanged() {
     view = '';
     status = '';
+    await loadWorldNames();
+    syncSettingsForm();
     refreshTheme();
     updateInjection();
     renderAll();

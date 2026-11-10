@@ -3094,3 +3094,1805 @@ ol {
         font-size: clamp(16px, 5.4vw, 22px);
     }
 }
+
+/* ===================== Бимбо-пикми: розовый глянец, сердечки и блёстки ===================== */
+.iw-theme-bimbo {
+    --iw-bg: #fff0f7;
+    --iw-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cpath d='M18 26s-7-4.3-7-9.2A3.7 3.7 0 0 1 18 15a3.7 3.7 0 0 1 7 1.8c0 4.9-7 9.2-7 9.2z' fill='%23ffd3ea'/%3E%3Cpath d='M54 46l1.6 4.4L60 52l-4.4 1.6L54 58l-1.6-4.4L48 52l4.4-1.6z' fill='%23ffc6e4'/%3E%3Ccircle cx='58' cy='14' r='1.6' fill='%23ffb3da'/%3E%3Ccircle cx='12' cy='60' r='1.2' fill='%23ffb3da'/%3E%3Cpath d='M22 50c2-3 4.2-4 5.8-3.2.8.4 1.4.4 2.1 0 .7.4 1.3.4 2.1 0 1.6-.8 3.8.2 5.8 3.2-2.3 3.4-5.1 4.8-7.9 4.8s-5.6-1.4-7.9-4.8z' fill='%23ffc6e4'/%3E%3Cpath d='M23 50.3c2.4.7 4.8 1 7 1s4.6-.3 7-1' fill='none' stroke='%23ffb3da' stroke-width='.9'/%3E%3C/svg%3E"), linear-gradient(160deg, #fff5fa 0%, #ffe6f2 55%, #ffeef8 100%);
+    --iw-paper-size: 72px 72px, 100% 100%;
+    --iw-ink: #5a1e45;
+    --iw-muted: #b0618f;
+    --iw-title-font: 'Pacifico', 'Comic Sans MS', cursive;
+    --iw-body-font: 'Nunito', system-ui, sans-serif;
+    --iw-title-color: #ff3d96;
+    --iw-scribble: #ff8cc6;
+    --iw-label-color: #ff3d96;
+    --iw-label-size: 24px;
+    --iw-wants: #e0338a;
+    --iw-fears: #a2368f;
+    --iw-dream: #c44fd1;
+    --iw-traits: #ff3d96;
+    --iw-hl-good: #ffd1ea;
+    --iw-hl-bad: #e9c6ff;
+    --iw-hl-mid: #ffe0f0;
+    --iw-hl-main: #ff9ccc;
+    --iw-block-bg: linear-gradient(180deg, rgba(255, 255, 255, .95), rgba(255, 240, 248, .9));
+    --iw-block-border: 2px solid #ffc1e3;
+    --iw-block-radius: 22px;
+    --iw-block-shadow: 0 0 0 4px rgba(255, 193, 227, .35), 0 8px 20px rgba(255, 61, 150, .18);
+    --iw-block-pad: 14px 16px;
+    --iw-divider: rgba(255, 61, 150, .2);
+    --iw-note-bg: #fff;
+    --iw-note-ink: #5a1e45;
+    --iw-bar-border: none;
+    --iw-bar-bg: #ffe0f0;
+    --iw-lvl-low: #ffb3da;
+    --iw-lvl-mid: #ff7ab8;
+    --iw-lvl-high: #ff3d96;
+    --iw-dream-fill: linear-gradient(90deg, #ff9ccc, #d68cff);
+    --iw-dream-border: 2px solid #ffc1e3;
+    --iw-dream-radius: 999px;
+    --iw-sticker-bg: #fff;
+    --iw-sticker-border: 2px solid #ffc1e3;
+    --iw-sticker-radius: 999px;
+    --iw-new-bg: linear-gradient(135deg, #ff7ab8, #ff3d96);
+    --iw-new-ink: #fff;
+    --iw-margin: transparent;
+    --iw-tape: rgba(255, 140, 198, .55);
+    --iw-chip-ink: #5a1e45;
+    --iw-chip-on: #ffb3da;
+    --iw-shell: #ff9ccc;
+    --iw-text-size: 15px;
+    --iw-feel-bg: rgba(255, 224, 240, .6);
+}
+
+.iw-theme-bimbo .iw-book {
+    padding-left: 22px;
+}
+
+/* заголовок — розовый градиент с глянцем */
+.iw-theme-bimbo .iw-title {
+    font-weight: 400;
+    font-size: 38px;
+    line-height: 1.25;
+    background: linear-gradient(100deg, #ff3d96 0%, #ff7ab8 45%, #d65bd6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 0 #fff) drop-shadow(0 3px 6px rgba(255, 61, 150, .3));
+}
+
+.iw-theme-bimbo .iw-label {
+    font-weight: 400;
+}
+
+.iw-theme-bimbo .iw-block-head {
+    border-bottom: 2px dotted rgba(255, 61, 150, .25);
+}
+
+.iw-theme-bimbo .iw-block-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff9ccc, #ff3d96);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    align-self: center;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5), 0 2px 6px rgba(255, 61, 150, .35);
+}
+
+.iw-theme-bimbo .iw-mood-word {
+    font-weight: 700;
+}
+
+.iw-theme-bimbo .iw-mood-word .iw-hl {
+    background: linear-gradient(135deg, #ff7ab8, #ff3d96);
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 14px;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, .45), 0 3px 8px rgba(255, 61, 150, .3);
+}
+
+.iw-theme-bimbo .iw-feel {
+    border-left: none;
+    border-radius: 18px;
+    background: rgba(255, 224, 240, .6);
+}
+
+.iw-theme-bimbo .iw-feel-power,
+.iw-theme-bimbo .iw-tag,
+.iw-theme-bimbo .iw-chip,
+.iw-theme-bimbo .iw-score,
+.iw-theme-bimbo .iw-tool,
+.iw-theme-bimbo .iw-theme-select {
+    border-radius: 999px;
+}
+
+.iw-theme-bimbo .iw-feel-meter,
+.iw-theme-bimbo .iw-feel-meter > span {
+    border-radius: 999px;
+}
+
+.iw-theme-bimbo .iw-feel-meter > span {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, .45), transparent 60%);
+}
+
+.iw-theme-bimbo .iw-tool {
+    background: #fff;
+    border-color: #ffc1e3;
+    color: #ff3d96;
+    box-shadow: 0 2px 6px rgba(255, 61, 150, .2);
+}
+
+.iw-theme-bimbo .iw-box {
+    border-radius: 50%;
+    border-color: #ff7ab8;
+    color: #ff3d96;
+}
+
+.iw-theme-bimbo .iw-list > li {
+    border-bottom-style: dotted;
+}
+
+.iw-theme-bimbo .iw-new {
+    border-radius: 999px;
+    transform: rotate(-4deg);
+    box-shadow: 0 3px 8px rgba(255, 61, 150, .35);
+}
+
+.iw-theme-bimbo .iw-b-impression {
+    transform: none;
+    border-radius: 22px;
+}
+
+.iw-theme-bimbo .iw-tab {
+    transform: none;
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(255, 193, 227, .5), 0 6px 14px rgba(255, 61, 150, .18);
+}
+
+.iw-theme-bimbo .iw-photo {
+    border-radius: 50%;
+}
+
+/* скотч — розовый с блёстками */
+.iw-theme-bimbo .iw-tape,
+.iw-theme-bimbo .iw-tape-blue {
+    background: repeating-linear-gradient(45deg, rgba(255, 140, 198, .6) 0 4px, rgba(255, 210, 235, .6) 4px 8px);
+    border-radius: 3px;
+}
+
+.iw-theme-bimbo .iw-tab-name {
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #5a1e45;
+}
+
+/* всплывашка — глянцевая розовая пилюля */
+.iw-theme-bimbo .iw-toast-card {
+    transform: none;
+    border-radius: 26px;
+    background: linear-gradient(180deg, #fff 0%, #ffeaf5 100%);
+    color: #5a1e45;
+    border: 2px solid #ffc1e3;
+    box-shadow: 0 0 0 4px rgba(255, 193, 227, .35), 0 12px 26px rgba(255, 61, 150, .3);
+    font-family: 'Nunito', sans-serif;
+}
+
+.iw-theme-bimbo .iw-toast-icon {
+    border: none;
+    background: linear-gradient(135deg, #ff9ccc, #ff3d96);
+    color: #fff;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, .5);
+}
+
+.iw-theme-bimbo .iw-toast-kicker {
+    font-weight: 400;
+    font-size: 19px;
+    color: #ff3d96;
+}
+
+/* НПС — розовый глянцевый кружок с белой каймой */
+.iw-theme-bimbo .iw-npc-badge {
+    border: 3px solid #fff;
+    background: radial-gradient(circle at 35% 28%, #ffd3ea 0%, #ff9ccc 45%, #ff5aa8 100%);
+    color: #fff;
+    box-shadow: 0 0 0 2px #ffc1e3, 0 6px 14px rgba(255, 61, 150, .3);
+}
+
+.iw-theme-bimbo .iw-npc-badge::after {
+    content: '';
+    position: absolute;
+    top: 9%;
+    left: 20%;
+    width: 34%;
+    height: 18%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .55);
+    transform: rotate(-20deg);
+    pointer-events: none;
+}
+
+.iw-theme-bimbo .iw-npc:nth-child(3n+2) .iw-npc-badge {
+    background: radial-gradient(circle at 35% 28%, #f3d9ff 0%, #d9a6ff 45%, #b46cf0 100%);
+}
+
+.iw-theme-bimbo .iw-npc:nth-child(3n) .iw-npc-badge {
+    background: radial-gradient(circle at 35% 28%, #ffe3f0 0%, #ffb3d1 45%, #ff7aa8 100%);
+}
+
+.iw-theme-bimbo .iw-npc-ico {
+    stroke-width: 2;
+}
+
+.iw-theme-bimbo .iw-photo-unknown,
+.iw-theme-bimbo .iw-npc-unknown {
+    border-radius: 50% !important;
+    border-style: dashed;
+}
+
+.iw-theme-bimbo .iw-unknown-mark::before {
+    content: '?';
+    font-family: 'Pacifico', cursive;
+    font-weight: 400;
+    color: #ff7ab8;
+}
+
+/* наклейка «НПС» */
+.iw-theme-bimbo .iw-npc-sticker {
+    transform: rotate(-3deg);
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ff7ab8, #ff3d96);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(255, 61, 150, .35);
+}
+
+.iw-theme-bimbo .iw-npc-sticker::before { display: none; }
+
+/* «Кто это, зай?» */
+.iw-theme-bimbo .iw-whois {
+    transform: none;
+    border-radius: 20px;
+    background: #fff;
+    border: 2px solid #ffc1e3;
+    box-shadow: 0 6px 16px rgba(255, 61, 150, .18);
+}
+
+.iw-theme-bimbo .iw-dossier .iw-whois {
+    box-shadow: none;
+    background: rgba(255, 224, 240, .55);
+}
+
+.iw-theme-bimbo .iw-whois-tag {
+    border-radius: 999px;
+    transform: rotate(-3deg);
+    background: linear-gradient(135deg, #ff7ab8, #ff3d96);
+    color: #fff;
+    font-weight: 400;
+    font-size: 15px;
+    padding: 2px 14px 4px;
+    box-shadow: 0 3px 8px rgba(255, 61, 150, .35);
+}
+
+/* настройки */
+.iw-theme-bimbo .iw-f-section,
+.iw-theme-bimbo .iw-select,
+.iw-theme-bimbo .iw-input,
+.iw-theme-bimbo .iw-btn {
+    border-radius: 16px;
+}
+
+.iw-theme-bimbo .iw-f-section > summary {
+    font-weight: 700;
+}
+
+@media (max-width: 760px) {
+    .iw-theme-bimbo .iw-book {
+        padding-left: 14px;
+    }
+
+    .iw-theme-bimbo .iw-title {
+        font-size: clamp(18px, 5.8vw, 24px);
+        line-height: 1.35;
+    }
+}
+
+/* ===================== 0.3: шапка с кнопками разбора, лица, награды ===================== */
+.iw-grid {
+    align-items: start;
+}
+
+.iw-tabrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    padding: 2px 2px 4px;
+}
+
+.iw-tabrow .iw-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* рисованная вертикальная черта между персонажами и кнопками */
+.iw-divider {
+    align-self: stretch;
+    flex: none;
+    width: 10px;
+    margin: 6px 0;
+    background: var(--iw-ink);
+    opacity: .35;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 100' preserveAspectRatio='none'%3E%3Cpath d='M5 1 C3 12 7 20 5 31 S3 50 5.5 62 S7 82 4.5 99' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 100' preserveAspectRatio='none'%3E%3Cpath d='M5 1 C3 12 7 20 5 31 S3 50 5.5 62 S7 82 4.5 99' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.iw-acts {
+    flex: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+}
+
+.iw-act {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 11px 6px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 999px 70px 999px 80px;
+    background: var(--iw-block-bg);
+    color: var(--iw-ink);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.1;
+    white-space: nowrap;
+    cursor: pointer;
+    transform: rotate(-1deg);
+    transition: transform .15s ease, background .15s ease;
+}
+
+.iw-act:nth-child(2) {
+    transform: rotate(1.2deg);
+}
+
+.iw-act-all {
+    grid-column: 1 / -1;
+    background: var(--iw-hl-mid);
+    font-weight: 700;
+    transform: rotate(-.5deg);
+}
+
+.iw-act:hover:not(:disabled) {
+    background: var(--iw-hl-main);
+    transform: rotate(0) translateY(-1px);
+}
+
+.iw-act:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.iw-act.busy {
+    opacity: 1;
+}
+
+.iw-act.busy .iw-ico,
+.iw-mini.busy .iw-ico,
+.iw-btn.busy .iw-ico {
+    animation: iw-spin 1s linear infinite;
+}
+
+.iw-tool.iw-sound.off {
+    opacity: .55;
+}
+
+/* лицо-смайлик у персонажа */
+.iw-photo-wrap {
+    position: relative;
+    display: block;
+    line-height: 0;
+}
+
+.iw-photo-wrap > .iw-photo {
+    display: block;
+}
+
+.iw-face {
+    position: absolute;
+    right: -11px;
+    bottom: -8px;
+    font-size: 26px;
+    line-height: 0;
+    color: var(--face-ink, #5a5048);
+    transform: rotate(8deg);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .25));
+}
+
+.iw-face-ico .iw-face-bg {
+    fill: var(--face-bg, #eee7dc);
+    stroke: var(--face-ink, #5a5048);
+}
+
+.iw-face-joy { --face-bg: #ffe27a; --face-ink: #7a4f00; }
+.iw-face-calm { --face-bg: #bfe6c8; --face-ink: #2a6338; }
+.iw-face-love { --face-bg: #ffc1d9; --face-ink: #9c1f4b; }
+.iw-face-shy { --face-bg: #ffd5c6; --face-ink: #a0453a; }
+.iw-face-sad { --face-bg: #bcd6f5; --face-ink: #2a4c84; }
+.iw-face-angry { --face-bg: #ff9e8a; --face-ink: #8a1d10; }
+.iw-face-fear { --face-bg: #dccbf4; --face-ink: #4a2e7e; }
+.iw-face-tired { --face-bg: #ddd7cd; --face-ink: #574f46; }
+.iw-face-neutral { --face-bg: #eee7dc; --face-ink: #5a5048; }
+
+/* эмоция: чувство, как ощущается, и причина */
+.iw-feel-inner {
+    font-style: italic;
+    font-size: .93em;
+    line-height: 1.3;
+    opacity: .9;
+}
+
+.iw-feel-cause {
+    opacity: .6;
+    font-size: .88em;
+}
+
+.iw-more {
+    margin-top: 6px;
+}
+
+.iw-more > summary {
+    display: inline-block;
+    padding: 3px 12px 4px;
+    border: 1.5px dashed var(--iw-ink);
+    border-radius: 999px;
+    font-size: .85em;
+    opacity: .75;
+    cursor: pointer;
+    list-style: none;
+}
+
+.iw-more > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iw-more > summary::before {
+    content: '+ ';
+}
+
+.iw-more[open] > summary::before {
+    content: '− ';
+}
+
+.iw-more .iw-feels {
+    margin-top: 8px;
+}
+
+/* мечта: закрепить и придумать заново */
+.iw-b-dream .iw-count {
+    margin-left: auto;
+}
+
+.iw-dream-tools {
+    display: inline-flex;
+    gap: 5px;
+    margin-left: 8px;
+    align-self: center;
+}
+
+.iw-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 50%;
+    background: var(--iw-block-bg);
+    color: var(--iw-ink);
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.iw-mini.on {
+    background: var(--iw-hl-main);
+}
+
+.iw-mini:disabled {
+    opacity: .4;
+    cursor: default;
+}
+
+.iw-dream-plus {
+    font-style: italic;
+    opacity: .85;
+}
+
+/* награды */
+.iw-points {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px 3px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 999px 60px 999px 70px;
+    background: var(--iw-hl-mid);
+    font-size: 14px;
+    line-height: 1.2;
+}
+
+.iw-rw-ico {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1.5px dashed var(--iw-ink);
+    border-radius: 50%;
+    background: var(--iw-hl-mid);
+    color: var(--iw-ink);
+    font-size: 16px;
+}
+
+.iw-rw-big {
+    width: 44px;
+    height: 44px;
+    font-size: 23px;
+    border-style: solid;
+    transform: rotate(-4deg);
+}
+
+.iw-buffs > li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.iw-colls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.iw-coll {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 50%;
+    background: var(--iw-hl-good, var(--iw-hl-mid));
+    font-size: 16px;
+}
+
+.iw-coll:nth-child(2n) {
+    transform: rotate(6deg);
+}
+
+.iw-coll:nth-child(3n) {
+    transform: rotate(-5deg);
+}
+
+.iw-shop-open,
+.iw-b-shop .iw-btn {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font: inherit;
+    color: var(--iw-ink);
+}
+
+.iw-b-shop {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+}
+
+.iw-rewards > li.iw-reward {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.iw-rw-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.iw-rw-desc {
+    font-size: .92em;
+    line-height: 1.3;
+}
+
+.iw-rw-kind {
+    font-size: .78em;
+    opacity: .6;
+}
+
+.iw-buy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 13px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 999px 70px 999px 80px;
+    background: var(--iw-hl-main);
+    color: var(--iw-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.iw-buy:disabled {
+    background: transparent;
+    opacity: .45;
+    cursor: default;
+}
+
+.iw-reward.locked .iw-rw-big {
+    opacity: .5;
+}
+
+/* RU / English внизу настроек */
+.iw-lang {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 16px auto 6px;
+}
+
+.iw-lang-cap {
+    font-size: .82em;
+    opacity: .6;
+}
+
+.iw-lang-opt {
+    padding: 4px 15px 5px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 999px 70px 999px 60px;
+    background: transparent;
+    color: var(--iw-ink);
+    font: inherit;
+    cursor: pointer;
+    transform: rotate(-1.5deg);
+}
+
+.iw-lang-opt + .iw-lang-opt {
+    transform: rotate(1.5deg);
+}
+
+.iw-lang-opt.on {
+    background: var(--iw-hl-main);
+    font-weight: 700;
+}
+
+/* темы с прямыми углами */
+.iw-theme-cyber .iw-act,
+.iw-theme-cyber .iw-lang-opt,
+.iw-theme-cyber .iw-buy,
+.iw-theme-cyber .iw-points,
+.iw-theme-cyber .iw-more > summary {
+    border-radius: 0;
+    transform: none;
+}
+
+.iw-theme-sims .iw-act,
+.iw-theme-sims .iw-lang-opt,
+.iw-theme-sims .iw-buy,
+.iw-theme-sims .iw-points {
+    border-radius: 12px;
+    transform: none;
+}
+
+.iw-theme-medieval .iw-act,
+.iw-theme-medieval .iw-buy {
+    border-radius: 3px;
+}
+
+/* телефон: кнопки разбора — отдельной строкой под персонажами */
+@media (max-width: 560px) {
+    .iw-tabrow {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .iw-divider {
+        display: none;
+    }
+
+    .iw-acts {
+        width: 100%;
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .iw-act-all {
+        grid-column: auto;
+    }
+
+    .iw-act {
+        padding: 5px 6px;
+        font-size: 12px;
+    }
+
+    .iw-face {
+        font-size: 22px;
+        right: -9px;
+    }
+}
+
+.iw-b-rewards {
+    grid-column: 1 / -1;
+}
+
+.iw-b-rewards .iw-shop-open {
+    margin-top: 2px;
+}
+
+
+/* ===================== 0.3.1: стрелка разбора, магазин в ряду, кошелёк, выбор темы ===================== */
+.iw-panel button,
+.iw-panel summary,
+.iw-panel .iw-switch,
+.iw-panel .iw-check {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* эмоции без серой «ветки» слева — ровно по левому краю */
+.iw-feels-flat {
+    padding: 0;
+    margin: 2px 0 0;
+}
+
+.iw-feels-flat > .iw-feel,
+.iw-more .iw-feels > .iw-feel {
+    border-left: 0 !important;
+    padding-left: 12px;
+}
+
+.iw-feels-flat .iw-feel-name::before,
+.iw-more .iw-feel-name::before {
+    content: '';
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    margin-right: 7px;
+    border-radius: 50% 40% 55% 45%;
+    background: var(--iw-hl);
+    border: 1.5px solid var(--iw-ink);
+    vertical-align: .05em;
+}
+
+/* стрелка над кнопками разбора */
+.iw-acts-wrap {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.iw-spinner {
+    display: inline-flex;
+    line-height: 0;
+    font-size: 26px;
+    color: var(--iw-ink);
+    opacity: .55;
+    transform: rotate(-12deg);
+    transition: opacity .2s;
+}
+
+.iw-spinner.spin {
+    opacity: 1;
+    color: var(--iw-scribble, var(--iw-ink));
+}
+
+.iw-spinner.spin .iw-ico {
+    animation: iw-spin 1.1s linear infinite;
+}
+
+.iw-act .iw-ico {
+    animation: none;
+}
+
+/* наклейка «Магазин наград» в ряду с персонажами */
+.iw-shop-sticker {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+    padding: 8px 13px 9px;
+    border: 2px dashed var(--iw-ink);
+    border-radius: 5px 12px 6px 14px;
+    background: var(--iw-hl-mid);
+    color: var(--iw-ink);
+    font-family: var(--iw-body-font);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.1;
+    cursor: pointer;
+    transform: rotate(-3deg);
+    box-shadow: 0 4px 10px rgba(40, 30, 20, .18);
+    opacity: .9;
+}
+
+.iw-shop-sticker .iw-ico {
+    font-size: 18px;
+}
+
+.iw-shop-sticker.on {
+    opacity: 1;
+    outline: 2px solid var(--iw-scribble);
+    outline-offset: 2px;
+}
+
+/* кошелёк в шапке */
+.iw-wallet {
+    position: relative;
+}
+
+.iw-wallet > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 32px;
+    padding: 0 11px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 999px 60px 999px 70px;
+    background: var(--iw-hl-mid);
+    color: var(--iw-ink);
+    font-size: 14px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.iw-wallet > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iw-wallet-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 5;
+    min-width: 200px;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: var(--iw-note-bg, #fff);
+    color: var(--iw-note-ink, var(--iw-ink));
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 10px;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .25);
+}
+
+.iw-wallet-row {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.iw-wallet-row.on,
+.iw-wallet-row:hover {
+    background: var(--iw-hl-mid);
+}
+
+.iw-wallet-row b {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.iw-group-cap {
+    margin-top: 4px;
+    font-size: .78em;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    opacity: .65;
+}
+
+/* кнопки мечты крупнее */
+.iw-mini {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+}
+
+.iw-b-dream .iw-block-head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+/* что вести — наклейки-кнопки */
+.iw-mod {
+    padding: 5px 13px 6px;
+    border: 1.5px dashed var(--iw-ink);
+    border-radius: 999px 70px 999px 80px;
+    background: transparent;
+    color: var(--iw-ink);
+    font: inherit;
+    font-size: .92em;
+    cursor: pointer;
+    opacity: .5;
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+}
+
+.iw-mod.on {
+    opacity: 1;
+    border-style: solid;
+    background: var(--iw-chip-on);
+    text-decoration: none;
+}
+
+/* выбор темы — карточки */
+.iw-theme-cards {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.iw-theme-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1.5px dashed var(--iw-ink);
+    border-radius: 10px 14px 9px 16px;
+    background: transparent;
+    color: var(--iw-ink);
+    font: inherit;
+    font-size: .92em;
+    text-align: left;
+    cursor: pointer;
+}
+
+.iw-theme-card.on {
+    border-style: solid;
+    border-width: 2px;
+    background: var(--iw-hl-mid);
+    font-weight: 700;
+}
+
+.iw-theme-sw {
+    position: relative;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--sw-bg);
+    border: 2px solid var(--sw-ink);
+}
+
+.iw-theme-sw i {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0, 0, 0, .25);
+}
+
+.iw-theme-sw i:first-child {
+    left: 5px;
+    top: 9px;
+    background: var(--sw-ink);
+}
+
+.iw-theme-sw i:last-child {
+    right: 4px;
+    bottom: 5px;
+    background: var(--sw-acc);
+}
+
+/* НПС в «Тетради» и «Бимбо» — обычным шрифтом, крупные рукописные буквы смотрелись грубо */
+.iw-theme-grid .iw-npc-sticker-title,
+.iw-theme-bimbo .iw-npc-sticker-title {
+    font-family: var(--iw-body-font);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+@media (max-width: 560px) {
+    .iw-acts-wrap {
+        width: 100%;
+        flex-direction: row;
+        gap: 6px;
+    }
+
+    .iw-acts-wrap .iw-acts {
+        flex: 1;
+    }
+
+    .iw-spinner {
+        font-size: 22px;
+    }
+
+    .iw-theme-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .iw-shop-sticker {
+        padding: 6px 9px;
+        font-size: 12px;
+    }
+}
+
+/* ===================== Бимбо-пикми 2.0: читаемее, маркер вместо рамок, поцелуйчики ===================== */
+.iw-theme-bimbo {
+    font-weight: 600;
+}
+
+.iw-theme-bimbo .iw-feel-name,
+.iw-theme-bimbo .iw-want-text b,
+.iw-theme-bimbo b {
+    font-weight: 800;
+}
+
+.iw-theme-bimbo .iw-label {
+    font-size: 22px;
+    line-height: 1.3;
+}
+
+/* «Сейчас он …» — обведено розовым маркером, без жирной рамки */
+.iw-theme-bimbo .iw-mood-word .iw-hl,
+.iw-theme-bimbo .iw-dossier-mood .iw-hl {
+    position: relative;
+    padding: 0 8px;
+    border-radius: 0;
+    background: linear-gradient(100deg, transparent 2%, rgba(255, 122, 184, .45) 4%, rgba(255, 122, 184, .38) 92%, transparent 97%) 0 62% / 100% 58% no-repeat;
+    color: #c2186d;
+    box-shadow: none;
+}
+
+.iw-theme-bimbo .iw-mood-word .iw-hl::after {
+    content: '';
+    position: absolute;
+    inset: -6px -10px -4px -8px;
+    border: 2px solid #ff7ab8;
+    border-radius: 48% 52% 45% 55% / 60% 45% 55% 40%;
+    transform: rotate(-2.5deg);
+    pointer-events: none;
+}
+
+.iw-theme-bimbo .iw-feel {
+    background: rgba(255, 255, 255, .7);
+    border: 1.5px dashed #ffb3da;
+}
+
+.iw-theme-bimbo .iw-feel-power {
+    background: #fff;
+    border: 1.5px solid #ffc1e3;
+    color: #c2186d;
+}
+
+.iw-theme-bimbo .iw-act,
+.iw-theme-bimbo .iw-mod,
+.iw-theme-bimbo .iw-theme-card,
+.iw-theme-bimbo .iw-mini,
+.iw-theme-bimbo .iw-wallet > summary,
+.iw-theme-bimbo .iw-buy,
+.iw-theme-bimbo .iw-lang-opt {
+    border-color: #ff7ab8;
+    color: #a3166a;
+}
+
+.iw-theme-bimbo .iw-act-all,
+.iw-theme-bimbo .iw-mod.on,
+.iw-theme-bimbo .iw-theme-card.on,
+.iw-theme-bimbo .iw-wallet > summary,
+.iw-theme-bimbo .iw-lang-opt.on {
+    background: #ffd6ea;
+}
+
+.iw-theme-bimbo .iw-shop-sticker {
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #d68cff, #ff5aa8);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(255, 61, 150, .35);
+}
+
+.iw-theme-bimbo .iw-spinner {
+    color: #ff3d96;
+}
+
+.iw-theme-bimbo .iw-divider {
+    background: #ff7ab8;
+    opacity: .6;
+}
+
+/* поцелуйчик-отпечаток у заголовка и на всплывашках */
+.iw-theme-bimbo .iw-titlebox {
+    position: relative;
+}
+
+.iw-theme-bimbo .iw-titlebox::after,
+.iw-theme-bimbo.iw-toasts .iw-toast-card::after {
+    content: '';
+    position: absolute;
+    width: 34px;
+    height: 24px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 16'%3E%3Cpath d='M1 8c2.2-3.6 4.7-4.8 6.6-3.8.9.5 1.6.5 2.4 0 .8.5 1.5.5 2.4 0 1.9-1 4.4.2 6.6 3.8-2.6 4-5.8 5.6-9 5.6S3.6 12 1 8z' fill='%23ff3d96' fill-opacity='.75'/%3E%3Cpath d='M1.6 8.2c2.8.9 5.6 1.2 8.5 1.2s5.7-.3 8.5-1.2' fill='none' stroke='%23c2186d' stroke-width='.9' stroke-linecap='round'/%3E%3Cpath d='M3 6.4c.6-.8 1.4-1.3 2.2-1.5M15.5 4.9c.8.2 1.6.7 2.2 1.5' fill='none' stroke='%23fff' stroke-opacity='.7' stroke-width='.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+    pointer-events: none;
+}
+
+.iw-theme-bimbo .iw-titlebox::after {
+    right: -40px;
+    top: 2px;
+    transform: rotate(18deg);
+}
+
+.iw-theme-bimbo.iw-toasts .iw-toast-card::after {
+    right: 10px;
+    bottom: 8px;
+    transform: rotate(-14deg);
+    opacity: .8;
+}
+
+.iw-theme-bimbo .iw-b-dream .iw-label,
+.iw-theme-bimbo .iw-b-impression .iw-label {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .iw-theme-bimbo .iw-label {
+        font-size: 19px;
+    }
+
+    .iw-theme-bimbo .iw-titlebox::after {
+        right: -30px;
+        width: 26px;
+        height: 18px;
+    }
+}
+
+/* ===================== 0.3.2: крупные кнопки, цветные эмоции со смайликами, ползунки под тему ===================== */
+
+/* кнопки разбора занимают всё свободное место в строке, без пустоты */
+.iw-tabrow .iw-tabs {
+    flex: 0 1 auto;
+}
+
+.iw-acts-wrap {
+    /* берут всё, что осталось после персонажей и наклеек: наклейки не переносятся на вторую строку */
+    flex: 1 1 0;
+    min-width: 210px;
+    max-width: 540px;
+    align-items: stretch;
+}
+
+.iw-acts-wrap .iw-spinner {
+    align-self: center;
+}
+
+.iw-acts {
+    flex: 1;
+    gap: 8px;
+}
+
+.iw-act {
+    min-height: 38px;
+    padding: 8px 12px 9px;
+    font-size: 15px;
+    gap: 7px;
+}
+
+.iw-act .iw-ico {
+    font-size: 18px;
+    flex: none;
+}
+
+.iw-act-all {
+    font-size: 15.5px;
+}
+
+/* смайлик настроения на фото — крупнее и чётче */
+.iw-face {
+    font-size: 32px;
+    right: -13px;
+    bottom: -11px;
+    filter: drop-shadow(0 0 1.2px #fff) drop-shadow(0 0 1.2px #fff) drop-shadow(0 2px 2px rgba(0, 0, 0, .3));
+}
+
+.iw-face-ico .iw-face-bg {
+    stroke-width: 1.6;
+}
+
+/* палитра эмоций: цвет сразу говорит, что за чувство */
+.iw-face-joy { --face-bg: #ffe066; --face-ink: #7a4d00; }
+.iw-face-calm { --face-bg: #bdeba6; --face-ink: #2c6418; }
+.iw-face-love { --face-bg: #ffb8d6; --face-ink: #a3164f; }
+.iw-face-shy { --face-bg: #ffcdb8; --face-ink: #a3402c; }
+.iw-face-sad { --face-bg: #b3d0fa; --face-ink: #22488c; }
+.iw-face-angry { --face-bg: #ff9580; --face-ink: #8f150a; }
+.iw-face-fear { --face-bg: #d8c4f7; --face-ink: #4b2a86; }
+.iw-face-tired { --face-bg: #dcd5ca; --face-ink: #554b41; }
+.iw-face-focus { --face-bg: #a3dde6; --face-ink: #0c5563; }
+.iw-face-surprise { --face-bg: #ffcb8c; --face-ink: #8a4200; }
+.iw-face-neutral { --face-bg: #e9e3d8; --face-ink: #574e45; }
+
+/* в киберпанке — неоновые версии тех же цветов */
+.iw-theme-cyber .iw-face-joy { --face-bg: #ffe600; }
+.iw-theme-cyber .iw-face-calm { --face-bg: #39ff9e; }
+.iw-theme-cyber .iw-face-love { --face-bg: #ff4fd8; }
+.iw-theme-cyber .iw-face-shy { --face-bg: #ff9a7a; }
+.iw-theme-cyber .iw-face-sad { --face-bg: #4fb3ff; }
+.iw-theme-cyber .iw-face-angry { --face-bg: #ff3b3b; }
+.iw-theme-cyber .iw-face-fear { --face-bg: #b36bff; }
+.iw-theme-cyber .iw-face-tired { --face-bg: #8a93a6; }
+.iw-theme-cyber .iw-face-focus { --face-bg: #3ef0ff; }
+.iw-theme-cyber .iw-face-surprise { --face-bg: #ffa53e; }
+.iw-theme-cyber .iw-face-neutral { --face-bg: #c9d3e0; }
+
+.iw-theme-cyber [class*="iw-face-"] { --face-ink: #0b0d14; }
+
+/* карточка эмоции: смайлик, имя и полоска в её цвете */
+.iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-ink);
+    --emo-line: color-mix(in srgb, var(--face-ink) 38%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 32%, transparent);
+    border: 1.5px solid var(--emo-line);
+    border-left: 1.5px solid var(--emo-line) !important;
+    padding-left: 10px;
+}
+
+.iw-theme-dark .iw-feels .iw-feel[class*="iw-face-"],
+.iw-theme-cyber .iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-bg);
+    --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 12%, transparent);
+}
+
+.iw-theme-bimbo .iw-feels .iw-feel[class*="iw-face-"] {
+    border-style: dashed;
+    background: color-mix(in srgb, var(--face-bg) 30%, #fff);
+}
+
+.iw-feels-flat .iw-feel-name::before,
+.iw-more .iw-feel-name::before {
+    content: none;
+}
+
+.iw-feel-top {
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.iw-feel-top .iw-feel-power {
+    margin-left: auto;
+}
+
+.iw-feel-face {
+    flex: none;
+    display: inline-flex;
+    line-height: 0;
+    font-size: 24px;
+    color: var(--face-ink);
+    transform: rotate(-6deg);
+}
+
+.iw-feel[class*="iw-face-"] .iw-feel-name {
+    color: var(--emo-text);
+}
+
+.iw-feel[class*="iw-face-"] .iw-feel-power {
+    background: var(--face-bg);
+    color: var(--face-ink);
+    border-color: color-mix(in srgb, var(--face-ink) 30%, transparent);
+}
+
+.iw-feel[class*="iw-face-"] .iw-feel-meter > span {
+    background-color: var(--emo-text);
+    filter: none;
+}
+
+.iw-theme-cyber .iw-feel[class*="iw-face-"] .iw-feel-name {
+    text-shadow: 0 0 6px color-mix(in srgb, var(--face-bg) 60%, transparent);
+}
+
+/* бимбо: «Мой дневничок» — хвостик у «Д» больше не обрезается */
+.iw-theme-bimbo .iw-title {
+    padding: 0 6px 12px 2px;
+    margin-bottom: -12px;
+}
+
+/* бимбо: мечта — читаемым шрифтом и в нормальной рамке, а не в овале */
+.iw-theme-bimbo .iw-b-dream {
+    border-radius: 26px;
+}
+
+.iw-theme-bimbo .iw-dream-title {
+    font-family: var(--iw-body-font);
+    font-size: 1.22em;
+    font-weight: 800;
+    line-height: 1.3;
+    color: #a3166a;
+    margin: 2px 0 4px;
+}
+
+.iw-theme-bimbo .iw-dream-plus {
+    font-weight: 700;
+    color: #c44fd1;
+}
+
+.iw-theme-bimbo .iw-step {
+    font-weight: 600;
+}
+
+.iw-theme-bimbo .iw-star {
+    color: #ff3d96;
+}
+
+/* ползунок прокрутки — под тему */
+.iw-panel {
+    --iw-scroll-thumb: color-mix(in srgb, var(--iw-ink) 42%, transparent);
+    --iw-scroll-hover: color-mix(in srgb, var(--iw-ink) 65%, transparent);
+    --iw-scroll-track: color-mix(in srgb, var(--iw-ink) 7%, transparent);
+    --iw-scroll-radius: 9px 3px 10px 4px;
+    --iw-scroll-border: 3px solid transparent;
+    --iw-scroll-glow: none;
+}
+
+.iw-theme-sims { --iw-scroll-thumb: #7fb2e5; --iw-scroll-hover: #4a8fd6; --iw-scroll-radius: 8px; }
+.iw-theme-medieval { --iw-scroll-thumb: linear-gradient(180deg, #a8763e, #7a4f22); --iw-scroll-hover: #6a421a; --iw-scroll-track: rgba(122, 79, 34, .14); --iw-scroll-radius: 3px; }
+.iw-theme-cyber { --iw-scroll-thumb: #3ef0ff; --iw-scroll-hover: #f5e663; --iw-scroll-track: rgba(62, 240, 255, .08); --iw-scroll-radius: 0; --iw-scroll-glow: 0 0 8px rgba(62, 240, 255, .7); }
+.iw-theme-grid { --iw-scroll-thumb: rgba(31, 58, 147, .55); --iw-scroll-hover: #1f3a93; --iw-scroll-radius: 2px 6px 3px 7px; }
+.iw-theme-bimbo { --iw-scroll-thumb: linear-gradient(180deg, #ff9ccc, #ff3d96); --iw-scroll-hover: #ff3d96; --iw-scroll-track: rgba(255, 193, 227, .4); --iw-scroll-radius: 999px; --iw-scroll-border: 2px solid #fff; --iw-scroll-glow: 0 1px 4px rgba(255, 61, 150, .35); }
+
+.iw-panel ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.iw-panel ::-webkit-scrollbar-track {
+    background: var(--iw-scroll-track);
+    border-radius: var(--iw-scroll-radius);
+}
+
+.iw-panel ::-webkit-scrollbar-thumb {
+    background: var(--iw-scroll-thumb);
+    background-clip: padding-box;
+    border: var(--iw-scroll-border);
+    border-radius: var(--iw-scroll-radius);
+    box-shadow: var(--iw-scroll-glow);
+}
+
+.iw-theme-bimbo ::-webkit-scrollbar-thumb {
+    background-clip: border-box;
+}
+
+.iw-panel ::-webkit-scrollbar-thumb:hover {
+    background: var(--iw-scroll-hover);
+    background-clip: padding-box;
+}
+
+.iw-panel ::-webkit-scrollbar-button {
+    display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .iw-panel * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--iw-scroll-hover) var(--iw-scroll-track);
+    }
+}
+
+@media (max-width: 560px) {
+    .iw-acts-wrap {
+        flex: 1 1 100%;
+        max-width: none;
+        min-width: 0;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .iw-act {
+        min-height: 38px;
+        padding: 8px 6px;
+        font-size: 13.5px;
+        gap: 5px;
+    }
+
+    .iw-act-all {
+        font-size: 13.5px;
+    }
+
+    .iw-act .iw-ico {
+        font-size: 16px;
+    }
+
+    .iw-face {
+        font-size: 27px;
+        right: -10px;
+        bottom: -9px;
+    }
+
+    .iw-feel-face {
+        font-size: 21px;
+    }
+
+    .iw-panel ::-webkit-scrollbar {
+        width: 8px;
+    }
+}
+
+/* надпись «Проанализировать» над кнопками и стрелка к ним; во время разбора — загрузка под тему */
+.iw-acts-wrap .iw-spinner {
+    display: none;
+}
+
+.iw-acts-cap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 28px;
+    padding-right: 26px;
+    font-family: var(--iw-title-font);
+    font-size: 21px;
+    line-height: 1;
+    color: var(--iw-label-color, var(--iw-ink));
+    white-space: nowrap;
+}
+
+.iw-cap-text {
+    transform: rotate(-2deg);
+}
+
+.iw-cap-arrow {
+    position: absolute;
+    right: 0;
+    top: 6px;
+    display: inline-flex;
+    line-height: 0;
+    font-size: 30px;
+    color: var(--iw-scribble, var(--iw-ink));
+    transform: rotate(6deg);
+    pointer-events: none;
+}
+
+.iw-acts-cap.busy {
+    padding-right: 0;
+    font-size: 18px;
+}
+
+.iw-acts-cap.busy .iw-cap-text::after {
+    content: '…';
+}
+
+/* загрузка: по умолчанию — три чернильные точки прыгают по очереди */
+.iw-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 16px;
+}
+
+.iw-loader i {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50% 45% 55% 40%;
+    background: var(--iw-ink);
+    animation: iw-dot 1s ease-in-out infinite;
+}
+
+.iw-loader i:nth-child(2) { animation-delay: .15s; }
+.iw-loader i:nth-child(3) { animation-delay: .3s; }
+
+.iw-loader b {
+    display: none;
+}
+
+@keyframes iw-dot {
+    0%, 70%, 100% { transform: translateY(0); opacity: .35; }
+    35% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* тёмный блокнот — светящиеся точки */
+.iw-theme-dark .iw-loader i {
+    background: #ff9ec7;
+    box-shadow: 0 0 6px rgba(255, 158, 199, .8);
+}
+
+/* тетрадь в клетку — ручка выводит волнистую строчку */
+.iw-theme-grid .iw-loader i {
+    display: none;
+}
+
+.iw-theme-grid .iw-loader b,
+.iw-theme-diary .iw-loader b {
+    display: block;
+    width: 0;
+    height: 14px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 14'%3E%3Cpath d='M2 9c3-6 5-6 6 0s3 6 6 0 3-6 6 0 3 6 6 0 3-6 6 0 3 6 6 0 3-6 6 0 3 6 6 0' fill='none' stroke='%231f3a93' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") left center / 64px 14px no-repeat;
+    animation: iw-write 1.6s linear infinite;
+}
+
+.iw-theme-diary .iw-loader i {
+    display: none;
+}
+
+.iw-theme-diary .iw-loader b {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 14'%3E%3Cpath d='M2 9c3-6 5-6 6 0s3 6 6 0 3-6 6 0 3 6 6 0 3-6 6 0 3 6 6 0 3-6 6 0 3 6 6 0' fill='none' stroke='%232b2a4a' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+@keyframes iw-write {
+    0% { width: 0; opacity: 1; }
+    75% { width: 64px; opacity: 1; }
+    100% { width: 64px; opacity: 0; }
+}
+
+/* симс — полоска загрузки с бегущими полосками */
+.iw-theme-sims .iw-loader i {
+    display: none;
+}
+
+.iw-theme-sims .iw-loader b {
+    display: block;
+    width: 74px;
+    height: 12px;
+    border: 2px solid #1d3557;
+    border-radius: 999px;
+    background: repeating-linear-gradient(-45deg, #6cc04a 0 7px, #9be07a 7px 14px);
+    background-size: 20px 20px;
+    animation: iw-stripes .6s linear infinite;
+}
+
+@keyframes iw-stripes {
+    to { background-position: 20px 0; }
+}
+
+/* нейра — сегментная полоса, заполняется слева направо */
+.iw-theme-cyber .iw-loader i {
+    display: none;
+}
+
+.iw-theme-cyber .iw-loader b {
+    display: block;
+    position: relative;
+    width: 80px;
+    height: 10px;
+    border: 1px solid #3ef0ff;
+    box-shadow: 0 0 6px rgba(62, 240, 255, .5);
+}
+
+.iw-theme-cyber .iw-loader b::after {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    width: 0;
+    background: repeating-linear-gradient(90deg, #3ef0ff 0 6px, transparent 6px 8px);
+    animation: iw-fill 1.4s steps(10) infinite;
+}
+
+@keyframes iw-fill {
+    to { width: calc(100% - 2px); }
+}
+
+.iw-theme-cyber .iw-acts-cap {
+    font-size: 14px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+/* летопись — три восковые капли-ромбы мерцают */
+.iw-theme-medieval .iw-loader i {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+    background: #7a1f14;
+    transform: rotate(45deg);
+    animation: iw-wax 1.2s ease-in-out infinite;
+}
+
+.iw-theme-medieval .iw-loader i:nth-child(2) { animation-delay: .2s; }
+.iw-theme-medieval .iw-loader i:nth-child(3) { animation-delay: .4s; }
+
+@keyframes iw-wax {
+    0%, 100% { opacity: .25; transform: rotate(45deg) scale(.7); }
+    50% { opacity: 1; transform: rotate(45deg) scale(1.15); }
+}
+
+.iw-theme-medieval .iw-acts-cap {
+    font-size: 18px;
+}
+
+/* бимбо — прыгают розовые сердечки */
+.iw-theme-bimbo .iw-loader i {
+    width: 11px;
+    height: 10px;
+    border-radius: 0;
+    background: #ff3d96;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21s-9-5.6-9-12A5 5 0 0 1 12 6a5 5 0 0 1 9 3c0 6.4-9 12-9 12z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21s-9-5.6-9-12A5 5 0 0 1 12 6a5 5 0 0 1 9 3c0 6.4-9 12-9 12z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.iw-theme-bimbo .iw-acts-cap {
+    font-size: 19px;
+    color: #ff3d96;
+}
+
+.iw-theme-sims .iw-acts-cap {
+    font-size: 15px;
+    font-weight: 800;
+}
+
+@media (max-width: 560px) {
+    .iw-acts-wrap {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+
+    .iw-acts-cap {
+        font-size: 17px;
+        min-height: 22px;
+    }
+
+    .iw-cap-arrow {
+        font-size: 24px;
+        top: 4px;
+    }
+
+    .iw-theme-cyber .iw-acts-cap,
+    .iw-theme-sims .iw-acts-cap {
+        font-size: 13px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iw-loader i,
+    .iw-loader b,
+    .iw-loader b::after {
+        animation-duration: 3s;
+    }
+}
+
+/* награды по категориям: у каждой свой цвет и подпись */
+.iw-rk-buff { --rk: #2f9e6b; --rk-bg: #c9f0d9; }
+.iw-rk-event { --rk: #d9730d; --rk-bg: #ffe0b8; }
+.iw-rk-collect { --rk: #8a4fd6; --rk-bg: #e6d6ff; }
+
+.iw-theme-cyber .iw-rk-buff { --rk: #39ff9e; --rk-bg: rgba(57, 255, 158, .14); }
+.iw-theme-cyber .iw-rk-event { --rk: #ffa53e; --rk-bg: rgba(255, 165, 62, .14); }
+.iw-theme-cyber .iw-rk-collect { --rk: #c78bff; --rk-bg: rgba(199, 139, 255, .14); }
+.iw-theme-dark .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+.iw-theme-dark .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+.iw-theme-dark .iw-rk-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
+
+.iw-rw-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.iw-rg-buff { --rk: #2f9e6b; --rk-bg: #c9f0d9; }
+.iw-rg-event { --rk: #d9730d; --rk-bg: #ffe0b8; }
+.iw-rg-collect { --rk: #8a4fd6; --rk-bg: #e6d6ff; }
+.iw-theme-cyber .iw-rg-buff, .iw-theme-dark .iw-rg-buff { --rk: #39ff9e; --rk-bg: rgba(57, 255, 158, .14); }
+.iw-theme-cyber .iw-rg-event, .iw-theme-dark .iw-rg-event { --rk: #ffa53e; --rk-bg: rgba(255, 165, 62, .14); }
+.iw-theme-cyber .iw-rg-collect, .iw-theme-dark .iw-rg-collect { --rk: #c78bff; --rk-bg: rgba(199, 139, 255, .14); }
+
+.iw-rw-cat {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    padding-bottom: 4px;
+    border-bottom: 2px dashed color-mix(in srgb, var(--rk) 45%, transparent);
+}
+
+.iw-rw-cat-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px 4px 9px;
+    border-radius: 999px 60px 999px 70px;
+    background: var(--rk);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: .02em;
+    transform: rotate(-1.5deg);
+}
+
+.iw-theme-cyber .iw-rw-cat-name,
+.iw-theme-dark .iw-rw-cat-name {
+    color: #0b0d14;
+}
+
+.iw-theme-cyber .iw-rw-cat-name {
+    border-radius: 0;
+    transform: none;
+    text-transform: uppercase;
+}
+
+.iw-rw-cat-name .iw-ico {
+    font-size: 15px;
+}
+
+.iw-rw-cat-hint {
+    font-size: .8em;
+    color: var(--iw-muted);
+}
+
+.iw-rewards > li.iw-reward {
+    padding: 8px 10px;
+    margin: 4px 0;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--rk-bg) 55%, transparent);
+    border-bottom: 0;
+}
+
+.iw-reward .iw-rw-ico,
+.iw-buffs .iw-rk-buff .iw-rw-ico,
+.iw-buffs .iw-rk-event .iw-rw-ico {
+    background: var(--rk-bg);
+    border-color: var(--rk);
+    color: var(--rk);
+}
+
+.iw-reward .iw-rw-title {
+    color: color-mix(in srgb, var(--rk) 55%, var(--iw-ink));
+}
+
+.iw-theme-cyber .iw-reward .iw-rw-title,
+.iw-theme-dark .iw-reward .iw-rw-title {
+    color: var(--rk);
+}
+
+.iw-reward .iw-rw-kind {
+    opacity: 1;
+    color: var(--rk);
+    font-weight: 700;
+}
+
+.iw-reward .iw-buy:not(:disabled) {
+    background: var(--rk-bg);
+    border-color: var(--rk);
+}
+
+.iw-colls.iw-rk-collect .iw-coll {
+    background: var(--rk-bg);
+    border-color: var(--rk);
+    color: var(--rk);
+}
+
+.iw-theme-cyber .iw-rewards > li.iw-reward {
+    border-radius: 0;
+}

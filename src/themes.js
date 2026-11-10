@@ -25,6 +25,21 @@ export const THEMES = {
         name: 'Тетрадь в клетку',
         fonts: 'family=Marck+Script&family=Neucha',
     },
+    bimbo: {
+        name: 'Бимбо-пикми',
+        fonts: 'family=Pacifico&family=Nunito:wght@500;600;700;800',
+    },
+};
+
+// Цвета для карточек выбора темы: фон, чернила, акцент.
+export const THEME_SWATCHES = {
+    diary: ['#fbf6ea', '#2b2a4a', '#f28cb4'],
+    dark: ['#1f1d26', '#ece6f5', '#c6a8ff'],
+    sims: ['#eef4fb', '#2f73c0', '#7ed957'],
+    medieval: ['#efe0bd', '#5a3a1a', '#a3241a'],
+    cyber: ['#0b0d14', '#3ef0ff', '#ff3ea5'],
+    grid: ['#f7f8f2', '#1f3a93', '#c0262d'],
+    bimbo: ['#fff0f7', '#ff3d96', '#c44fd1'],
 };
 
 export const THEME_IDS = Object.keys(THEMES);
@@ -53,13 +68,46 @@ const BASE_LABELS = {
     empty: 'Пока пусто. Дневник заполнится после следующего ответа — или нажми «обновить».',
     noChat: 'Открой чат с персонажем — и здесь появится его дневник.',
     settings: 'Настройки',
+    rewards: 'Награды',
+    shop: 'Магазин наград',
+    wallet: 'очки',
+    analyze: 'Проанализировать',
+    analyzing: 'Записываю',
 };
 
 const THEME_LABELS = {
+    bimbo: {
+        title: 'Мой дневничок ♡',
+        moodTitle: 'Вайб дня',
+        moodLead: 'Сейчас {он}',
+        feels: 'Почему тучка плачет?',
+        feelsHint: 'что на сердечке',
+        wants: 'Чего хочет, коть?',
+        fears: 'Чего боится, кис?',
+        dream: 'Мечта-мечточка ✨',
+        traits: 'Какой {он} по жизни',
+        traitsBase: 'С рождения',
+        traitsGained: 'Новенькое ✨',
+        attitude: 'Как {он} к тебе, зай?',
+        first: 'первое впечатление',
+        now: 'а сейчас',
+        chronicle: 'Что было, пупс',
+        chronicleEmpty: 'Пока тишина, кис ♡',
+        whois: 'Это кто, зай?',
+        whoisTraits: 'по лорбуку',
+        settings: 'Настроечки',
+        noChat: 'Открой чатик, коть ♡',
+        empty: 'Тут пока пусто, зай ♡ Дневничок заполнится после следующего ответа — или жми «Чат».',
+        rewards: 'Подарочки ♡',
+        shop: 'Шопинг ♡',
+        analyze: 'Проанализируем, зай?',
+        analyzing: 'Секундочку, коть',
+    },
     sims: {
         wants: 'Желания',
         fears: 'Страхи',
         feels: 'Эмоции',
+        analyzing: 'Загрузка',
     },
     medieval: {
         title: 'Летопись души',
@@ -79,6 +127,10 @@ const THEME_LABELS = {
         empty: 'Страницы чисты. Летописец запишет после следующего ответа.',
         noChat: 'Летопись закрыта. Открой чат с персонажем, чтобы прочесть его страницы.',
         settings: 'Уложения',
+        rewards: 'Дары',
+        shop: 'Лавка даров',
+        analyze: 'Вопросить летопись',
+        analyzing: 'Летописец пишет',
     },
     cyber: {
         title: 'NEURO//LINK',
@@ -101,6 +153,13 @@ const THEME_LABELS = {
         empty: 'Нет данных. Сканирование после следующего ответа.',
         noChat: 'Нет подключения. Открой чат с персонажем.',
         settings: 'Конфигурация',
+        rewards: 'Бонусы',
+        shop: 'Магазин бонусов',
+        analyze: 'Запустить анализ',
+        analyzing: 'Сканирую',
+    },
+    dark: {
+        analyze: 'Разобрать',
     },
 };
 
@@ -142,7 +201,53 @@ const PATHS = {
     back: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
     gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5"/><circle cx="12" cy="12" r="6.5"/>',
     users: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9.5" r="2.5"/><path d="M15.8 14.2c2.4-.3 4.3 1.2 4.8 4"/>',
+    spin: '<path d="M19.5 9.5c-1.3-3.4-4.6-5.6-8.2-5.2C7 4.8 4 8.3 4.2 12.6"/><path d="M19.8 4.6l-.2 5.1-5-.6"/><path d="M4.6 14.6c1.3 3.4 4.6 5.6 8.2 5.2 4.3-.5 7.3-4 7.1-8.3"/><path d="M4.2 19.4l.2-5.1 5 .6"/>',
+    lips: '<path d="M3 12c2.2-3.6 4.7-4.8 6.6-3.8.9.5 1.6.5 2.4 0 .8.5 1.5.5 2.4 0 1.9-1 4.4.2 6.6 3.8-2.6 4-5.8 5.6-9 5.6S5.6 16 3 12z"/><path d="M3.5 12.2c2.8.9 5.6 1.2 8.5 1.2s5.7-.3 8.5-1.2"/>',
+    sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9c1.2 1.6 1.2 4.4 0 6"/><path d="M18.3 6.5c2.4 3 2.4 8 0 11"/>',
+    mute: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+    pin: '<path d="M9 3.5h6l-1 5 3 3H7l3-3z"/><path d="M12 11.5V20"/>',
+    unpin: '<path d="M9 3.5h6l-1 5 3 3H7l3-3z" stroke-dasharray="2.5 2.2"/><path d="M12 11.5V20"/>',
+    dice: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/><path d="M12 9.5l.8 1.7 1.9.3-1.4 1.3.3 1.9-1.6-.9-1.7.9.4-1.9-1.4-1.3 1.9-.3z"/>',
+    chat: '<path d="M4.5 6.5c0-1.4 1.1-2.5 2.5-2.5h10c1.4 0 2.5 1.1 2.5 2.5v7c0 1.4-1.1 2.5-2.5 2.5H11l-4.5 3.5V16h0c-1.1 0-2-1.1-2-2.5z"/><path d="M8.5 9h7M8.5 12h4.5"/>',
+    bookopen: '<path d="M3 5.5c3-1.4 6-1.4 9 .8 3-2.2 6-2.2 9-.8v13c-3-1.4-6-1.4-9 .8-3-2.2-6-2.2-9-.8z"/><path d="M12 6.3v13"/><path d="M5.5 9.5c1.6-.5 3.2-.4 4.5.3M14 9.8c1.3-.7 2.9-.8 4.5-.3"/>',
+    sparkle: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    coin: '<ellipse cx="12" cy="12" rx="8" ry="8"/><path d="M12 7.5v9M9.5 9.5c.3-1 1.3-1.6 2.5-1.6 1.6 0 2.6.8 2.6 2s-1 1.7-2.6 2.1-2.7 1-2.7 2.2 1.1 2 2.7 2c1.3 0 2.3-.6 2.6-1.6"/>',
+    pointer: '<path d="M3 5.5c5.5-2.4 11.6-1.6 15.2 3.4 1 1.4 1.6 3.4 1.7 5.6"/><path d="M15.9 12.2l4 3.6 2.4-4.6"/>',
+    shop: '<path d="M4 9.5l1.5-5h13l1.5 5"/><path d="M4 9.5c0 1.4 1.3 2.5 2.7 2.5s2.6-1.1 2.6-2.5c0 1.4 1.2 2.5 2.7 2.5s2.7-1.1 2.7-2.5c0 1.4 1.2 2.5 2.6 2.5S20 10.9 20 9.5"/><path d="M5.5 12v7.5h13V12"/><path d="M10 19.5v-4.5h4v4.5"/>',
+    gift: '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11"/><path d="M12 9c-1.6-3.5-5.5-4.2-5.5-1.8C6.5 9 12 9 12 9zM12 9c1.6-3.5 5.5-4.2 5.5-1.8C17.5 9 12 9 12 9z"/>',
+    cake: '<path d="M5 20v-7.5h14V20z"/><path d="M5 15.5c1.5 1 2.8 1 4.2 0s2.8-1 4.2 0 2.8 1 4.2 0"/><path d="M8.5 12.5V10M12 12.5V9.5M15.5 12.5V10"/><path d="M8.5 7.5l.01.01M12 6.5l.01.01M15.5 7.5l.01.01" stroke-width="2.6"/>',
+    ribbon: '<circle cx="12" cy="9" r="5"/><path d="M9 13.5L7 21l5-2.6 5 2.6-2-7.5"/>',
+    key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M17.5 12v3M20 12v2"/>',
+    flower: '<circle cx="12" cy="10" r="2.2"/><path d="M12 7.8c-1-3 2-3.8 2.4-1.6M14.2 10c2.8-1 3.8 2 1.6 2.6M12 12.2c1 3-2 3.8-2.4 1.6M9.8 10c-2.8 1-3.8-2-1.6-2.6"/><path d="M12 14.5V21M12 18c-1.5-1.5-3.5-1.5-4.5-.5M12 17c1.5-1.5 3.5-1.5 4.5-.5"/>',
+    potion: '<path d="M9.5 3.5h5M10.5 3.5v5L6 16.5a2.6 2.6 0 0 0 2.3 4h7.4a2.6 2.6 0 0 0 2.3-4l-4.5-8v-5"/><path d="M7.8 14h8.4"/>',
+    note: '<path d="M9 18V5.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+    book: '<path d="M5 4.5h11.5a2 2 0 0 1 2 2v13H7a2 2 0 0 1-2-2z"/><path d="M5 17.5a2 2 0 0 1 2-2h11.5"/><path d="M9 8.5h6"/>',
+    moon: '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>',
+    cup: '<path d="M5 8.5h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8.5 3.5c-.8 1 .8 2 0 3M12 3.5c-.8 1 .8 2 0 3"/>',
+    letter: '<rect x="3.5" y="6" width="17" height="12" rx="1.5"/><path d="M4 7l8 6 8-6"/>',
+    shield: '<path d="M12 3.5l7 2.5v5.5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+    gem: '<path d="M7 4.5h10l3.5 5L12 20 3.5 9.5z"/><path d="M3.5 9.5h17M9.5 4.5L8 9.5l4 10.5 4-10.5-1.5-5"/>',
 };
+
+// Лица персонажа по настроению — рисованные смайлики.
+const FACE_PATHS = {
+    joy: '<path d="M7.5 10.6c.5-1.3 2.1-1.3 2.6 0M13.9 10.6c.5-1.3 2.1-1.3 2.6 0"/><path d="M7.6 13.4h8.8c-.4 3-2.2 4.5-4.4 4.5s-4-1.5-4.4-4.5z" fill="currentColor"/>',
+    calm: '<path d="M7.5 10.2c.7.9 1.9.9 2.6 0M13.9 10.2c.7.9 1.9.9 2.6 0"/><path d="M8.8 14.6c1.9 1.6 4.5 1.6 6.4 0"/><ellipse cx="6.9" cy="13.6" rx="1.7" ry="1" fill="currentColor" stroke="none" opacity=".3"/><ellipse cx="17.1" cy="13.6" rx="1.7" ry="1" fill="currentColor" stroke="none" opacity=".3"/>',
+    love: '<path d="M9 12.2s-2.3-1.3-2.3-2.9a1.15 1.15 0 0 1 2.3-.6 1.15 1.15 0 0 1 2.3.6c0 1.6-2.3 2.9-2.3 2.9zM15 12.2s-2.3-1.3-2.3-2.9a1.15 1.15 0 0 1 2.3-.6 1.15 1.15 0 0 1 2.3.6c0 1.6-2.3 2.9-2.3 2.9z" fill="currentColor" stroke-width="1"/><path d="M8.8 15c1.9 1.7 4.5 1.7 6.4 0"/>',
+    shy: '<circle cx="9.2" cy="11.2" r="1.3" fill="currentColor" stroke="none"/><circle cx="14.8" cy="11.2" r="1.3" fill="currentColor" stroke="none"/><path d="M10.2 15.4c.6-.5 1.2-.5 1.8 0s1.2.5 1.8 0"/><ellipse cx="6.9" cy="13.6" rx="1.7" ry="1" fill="currentColor" stroke="none" opacity=".5"/><ellipse cx="17.1" cy="13.6" rx="1.7" ry="1" fill="currentColor" stroke="none" opacity=".5"/>',
+    sad: '<path d="M7.4 8.8l2.5-1M16.6 8.8l-2.5-1"/><circle cx="9" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><path d="M8.8 16.6c1.9-2 4.5-2 6.4 0"/><path d="M16.9 12.4c.6 1 .8 1.8.2 2.3-.6.4-1.4 0-1.3-.7.1-.6.5-1 1.1-1.6z" fill="currentColor" stroke-width="1"/>',
+    angry: '<path d="M7.2 8.2l3.1 1.6M16.8 8.2l-3.1 1.6" stroke-width="2.4"/><circle cx="9" cy="11.4" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="11.4" r="1.3" fill="currentColor" stroke="none"/><path d="M8.8 16.6c1.9-1.6 4.5-1.6 6.4 0"/>',
+    fear: '<circle cx="9" cy="10.4" r="1.9"/><circle cx="15" cy="10.4" r="1.9"/><circle cx="9" cy="10.6" r=".8" fill="currentColor" stroke="none"/><circle cx="15" cy="10.6" r=".8" fill="currentColor" stroke="none"/><path d="M8.4 16c.8-.8 1.6-.8 2.4 0s1.6.8 2.4 0 1.6-.8 2.4 0"/><path d="M18.4 6.6c.6 1 .8 1.8.2 2.3-.6.4-1.4 0-1.3-.7.1-.6.5-1 1.1-1.6z" fill="currentColor" stroke-width="1"/>',
+    tired: '<path d="M7.4 10.4h3M13.6 10.4h3"/><path d="M7.8 11.2c.7.6 1.7.6 2.4 0M13.8 11.2c.7.6 1.7.6 2.4 0" stroke-width="1.3"/><path d="M10 15.6h4"/><path d="M16.8 4.6h2.6l-2.6 2.6h2.6" stroke-width="1.5"/>',
+    focus: '<path d="M7.2 8.4h3.2M13.6 8.4h3.2" stroke-width="2.4"/><circle cx="9" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><path d="M9.2 15.6h5.6"/>',
+    surprise: '<path d="M7.3 7.8c.8-1 2.3-1 3.1 0M13.6 7.8c.8-1 2.3-1 3.1 0"/><circle cx="9" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><ellipse cx="12" cy="15.6" rx="1.6" ry="2"/>',
+    neutral: '<circle cx="9" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="10.6" r="1.3" fill="currentColor" stroke="none"/><path d="M9 15.2h6"/>',
+};
+
+export function faceIcon(face, cls = '') {
+    const inner = FACE_PATHS[face] || FACE_PATHS.neutral;
+    return `<svg class="iw-face-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="iw-face-bg" d="M12 3.2c4.9-.2 8.9 3.6 8.8 8.7-.1 4.9-3.9 8.8-8.9 8.8-4.9 0-8.7-3.8-8.7-8.8 0-4.8 3.9-8.5 8.8-8.7z"/>${inner}</svg>`;
+}
 
 export function icon(name, cls = '') {
     return `<svg class="iw-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.star}</svg>`;
@@ -159,6 +264,9 @@ export const EVENT_ICONS = {
     dream_done: 'crown',
     impression: 'eye',
     attitude: 'swap',
+    dream_change: 'star',
+    dream_grow: 'sparkle',
+    reward: 'gift',
 };
 
 export const BLOCK_ICONS = {
@@ -169,10 +277,12 @@ export const BLOCK_ICONS = {
     traits: 'feather',
     impression: 'eye',
     chronicle: 'scroll',
+    rewards: 'gift',
 };
 
 // Подписи всплывашек в духе темы.
 const TOAST_KICKERS = {
+    bimbo: { want_done: 'Ура-ура, сбылось! ♡', fear_real: 'Почему тучка плачет? Страх сбылся…', fear_gone: 'Фух, больше не страшно ✨', trait_new: 'Новый вайб, кис', trait_up: 'Вайб усилился, коть', trait_down: 'Вайб слабеет…', dream_step: 'Шажочек к мечте ✨', dream_done: 'Мечта сбылась, ааа!! ♡', dream_change: 'Новая мечточка ✨', dream_grow: 'Мечта стала больше ♡', impression: 'Первое впечатление, зай', attitude: 'Ой, отношение поменялось!', reward: 'Обновочка, кис ♡' },
     medieval: { attitude: 'Переменилось отношение', want_done: 'Желание исполнилось', fear_real: 'Сбылся страх', trait_new: 'Новая черта нрава', dream_step: 'Шаг к великой мечте', impression: 'Первое суждение' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
 };

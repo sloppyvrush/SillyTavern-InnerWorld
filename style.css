@@ -287,3 +287,50 @@
     #iw_fab .iw-fab-ribbon { right: 6px; bottom: -6px; width: 6px; height: 11px; }
     #iw_fab .iw-fab-dot { width: 11px; height: 11px; border-width: 2px; top: -3px; right: -3px; }
 }
+
+/* бимбо-пикми: розовый глянцевый блокнотик с сердечком */
+#iw_fab.iw-theme-bimbo { --iwf-bg: #ff9ccc; --iwf-paper: radial-gradient(circle at 30% 22%, rgba(255, 255, 255, .7) 0 14%, transparent 15%), linear-gradient(160deg, #ffc1e3, #ff5aa8); --iwf-ink: #ffffff; --iwf-spine: #ff3d96; --iwf-accent: #ffffff; }
+#iw_fab.iw-theme-bimbo .iw-fab-book { transform: rotate(-5deg); }
+#iw_fab.iw-theme-bimbo .iw-fab-cover { border-radius: 6px 14px 14px 6px; box-shadow: 0 0 0 2px #ff7ab8; }
+#iw_fab.iw-theme-bimbo .iw-fab-heart { stroke: #ff3d96; }
+#iw_fab.iw-theme-bimbo .iw-fab-spine { border-color: #fff; }
+#iw_fab.iw-theme-bimbo .iw-fab-ribbon { background: #fff; }
+
+/* RU / English внизу настроек в панели таверны */
+.iw-form-st .iw-lang {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0 4px;
+}
+
+.iw-form-st .iw-lang-cap {
+    opacity: .7;
+    font-size: .9em;
+}
+
+.iw-form-st .iw-lang-opt {
+    padding: 3px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, .3));
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.iw-form-st .iw-lang-opt.on {
+    background: var(--SmartThemeQuoteColor, rgba(255, 255, 255, .2));
+    color: var(--SmartThemeBodyColor, inherit);
+    font-weight: 700;
+}
+
+.iw-form-st .iw-f-row {
+    display: flex;
+    gap: 6px;
+}
+
+#iw_fab.iw-dragging {
+    will-change: transform;
+    transition: none;
+}

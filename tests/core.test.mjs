@@ -5,7 +5,7 @@ import {
 } from '../src/core.js';
 import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
-import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike } from '../src/core.js';
+import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace } from '../src/core.js';
 
 const all = DEFAULT_SETTINGS.modules;
 let passed = 0;
@@ -216,6 +216,8 @@ test('подписи по полу и теме', () => {
     assert.equal(themeLabels('dark', 'm').fears, 'Боится…');
     assert.equal(themeLabels('medieval', 'f').moodLead, 'Ныне она');
     for (const t of ['diary', 'dark', 'medieval', 'grid', 'sims']) assert.equal(themeLabels(t, 'm').traits, 'Черты характера');
+    assert.equal(themeLabels('bimbo', 'f').moodLead, 'Сейчас она');
+    assert.equal(validTheme('bimbo'), 'bimbo');
 });
 
 test('дневник и всплывашка рисуются и экранируют текст', () => {
@@ -228,8 +230,8 @@ test('дневник и всплывашка рисуются и экранир�
     const html = renderPanel({ state, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:' + state.order[0], busy: false, status: '', mains: state.order, npcKeys: [], roster: null });
     assert.ok(!html.includes('<script>'));
     assert.ok(html.includes('&lt;b&gt;x&lt;/b&gt;'));
-    assert.ok(html.includes('1 из 2 этапов'));
-    assert.ok(html.includes('Чувствует'));
+    assert.ok(html.includes('1 из 2'));
+    assert.ok(!html.includes('Чувствует') && html.includes('iw-feels-flat'));
     assert.ok(html.includes('Сейчас он'));
     assert.ok(html.includes('Основные'));
     assert.ok(html.includes('Приобретённые'));
@@ -298,7 +300,7 @@ test('кириллица и латиница, пустой главный, бы�
     const ros = parseRoster(JSON.stringify({ main: ['Иван Соколов'], npc: [{ name: 'Хромой', who: 'главарь' }, { name: 'Зоя' }] }));
     const roster = Object.assign({}, ros, { find: n => rosterFind(ros, n) });
     const list = renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: 'npc', mains: ['Иван Соколов'], npcKeys: [], roster, seenOnly: [ros.npc[0]] });
-    assert.ok(list.includes('ждёт «обновить»'));
+    assert.ok(list.includes('ждёт разбора'));
     assert.ok(list.includes('iw-npc-badge'), 'у НПС значок вместо фото');
     assert.ok(!list.includes('iw-photo"'), 'фото у НПС нет');
     assert.ok(list.includes('Хромой'));
@@ -366,4 +368,73 @@ test('сломанный ответ модели чинится', () => {
     assert.equal(repairJson('{"a":'), null);
     assert.equal(parseAnalysis('{"characters":[{"name":"A","traits":[{"name":"смелый"},{"name":"гор').length, 1);
 });
+test('эмоция — чувство, а не поступок; есть «как ощущается»', () => {
+    const [c] = one({ name: 'Роберт', face: 'love', moodlets: [{ emotion: 'Укрыл её своим плащом на балконе', feel: 'внутри теплеет', why: 'она замёрзла' }] });
+    assert.ok(c.moodlets[0].emotion.split(' ').length <= 2);
+    assert.equal(c.moodlets[0].feel, 'внутри теплеет');
+    assert.equal(c.face, 'love');
+    assert.equal(one({ name: 'X', face: 'бред' })[0].face, 'neutral');
+});
+
+test('мечта: закреплённая не меняется, смена — только после потрясения и не чаще кулдауна', () => {
+    const d1 = { title: 'Обрести покой', steps: [{ text: 'уйти со службы', done: false }] };
+    let st = applyAnalysis(emptyState(), one({ name: 'Роберт', dream: d1 }), all).state;
+    // без why — не меняется
+    st = applyAnalysis(st, one({ name: 'Роберт', dream: { title: 'Стать королём', change: 'change', steps: [] } }), all).state;
+    assert.equal(st.characters['Роберт'].dream.title, 'Обрести покой');
+    // кулдаун: сразу после появления менять нельзя
+    st = applyAnalysis(st, one({ name: 'Роберт', dream: { title: 'Стать королём', change: 'change', why: 'потерял всё', steps: [] } }), all).state;
+    assert.equal(st.characters['Роберт'].dream.title, 'Обрести покой');
+    for (let i = 0; i < 6; i++) st = applyAnalysis(st, one({ name: 'Роберт', dream: d1 }), all).state;
+    const r = applyAnalysis(st, one({ name: 'Роберт', dream: { title: 'Обрести покой', change: 'add', plus: 'вместе с Эвелин', why: 'признался ей', steps: [] } }), all);
+    assert.equal(r.state.characters['Роберт'].dream.plus, 'вместе с Эвелин');
+    assert.ok(r.events.some(e => e.type === 'dream_grow'));
+    // закрепили — потрясение не меняет
+    const pinned = JSON.parse(JSON.stringify(r.state));
+    pinned.characters['Роберт'].dream.pinned = true;
+    pinned.characters['Роберт'].dreamChangedAt = -100;
+    const r2 = applyAnalysis(pinned, one({ name: 'Роберт', dream: { title: 'Отомстить', change: 'change', why: 'её убили', steps: [] } }), all);
+    assert.equal(r2.state.characters['Роберт'].dream.title, 'Обрести покой');
+    assert.equal(r2.state.characters['Роберт'].dream.pinned, true);
+});
+
+test('очки и награды', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Роберт', wants: [{ text: 'выспаться' }] }), all, { points: true }).state;
+    const r = applyAnalysis(st, one({ name: 'Роберт', wants: [{ text: 'выспаться', status: 'done' }] }), all, { points: true });
+    assert.equal(r.state.characters['Роберт'].points, 10);
+    const rewards = parseRewards(JSON.stringify({ rewards: [{ title: 'Тёплый плед', kind: 'buff', effect: 'спокоен', turns: 4, cost: 8, icon: 'gift' }, { title: 'Кулон', kind: 'collect', cost: 50 }] }));
+    const ch = r.state.characters['Роберт'];
+    assert.equal(buyReward(ch, rewards[1]), 'не хватает очков');
+    assert.equal(buyReward(ch, rewards[0]), null);
+    assert.equal(ch.points, 2);
+    assert.equal(ch.buffs[0].left, 4);
+    assert.ok(buildInjection({ characters: { 'Роберт': ch }, order: ['Роберт'] }, all, 'Ева').includes('спокоен'));
+    assert.equal(decayState({ characters: { 'Роберт': ch }, order: ['Роберт'] }, 4).characters['Роберт'].buffs.length, 0);
+});
+
+test('доизученный лорбук дополняет НПС, а не стирает', () => {
+    const old = { main: ['Роберт'], npc: [{ name: 'Иван Соколов', aliases: [], g: 'm', who: '', traits: ['хитрый'] }] };
+    const fresh = { main: [], npc: [{ name: 'Иван Соколов', aliases: ['Сокол'], g: 'm', who: 'капитан', traits: ['смелый'] }, { name: 'Мила', aliases: [], g: 'f', who: 'служанка', traits: [] }] };
+    const m = mergeRoster(old, fresh);
+    assert.equal(m.npc.length, 2);
+    assert.equal(m.npc[0].who, 'капитан');
+    assert.deepEqual(m.npc[0].traits, ['хитрый', 'смелый']);
+});
+
+test('у каждой эмоции своё лицо и цвет', () => {
+    assert.equal(guessFace('беспокойство'), 'fear');
+    assert.equal(guessFace('спокойствие'), 'calm');
+    assert.equal(guessFace('недовольство'), 'angry');
+    assert.equal(guessFace('озадаченность'), 'surprise');
+    assert.equal(guessFace('сосредоточен'), 'focus');
+    assert.equal(guessFace('что-то странное', 'good'), 'joy');
+    const st = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'встревожен', moodlets: [{ emotion: 'ревность', why: 'она ушла с другим' }, { emotion: 'нежность', face: 'love' }] }), all).state;
+    const ml = st.characters['Роберт'].moodlets;
+    assert.equal(ml[0].face, 'angry');
+    assert.equal(ml[1].face, 'love');
+    const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'bimbo', view: 'main:Роберт', busy: false, status: '', mains: ['Роберт'], npcKeys: [], roster: null });
+    assert.ok(html.includes('iw-face-angry') && html.includes('iw-feel-face'));
+    assert.ok(html.includes('Проанализируем, зай?'));
+});
+
 console.log(`значки: ${passed} проверок прошло`);
