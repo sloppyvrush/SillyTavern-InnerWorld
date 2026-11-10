@@ -212,6 +212,8 @@ export function cleanCharacter(raw, opts = {}) {
     if (pt) c.ptype = pt;
     const tm = cleanTemper(raw.temper);
     if (tm) c.temper = tm;
+    if (raw.ptype_note) c.ptypeNote = str(raw.ptype_note, 260);
+    if (raw.temper_note) c.temperNote = str(raw.temper_note, 260);
 
     if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
     if (raw.face !== undefined) c.face = oneOf(raw.face, FACES, 'neutral');
@@ -266,6 +268,7 @@ export function cleanCharacter(raw, opts = {}) {
             name: str(t && (t.name || t.text), 40),
             why: str(t && t.why, 140),
             kind: oneOf(t && t.kind, TRAIT_KINDS, 'base'),
+            about: str(t && t.about, 320),
         })).filter(t => t.name).slice(0, MAX_TRAITS);
     }
     if (raw.impression && typeof raw.impression === 'object' && str(raw.impression.label)) {
@@ -499,9 +502,14 @@ export function mergeMoodlets(oldList, freshList, ended) {
 export function mergeTraits(old, fresh, cycle) {
     const freshTraits = (fresh.traits || []).filter(t => t.kind !== 'gone' || (old && old.traits && old.traits.length));
     if (!old || !Array.isArray(old.traits) || !old.traits.length) {
-        return { traits: freshTraits.map(t => ({ name: t.name, kind: 'base' })), changedAt: old ? old.traitChangedAt : undefined };
+        return { traits: freshTraits.map(t => (t.about ? { name: t.name, kind: 'base', about: t.about } : { name: t.name, kind: 'base' })), changedAt: old ? old.traitChangedAt : undefined };
     }
     const traits = old.traits.map(t => Object.assign({}, t));
+    // «Подробнее» о черте: почему она у персонажа. Дописываем, если её ещё не было, — даже когда характер не меняется.
+    for (const t of freshTraits) {
+        const prev = t.about ? findTrait(traits, t.name) : null;
+        if (prev && !prev.about) prev.about = t.about;
+    }
     const cooling = old.traitChangedAt !== undefined && cycle - old.traitChangedAt < TRAIT_COOLDOWN;
     let changedAt = old.traitChangedAt;
     if (cooling) return { traits, changedAt };
@@ -533,7 +541,7 @@ export function mergeTraits(old, fresh, cycle) {
             continue;
         }
         if (traits.filter(x => x.kind !== 'gone').length >= MAX_TRAITS) continue;
-        traits.push({ name: t.name, why: t.why, kind: 'new' });
+        traits.push(Object.assign({ name: t.name, why: t.why, kind: 'new' }, t.about ? { about: t.about } : {}));
         other = true;
         changedAt = cycle;
     }
@@ -546,7 +554,7 @@ export function restoreTrait(t) {
     t.kind = t.was && t.was !== 'gone' ? t.was : 'base';
     delete t.was;
     delete t.left;
-    if (t.kind === 'base') delete t.why;
+    if (t.kind === 'base' && !t.kept) delete t.why;
     return t;
 }
 
@@ -596,6 +604,8 @@ export function mergeCharacter(old, fresh, modules) {
     if (!out.who && fresh.who) out.who = fresh.who;
     if (fresh.ptype) out.ptype = fresh.ptype;
     if (fresh.temper) out.temper = fresh.temper;
+    if (fresh.ptypeNote) out.ptypeNote = fresh.ptypeNote;
+    if (fresh.temperNote) out.temperNote = fresh.temperNote;
     if (!out.g) out.g = 'n';
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
 
@@ -840,9 +850,11 @@ export function responseTemplate(modules, manualTurns) {
     if (modules.fears) c.fears = [{ text: 'чего боится', level: 'тревожит|пугает|в ужасе', strength: 2, status: 'active|realized|gone' }];
     if (modules.dream) c.dream = { title: 'мечта жизни', plus: '', steps: [{ text: 'этап', done: false }], change: 'same|change|add', why: '' };
     if (modules.traits) {
-        c.traits = [{ name: 'черта характера', why: 'событие, после которого изменилась', kind: 'base|up|new|down|gone' }];
-        c.ptype = 'INFP';
+        c.traits = [{ name: 'черта характера', why: 'событие, после которого изменилась', kind: 'base|up|new|down|gone', about: 'почему эта черта у него (только если no_about)' }];
+        c.ptype = 'INFP-T';
+        c.ptype_note = 'как этот тип проявляется именно в нём';
         c.temper = 'choleric|sanguine|phlegmatic|melancholic';
+        c.temper_note = 'как темперамент виден в его поведении';
     }
     if (modules.impression) c.impression = { label: '1–2 слова', score: 1, why: 'почему так', now: 'что думает сейчас', now_score: 1 };
     return JSON.stringify({ characters: [c] });
@@ -891,8 +903,8 @@ export function buildSystemPrompt(settings, ctx) {
     if (m.wants) rules.push('wants — до 3 текущих желаний, конкретных и живых, из характера, сюжета и мечты; не только про игрока. Исполнившееся по событиям помечай status "done", неактуальное — "dropped", вместо них можно добавить новые. Желания с pinned: true игрок закрепил: верни их как есть, не меняй текст и не отменяй — только status "done", когда исполнится.');
     if (m.fears) rules.push('fears — до 3 страхов, из характера, прошлого и сюжета; strength 1–3; level — одно слово. Если то, чего персонаж боялся, ПРОИЗОШЛО в последних сообщениях — обязательно помечай "realized". Преодолённый — "gone".');
     if (m.dream) rules.push(`dream — мечта всей жизни: одна большая личная цель, которая следует из характера и истории персонажа (карточка, прошлое, ценности), с 3–5 этапами. Это глобальное и личное, а не текущая сцена. ${user} может появиться в мечте, ТОЛЬКО если между ними уже по-настоящему близкие отношения (отношение +2 и выше) и было сильное общее событие; незнакомец, знакомый или просто приятель в мечту не попадает. Если мечта уже есть — повторяй её название, plus и этапы дословно, отмечай выполненные этапы (done: true) и ставь change "same". Меняй мечту, только если случилось настоящее потрясение, которое переворачивает жизнь персонажа: change "change" — новая мечта (новые title и steps), change "add" — мечта дополнилась (plus — короткое продолжение, например «…вместе с ней»); в why — какое событие. Мелкие события мечту не трогают.`);
-    if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы, например INFP, ENTJ, ISTP; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. Если они уже есть — повторяй как есть; меняй, только если карточка и лорбук явно говорят иное.');
-    if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова.');
+    if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Если они уже есть — повторяй как есть; меняй, только если карточка и лорбук явно говорят иное или характер заметно изменился.');
+    if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова. about — 1–2 предложения, почему эта черта есть у персонажа: для основной — что в его прошлом, воспитании, работе или судьбе (по карточке и лорбуку) её выстроило; для приобретённой — как именно событие её породило. Пиши about только для новых черт и для тех, где стоит no_about: true; у остальных не пиши.');
     if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве: label, score от -3 до 3, why. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3; меняй постепенно, резко — только после серьёзного поступка).`);
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     rules.push(`Формат ответа: ${responseTemplate(m, settings.moodMode === 'manual')}`);
@@ -935,9 +947,11 @@ export function compactState(state, modules, onlyKeys) {
         if (modules.fears) o.fears = (c.fears || []).filter(f => f.status === 'active');
         if (modules.dream && c.dream) o.dream = { title: c.dream.title, plus: c.dream.plus || '', steps: c.dream.steps, pinned: !!c.dream.pinned };
         if (modules.traits) {
-            o.traits = (c.traits || []).map(t => ({ name: t.name, kind: t.kind, why: t.why }));
+            o.traits = (c.traits || []).map(t => Object.assign({ name: t.name, kind: t.kind, why: t.why }, t.about ? {} : { no_about: true }));
             if (c.ptype) o.ptype = c.ptype;
+            if (c.ptypeNote) o.ptype_note = c.ptypeNote;
             if (c.temper) o.temper = c.temper;
+            if (c.temperNote) o.temper_note = c.temperNote;
         }
         if (modules.impression && c.impression) o.impression = { label: c.impression.label, score: c.impression.score, now: c.impression.now, now_score: c.impression.nowScore };
         return o;

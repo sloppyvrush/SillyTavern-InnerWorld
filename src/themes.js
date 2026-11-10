@@ -33,7 +33,7 @@ export const THEMES = {
         name: 'Китайский свиток',
         fonts: 'family=Prata&family=PT+Serif:ital,wght@0,400;0,700;1,400',
         // кисть только для иероглифов на печатях — грузим лишь эти знаки
-        glyphs: 'family=Ma+Shan+Zheng&text=%E6%83%85%E6%84%BF%E6%83%A7%E6%A2%A6%E6%80%A7%E5%BF%83%E5%8F%B2%E7%A4%BC%E4%B9%A6',
+        glyphs: 'family=Ma+Shan+Zheng&text=%E6%83%85%E6%84%BF%E6%83%A7%E6%A2%A6%E6%80%A7%E5%BF%83%E5%8F%B2%E7%A4%BC%E4%B9%A6%E9%AD%82',
     },
     grimoire: {
         name: 'Ведьмин гримуар',
@@ -85,6 +85,7 @@ const BASE_LABELS = {
     fears: 'Боится…',
     dream: 'Мечта жизни',
     traits: 'Черты характера',
+    persona: 'Тип личности',
     traitsBase: 'Основные',
     traitsGained: 'Приобретённые',
     attitude: 'Отношение к тебе',
@@ -106,6 +107,7 @@ const BASE_LABELS = {
 
 const THEME_LABELS = {
     bimbo: {
+        persona: 'Типаж и вайб ✨',
         title: 'Мой дневничок ♡',
         moodTitle: 'Вайб дня',
         moodLead: 'Сейчас {он}',
@@ -133,12 +135,14 @@ const THEME_LABELS = {
         analyzing: 'Секундочку, коть',
     },
     sims: {
+        persona: 'Тип личности',
         wants: 'Желания',
         fears: 'Страхи',
         feels: 'Эмоции',
         analyzing: 'Загрузка',
     },
     medieval: {
+        persona: 'Склад и нрав',
         title: 'Летопись души',
         moodTitle: 'Расположение духа',
         moodLead: 'Ныне {он}',
@@ -162,6 +166,7 @@ const THEME_LABELS = {
         analyzing: 'Летописец пишет',
     },
     cyber: {
+        persona: 'Психотип',
         title: 'NEURO//LINK',
         moodTitle: 'Эмоц. статус',
         moodLead: 'Статус',
@@ -191,6 +196,7 @@ const THEME_LABELS = {
         analyze: 'Разобрать',
     },
     china: {
+        persona: 'Стихия души',
         title: 'Книга сердца',
         moodTitle: 'Состояние духа',
         moodLead: 'Сейчас {он}',
@@ -216,6 +222,7 @@ const THEME_LABELS = {
         analyzing: 'Кисть пишет',
     },
     grimoire: {
+        persona: 'Натальная суть',
         title: 'Гримуар',
         moodTitle: 'Аура',
         moodLead: 'Сейчас {он}',
@@ -242,6 +249,7 @@ const THEME_LABELS = {
         analyzing: 'Варю зелье',
     },
     dossier: {
+        persona: 'Психотип',
         title: 'Личное дело',
         moodTitle: 'Состояние',
         moodLead: 'Сейчас {он}',
@@ -268,6 +276,7 @@ const THEME_LABELS = {
         analyzing: 'Печатаю',
     },
     logbook: {
+        persona: 'Психопрофиль',
         title: 'Бортовой журнал',
         moodTitle: 'Состояние',
         moodLead: 'Сейчас {он}',
@@ -439,6 +448,7 @@ export const BLOCK_ICONS = {
     fears: 'ghost',
     dream: 'star',
     traits: 'feather',
+    persona: 'persona',
     impression: 'eye',
     chronicle: 'scroll',
     rewards: 'gift',

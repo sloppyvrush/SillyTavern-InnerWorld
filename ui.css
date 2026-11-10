@@ -7465,45 +7465,95 @@ ol {
     font-style: italic;
 }
 
-/* ---------- Тип личности (16 типов) и темперамент: строкой в блоке черт ---------- */
-.iw-persona {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 2px 0 10px;
+/* ---------- Тип личности (16 типов) и темперамент: отдельный блок ---------- */
+.iw-b-persona {
+    grid-column: 1 / -1;
 }
 
-.iw-persona-chip {
+.iw-b-persona .iw-block-head { color: var(--iw-traits); }
+
+.iw-persona-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.iw-persona-card {
     --pt: var(--iw-scribble);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px 3px 4px;
-    border: 1.5px solid color-mix(in srgb, var(--pt) 70%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--pt) 13%, transparent);
-    font-size: 13px;
-    line-height: 1.2;
-    color: var(--iw-ink);
+    padding: 10px 12px 12px;
+    border: 1.5px solid color-mix(in srgb, var(--pt) 55%, transparent);
+    border-left-width: 5px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--pt) 9%, transparent);
 }
 
-.iw-persona-chip b {
-    display: inline-flex;
+.iw-persona-top {
+    display: flex;
     align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.iw-persona-code {
+    display: inline-flex;
+    align-items: baseline;
     justify-content: center;
-    min-width: 22px;
-    padding: 2px 7px;
-    border-radius: 999px;
+    min-width: 46px;
+    padding: 4px 9px;
+    border-radius: 8px;
     background: var(--pt);
     color: #fff;
     font-family: var(--iw-mono-font, ui-monospace, monospace);
-    font-size: 11.5px;
+    font-size: 15px;
     font-weight: 700;
-    letter-spacing: .04em;
+    letter-spacing: .05em;
+    line-height: 1.1;
 }
 
-.iw-persona-chip b .iw-ico {
-    font-size: 13px;
+.iw-persona-code i {
+    font-style: normal;
+    font-size: .75em;
+    opacity: .85;
+}
+
+.iw-persona-code .iw-ico {
+    font-size: 18px;
+}
+
+.iw-persona-name {
+    display: flex;
+    flex-direction: column;
+    font-family: var(--iw-title-font);
+    font-size: var(--iw-sub-size, 20px);
+    font-weight: 700;
+    line-height: 1.05;
+    color: color-mix(in srgb, var(--pt) 75%, var(--iw-ink));
+}
+
+.iw-persona-name small {
+    margin-top: 3px;
+    font-family: var(--iw-body-font);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--iw-muted);
+    text-transform: lowercase;
+}
+
+.iw-persona-general,
+.iw-persona-own {
+    margin: 0;
+    font-size: .92em;
+    line-height: 1.4;
+}
+
+.iw-persona-general {
+    color: var(--iw-muted);
+}
+
+.iw-persona-own {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px dashed color-mix(in srgb, var(--pt) 45%, transparent);
 }
 
 .iw-pt-analyst { --pt: #88619a; }
@@ -7515,31 +7565,168 @@ ol {
 .iw-tm-phlegmatic { --pt: #3d8db0; }
 .iw-tm-melancholic { --pt: #6b5ca8; }
 
-.iw-theme-cyber .iw-persona-chip,
-.iw-theme-dossier .iw-persona-chip,
-.iw-theme-logbook .iw-persona-chip,
-.iw-theme-cyber .iw-persona-chip b,
-.iw-theme-dossier .iw-persona-chip b,
-.iw-theme-logbook .iw-persona-chip b {
+.iw-theme-cyber .iw-persona-card,
+.iw-theme-dossier .iw-persona-card,
+.iw-theme-cyber .iw-persona-code,
+.iw-theme-dossier .iw-persona-code {
     border-radius: 0;
 }
 
-.iw-theme-logbook .iw-persona-chip {
-    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+.iw-theme-logbook .iw-persona-card {
+    border-radius: 0;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 
-.iw-theme-dossier .iw-persona-chip b {
-    background: #1d1a16;
+.iw-theme-logbook .iw-persona-code {
+    border-radius: 0;
+    font-family: 'JetBrains Mono', monospace;
 }
 
-.iw-theme-bimbo .iw-persona-chip {
+.iw-theme-dossier .iw-persona-card {
+    background: rgba(255, 255, 255, .35);
+    border-left-color: #1d1a16;
+}
+
+.iw-theme-bimbo .iw-persona-card {
     border-style: dashed;
+    border-left-style: solid;
+    border-radius: 18px;
     background: rgba(255, 255, 255, .7);
 }
 
-.iw-theme-dark .iw-persona-chip,
-.iw-theme-cyber .iw-persona-chip,
-.iw-theme-grimoire .iw-persona-chip,
-.iw-theme-logbook .iw-persona-chip {
-    background: color-mix(in srgb, var(--pt) 22%, transparent);
+.iw-theme-bimbo .iw-persona-code {
+    border-radius: 999px;
+}
+
+.iw-theme-grimoire .iw-persona-card,
+.iw-theme-medieval .iw-persona-card,
+.iw-theme-china .iw-persona-card {
+    border-radius: 4px;
+}
+
+.iw-theme-dark .iw-persona-card,
+.iw-theme-cyber .iw-persona-card,
+.iw-theme-grimoire .iw-persona-card,
+.iw-theme-logbook .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 16%, transparent);
+}
+
+.iw-theme-dark .iw-persona-name,
+.iw-theme-cyber .iw-persona-name,
+.iw-theme-grimoire .iw-persona-name,
+.iw-theme-logbook .iw-persona-name {
+    color: color-mix(in srgb, var(--pt) 55%, #fff);
+}
+
+.iw-theme-china .iw-b-persona .iw-block-icon::after { content: '魂'; }
+
+/* ---------- Черта: «подробнее» по нажатию, приобретённые — своим цветом ---------- */
+.iw-panel { --iw-gained: #b0569a; }
+.iw-theme-dark, .iw-theme-cyber, .iw-theme-grimoire, .iw-theme-logbook { --iw-gained: #e7a0d6; }
+.iw-theme-bimbo { --iw-gained: #9b4dd4; }
+.iw-theme-logbook { --iw-gained: #f2a93f; }
+.iw-theme-cyber { --iw-gained: #ff5cf0; }
+.iw-theme-dossier { --iw-gained: #9a2f22; }
+.iw-theme-china { --iw-gained: #b8322a; }
+.iw-theme-medieval { --iw-gained: #7a4a9a; }
+
+.iw-trait-det {
+    flex: 1;
+    min-width: 0;
+}
+
+.iw-trait-det > summary {
+    list-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 6px;
+}
+
+.iw-trait-det > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iw-trait-chev {
+    display: inline-flex;
+    font-size: 12px;
+    opacity: .5;
+    transition: transform .15s, opacity .15s;
+}
+
+.iw-trait-det > summary:hover .iw-trait-chev {
+    opacity: 1;
+}
+
+.iw-trait-det[open] .iw-trait-chev {
+    transform: rotate(180deg);
+    opacity: .9;
+}
+
+.iw-trait-more {
+    display: block;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+    font-size: .86em;
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.iw-trait-more p {
+    margin: 0 0 4px;
+}
+
+.iw-trait-more p:last-child {
+    margin-bottom: 0;
+}
+
+.iw-trait-origin b {
+    color: var(--iw-gained);
+}
+
+.iw-trait-det[open] {
+    min-width: 180px;
+}
+
+.iw-panel .iw-trait.iw-acquired {
+    border-color: var(--iw-gained);
+    box-shadow: inset 4px 0 0 var(--iw-gained);
+    padding-left: 15px;
+}
+
+.iw-panel .iw-trait.iw-acquired .iw-trait-name {
+    color: var(--iw-gained);
+}
+
+.iw-trait-kept {
+    display: inline-block;
+    padding: 0 6px;
+    border: 1px solid var(--iw-gained);
+    border-radius: 999px;
+    color: var(--iw-gained);
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.iw-theme-cyber .iw-trait-kept,
+.iw-theme-dossier .iw-trait-kept,
+.iw-theme-logbook .iw-trait-kept {
+    border-radius: 0;
+}
+
+.iw-panel .iw-trait-head {
+    align-items: flex-start;
+}
+
+.iw-panel .iw-trait.iw-k-gone .iw-trait-name {
+    text-decoration: none;
+}
+
+.iw-panel .iw-trait.iw-k-gone .iw-trait-label {
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+    text-decoration-color: color-mix(in srgb, currentColor 70%, #e0414a);
 }

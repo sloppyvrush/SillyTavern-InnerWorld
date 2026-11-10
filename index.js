@@ -1046,11 +1046,14 @@ function chatFp(id) {
     return hashStr(`${id}|${m.swipe_id ?? 0}|${m.mes}|${userText}|${JSON.stringify(settings().modules)}`);
 }
 
-// У кого из главных ещё нет типа личности или темперамента — такой разбор не считаем пустым.
+// У кого из главных ещё нет типа личности, темперамента или «подробнее» к чертам — такой разбор не считаем пустым.
 function missingPersona() {
     if (!hasChat() || !settings().modules.traits) return false;
     const st = currentState();
-    return splitCast(st).mains.some(k => st.characters[k] && (!st.characters[k].ptype || !st.characters[k].temper));
+    return splitCast(st).mains.some(k => {
+        const ch = st.characters[k];
+        return ch && (!ch.ptype || !ch.temper || (ch.traits || []).some(t => t.kind !== 'gone' && !t.about));
+    });
 }
 
 function nothingNew(what) {

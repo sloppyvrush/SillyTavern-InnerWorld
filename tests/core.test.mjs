@@ -461,7 +461,9 @@ test('во время разбора видна кнопка «стоп», ло�
     assert.ok(!idle.includes('data-iw-stop'));
     assert.ok(idle.includes('data-iw-pick-book="Город" aria-pressed="true"'));
     assert.ok(!idle.includes('data-iw-pick-book="Мир"'));
-    assert.ok(renderPanel(Object.assign({}, base, { working: true })).includes('data-iw-stop'));
+    const busyAll = renderPanel(Object.assign({}, base, { working: true, busyKind: 'all' }));
+    assert.equal((busyAll.match(/data-iw-stop/g) || []).length, 1);
+    assert.ok(busyAll.includes('iw-act-all busy iw-act-stop'));
 });
 
 test('закреплённое желание держится до исполнения, переразбор не теряет награды', () => {
@@ -525,9 +527,21 @@ test('тип личности и темперамент: из ответа мо�
     assert.equal(st.characters['Роберт'].ptype, 'INFP-T');
     assert.equal(st.characters['Роберт'].temper, 'phlegmatic');
     const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'bimbo', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
-    assert.ok(html.includes('Посредник') && html.includes('флегматик') && html.includes('iw-pt-diplomat'));
+    assert.ok(html.includes('Посредник') && html.includes('флегматик') && html.includes('iw-pt-diplomat') && html.includes('iw-b-persona'));
     const sys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] });
     assert.ok(sys.includes('16personalities') && sys.includes('«опекает свидетельницу»'));
+});
+
+test('черты: «подробнее» дописывается, приобретённая и после переноса своего цвета', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Роберт', traits: [{ name: 'упрямый' }] }), all).state;
+    st.characters['Роберт'].cycle = 50;
+    st = applyAnalysis(st, one({ name: 'Роберт', traits: [{ name: 'упрямый', about: 'вырос среди старших братьев' }] }), all).state;
+    assert.equal(st.characters['Роберт'].traits[0].about, 'вырос среди старших братьев');
+    st.characters['Роберт'].traits.push({ name: 'осторожный', kind: 'base', kept: true, why: 'чуть не погиб' });
+    const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
+    assert.ok(html.includes('вырос среди старших братьев'));
+    assert.ok(html.includes('iw-acquired') && html.includes('приобретена') && html.includes('чуть не погиб'));
+    assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('no_about'));
 });
 
 console.log(`значки: ${passed} проверок прошло`);
