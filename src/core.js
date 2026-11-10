@@ -46,6 +46,7 @@ export const DEFAULT_SETTINGS = {
     showNpc: true,           // вести и показывать НПС, а не только главного персонажа
     rosters: {},             // список НПС из лорбука и карточки — по персонажу (аватарке)
     sound: true,             // звуки при событиях
+    volume: 45,              // громкость звуков, 0–100
     points: true,            // очки за желания и мечту + награды
 };
 
@@ -86,7 +87,35 @@ export const REWARD_ICONS = ['gift', 'star', 'cake', 'ribbon', 'key', 'flower', 
 
 const WANT_STATUS = ['active', 'done', 'dropped'];
 const FEAR_STATUS = ['active', 'realized', 'gone'];
-const TRAIT_KINDS = ['base', 'up', 'new', 'down'];
+const TRAIT_KINDS = ['base', 'up', 'new', 'down', 'gone'];
+export const TRAIT_GONE_TURNS = 2; // столько ответов ушедшая черта видна зачёркнутой, чтобы её можно было вернуть
+
+// Тип личности (16 типов, как в тесте 16personalities) и темперамент — из характера по карточке и лорбуку.
+export const PTYPES = {
+    INTJ: 'Архитектор', INTP: 'Логик', ENTJ: 'Командир', ENTP: 'Полемист',
+    INFJ: 'Заступник', INFP: 'Посредник', ENFJ: 'Протагонист', ENFP: 'Активист',
+    ISTJ: 'Логист', ISFJ: 'Защитник', ESTJ: 'Менеджер', ESFJ: 'Консул',
+    ISTP: 'Виртуоз', ISFP: 'Авантюрист', ESTP: 'Предприниматель', ESFP: 'Артист',
+};
+// Группа типа: аналитики (NT), дипломаты (NF), стражи (SJ), искатели (SP).
+export function ptypeGroup(code) {
+    const c = String(code || '');
+    if (c[1] === 'N') return c[2] === 'T' ? 'analyst' : 'diplomat';
+    if (c[1] === 'S') return c[3] === 'J' ? 'sentinel' : 'explorer';
+    return '';
+}
+export const PTYPE_GROUPS = { analyst: 'Аналитики', diplomat: 'Дипломаты', sentinel: 'Стражи', explorer: 'Искатели' };
+export const TEMPERS = { choleric: 'холерик', sanguine: 'сангвиник', phlegmatic: 'флегматик', melancholic: 'меланхолик' };
+const TEMPER_RU = { холерик: 'choleric', сангвиник: 'sanguine', флегматик: 'phlegmatic', меланхолик: 'melancholic' };
+export function cleanPtype(v) {
+    const m = String(v || '').toUpperCase().replace(/[^A-Z-]/g, '').match(/^([EI][SN][TF][JP])(?:-?([AT]))?$/);
+    return m ? m[1] + (m[2] ? '-' + m[2] : '') : '';
+}
+export function cleanTemper(v) {
+    const x = String(v || '').toLowerCase().trim();
+    if (TEMPERS[x]) return x;
+    return TEMPER_RU[x] || '';
+}
 const TONES = ['good', 'bad', 'mid'];
 const WEIGHTS = ['light', 'medium', 'deep'];
 
@@ -113,6 +142,7 @@ export function mergeSettings(saved) {
     if (s.source === 'profile') { s.source = 'custom'; s.apiKind = 'profile'; }
     if (!['русском', 'английском'].includes(s.language)) s.language = 'русском';
     if (!Array.isArray(s.apiModels)) s.apiModels = [];
+    s.volume = Math.max(0, Math.min(100, Number.isFinite(Number(s.volume)) ? Number(s.volume) : 45));
     delete s.badges;
     delete s.track;
     delete s.trackList;
@@ -178,6 +208,10 @@ export function cleanCharacter(raw, opts = {}) {
     if (!name) return null;
     const c = { name, g: oneOf(raw.g, ['m', 'f', 'n'], 'n') };
     if (raw.who) c.who = str(raw.who, 160);
+    const pt = cleanPtype(raw.ptype);
+    if (pt) c.ptype = pt;
+    const tm = cleanTemper(raw.temper);
+    if (tm) c.temper = tm;
 
     if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
     if (raw.face !== undefined) c.face = oneOf(raw.face, FACES, 'neutral');
@@ -412,11 +446,30 @@ export function decayState(state, elapsed) {
                 .map(b => Object.assign({}, b, { left: (b.left ?? 1) - n }))
                 .filter(b => b.left > 0);
         }
+        if (Array.isArray(c.traits) && c.traits.some(t => t.kind === 'gone')) {
+            c.traits = c.traits
+                .map(t => t.kind === 'gone' ? Object.assign({}, t, { left: (t.left ?? 1) - n }) : t)
+                .filter(t => t.kind !== 'gone' || t.left > 0);
+        }
     }
     return next;
 }
 
 const WEIGHT_RANK = { light: 1, medium: 2, deep: 3 };
+
+// Цвет и смайлик общего состояния: лицо от модели, иначе по слову настроения, иначе по самой сильной эмоции.
+// Если две самые сильные эмоции равны по силе и разные по цвету — состояние смешанное, отдаём оба лица.
+export function moodFaces(c) {
+    const ranked = (c && c.moodlets ? c.moodlets : [])
+        .map(m => ({ face: m.face || guessFace(m.emotion, m.tone), rank: WEIGHT_RANK[m.weight] || 2, left: m.left || 0 }))
+        .sort((a, b) => b.rank - a.rank || b.left - a.left);
+    let main = c && c.face && c.face !== 'neutral' ? c.face : guessFace(c && c.mood);
+    if (main === 'neutral' && ranked.length) main = ranked[0].face;
+    if (!c || (!c.mood && !c.face && !ranked.length)) return [];
+    const top = ranked.filter(r => r.rank === (ranked[0] && ranked[0].rank));
+    const other = top.map(r => r.face).find(f => f !== main && f !== 'neutral');
+    return other && top.length > 1 ? [main, other] : [main];
+}
 
 // Новые эмоции добавляются к тем, что ещё не прошли; одинаковые — освежаются, а не дублируются.
 export function mergeMoodlets(oldList, freshList, ended) {
@@ -444,30 +497,57 @@ export function mergeMoodlets(oldList, freshList, ended) {
 // Черты: при знакомстве все исходные; потом не больше одного изменения за раз,
 // только с причиной и не чаще, чем раз в несколько обновлений. Черты не пропадают сами.
 export function mergeTraits(old, fresh, cycle) {
-    const freshTraits = fresh.traits || [];
+    const freshTraits = (fresh.traits || []).filter(t => t.kind !== 'gone' || (old && old.traits && old.traits.length));
     if (!old || !Array.isArray(old.traits) || !old.traits.length) {
-        return { traits: freshTraits.map(t => Object.assign({}, t, { kind: 'base' })), changedAt: old ? old.traitChangedAt : undefined };
+        return { traits: freshTraits.map(t => ({ name: t.name, kind: 'base' })), changedAt: old ? old.traitChangedAt : undefined };
     }
     const traits = old.traits.map(t => Object.assign({}, t));
     const cooling = old.traitChangedAt !== undefined && cycle - old.traitChangedAt < TRAIT_COOLDOWN;
     let changedAt = old.traitChangedAt;
     if (cooling) return { traits, changedAt };
+    // За раз — одно изменение характера. Исключение: черта ушла и на её место пришла новая
+    // (был доверчивым → после измены стал недоверчивым).
+    let gone = false, other = false;
     for (const t of freshTraits) {
+        if (!t.why) continue;
         const prev = findTrait(traits, t.name);
+        if (t.kind === 'gone') {
+            if (gone || !prev || prev.kind === 'gone') continue;
+            prev.was = prev.kind;
+            prev.kind = 'gone';
+            prev.why = t.why;
+            prev.left = TRAIT_GONE_TURNS;
+            gone = true;
+            changedAt = cycle;
+            continue;
+        }
+        if (other) continue;
         if (prev) {
-            if (t.kind === prev.kind || t.kind === 'base' || !t.why) continue;
+            if (prev.kind === 'gone') continue; // ушедшую черту модель сама не возвращает
+            if (t.kind === prev.kind || t.kind === 'base') continue;
             if (t.kind === 'new' && prev.kind !== 'new') continue; // старую черту нельзя сделать «новой»
             prev.kind = t.kind;
             prev.why = t.why;
+            other = true;
             changedAt = cycle;
-            break;
+            continue;
         }
-        if (!t.why || traits.length >= MAX_TRAITS) continue;
+        if (traits.filter(x => x.kind !== 'gone').length >= MAX_TRAITS) continue;
         traits.push({ name: t.name, why: t.why, kind: 'new' });
+        other = true;
         changedAt = cycle;
-        break;
     }
     return { traits, changedAt };
+}
+
+// Вернуть ушедшую черту туда, где она была.
+export function restoreTrait(t) {
+    if (!t || t.kind !== 'gone') return t;
+    t.kind = t.was && t.was !== 'gone' ? t.was : 'base';
+    delete t.was;
+    delete t.left;
+    if (t.kind === 'base') delete t.why;
+    return t;
 }
 
 // Мечта — глобальная и личная, меняется редко.
@@ -514,6 +594,8 @@ export function mergeCharacter(old, fresh, modules) {
     out.name = old ? old.name : fresh.name;
     if (fresh.g && fresh.g !== 'n') out.g = fresh.g;
     if (!out.who && fresh.who) out.who = fresh.who;
+    if (fresh.ptype) out.ptype = fresh.ptype;
+    if (fresh.temper) out.temper = fresh.temper;
     if (!out.g) out.g = 'n';
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
 
@@ -528,6 +610,14 @@ export function mergeCharacter(old, fresh, modules) {
             const prev = findByText(old && old.wants, w.text);
             return !prev || prev.status === 'active';
         });
+        // закреплённые желания (как в «Симс») не меняются и не пропадают, пока не исполнятся
+        for (const p of (old && old.wants) || []) {
+            if (!p.pinned || p.status !== 'active') continue;
+            const now = findByText(out.wants, p.text);
+            if (!now) out.wants.unshift({ text: p.text, status: 'active', pinned: true });
+            else if (now.status === 'done') now.pinned = false;
+            else { now.status = 'active'; now.pinned = true; }
+        }
     }
     if (modules.fears && fresh.fears) {
         out.fears = fresh.fears.filter(f => {
@@ -588,6 +678,9 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
             const got = evs.reduce((sum, e) => sum + (POINTS[e.type] || 0), 0);
             if (got) {
                 merged.points = (merged.points || 0) + got;
+                // запоминаем, сколько дал этот ответ: при повторном разборе того же ответа очки не удвоятся
+                merged.earned = got;
+                merged.earnedAt = opts.mesId ?? null;
                 for (const e of evs) if (POINTS[e.type]) e.points = POINTS[e.type];
             }
         }
@@ -601,6 +694,41 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
     }
     next.order = next.order.filter(k => next.characters[k]);
     return { state: next, events };
+}
+
+// Повторный разбор того же ответа начинается с состояния ДО него — но то, что сделал сам игрок
+// (награды, покупки, очки, закреплённая или придуманная заново мечта, закреплённые желания), сохраняем.
+export function carryOwnEdits(base, own, mesId) {
+    if (!own || !own.characters) return base;
+    const out = JSON.parse(JSON.stringify(base || emptyState()));
+    if (!out.characters) out.characters = {};
+    if (!Array.isArray(out.order)) out.order = Object.keys(out.characters);
+    for (const [key, mine] of Object.entries(own.characters)) {
+        let c = out.characters[key];
+        if (!c) {
+            if (!(mine.shop || mine.points || mine.collection || mine.buffs)) continue;
+            c = out.characters[key] = { name: mine.name, g: mine.g || 'n' };
+            if (!out.order.includes(key)) out.order.push(key);
+        }
+        for (const f of ['shop', 'buffs', 'collection']) if (mine[f]) c[f] = JSON.parse(JSON.stringify(mine[f]));
+        if (mine.points !== undefined) c.points = Math.max(0, (mine.points || 0) - (mine.earnedAt === mesId ? (mine.earned || 0) : 0));
+        if (mine.dream && (mine.dream.pinned || mine.dream.manual)) {
+            c.dream = JSON.parse(JSON.stringify(mine.dream));
+            if (mine.dreamChangedAt !== undefined) c.dreamChangedAt = mine.dreamChangedAt;
+        }
+        // правки игрока руками (удалил, закрепил, перенёс) — переносим блок целиком
+        for (const f of ['wants', 'fears', 'traits', 'moodlets']) {
+            if (mine.edited && mine.edited[f] === mesId && mine[f]) c[f] = JSON.parse(JSON.stringify(mine[f]));
+        }
+        for (const w of mine.wants || []) {
+            if (!w.pinned || w.status !== 'active') continue;
+            c.wants = c.wants || [];
+            const have = findByText(c.wants, w.text);
+            if (have) have.pinned = true;
+            else c.wants.unshift({ text: w.text, status: 'active', pinned: true });
+        }
+    }
+    return out;
 }
 
 export function diffCharacter(old, now, modules) {
@@ -625,6 +753,7 @@ export function diffCharacter(old, now, modules) {
             if (!prev && t.kind === 'new') ev.push({ type: 'trait_new', who, text: t.name, why: t.why });
             else if (prev && prev.kind !== t.kind && t.kind === 'up') ev.push({ type: 'trait_up', who, text: t.name, why: t.why });
             else if (prev && prev.kind !== t.kind && t.kind === 'down') ev.push({ type: 'trait_down', who, text: t.name, why: t.why });
+            else if (prev && prev.kind !== t.kind && t.kind === 'gone') ev.push({ type: 'trait_gone', who, text: t.name, why: t.why });
         }
     }
     if (modules.dream && now.dream && now.dream.event && old && old.dream) {
@@ -665,6 +794,7 @@ export function eventTitle(ev) {
         trait_new: 'Новая черта',
         trait_up: 'Черта усилилась',
         trait_down: 'Черта слабеет',
+        trait_gone: 'Черта ушла',
         dream_step: 'Шаг к мечте',
         dream_done: 'Мечта сбылась',
         dream_change: 'Мечта изменилась',
@@ -682,7 +812,8 @@ export function eventText(ev) {
         case 'fear_gone': return `Больше не боится: «${ev.text}»`;
         case 'trait_new':
         case 'trait_up':
-        case 'trait_down': return `${ev.text}${ev.why ? ` — ${ev.why}` : ''}`;
+        case 'trait_down':
+        case 'trait_gone': return `${ev.text}${ev.why ? ` — ${ev.why}` : ''}`;
         case 'dream_step': return `${ev.text} — выполнено`;
         case 'dream_done': return `«${ev.text}»`;
         case 'dream_change':
@@ -708,7 +839,11 @@ export function responseTemplate(modules, manualTurns) {
     if (modules.wants) c.wants = [{ text: 'чего хочет', status: 'active|done|dropped' }];
     if (modules.fears) c.fears = [{ text: 'чего боится', level: 'тревожит|пугает|в ужасе', strength: 2, status: 'active|realized|gone' }];
     if (modules.dream) c.dream = { title: 'мечта жизни', plus: '', steps: [{ text: 'этап', done: false }], change: 'same|change|add', why: '' };
-    if (modules.traits) c.traits = [{ name: 'черта', why: 'событие, после которого изменилась', kind: 'base|up|new|down' }];
+    if (modules.traits) {
+        c.traits = [{ name: 'черта характера', why: 'событие, после которого изменилась', kind: 'base|up|new|down|gone' }];
+        c.ptype = 'INFP';
+        c.temper = 'choleric|sanguine|phlegmatic|melancholic';
+    }
     if (modules.impression) c.impression = { label: '1–2 слова', score: 1, why: 'почему так', now: 'что думает сейчас', now_score: 1 };
     return JSON.stringify({ characters: [c] });
 }
@@ -729,9 +864,14 @@ export function buildSystemPrompt(settings, ctx) {
         `Кого вести: ${who}. ${user} — это игрок: его внутренний мир не веди и в список не включай.`,
         'Если у персонажа уже есть пункты, повторяй их текст дословно, пока они не изменились. Ничего не выдумывай сверх того, что следует из текста и карточки.',
         'who — только для персонажа, которого ещё нет в текущем состоянии: кто это одной строкой (роль, связь с героями). У известных персонажей who не пиши.',
+        'g — пол персонажа: m или f. Бери его из карточки, лорбука или текста (она сказала, он ушёл, окончания глаголов, имя). Все слова о персонаже (mood, feel, why, ended) пиши в его роде: «встревожена», «успела», «сама».',
     ];
-    if (ctx.fromLore) {
-        rules.push('Сейчас разбор карточки и лорбуков. Дополни главного персонажа (и тех, кто есть в сцене) тем, что о нём известно оттуда: черты характера, страхи, желания и мечта должны опираться на карточку и лорбук. То, что уже есть в текущем состоянии, не стирай — дополняй и уточняй.');
+    if (ctx.kind === 'all') {
+        rules.push('Сейчас общий разбор «всё сразу». Сначала основа из карточки и лорбуков: врождённый характер, мечта, глубинные желания и страхи. Затем поверх неё — всё, что случилось в чате: события меняют основу только там, где они по-настоящему сильнее её. Сведи всё в одну согласованную картину на текущий момент.');
+    } else if (ctx.fromLore) {
+        rules.push('Сейчас разбор карточки и лорбуков. Это ОСНОВА персонажа: врождённые черты, мечта, глубинные желания и страхи должны опираться на карточку и лорбук. То, что уже есть в текущем состоянии, не стирай: если это сложилось по событиям чата — оставь и согласуй с основой (дополни, уточни формулировку), а пустые места заполни из лорбука.');
+    } else if (!(ctx.catchUp && ctx.catchUp.length)) {
+        rules.push('Сейчас разбор новых сообщений чата. Текущее состояние — основа персонажа (из карточки, лорбука и прошлых событий), она остаётся. Меняй её только соразмерно событию: обычная сцена — только эмоции и отметки «сбылось»; заметное событие — можно обновить желание или страх; настоящее потрясение — мечту или черту характера. Если ничего важного не случилось — лишь дополняй, а не переписывай.');
     }
     if (ctx.catchUp && ctx.catchUp.length) {
         rules.push(`Это первое заполнение дневника для уже идущей истории. Восстанови состояние по всему, что видно в сообщениях и эпизодах из прошлого. Обязательно верни этих персонажей, если они лично появлялись в истории (а не только упоминались в разговоре): ${ctx.catchUp.join(', ')}. impression — каким было первое впечатление об игроке при знакомстве, now и now_score — каким отношение стало к последней сцене. Желания и страхи — актуальные на конец. moodlets — только эмоции, которые ещё должны действовать сейчас.`);
@@ -740,7 +880,7 @@ export function buildSystemPrompt(settings, ctx) {
         rules.push(`Известные персонажи этого мира: ${ctx.knownNames.join(', ')}. Если кто-то из них есть в сцене — называй его ровно так. Добавляй персонажа, только если он действительно присутствует или действует в последних сообщениях, а не просто упомянут.`);
     }
     if (m.mood) {
-        rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно).');
+        rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно). Состояние выводи из ВСЕХ его эмоций (старых, что ещё не прошли, и новых): если преобладает одна сильная — состояние по ней; если несколько примерно равных — одно слово, которое их соединяет (тревога + нежность → «растерян», злость + страх → «загнан в угол», радость + смущение → «смущённо счастлив»). face — лицо именно этого общего состояния.');
         const manual = settings.moodMode === 'manual';
         rules.push('face — какое лицо сейчас у персонажа: joy (радость), calm (спокоен), love (нежность, влюблённость), shy (смущён), sad (грусть), angry (злость, ревность), fear (страх, тревога, напряжение), tired (усталость), focus (сосредоточен, решителен), surprise (удивлён, озадачен), neutral. У каждой эмоции в moodlets тоже свой face из этого же списка — по самому чувству.');
         rules.push('moodlets — эмоции, которые ВЫЗВАЛИ ИЛИ УСИЛИЛИ последние события. Старые эмоции из текущего состояния не повторяй: они угасают сами. emotion — ЧУВСТВО одним-двумя словами, существительное со строчной буквы («облегчение», «нежность», «ревность», «стыд»), никогда не поступок и не описание сцены. feel — как это чувство ощущается внутри у самого персонажа, коротко и по-человечески («внутри теплеет, хочется её защитить», «сжимается в груди»). why — что его вызвало: конкретное событие с точки зрения персонажа, коротко («успел перехватить Эвелин в переулке»). Не путай: поступок персонажа — это причина (why), а не эмоция. weight — сила: light — слабая бытовая (раздражение, скука, смущение, лёгкая досада), medium — заметная (обида, тревога, радость от события), deep — сильная и долгая (горе, потрясение, влюблённость, страх после угрозы жизни). Обычные мелочи — только light, deep — только после серьёзных событий.'
@@ -748,10 +888,11 @@ export function buildSystemPrompt(settings, ctx) {
             + ' Если исполнилось желание — добавь приятную эмоцию, если сбылся страх — сильную неприятную. ended — эмоции из текущего состояния, которые события сняли (обида прошла после извинений и т. п.).');
     }
     rules.push('Желания, страхи и мечта должны быть правдой о ЭТОМ персонаже по его карточке и событиям, а не шаблонно-светлыми. Если персонаж мрачный, сломленный, жестокий или депрессивный — его желания и мечта тоже могут быть тёмными (исчезнуть, отомстить, чтобы всё закончилось, власть любой ценой). Не делай их позитивными и не смягчай, если этого нет в персонаже.');
-    if (m.wants) rules.push('wants — до 3 текущих желаний, конкретных и живых, из характера, сюжета и мечты; не только про игрока. Исполнившееся по событиям помечай status "done", неактуальное — "dropped", вместо них можно добавить новые.');
+    if (m.wants) rules.push('wants — до 3 текущих желаний, конкретных и живых, из характера, сюжета и мечты; не только про игрока. Исполнившееся по событиям помечай status "done", неактуальное — "dropped", вместо них можно добавить новые. Желания с pinned: true игрок закрепил: верни их как есть, не меняй текст и не отменяй — только status "done", когда исполнится.');
     if (m.fears) rules.push('fears — до 3 страхов, из характера, прошлого и сюжета; strength 1–3; level — одно слово. Если то, чего персонаж боялся, ПРОИЗОШЛО в последних сообщениях — обязательно помечай "realized". Преодолённый — "gone".');
     if (m.dream) rules.push(`dream — мечта всей жизни: одна большая личная цель, которая следует из характера и истории персонажа (карточка, прошлое, ценности), с 3–5 этапами. Это глобальное и личное, а не текущая сцена. ${user} может появиться в мечте, ТОЛЬКО если между ними уже по-настоящему близкие отношения (отношение +2 и выше) и было сильное общее событие; незнакомец, знакомый или просто приятель в мечту не попадает. Если мечта уже есть — повторяй её название, plus и этапы дословно, отмечай выполненные этапы (done: true) и ставь change "same". Меняй мечту, только если случилось настоящее потрясение, которое переворачивает жизнь персонажа: change "change" — новая мечта (новые title и steps), change "add" — мечта дополнилась (plus — короткое продолжение, например «…вместе с ней»); в why — какое событие. Мелкие события мечту не трогают.`);
-    if (m.traits) rules.push('traits — 3–6 черт характера. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. Не больше одного изменения за раз: new — появилась, up — усилилась, down — слабеет; в why — какое именно событие.');
+    if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы, например INFP, ENTJ, ISTP; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. Если они уже есть — повторяй как есть; меняй, только если карточка и лорбук явно говорят иное.');
+    if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова.');
     if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве: label, score от -3 до 3, why. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3; меняй постепенно, резко — только после серьёзного поступка).`);
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     rules.push(`Формат ответа: ${responseTemplate(m, settings.moodMode === 'manual')}`);
@@ -785,7 +926,7 @@ export function compactState(state, modules, onlyKeys) {
     if (!keys.length) return '';
     const list = keys.map(k => {
         const c = state.characters[k];
-        const o = { name: c.name, g: c.g };
+        const o = { name: c.name, g: genderOf(c.g, c.name, c.who) };
         if (modules.mood) {
             o.mood = c.mood;
             o.moodlets_now = (c.moodlets || []).map(m => ({ emotion: m.emotion, why: m.why, weight: m.weight, left: m.left }));
@@ -793,7 +934,11 @@ export function compactState(state, modules, onlyKeys) {
         if (modules.wants) o.wants = (c.wants || []).filter(w => w.status === 'active');
         if (modules.fears) o.fears = (c.fears || []).filter(f => f.status === 'active');
         if (modules.dream && c.dream) o.dream = { title: c.dream.title, plus: c.dream.plus || '', steps: c.dream.steps, pinned: !!c.dream.pinned };
-        if (modules.traits) o.traits = c.traits;
+        if (modules.traits) {
+            o.traits = (c.traits || []).map(t => ({ name: t.name, kind: t.kind, why: t.why }));
+            if (c.ptype) o.ptype = c.ptype;
+            if (c.temper) o.temper = c.temper;
+        }
         if (modules.impression && c.impression) o.impression = { label: c.impression.label, score: c.impression.score, now: c.impression.now, now_score: c.impression.nowScore };
         return o;
     });
@@ -830,7 +975,7 @@ export function buildInjection(state, modules, userName, influence = 'medium') {
             bits.push(`мечта: ${c.dream.title}${c.dream.plus ? ` ${c.dream.plus}` : ''}${next ? ` (следующий шаг: ${next.text})` : ''}`);
         }
         if (modules.traits && c.traits && c.traits.length) {
-            bits.push(`черты: ${c.traits.filter(t => t.kind !== 'down').map(t => t.name).join(', ')}`);
+            bits.push(`черты: ${c.traits.filter(t => t.kind !== 'down' && t.kind !== 'gone').map(t => t.name).join(', ')}`);
         }
         if (Array.isArray(c.buffs) && c.buffs.length) {
             const eventsNow = c.buffs.filter(b => b.kind === 'event').map(b => b.effect || b.title);
@@ -845,6 +990,41 @@ export function buildInjection(state, modules, userName, influence = 'medium') {
     }
     if (!lines.length) return '';
     return `[Внутренний мир персонажей. Пусть это влияет на их поведение и реплики, но не пересказывай это напрямую.]\n${lines.join('\n')}`;
+}
+
+// Пол персонажа для склонений: из лорбука или ответа модели (m/f), иначе догадка
+// по описанию («девушка», «сестра») и по имени (Маша, Анна Петровна, Смирнова).
+const MALE_A = new Set(['никита', 'илья', 'кузьма', 'фома', 'лука', 'савва', 'данила', 'гаврила', 'фрол', 'миша', 'мишка', 'петя', 'ваня', 'дима', 'серёжа', 'сережа', 'лёша', 'леша', 'алёша', 'алеша', 'гоша', 'паша', 'костя', 'толя', 'вова', 'володя', 'слава', 'боря', 'гриша', 'федя', 'стёпа', 'степа', 'тёма', 'тема', 'юра', 'витя', 'коля', 'сеня', 'лёва', 'лева', 'гена', 'жора', 'рома', 'вася', 'тоша', 'кеша', 'эзра', 'джошуа', 'андреа', 'luka', 'ezra', 'joshua', 'nikita', 'ilya', 'misha']);
+const UNISEX_A = new Set(['саша', 'женя', 'валя', 'шура', 'сашка', 'sasha']);
+const FEMALE_WHO = /(^|[^а-яё])(девушк|девочк|девчонк|женщин|дам[аы]|леди|сестр|мать|мама|матер|дочь|дочк|дочер|жена|жён|невест|подруг|бабушк|бабк|тётя|тетя|тётк|тетк|госпожа|королев|принцесс|княжн|княгин|ведьм|колдунь|служанк|горничн|официантк|актрис|певиц|студентк|школьниц|медсестр|секретарш|хозяйк|вдов|героин|она[^а-яё]|она$)/;
+const MALE_WHO = /(^|[^а-яё])(парен|парн|мужчин|мальчик|мальчишк|юнош|сударь|господин|брат|отец|папа|сын|муж[^с]|муж$|жених|дедушк|дед[^у]|дед$|дядя|дядьк|король|принц[^е]|принц$|князь|колдун[^ь]|колдун$|слуга|студент[^к]|студент$|вдовец|он[^а-яё]|он$)/;
+export function genderOf(g, name = '', who = '') {
+    if (g === 'm' || g === 'f') return g;
+    const w = String(who || '').toLowerCase();
+    const f = FEMALE_WHO.test(w), m = MALE_WHO.test(w);
+    if (f && !m) return 'f';
+    if (m && !f) return 'm';
+    const words = String(name || '').toLowerCase().replace(/[^a-zа-яё\s-]/g, ' ').split(/\s+/).filter(Boolean);
+    if (!words.length) return 'n';
+    // Отчество и фамилия говорят надёжнее имени.
+    for (const x of words) {
+        if (/(овна|евна|ична|инична)$/.test(x)) return 'f';
+        if (/(ович|евич|ич)$/.test(x) && x.length > 4) return 'm';
+    }
+    for (const x of words.slice(1)) {
+        if (/(ова|ева|ёва|ина|ына|ская|цкая|ая)$/.test(x)) return 'f';
+        if (/(ов|ев|ёв|ин|ын|ский|цкий|ой|ый)$/.test(x)) return 'm';
+    }
+    const first = words[0];
+    if (UNISEX_A.has(first) || MALE_A.has(first)) return MALE_A.has(first) ? 'm' : 'n';
+    if (/[ая]$/.test(first) || /[a-z]a$/.test(first) || /(ия|ья|ie|ine|elle|ette|lyn|lynn)$/.test(first)) return 'f';
+    if (/[а-яё]$/.test(first) && /[бвгджзклмнпрстфхцчшщй]$/.test(first)) return 'm';
+    return 'n';
+}
+
+// Слово в роде персонажа: gw('f', 'упоминался', 'упоминалась').
+export function gw(g, m, f, n) {
+    return g === 'f' ? f : (g === 'm' ? m : (n ?? m));
 }
 
 export function plural(n, one, few, many) {
@@ -1050,6 +1230,7 @@ export function buildRewardsPrompt(info, c, lang = 'русском') {
     const parts = [];
     if (info.card) parts.push(`[Карточка: ${info.botName}]\n${info.card}`);
     if (c) parts.push(`[Персонаж]\n${JSON.stringify({ name: c.name, traits: (c.traits || []).map(t => t.name), dream: c.dream ? c.dream.title : '', wants: (c.wants || []).map(w => w.text), fears: (c.fears || []).map(f => f.text) })}`);
+    if (info.loreMain && info.loreMain.length) parts.push(`[Лорбук — сведения из прошлого разбора]\n${info.loreMain.join('\n\n')}`);
     if (info.messages && info.messages.length) parts.push(`[Последние сообщения]\n${info.messages.slice(-4).join('\n\n')}`);
     parts.push('Верни JSON.');
     return { system, user: parts.join('\n\n') };

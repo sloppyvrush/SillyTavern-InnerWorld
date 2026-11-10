@@ -29,6 +29,25 @@ export const THEMES = {
         name: 'Бимбо-пикми',
         fonts: 'family=Pacifico&family=Nunito:wght@500;600;700;800',
     },
+    china: {
+        name: 'Китайский свиток',
+        fonts: 'family=Prata&family=PT+Serif:ital,wght@0,400;0,700;1,400',
+        // кисть только для иероглифов на печатях — грузим лишь эти знаки
+        glyphs: 'family=Ma+Shan+Zheng&text=%E6%83%85%E6%84%BF%E6%83%A7%E6%A2%A6%E6%80%A7%E5%BF%83%E5%8F%B2%E7%A4%BC%E4%B9%A6',
+    },
+    grimoire: {
+        name: 'Ведьмин гримуар',
+        fonts: 'family=Bad+Script&family=Lora:ital,wght@0,400;0,600;1,400',
+    },
+    dossier: {
+        name: 'Досье 90-х',
+        fonts: 'family=Rubik+Mono+One&family=IBM+Plex+Mono:wght@400;500;600;700',
+    },
+    logbook: {
+        name: 'Бортовой журнал',
+        // как на сайте Stellar Fleet: Oswald — заголовки, Onest — текст, JetBrains Mono — служебное
+        fonts: 'family=Oswald:wght@400;500;600&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500',
+    },
 };
 
 // Цвета для карточек выбора темы: фон, чернила, акцент.
@@ -40,9 +59,19 @@ export const THEME_SWATCHES = {
     cyber: ['#0b0d14', '#3ef0ff', '#ff3ea5'],
     grid: ['#f7f8f2', '#1f3a93', '#c0262d'],
     bimbo: ['#fff0f7', '#ff3d96', '#c44fd1'],
+    china: ['#f6efe0', '#1d1a17', '#c8312b'],
+    grimoire: ['#1b1324', '#e8c77a', '#8fe39b'],
+    dossier: ['#d8bf8a', '#2a2a2a', '#c0262d'],
+    logbook: ['#0c141a', '#f2a93f', '#62d6c8'],
 };
 
 export const THEME_IDS = Object.keys(THEMES);
+
+// Значок валюты: в журнале — кредиты, в свитке — монетка с квадратным отверстием, в остальных — монета.
+const CURRENCY_ICONS = { logbook: 'credit', china: 'cashcoin' };
+export function currencyIcon(theme) {
+    return CURRENCY_ICONS[theme] || 'coin';
+}
 
 // Подписи блоков: у каждой темы свой голос. {он} → он/она.
 // Строка настроения: «Сейчас он» + слово из mood («Сейчас он собран»).
@@ -82,8 +111,8 @@ const THEME_LABELS = {
         moodLead: 'Сейчас {он}',
         feels: 'Почему тучка плачет?',
         feelsHint: 'что на сердечке',
-        wants: 'Чего хочет, коть?',
-        fears: 'Чего боится, кис?',
+        wants: 'Чего хочет {ник1}',
+        fears: 'Чего боится {ник2}',
         dream: 'Мечта-мечточка ✨',
         traits: 'Какой {он} по жизни',
         traitsBase: 'С рождения',
@@ -161,14 +190,136 @@ const THEME_LABELS = {
     dark: {
         analyze: 'Разобрать',
     },
+    china: {
+        title: 'Книга сердца',
+        moodTitle: 'Состояние духа',
+        moodLead: 'Сейчас {он}',
+        feels: 'Чувства',
+        wants: 'Чего желает',
+        fears: 'Чего страшится',
+        dream: 'Путь сердца',
+        traits: 'Природа',
+        traitsBase: 'Врождённое',
+        traitsGained: 'Обретённое',
+        attitude: 'Как {он} смотрит на тебя',
+        first: 'первая встреча',
+        now: 'ныне',
+        chronicle: 'Летопись дней',
+        chronicleEmpty: 'Свиток пока чист.',
+        whois: 'Кто это?',
+        whoisTraits: 'из свитков',
+        empty: 'Свиток пока чист. Кисть коснётся бумаги после следующего ответа.',
+        noChat: 'Свиток свёрнут. Открой чат с персонажем.',
+        rewards: 'Дары',
+        shop: 'Лавка даров',
+        analyze: 'Раскрыть свиток',
+        analyzing: 'Кисть пишет',
+    },
+    grimoire: {
+        title: 'Гримуар',
+        moodTitle: 'Аура',
+        moodLead: 'Сейчас {он}',
+        feels: 'Чувства',
+        wants: 'Тайные желания',
+        fears: 'Тёмные страхи',
+        dream: 'Заветная мечта',
+        traits: 'Суть',
+        traitsBase: 'Врождённое',
+        traitsGained: 'Проявилось',
+        attitude: 'Нить между вами',
+        first: 'первое гадание',
+        now: 'сейчас',
+        chronicle: 'Книга теней',
+        chronicleEmpty: 'Страницы пока молчат.',
+        whois: 'Кто это?',
+        whoisTraits: 'из гримуара',
+        empty: 'Страницы пока молчат. Знаки проявятся после следующего ответа.',
+        noChat: 'Гримуар закрыт. Открой чат с персонажем.',
+        settings: 'Обряды',
+        rewards: 'Обереги',
+        shop: 'Лавка зелий',
+        analyze: 'Прочесть знаки',
+        analyzing: 'Варю зелье',
+    },
+    dossier: {
+        title: 'Личное дело',
+        moodTitle: 'Состояние',
+        moodLead: 'Сейчас {он}',
+        feels: 'Эмоции',
+        wants: 'Мотивы',
+        fears: 'Уязвимости',
+        dream: 'Конечная цель',
+        traits: 'Характеристика',
+        traitsBase: 'Исходные данные',
+        traitsGained: 'Выявлено',
+        attitude: 'Отношение к тебе',
+        first: 'при первой встрече',
+        now: 'на данный момент',
+        chronicle: 'Протокол событий',
+        chronicleEmpty: 'Протокол пуст.',
+        whois: 'Справка',
+        whoisTraits: 'по картотеке',
+        empty: 'Дело пока пустое. Сведения поступят после следующего ответа.',
+        noChat: 'Дело не заведено. Открой чат с персонажем.',
+        settings: 'Параметры',
+        rewards: 'Поощрения',
+        shop: 'Спецснабжение',
+        analyze: 'Собрать сведения',
+        analyzing: 'Печатаю',
+    },
+    logbook: {
+        title: 'Бортовой журнал',
+        moodTitle: 'Состояние',
+        moodLead: 'Сейчас {он}',
+        feels: 'Эмоции',
+        wants: 'Задачи',
+        fears: 'Риски',
+        dream: 'Курс жизни',
+        traits: 'Профиль',
+        traitsBase: 'Исходный',
+        traitsGained: 'Обновлено в рейсе',
+        attitude: 'Связь с тобой',
+        first: 'первый контакт',
+        now: 'сейчас',
+        chronicle: 'Записи журнала',
+        chronicleEmpty: 'Журнал пуст.',
+        whois: 'Кто на борту?',
+        whoisTraits: 'из реестра',
+        empty: 'Журнал пуст. Записи появятся после следующего ответа.',
+        noChat: 'Нет связи. Открой чат с персонажем.',
+        settings: 'Системы',
+        rewards: 'Снабжение',
+        shop: 'Склад снабжения',
+        analyze: 'Запросить телеметрию',
+        analyzing: 'Приём данных',
+    },
 };
 
-export function themeLabels(theme, g) {
+// Ласковые прозвища в бимбо-теме: у главного персонажа «котя / зая», у остальных — свои, по имени.
+const BIMBO_NICKS = [['котя', 'зая'], ['пупсик', 'лапуля'], ['малыш', 'солнышко'], ['кис', 'булочка'], ['зайка', 'котик'], ['лапочка', 'пончик'], ['сладость', 'медвежонок'], ['птенчик', 'карамелька']];
+
+export function bimboNicks(name = '', first = false) {
+    if (first || !name) return BIMBO_NICKS[0];
+    let h = 0;
+    for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return BIMBO_NICKS[1 + (h % (BIMBO_NICKS.length - 1))];
+}
+
+export function themeLabels(theme, g, nicks = null) {
     const l = Object.assign({}, BASE_LABELS, THEME_LABELS[theme] || {});
     const he = g === 'f' ? 'она' : 'он';
+    const [n1, n2] = nicks || BIMBO_NICKS[0];
     const out = {};
-    for (const [k, v] of Object.entries(l)) out[k] = v.replace(/\{он\}/g, he);
+    for (const [k, v] of Object.entries(l)) out[k] = v.replace(/\{он\}/g, he).replace(/\{ник1\}/g, n1).replace(/\{ник2\}/g, n2);
     return out;
+}
+
+// Все ссылки на шрифты темы: основная и, если есть, отдельная для редких знаков.
+export function themeFontUrls(theme) {
+    const t = THEMES[theme] || THEMES.diary;
+    const list = [`https://fonts.googleapis.com/css2?${t.fonts}&display=swap`];
+    if (t.glyphs) list.push(`https://fonts.googleapis.com/css2?${t.glyphs}&display=swap`);
+    return list;
 }
 
 export function themeFontsUrl(theme) {
@@ -185,6 +336,8 @@ const PATHS = {
     book: '<path d="M3 5.5c3-1.4 6-1.4 9 .8 3-2.2 6-2.2 9-.8v13c-3-1.4-6-1.4-9 .8-3-2.2-6-2.2-9-.8z"/><path d="M12 6.3v13"/>',
     rotate: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    flame: '<path d="M12 21c-3.6 0-6-2.4-6-5.6 0-3.3 2.4-5 3.4-8.4 1.9 1.4 2.6 3.2 2.6 4.6 1-.8 1.6-2 1.7-3.4 2.4 1.9 4.3 4.4 4.3 7.2 0 3.2-2.4 5.6-6 5.6z"/>',
+    persona: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.6-5.8 7-5.8s6.2 2 7 5.8"/>',
     smile: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c1.9 2.1 5.1 2.1 7 0"/><path d="M9.2 9.6h.01M14.8 9.6h.01" stroke-width="2.6"/>',
     heart: '<path d="M12 19.5s-7-4.3-7-9.6A3.9 3.9 0 0 1 12 7.6a3.9 3.9 0 0 1 7 2.3c0 5.3-7 9.6-7 9.6z"/>',
     ghost: '<path d="M6 20V10.5a6 6 0 0 1 12 0V20l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4z"/><path d="M10 10.5h.01M14 10.5h.01" stroke-width="2.6"/>',
@@ -195,6 +348,16 @@ const PATHS = {
     check: '<circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.4l2.6 2.6 5-5.4"/>',
     up: '<path d="M4 16.5l5.5-5.5 3.5 3.5L20 7.5"/><path d="M15 7.5h5v5"/>',
     down: '<path d="M4 7.5l5.5 5.5 3.5-3.5 7 7"/><path d="M15 16.5h5v-5"/>',
+    chevron: '<path d="M6 9.5l6 6 6-6"/>',
+    tick: '<path d="M5.5 12.5l4 4 9-9.5"/>',
+    trash: '<path d="M5 7h14"/><path d="M9.5 7V4.8h5V7"/><path d="M6.8 7l.9 12.2h8.6L17.2 7"/><path d="M10.3 10.5v5.5M13.7 10.5v5.5"/>',
+    arrowup: '<path d="M12 19V5.5"/><path d="M6.5 11L12 5.5 17.5 11"/>',
+    arrowdown: '<path d="M12 5v13.5"/><path d="M6.5 13L12 18.5 17.5 13"/>',
+    arrowright: '<path d="M5 12h13.5"/><path d="M13 6.5l5.5 5.5-5.5 5.5"/>',
+    credit: '<path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="M8.5 10.2h7M8.5 13.8h7"/>',
+    cashcoin: '<circle cx="12" cy="12" r="8.5"/><rect x="9.6" y="9.6" width="4.8" height="4.8" rx=".4"/>',
+    tobase: '<path d="M12 15V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/><path d="M4.5 14v5.5h15V14"/>',
+    stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/>',
     crown: '<path d="M4 8l4 3.5L12 5l4 6.5L20 8l-1.6 10H5.6z"/>',
     sun: '<circle cx="12" cy="12" r="3.8"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/>',
     swap: '<path d="M4 9h13l-3.5-3.5"/><path d="M20 15H7l3.5 3.5"/>',
@@ -205,8 +368,8 @@ const PATHS = {
     lips: '<path d="M3 12c2.2-3.6 4.7-4.8 6.6-3.8.9.5 1.6.5 2.4 0 .8.5 1.5.5 2.4 0 1.9-1 4.4.2 6.6 3.8-2.6 4-5.8 5.6-9 5.6S5.6 16 3 12z"/><path d="M3.5 12.2c2.8.9 5.6 1.2 8.5 1.2s5.7-.3 8.5-1.2"/>',
     sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9c1.2 1.6 1.2 4.4 0 6"/><path d="M18.3 6.5c2.4 3 2.4 8 0 11"/>',
     mute: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
-    pin: '<path d="M9 3.5h6l-1 5 3 3H7l3-3z"/><path d="M12 11.5V20"/>',
-    unpin: '<path d="M9 3.5h6l-1 5 3 3H7l3-3z" stroke-dasharray="2.5 2.2"/><path d="M12 11.5V20"/>',
+    pin: '<path d="M8.5 3h7l-1.2 5.6L18 12H6l3.7-3.4z" fill="currentColor"/><path d="M12 12v8.5"/>',
+    unpin: '<path d="M8.5 3h7l-1.2 5.6L18 12H6l3.7-3.4z"/><path d="M12 12v8.5"/>',
     dice: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/><path d="M12 9.5l.8 1.7 1.9.3-1.4 1.3.3 1.9-1.6-.9-1.7.9.4-1.9-1.4-1.3 1.9-.3z"/>',
     chat: '<path d="M4.5 6.5c0-1.4 1.1-2.5 2.5-2.5h10c1.4 0 2.5 1.1 2.5 2.5v7c0 1.4-1.1 2.5-2.5 2.5H11l-4.5 3.5V16h0c-1.1 0-2-1.1-2-2.5z"/><path d="M8.5 9h7M8.5 12h4.5"/>',
     bookopen: '<path d="M3 5.5c3-1.4 6-1.4 9 .8 3-2.2 6-2.2 9-.8v13c-3-1.4-6-1.4-9 .8-3-2.2-6-2.2-9-.8z"/><path d="M12 6.3v13"/><path d="M5.5 9.5c1.6-.5 3.2-.4 4.5.3M14 9.8c1.3-.7 2.9-.8 4.5-.3"/>',
@@ -260,6 +423,7 @@ export const EVENT_ICONS = {
     trait_new: 'feather',
     trait_up: 'up',
     trait_down: 'down',
+    trait_gone: 'x',
     dream_step: 'star',
     dream_done: 'crown',
     impression: 'eye',
@@ -282,8 +446,12 @@ export const BLOCK_ICONS = {
 
 // Подписи всплывашек в духе темы.
 const TOAST_KICKERS = {
-    bimbo: { want_done: 'Ура-ура, сбылось! ♡', fear_real: 'Почему тучка плачет? Страх сбылся…', fear_gone: 'Фух, больше не страшно ✨', trait_new: 'Новый вайб, кис', trait_up: 'Вайб усилился, коть', trait_down: 'Вайб слабеет…', dream_step: 'Шажочек к мечте ✨', dream_done: 'Мечта сбылась, ааа!! ♡', dream_change: 'Новая мечточка ✨', dream_grow: 'Мечта стала больше ♡', impression: 'Первое впечатление, зай', attitude: 'Ой, отношение поменялось!', reward: 'Обновочка, кис ♡' },
+    bimbo: { want_done: 'Ура-ура, сбылось! ♡', fear_real: 'Почему тучка плачет? Страх сбылся…', fear_gone: 'Фух, больше не страшно ✨', trait_new: 'Новый вайб, кис', trait_up: 'Вайб усилился, коть', trait_down: 'Вайб слабеет…', trait_gone: 'Вайб ушёл, пока-пока', dream_step: 'Шажочек к мечте ✨', dream_done: 'Мечта сбылась, ааа!! ♡', dream_change: 'Новая мечточка ✨', dream_grow: 'Мечта стала больше ♡', impression: 'Первое впечатление, зай', attitude: 'Ой, отношение поменялось!', reward: 'Обновочка, кис ♡' },
     medieval: { attitude: 'Переменилось отношение', want_done: 'Желание исполнилось', fear_real: 'Сбылся страх', trait_new: 'Новая черта нрава', dream_step: 'Шаг к великой мечте', impression: 'Первое суждение' },
+    china: { want_done: 'Желание исполнилось', fear_real: 'Страх обрёл плоть', fear_gone: 'Тревога рассеялась', trait_new: 'Обретена новая черта', dream_step: 'Шаг по пути сердца', dream_done: 'Путь пройден', dream_change: 'Путь изменился', dream_grow: 'Путь стал шире', impression: 'Первая встреча', attitude: 'Сердце переменилось', reward: 'Дар принят' },
+    grimoire: { want_done: 'Желание сбылось', fear_real: 'Тьма настигла: страх сбылся', fear_gone: 'Морок развеялся', trait_new: 'Проявилась новая суть', trait_up: 'Суть окрепла', trait_down: 'Суть слабеет', trait_gone: 'Суть развеялась', dream_step: 'Заклинание крепнет', dream_done: 'Заклинание свершилось', dream_change: 'Знаки изменились', dream_grow: 'Мечта разрослась', impression: 'Первое гадание', attitude: 'Нить натянулась иначе', reward: 'Оберег получен' },
+    dossier: { want_done: 'Мотив реализован', fear_real: 'ВНИМАНИЕ: уязвимость подтвердилась', fear_gone: 'Угроза снята', trait_new: 'Выявлена новая черта', trait_up: 'Черта усилилась', trait_down: 'Черта ослабла', trait_gone: 'Черта утрачена', dream_step: 'Продвижение к цели', dream_done: 'Цель достигнута', dream_change: 'Цель сменилась', dream_grow: 'Цель расширена', impression: 'Новый фигурант', attitude: 'Отношение изменилось', reward: 'Поощрение выдано' },
+    logbook: { want_done: 'Задача выполнена', fear_real: 'ТРЕВОГА: риск сработал', fear_gone: 'Риск миновал', trait_new: 'Профиль обновлён', trait_up: 'Профиль обновлён', trait_down: 'Профиль обновлён', trait_gone: 'Профиль обновлён', dream_step: 'Курс выдержан', dream_done: 'Пункт назначения достигнут', dream_change: 'Курс изменён', dream_grow: 'Курс продлён', impression: 'Первый контакт', attitude: 'Связь изменилась', reward: 'Груз получен' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
 };
 

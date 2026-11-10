@@ -4,15 +4,15 @@ import {
     buildSystemPrompt, buildUserPrompt, buildInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
-    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward,
+    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait,
 } from './src/core.js';
-import { playSound } from './src/sound.js';
-import { THEMES, THEME_IDS, validTheme, themeFontsUrl } from './src/themes.js';
+import { playSound, setVolume } from './src/sound.js';
+import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
 import { renderPanel, renderToast, renderFab, esc } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
 const SETTINGS_KEY = 'innerWorld';
@@ -215,9 +215,8 @@ async function collectLoreSources(onlyBook = '') {
     if (c.chatMetadata && c.chatMetadata.world_info) books.add(c.chatMetadata.world_info);
     const personaBook = c.powerUserSettings && c.powerUserSettings.persona_description_lorebook;
     if (personaBook) books.add(personaBook);
-    // книги, которые пользователь доизучил вручную
-    const r = settings().rosters[rosterKey()];
-    for (const b of (r && r.books) || []) books.add(b);
+    // лорбуки, отмеченные галочками для этого чата
+    for (const b of pickedBooks()) books.add(b);
     const per = Math.max(3000, Math.floor(14000 / Math.max(1, books.size)));
     for (const name of books) {
         try {
@@ -238,15 +237,31 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     const key = rosterKey();
     if (!key || !hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
     if (rosterBusy || busy) return;
+    const my = runId;
     rosterBusy = true;
     busyKind = mode === 'all' ? 'all' : 'lore';
     status = book ? `Читаю лорбук «${book}»…` : 'Читаю карточку и лорбуки…';
     renderAll();
     let sources = [];
+    let loreFp = '';
     try {
         sources = await collectLoreSources(book);
         if (!sources.length) throw new Error(book ? 'в этом лорбуке нет включённых записей' : 'нечего читать: карточка и лорбук пустые');
-        if (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at)) {
+        // ничего не поменялось с прошлого разбора — новое не добавляем
+        loreFp = hashStr(mode + '|' + sources.map(x => x.title + '\n' + x.text).join('\n'));
+        const fp = chatMeta().fp || {};
+        const sameLore = fp.lore === loreFp;
+        const last0 = lastBotMessageId();
+        const sameChat = last0 < 0 || (!!recordOf((c.chat || [])[last0]) && fp.chat === chatFp(last0));
+        if (sameLore && (mode === 'lore' || sameChat) && !missingPersona()) {
+            rosterBusy = false;
+            busyKind = '';
+            status = 'Ничего нового с прошлого разбора';
+            nothingNew(mode === 'lore' ? 'карточка и лорбуки' : 'чат, карточка и лорбуки');
+            renderAll();
+            return;
+        }
+        if (!sameLore && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
             const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
             const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2500 }));
             const fresh = verifyAliases(parseRoster(raw, c.name1), sources.map(x => x.text).join('\n'));
@@ -256,10 +271,12 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
             if (book) books.add(book);
             settings().rosters[key] = { main: merged.main, npc: merged.npc, at: Date.now(), books: [...books] };
             saveSettings();
+            rememberKnowledge(sources);
             status = `Знаю персонажей мира: ${merged.npc.length}`;
             historyCache.key = '';
         }
     } catch (err) {
+        if ((err && err.cancelled) || my !== runId) return;
         console.error('[Внутренний мир]', err);
         status = 'Не получилось изучить: ' + (err && err.message ? err.message : err);
         toastr.error(status, 'Внутренний мир');
@@ -268,6 +285,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         renderAll();
         return;
     }
+    if (my !== runId) return;
     rosterBusy = false;
     renderAll();
     // сведения из карточки и лорбука — главному персонажу и тем, кто в сцене
@@ -275,6 +293,9 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     if (last >= 0) {
         await analyze(last, { manual: true, fromLore: sources.map(x => `[${x.title}]\n${x.text}`), kind: mode === 'all' ? 'all' : 'lore' });
     }
+    if (my !== runId) return;
+    chatMeta().fp = Object.assign({}, chatMeta().fp, { lore: loreFp });
+    ctx().saveMetadataDebounced?.();
     busyKind = '';
     syncSettingsForm();
     renderAll();
@@ -434,13 +455,54 @@ function trackNames(s) {
     return String(s.trackList || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
 }
 
+// Остановка: каждый запуск помнит свой номер; «Стоп» меняет номер — ответ старого запроса выбрасывается,
+// а запрос к своему API обрывается сразу.
+let runId = 0;
+let abortCtl = null;
+
+function cancelledError() {
+    const e = new Error('остановлено');
+    e.cancelled = true;
+    return e;
+}
+
 async function callModel(system, user, s) {
+    const my = runId;
+    if (!abortCtl || abortCtl.signal.aborted) abortCtl = new AbortController();
+    const signal = abortCtl.signal;
+    let res;
+    try {
+        res = await callModelRaw(system, user, s, signal);
+    } catch (err) {
+        if (my !== runId || signal.aborted) throw cancelledError();
+        throw err;
+    }
+    if (my !== runId) throw cancelledError();
+    return res;
+}
+
+function stopAnalysis() {
+    runId++;
+    if (abortCtl) abortCtl.abort();
+    abortCtl = null;
+    busy = false;
+    rosterBusy = false;
+    dreamBusy = false;
+    shopBusy = false;
+    busyKind = '';
+    pending = null;
+    status = 'Разбор остановлен';
+    updateInjection();
+    renderAll();
+}
+
+async function callModelRaw(system, user, s, signal) {
     const c = ctx();
     const max = Number(s.responseLength) || 1500;
     if (s.source === 'custom') {
         const missing = missingFields(s);
         if (missing.length) throw new Error(`в настройках подключения не заполнено: ${missing.join(', ')}`);
-        if (s.apiKind !== 'profile') return await chatRequest(s, system, user, max);
+        if (s.apiKind !== 'profile') return await chatRequest(s, system, user, max, (url, opts) => fetch(url, Object.assign({}, opts, { signal })));
     }
     if (s.source === 'custom' && s.apiKind === 'profile' && s.profileId && c.ConnectionManagerRequestService) {
         const res = await c.ConnectionManagerRequestService.sendRequest(
@@ -466,6 +528,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         return;
     }
     const chatId = c.getCurrentChatId && c.getCurrentChatId();
+    const my = runId;
     busy = true;
     if (manual) busyKind = kind;
     status = fromLore ? 'Дополняю дневник по карточке и лорбуку…' : 'Пишу в дневник…';
@@ -473,7 +536,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     try {
         const chat = c.chat;
         // эмоции стареют на число ответов бота с прошлой записи, включая этот
-        const base = decayState(currentState(messageId), botRepliesBetween(findHolder(messageId).index, messageId));
+        const own = recordOf(chat[messageId]);
+        const base = carryOwnEdits(decayState(currentState(messageId), botRepliesBetween(findHolder(messageId).index, messageId)), own && own.state, messageId);
         // «Догоняющий» режим: дневник заполняется впервые для уже идущей истории
         // или в истории есть НПС из лорбука, которых в дневнике ещё нет.
         const ros0 = roster();
@@ -527,6 +591,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             mainNames: mn,
             catchUp,
             fromLore: !!fromLore,
+            kind,
             loreMain: fromLore ? fromLore.map(t => cleanMessageText(t, 6000)).slice(0, 6) : [],
             history,
             knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name)].slice(0, 40),
@@ -576,6 +641,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false });
         writeRecord(messageId, state);
+        chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
         if (catchUp) {
             // кого проверили по истории, но в сцене лично не было — не перепроверяем, пока не упомянут снова
             const meta = chatMeta();
@@ -592,10 +658,12 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (events.length && !isOpen()) markFab(true);
         if (!view) view = '';
     } catch (err) {
+        if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
         status = 'Не получилось: ' + (err && err.message ? err.message : err);
         if (manual) toastr.error(status, 'Внутренний мир');
     } finally {
+        if (my !== runId) return; // этот разбор остановили — флаги уже сброшены
         busy = false;
         if (manual && kind === 'chat') busyKind = '';
         updateInjection();
@@ -684,6 +752,7 @@ function onGenerationStarted(type, _options, dryRun) {
 
 function refreshTheme() {
     currentTheme = validTheme(settings().theme);
+    setVolume(settings().volume ?? 45);
     loadFonts(currentTheme);
     const fab = document.getElementById('iw_fab');
     if (fab) setFabTheme(fab);
@@ -699,11 +768,13 @@ function setFabTheme(fab) {
 function loadFonts(theme) {
     if (loadedFonts.has(theme)) return;
     loadedFonts.add(theme);
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = themeFontsUrl(theme);
-    link.dataset.iwFonts = theme;
-    document.head.appendChild(link);
+    for (const href of themeFontUrls(theme)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.dataset.iwFonts = theme;
+        document.head.appendChild(link);
+    }
 }
 
 // ---------- Дневник на экране ----------
@@ -746,6 +817,7 @@ function panelEl() {
         else ui().appendChild(el);
         el.addEventListener('click', onPanelClick);
         el.addEventListener('change', onPanelChange);
+        el.addEventListener('input', onPanelInput);
         el.addEventListener('toggle', e => rememberSection('diary', e.target), true);
     }
     return el;
@@ -780,7 +852,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '' });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, working: busy || rosterBusy || dreamBusy || shopBusy });
     const body = el.querySelector('.iw-body');
     if (body) body.scrollTop = keepScroll;
 }
@@ -814,6 +886,10 @@ function togglePanel() {
 }
 
 async function onPanelClick(e) {
+    // всплывающие меню (кошелёк, звук, лорбуки) закрываются, если нажать мимо них
+    for (const d of panelEl().querySelectorAll('details.iw-wallet[open], details.iw-vol[open], details.iw-books[open]')) {
+        if (!d.contains(e.target)) d.open = false;
+    }
     const t = e.target.closest('button');
     if (!t) return;
     const s = settings();
@@ -829,19 +905,57 @@ async function onPanelClick(e) {
         saveSettings();
         if (s.sound) playSound('trait_up', currentTheme);
         syncSettingsForm();
+        // меню громкости не закрываем: обновляем его на месте
+        const vol = t.closest('.iw-vol');
+        if (vol && view !== 'settings') {
+            vol.classList.toggle('off', !s.sound);
+            t.classList.toggle('off', !s.sound);
+            t.setAttribute('aria-pressed', String(s.sound));
+            t.innerHTML = `${iconHtml(s.sound ? 'sound' : 'mute')}<span>${s.sound ? 'Звук включён' : 'Звук выключен'}</span>`;
+            const sum = vol.querySelector('summary');
+            if (sum) sum.innerHTML = iconHtml(s.sound ? 'sound' : 'mute');
+            const range = vol.querySelector('[data-iw-volume]');
+            if (range) range.disabled = !s.sound;
+            return;
+        }
         return renderAll();
+    }
+    if (t.dataset.iwStop !== undefined) return stopAnalysis();
+    if (t.dataset.iwPickBook) {
+        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        // галочка ставится на месте, меню не закрывается
+        const on = togglePickedBook(t.dataset.iwPickBook);
+        t.classList.toggle('on', on);
+        t.setAttribute('aria-pressed', String(on));
+        const menu = t.closest('.iw-books-menu');
+        const n = menu ? menu.querySelectorAll('.iw-book-opt.on:not(.linked)').length : 0;
+        const cnt = menu && menu.querySelector('.iw-books-count');
+        if (cnt) cnt.textContent = n ? `отмечено: ${n}` : '';
+        return;
     }
     if (t.dataset.iwAnalyze) {
         if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        const menu = t.closest('details');
+        if (menu) menu.open = false;
         const kind = t.dataset.iwAnalyze;
+        if (kind === 'chat') {
+            const id0 = lastBotMessageId();
+            if (id0 >= 0 && recordOf(ctx().chat[id0]) && (chatMeta().fp || {}).chat === chatFp(id0) && !missingPersona()) return nothingNew('сообщения чата');
+        }
         // карандаш «пишет» один раз — только на нажатие кнопки, не на автообновления
         if (!busy && s.sound !== false) playSound('write', currentTheme);
         if (kind === 'chat') {
             const id = lastBotMessageId();
             if (id < 0) return toastr.info('В чате ещё нет ответа персонажа.', 'Внутренний мир');
-            return analyze(id, { manual: true, kind: 'chat' });
+            const my = runId;
+            await analyze(id, { manual: true, kind: 'chat' });
+            if (my === runId) await autoRewards();
+            return;
         }
-        return studyLore({ mode: kind });
+        const my = runId;
+        await studyLore({ mode: kind });
+        if (my === runId) await autoRewards();
+        return;
     }
     if (t.dataset.iwTheme) {
         s.theme = t.dataset.iwTheme;
@@ -852,6 +966,8 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwDream) return onDreamAction(t.dataset.iwDream);
     if (t.dataset.iwShop) return regenShop();
+    if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
+    if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
     if (t.dataset.iwMod) {
         const m = t.dataset.iwMod;
@@ -875,6 +991,7 @@ async function onPanelClick(e) {
         const ch = key && state.characters[key];
         if (!ch || !Array.isArray(ch[kind])) return;
         ch[kind].splice(Number(idx), 1);
+        markEdited(ch, kind);
         await saveEditedState(state);
         updateInjection();
         return renderAll();
@@ -908,6 +1025,62 @@ function analysisInfo(n = 6) {
     return { botName: c.name2, userName: c.name1, card: cardText(c), messages: msgs, loreMain: [] };
 }
 
+// Отпечатки: что было на входе прошлого разбора. Совпал — значит, нового ничего, модель не зовём.
+function hashStr(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(36) + ':' + str.length;
+}
+
+function chatFp(id) {
+    const chat = ctx().chat || [];
+    const m = chat[id];
+    if (!m) return '';
+    let userText = '';
+    for (let i = id - 1; i >= 0; i--) {
+        if (chat[i] && chat[i].is_user) { userText = chat[i].mes || ''; break; }
+    }
+    return hashStr(`${id}|${m.swipe_id ?? 0}|${m.mes}|${userText}|${JSON.stringify(settings().modules)}`);
+}
+
+// У кого из главных ещё нет типа личности или темперамента — такой разбор не считаем пустым.
+function missingPersona() {
+    if (!hasChat() || !settings().modules.traits) return false;
+    const st = currentState();
+    return splitCast(st).mains.some(k => st.characters[k] && (!st.characters[k].ptype || !st.characters[k].temper));
+}
+
+function nothingNew(what) {
+    toastr.info(`Ничего нового: ${what} не менялись с прошлого разбора. Мечту и награды можно придумать заново — кубиком у мечты и в магазине.`, 'Внутренний мир');
+}
+
+// Сведения из карточки и лорбуков запоминаются после разбора кнопками «Лорбук» / «Всё сразу».
+// Мечта и награды придумываются заново по ним, а не перечитывают лорбуки каждый раз.
+function rememberKnowledge(sources) {
+    if (!hasChat() || !sources || !sources.length) return;
+    chatMeta().knowledge = { at: Date.now(), lore: sources.map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 6) };
+    ctx().saveMetadataDebounced?.();
+}
+
+function knowledgeLore(limit = 3) {
+    const k = hasChat() ? chatMeta().knowledge : null;
+    return k && Array.isArray(k.lore) ? k.lore.filter(t => !t.startsWith('[Карточка')).slice(0, limit) : null;
+}
+
+// Награды подбираются сами после разбора — тем главным персонажам, у кого магазина ещё нет.
+async function autoRewards() {
+    if (settings().points === false || !hasChat()) return;
+    const st = currentState();
+    for (const key of splitCast(st).mains) {
+        const ch = st.characters[key];
+        if (!ch || (ch.shop && ch.shop.length)) continue;
+        await regenShop(key, { quiet: true });
+    }
+}
+
 async function onDreamAction(action) {
     const key = viewKey();
     const state = currentState();
@@ -921,12 +1094,17 @@ async function onDreamAction(action) {
     }
     if (action === 'regen' && !dreamBusy) {
         if (ch.dream && ch.dream.pinned) return;
+        const my = runId;
         dreamBusy = true;
         renderAll();
         try {
             const info = analysisInfo(6);
-            const lore = await collectLoreSources().catch(() => []);
-            info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
+            const cached = knowledgeLore(3);
+            if (cached) info.loreMain = cached;
+            else {
+                const lore = await collectLoreSources().catch(() => []);
+                info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
+            }
             const { system, user } = buildDreamPrompt(info, ch, settings().language);
             const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 1200 }));
             const dream = parseDream(raw);
@@ -934,31 +1112,38 @@ async function onDreamAction(action) {
             const c2 = st.characters[key];
             if (!c2) return;
             const prev = c2.dream;
-            c2.dream = Object.assign(dream, { pinned: false, history: prev ? ((prev.history || []).concat([{ title: prev.title, plus: prev.plus || '' }])).slice(-4) : [] });
+            c2.dream = Object.assign(dream, { pinned: false, manual: true, history: prev ? ((prev.history || []).concat([{ title: prev.title, plus: prev.plus || '' }])).slice(-4) : [] });
             c2.dreamChangedAt = c2.cycle || 0;
             c2.log = [{ type: 'dream_change', text: `«${dream.title}» — придумана заново`, m: null }].concat(c2.log || []).slice(0, 40);
             await saveEditedState(st);
             updateInjection();
             if (settings().sound !== false) playSound('dream_change', currentTheme);
         } catch (err) {
+            if (err && err.cancelled) return;
             console.error('[Внутренний мир]', err);
             toastr.error('Мечта не придумалась: ' + (err && err.message ? err.message : err), 'Внутренний мир');
         } finally {
-            dreamBusy = false;
-            renderAll();
+            if (my === runId) {
+                dreamBusy = false;
+                renderAll();
+            }
         }
     }
 }
 
-async function regenShop() {
-    const key = viewKey();
+async function regenShop(forKey = null, { quiet = false } = {}) {
+    const key = forKey || viewKey();
     if (!key || shopBusy) return;
     const ch = currentState().characters[key];
     if (!ch) return;
+    const my = runId;
     shopBusy = true;
+    if (quiet) status = `Подбираю награды: ${ch.name}…`;
     renderAll();
     try {
-        const { system, user } = buildRewardsPrompt(analysisInfo(4), ch, settings().language);
+        const info = analysisInfo(4);
+        info.loreMain = knowledgeLore(2) || [];
+        const { system, user } = buildRewardsPrompt(info, ch, settings().language);
         const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2000 }));
         const rewards = parseRewards(raw);
         if (!rewards.length) throw new Error('модель не вернула наград');
@@ -967,12 +1152,53 @@ async function regenShop() {
         st.characters[key].shop = rewards;
         await saveEditedState(st);
     } catch (err) {
+        if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
-        toastr.error('Награды не подобрались: ' + (err && err.message ? err.message : err), 'Внутренний мир');
+        if (!quiet) toastr.error('Награды не подобрались: ' + (err && err.message ? err.message : err), 'Внутренний мир');
     } finally {
-        shopBusy = false;
-        renderAll();
+        if (my === runId) {
+            shopBusy = false;
+            renderAll();
+        }
     }
+}
+
+// Отметка «игрок правил этот блок руками» — при повторном разборе того же ответа правка не потеряется.
+function markEdited(ch, field) {
+    ch.edited = Object.assign({}, ch.edited, { [field]: findHolder().index });
+}
+
+// Черты: закрепить (модель не изменит) и перенести приобретённую в постоянные.
+async function onTraitAction(spec) {
+    const [act, idx] = spec.split(':');
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    const tr = ch && ch.traits && ch.traits[Number(idx)];
+    if (!tr) return;
+    if (act === 'back') restoreTrait(tr);
+    if (act === 'keep') {
+        tr.kind = 'base';
+        tr.kept = true;
+    }
+    markEdited(ch, 'traits');
+    await saveEditedState(st);
+    updateInjection();
+    renderAll();
+}
+
+// Закрепить желание: не изменится и не пропадёт, пока не исполнится (как в «Симс»).
+async function toggleWantPin(i) {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    const w = ch && ch.wants && ch.wants[i];
+    if (!w || w.status !== 'active') return;
+    w.pinned = !w.pinned;
+    markEdited(ch, 'wants');
+    await saveEditedState(st);
+    updateInjection();
+    renderAll();
 }
 
 async function buy(id) {
@@ -999,8 +1225,28 @@ function setLanguage(lang) {
     renderAll();
 }
 
+// Ползунок громкости: двигаешь — громкость меняется сразу, отпустил — слышно, как звучит.
+function onPanelInput(e) {
+    const el = e.target;
+    if (!el || !(el.matches('[data-iw-volume]') || el.dataset.iwSet === 'volume')) return;
+    const v = Number(el.value) || 0;
+    settings().volume = v;
+    setVolume(v);
+    const box = el.closest('.iw-vol-menu, label');
+    const out = box && box.querySelector('.iw-range-val');
+    if (out) out.textContent = v + '%';
+}
+
 async function onPanelChange(e) {
     const el = e.target;
+    if (el && el.matches && el.matches('[data-iw-volume]')) {
+        settings().volume = Number(el.value) || 0;
+        setVolume(settings().volume);
+        saveSettings();
+        playSound('want_done', currentTheme);
+        syncSettingsForm();
+        return;
+    }
     if (el.closest && el.closest('.iw-form')) {
         const body = panelEl().querySelector('.iw-body');
         const keep = body ? body.scrollTop : 0;
@@ -1163,11 +1409,54 @@ async function loadWorldNames() {
     } catch {
         worldNames = [];
     }
+    await loadLinkedBooks();
+}
+
+// Отмеченные галочками лорбуки — свои у каждого чата. Пока ничего не отмечали — те, что уже изучались.
+function pickedBooks() {
+    if (!hasChat()) return [];
+    const meta = chatMeta();
+    if (Array.isArray(meta.books)) return meta.books.filter(b => worldNames.includes(b));
+    return studiedBooks();
+}
+
+function togglePickedBook(name) {
+    const meta = chatMeta();
+    const list = new Set(pickedBooks());
+    if (list.has(name)) list.delete(name);
+    else list.add(name);
+    meta.books = [...list];
+    ctx().saveMetadataDebounced?.();
+    return list.has(name);
+}
+
+// Лорбуки, которые и так привязаны к персонажу, чату или персоне: читаются всегда.
+let linkedBooks = [];
+
+async function loadLinkedBooks() {
+    const c = ctx();
+    const out = new Set();
+    try {
+        const ch = c.characters && c.characters[c.characterId];
+        const charBook = ch && ch.data && ch.data.extensions && ch.data.extensions.world;
+        if (charBook) out.add(charBook);
+        const wi = await import('/scripts/world-info.js');
+        const extra = wi.world_info && wi.world_info.charLore && ch && wi.world_info.charLore.find(e => e.name === String(ch.avatar).replace(/\.[^.]+$/, ''));
+        for (const b of (extra && extra.extraBooks) || []) out.add(b);
+        if (c.chatMetadata && c.chatMetadata.world_info) out.add(c.chatMetadata.world_info);
+        const personaBook = c.powerUserSettings && c.powerUserSettings.persona_description_lorebook;
+        if (personaBook) out.add(personaBook);
+    } catch { /* без привязанных */ }
+    linkedBooks = [...out];
+}
+
+function studiedBooks() {
+    const r = settings().rosters[rosterKey()];
+    return (r && r.books) || [];
 }
 
 function settingsFormHtml(variant) {
-    const r = settings().rosters[rosterKey()];
-    return renderSettingsForm(settings(), { variant, profiles: profileList(), apiStatus, books: worldNames, studied: (r && r.books) || [], open: sectionOpen[variant] });
+    return renderSettingsForm(settings(), { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant] });
 }
 
 function refreshForms() {
@@ -1206,6 +1495,10 @@ async function onSettingsChanged(el) {
     const s = settings();
     const before = `${s.apiKind}|${s.apiEndpoint}`;
     if (!applySettingChange(s, el)) return false;
+    if (el.dataset.iwSet === 'volume') {
+        setVolume(s.volume);
+        if (s.sound !== false) playSound('want_done', currentTheme);
+    }
     if (`${s.apiKind}|${s.apiEndpoint}` !== before) {
         s.apiModels = [];
         s.apiModel = '';
@@ -1271,6 +1564,7 @@ function addSettings() {
     host.insertAdjacentHTML('beforeend', settingsHtml());
     const root = host.querySelector('.iw-settings');
     root.addEventListener('change', e => onSettingsChanged(e.target));
+    root.addEventListener('input', onPanelInput);
     root.addEventListener('toggle', e => rememberSection('st', e.target), true);
     root.addEventListener('click', e => {
         const b = e.target.closest('[data-iw-action]');

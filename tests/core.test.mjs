@@ -5,7 +5,8 @@ import {
 } from '../src/core.js';
 import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
-import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace } from '../src/core.js';
+import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait } from '../src/core.js';
+import { renderNpcList } from '../src/render.js';
 
 const all = DEFAULT_SETTINGS.modules;
 let passed = 0;
@@ -435,6 +436,98 @@ test('у каждой эмоции своё лицо и цвет', () => {
     const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'bimbo', view: 'main:Роберт', busy: false, status: '', mains: ['Роберт'], npcKeys: [], roster: null });
     assert.ok(html.includes('iw-face-angry') && html.includes('iw-feel-face'));
     assert.ok(html.includes('Проанализируем, зай?'));
+});
+
+test('общее состояние: цвет из эмоций, смешанное — два цвета', () => {
+    assert.deepEqual(moodFaces({ mood: 'встревожен', moodlets: [] }), ['fear']);
+    assert.deepEqual(moodFaces({ mood: 'странно', moodlets: [{ emotion: 'горе', weight: 'deep', left: 5 }, { emotion: 'радость', weight: 'light', left: 1 }] }), ['sad']);
+    assert.deepEqual(moodFaces({ mood: 'растерян', face: 'surprise', moodlets: [{ emotion: 'нежность', weight: 'medium', left: 3 }, { emotion: 'тревога', weight: 'medium', left: 2 }] }), ['surprise', 'love']);
+    assert.deepEqual(moodFaces({}), []);
+});
+
+test('новые темы на месте: надписи, шрифты, громкость', () => {
+    for (const th of ['china', 'grimoire', 'dossier', 'logbook']) {
+        assert.equal(validTheme(th), th);
+        assert.ok(themeLabels(th, 'm').analyze);
+    }
+    assert.equal(mergeSettings({}).volume, 45);
+    assert.equal(mergeSettings({ volume: 300 }).volume, 100);
+});
+
+test('во время разбора видна кнопка «стоп», лорбуки — галочками', () => {
+    const st = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'спокоен' }), all).state;
+    const base = { state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Роберт', busy: false, status: '', mains: ['Роберт'], npcKeys: [], roster: null, books: ['Мир', 'Город'], picked: ['Город'], linked: ['Мир'] };
+    const idle = renderPanel(base);
+    assert.ok(!idle.includes('data-iw-stop'));
+    assert.ok(idle.includes('data-iw-pick-book="Город" aria-pressed="true"'));
+    assert.ok(!idle.includes('data-iw-pick-book="Мир"'));
+    assert.ok(renderPanel(Object.assign({}, base, { working: true })).includes('data-iw-stop'));
+});
+
+test('закреплённое желание держится до исполнения, переразбор не теряет награды', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Роберт', wants: [{ text: 'найти брата' }, { text: 'выспаться' }] }), all).state;
+    st.characters['Роберт'].wants[0].pinned = true;
+    st = applyAnalysis(st, one({ name: 'Роберт', wants: [{ text: 'поесть' }] }), all).state;
+    assert.ok(st.characters['Роберт'].wants.some(w => w.text === 'найти брата' && w.pinned));
+    st = applyAnalysis(st, one({ name: 'Роберт', wants: [{ text: 'найти брата', status: 'done' }] }), all).state;
+    assert.equal(st.characters['Роберт'].wants.find(w => w.text === 'найти брата').status, 'done');
+    const before = applyAnalysis(emptyState(), one({ name: 'Роберт', wants: [{ text: 'выспаться' }] }), all, { points: true, mesId: 4 }).state;
+    const own = applyAnalysis(before, one({ name: 'Роберт', wants: [{ text: 'выспаться', status: 'done' }] }), all, { points: true, mesId: 5 }).state;
+    own.characters['Роберт'].shop = [{ id: 'r1', title: 'Плед', kind: 'buff', cost: 5 }];
+    const carried = carryOwnEdits(before, own, 5);
+    assert.equal(carried.characters['Роберт'].shop.length, 1);
+    assert.equal(carried.characters['Роберт'].points, 0);
+});
+
+test('черты: ушедшая видна зачёркнутой два ответа, её можно вернуть; на смену приходит новая', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Роберт', traits: [{ name: 'доверчивый' }, { name: 'упрямый' }] }), all).state;
+    st.characters['Роберт'].cycle = 50;
+    const r = applyAnalysis(st, one({ name: 'Роберт', traits: [{ name: 'доверчивый', kind: 'gone', why: 'измена' }, { name: 'недоверчивый', kind: 'new', why: 'измена' }] }), all);
+    const tr = r.state.characters['Роберт'].traits;
+    assert.equal(tr[0].kind, 'gone');
+    assert.equal(tr[0].left, 2);
+    assert.equal(tr[2].name, 'недоверчивый');
+    assert.ok(r.events.some(e => e.type === 'trait_gone'));
+    const html = renderPanel({ state: r.state, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
+    assert.ok(html.includes('data-iw-trait="back:0"'));
+    assert.ok(!html.includes('data-iw-trait="pin'));
+    assert.ok(html.includes('data-iw-trait="keep:2"'));
+    assert.equal(decayState(r.state, 1).characters['Роберт'].traits.length, 3);
+    assert.equal(decayState(r.state, 2).characters['Роберт'].traits.length, 2);
+    const back = JSON.parse(JSON.stringify(tr[0]));
+    restoreTrait(back);
+    assert.equal(back.kind, 'base');
+    const own = JSON.parse(JSON.stringify(r.state));
+    own.characters['Роберт'].edited = { traits: 7 };
+    assert.equal(carryOwnEdits(st, own, 7).characters['Роберт'].traits.length, 3);
+    const sys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [], kind: 'chat' });
+    assert.ok(sys.includes('соразмерно событию') && sys.includes('kind "gone"'));
+    assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [], kind: 'all', fromLore: true }).includes('«всё сразу»'));
+});
+
+test('пол: склонения по лорбуку, описанию и имени', () => {
+    assert.equal(genderOf('n', 'Маша'), 'f');
+    assert.equal(genderOf('n', 'Анна Смирнова'), 'f');
+    assert.equal(genderOf('n', 'Никита'), 'm');
+    assert.equal(genderOf('n', 'Тень', 'рыжая девушка-воровка'), 'f');
+    assert.equal(genderOf('m', 'Маша'), 'm');
+    assert.equal(genderOf('n', 'Саша'), 'n');
+    const html = renderNpcList({ state: emptyState(), npcKeys: [], roster: { npc: [], find: () => null }, seenOnly: [
+        { name: 'Маша', g: 'n', checked: true }, { name: 'Олег', g: 'm', checked: true }] });
+    assert.ok(html.includes('только упоминалась'));
+    assert.ok(html.includes('только упоминался'));
+    assert.equal(themeLabels('diary', genderOf('n', 'Маша')).moodLead, 'Сейчас она');
+    assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('в его роде'));
+});
+
+test('тип личности и темперамент: из ответа модели, строкой в чертах', () => {
+    const st = applyAnalysis(emptyState(), one({ name: 'Роберт', ptype: 'infp-t', temper: 'Флегматик', traits: [{ name: 'мечтательный' }] }), all).state;
+    assert.equal(st.characters['Роберт'].ptype, 'INFP-T');
+    assert.equal(st.characters['Роберт'].temper, 'phlegmatic');
+    const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'bimbo', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
+    assert.ok(html.includes('Посредник') && html.includes('флегматик') && html.includes('iw-pt-diplomat'));
+    const sys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] });
+    assert.ok(sys.includes('16personalities') && sys.includes('«опекает свидетельницу»'));
 });
 
 console.log(`значки: ${passed} проверок прошло`);

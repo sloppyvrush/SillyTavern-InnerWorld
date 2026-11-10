@@ -296,7 +296,7 @@
 #iw_fab.iw-theme-bimbo .iw-fab-spine { border-color: #fff; }
 #iw_fab.iw-theme-bimbo .iw-fab-ribbon { background: #fff; }
 
-/* RU / English внизу настроек в панели таверны */
+/* RU / EN внизу настроек в панели таверны */
 .iw-form-st .iw-lang {
     display: flex;
     align-items: center;
@@ -334,3 +334,13 @@
     will-change: transform;
     transition: none;
 }
+
+/* новые темы: красный лаковый свиток, гримуар, папка «дело», бортовой журнал */
+#iw_fab.iw-theme-china { --iwf-bg: #f6efe0; --iwf-paper: none; --iwf-ink: #1d1a17; --iwf-spine: #c8312b; --iwf-accent: #c8312b; }
+#iw_fab.iw-theme-china .iw-fab-cover { border-radius: 2px; box-shadow: inset 0 3px 0 #5a1d17, inset 0 -3px 0 #5a1d17; }
+#iw_fab.iw-theme-grimoire { --iwf-bg: #2a1d36; --iwf-paper: radial-gradient(circle at 70% 30%, rgba(232, 199, 122, .35) 0 6%, transparent 7%); --iwf-ink: #e8c77a; --iwf-spine: #5b3d78; --iwf-accent: #8fe39b; }
+#iw_fab.iw-theme-grimoire .iw-fab-cover { box-shadow: 0 0 10px rgba(201, 162, 255, .5); }
+#iw_fab.iw-theme-dossier { --iwf-bg: #d6bd88; --iwf-paper: none; --iwf-ink: #262422; --iwf-spine: #b89a5e; --iwf-accent: #c0262d; }
+#iw_fab.iw-theme-dossier .iw-fab-cover { border-radius: 2px 6px 6px 2px; }
+#iw_fab.iw-theme-logbook { --iwf-bg: #0a1022; --iwf-paper: radial-gradient(circle at 25% 30%, #dce6ff 0 1px, transparent 1.5px), radial-gradient(circle at 70% 65%, #dce6ff 0 1px, transparent 1.5px); --iwf-ink: #ffb347; --iwf-spine: #8fb8ff; --iwf-accent: #ffb347; }
+#iw_fab.iw-theme-logbook .iw-fab-cover { border-radius: 8px; box-shadow: 0 0 10px rgba(143, 184, 255, .45); }

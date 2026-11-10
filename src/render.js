@@ -1,11 +1,11 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, plural } from './core.js';
-import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, icon, faceIcon } from './themes.js';
+import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS } from './core.js';
+import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, icon, faceIcon, currencyIcon, bimboNicks } from './themes.js';
 import { npcBadge } from './npc-icons.js';
 
 // Данные для подбора значка НПС: роль из лорбука или от модели, черты, имя, пол.
 function badgeInfo(c, entry) {
-    return { who: (entry && entry.who) || c.who || '', traits: (entry && entry.traits) || [], name: c.name, g: c.g || (entry && entry.g) || 'n' };
+    return { who: (entry && entry.who) || c.who || '', traits: (entry && entry.traits) || [], name: c.name, g: genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, (entry && entry.who) || c.who || '') };
 }
 
 // Невидимый фильтр «дрожащей линии» для рисованных тем.
@@ -19,7 +19,7 @@ const ICON_CHECK = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" 
 const SCRIBBLE = '<svg class="iw-scribble" width="220" height="12" viewBox="0 0 260 12" fill="none" aria-hidden="true"><path d="M2 8c20-6 40 4 60-1s40-5 60 0 40 4 60-1 40-4 76 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
 
 function delBtn(kind, i) {
-    return `<button type="button" class="iw-del" data-iw-del="${kind}:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button>`;
+    return `<button type="button" class="iw-del" data-iw-del="${kind}:${i}" title="Убрать из дневника" aria-label="Убрать из дневника">${icon('x')}</button>`;
 }
 
 function blockHead(kind, label, extra = '') {
@@ -31,11 +31,12 @@ function groupHead(label, hint = '') {
 }
 
 // Кошелёк в шапке: очки текущего персонажа, по нажатию — у всех.
-function renderWallet(wallet) {
+function renderWallet(wallet, theme = '') {
+    const coin = icon(currencyIcon(theme));
     if (!wallet || !wallet.list.length) return '';
     const cur = wallet.list.find(x => x.key === wallet.current) || wallet.list[0];
-    const items = wallet.list.map(x => `<li><button type="button" class="iw-wallet-row${x.key === cur.key ? ' on' : ''}" data-iw-view="shop:${esc(x.key)}"><span>${esc(x.name)}</span><b>${icon('coin')}${x.points}</b></button></li>`).join('');
-    return `<details class="iw-wallet"><summary title="Очки за желания и мечту">${icon('coin')}<b>${cur.points}</b></summary><ul class="iw-wallet-list">${items}</ul></details>`;
+    const items = wallet.list.map(x => `<li><button type="button" class="iw-wallet-row${x.key === cur.key ? ' on' : ''}" data-iw-view="shop:${esc(x.key)}"><span>${esc(x.name)}</span><b>${coin}${x.points}</b></button></li>`).join('');
+    return `<details class="iw-wallet"><summary title="Очки за желания и мечту">${coin}<b>${cur.points}</b></summary><ul class="iw-wallet-list">${items}</ul></details>`;
 }
 
 export function renderHeader(settings, theme, busy, inSettings = false, wallet = null) {
@@ -45,8 +46,15 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
 <div class="iw-head">
   <div class="iw-titlebox"><div class="iw-title">${esc(L.title)}</div>${SCRIBBLE}</div>
   <div class="iw-tools">
-    ${renderWallet(wallet)}
-    <button type="button" class="iw-tool iw-sound${sound ? '' : ' off'}" title="${sound ? 'Звук включён' : 'Звук выключен'}" aria-label="Звук" aria-pressed="${sound}">${icon(sound ? 'sound' : 'mute')}</button>
+    ${renderWallet(wallet, theme)}
+    <details class="iw-vol${sound ? '' : ' off'}">
+      <summary class="iw-tool" title="Звук и громкость" aria-label="Звук и громкость">${icon(sound ? 'sound' : 'mute')}</summary>
+      <div class="iw-vol-menu">
+        <button type="button" class="iw-vol-toggle iw-sound${sound ? '' : ' off'}" aria-pressed="${sound}">${icon(sound ? 'sound' : 'mute')}<span>${sound ? 'Звук включён' : 'Звук выключен'}</span></button>
+        <div class="iw-vol-row"><span>Громкость</span><output class="iw-range-val">${Number(settings.volume ?? 45)}%</output></div>
+        <input type="range" class="iw-range iw-vol-range" data-iw-volume min="0" max="100" step="5" value="${Number(settings.volume ?? 45)}" aria-label="Громкость звуков"${sound ? '' : ' disabled'}>
+      </div>
+    </details>
     <button type="button" class="iw-tool iw-gear${inSettings ? ' on' : ''}" title="${inSettings ? 'Вернуться к дневнику' : 'Настройки'}" aria-label="Настройки" aria-pressed="${inSettings}">${icon('gear')}</button>
     <button type="button" class="iw-tool iw-close" title="Закрыть" aria-label="Закрыть">${icon('x')}</button>
   </div>
@@ -55,28 +63,55 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
 
 // Лицо-смайлик на вкладке: цвет и выражение по настроению.
 function faceBadge(c) {
-    if (!c || (!c.face && !c.mood)) return '';
-    // «ровно» от модели уточняем по слову настроения: «сосредоточен» — это не пустое лицо
-    const face = c.face && c.face !== 'neutral' ? c.face : guessFace(c.mood);
+    const [face] = moodFaces(c);
+    if (!face) return '';
     return `<span class="iw-face iw-face-${face}" title="${esc(FACE_NAMES[face] || '')}">${faceIcon(face)}</span>`;
 }
 
 // Кнопки разбора: над ними надпись «Проанализировать» с рисованной стрелкой к кнопкам;
 // пока идёт разбор, надпись сменяется загрузкой в стиле темы (точки, сердечки, полоска).
-function analyzeButtons(busyKind, labels = {}) {
+// Меню у кнопки «Лорбук»: галочками отмечаются лорбуки для этого чата —
+// их берут и «Лорбук», и «Всё сразу». Привязанные к персонажу и чату читаются всегда.
+function booksMenu(books = [], picked = [], linked = [], busy = false) {
+    const on = new Set(picked);
+    const own = new Set(linked);
+    const box = `<span class="iw-book-box" aria-hidden="true">${icon('tick')}</span>`;
+    const ownRows = books.filter(n => own.has(n)).map(name => `<div class="iw-book-opt on linked">${box}<span>${esc(name)}</span><em>свой</em></div>`).join('');
+    const rows = books.filter(n => !own.has(n)).map(name => `<button type="button" class="iw-book-opt${on.has(name) ? ' on' : ''}" data-iw-pick-book="${esc(name)}" aria-pressed="${on.has(name)}">${box}<span>${esc(name)}</span></button>`).join('');
+    const n = books.filter(x => !own.has(x) && on.has(x)).length;
+    return `
+      <details class="iw-books">
+        <summary class="iw-books-btn" title="Выбрать лорбуки для разбора" aria-label="Выбрать лорбуки">${icon('chevron')}</summary>
+        <div class="iw-books-menu">
+          <div class="iw-books-cap">Какие лорбуки разбирать <span class="iw-books-count">${n ? `отмечено: ${n}` : ''}</span></div>
+          <div class="iw-books-list">
+            <div class="iw-book-opt on linked">${box}<span>Карточка персонажа</span><em>всегда</em></div>
+            ${ownRows}${rows || (ownRows ? '' : '<div class="iw-books-empty">Других лорбуков в таверне нет.</div>')}
+          </div>
+          <button type="button" class="iw-book-go" data-iw-analyze="lore"${busy ? ' disabled' : ''}>${icon('bookopen')}<span>Разобрать отмеченные</span></button>
+          <div class="iw-books-hint">Галочки запоминаются для этого чата. «Всё сразу» тоже берёт отмеченные лорбуки. Сведения добавляются к уже собранным, ничего не стирается.</div>
+        </div>
+      </details>`;
+}
+
+function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked = [], working = false) {
     const btn = (kind, ic, label, title) => {
-        const on = busyKind === kind;
-        return `<button type="button" class="iw-act iw-act-${kind}${on ? ' busy' : ''}" data-iw-analyze="${kind}" title="${title}"${busyKind ? ' disabled' : ''}>${icon(ic)}<span>${label}</span></button>`;
+        // Кнопка, которая сейчас работает, сама становится «Стоп» — на том же месте и того же размера.
+        if (busyKind === kind) {
+            return `<button type="button" class="iw-act iw-act-${kind} busy iw-act-stop" data-iw-stop title="Остановить разбор" aria-label="Остановить разбор"><span class="iw-stop-ring" aria-hidden="true">${icon('stop')}</span><span>Стоп</span></button>`;
+        }
+        return `<button type="button" class="iw-act iw-act-${kind}" data-iw-analyze="${kind}" title="${title}"${working ? ' disabled' : ''}>${icon(ic)}<span>${label}</span></button>`;
     };
-    const cap = busyKind
-        ? `<span class="iw-loader" aria-hidden="true"><i></i><i></i><i></i><b></b></span><span class="iw-cap-text">${esc(labels.analyzing || 'Записываю')}</span>`
+    const ownStop = ['chat', 'lore', 'all'].includes(busyKind);
+    const cap = working
+        ? `<span class="iw-loader" aria-hidden="true"><i></i><i></i><i></i><b></b></span><span class="iw-cap-text">${esc(labels.analyzing || 'Записываю')}</span>${ownStop ? '' : `<button type="button" class="iw-stop" data-iw-stop title="Остановить разбор">${icon('stop')}<span>стоп</span></button>`}`
         : `<span class="iw-cap-text">${esc(labels.analyze || 'Проанализировать')}</span><span class="iw-cap-arrow" aria-hidden="true">${icon('pointer')}</span>`;
     return `
   <div class="iw-acts-wrap">
-    <div class="iw-acts-cap${busyKind ? ' busy' : ''}" role="status">${cap}</div>
-    <div class="iw-acts" role="group" aria-label="Проанализировать" aria-busy="${!!busyKind}">
+    <div class="iw-acts-cap${working ? ' busy' : ''}" role="status">${cap}</div>
+    <div class="iw-acts" role="group" aria-label="Проанализировать" aria-busy="${working}">
       ${btn('chat', 'chat', 'Чат', 'Разобрать последние сообщения')}
-      ${btn('lore', 'bookopen', 'Лорбук', 'Разобрать карточку и лорбуки: НПС и сведения о персонажах')}
+      <span class="iw-act-split">${btn('lore', 'bookopen', 'Лорбук', 'Разобрать карточку и лорбуки: НПС и сведения о персонажах')}${booksMenu(books, picked, linked, working)}</span>
       ${btn('all', 'sparkle', 'Всё сразу', 'Сначала лорбук и карточка, потом чат')}
     </div>
   </div>`;
@@ -90,7 +125,7 @@ function photoHtml(c, avatarFor) {
 }
 
 // Вкладки: главные персонажи-фотографии и наклейка «НПС»; справа — кнопки разбора.
-export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', shopKey = null, shopLabel = 'Магазин наград', labels = {} }) {
+export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', shopKey = null, shopLabel = 'Магазин наград', labels = {}, books = [], picked = [], linked = [], working = false }) {
     const tabs = mains.map(key => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
@@ -105,13 +140,22 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
     const shop = shopKey
         ? `<button type="button" class="iw-shop-sticker${view.startsWith('shop:') ? ' on' : ''}" data-iw-view="shop:${esc(shopKey)}" aria-pressed="${view.startsWith('shop:')}">${icon('shop')}<span>${esc(shopLabel)}</span></button>`
         : '';
-    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${shop}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels)}</div>`;
+    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${shop}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind)}</div>`;
 }
 
 function feelMeter(m, manualTurns) {
     const max = manualTurns ? (manualTurns[m.weight] || 1) : (WEIGHT_TURNS[m.weight] || WEIGHT_TURNS.medium)[2];
     const pct = Math.max(6, Math.min(100, Math.round((m.left / max) * 100)));
     return `<span class="iw-feel-meter" aria-hidden="true"><span style="width:${pct}%"></span></span>`;
+}
+
+// Слово состояния подсвечено цветом эмоции; смешанное состояние — переходом из одного цвета в другой.
+function moodWord(c) {
+    const [a, b] = moodFaces(c);
+    const cls = a ? ` iw-face-${a}` : '';
+    const style = b ? ` style="--face-bg2: var(--fb-${b}); --face-ink2: var(--fi-${b})"` : '';
+    const title = a ? ` title="${esc([a, b].filter(Boolean).map(f => FACE_NAMES[f]).join(' + '))}"` : '';
+    return `<span class="iw-mood-word${cls}${b ? ' iw-mood-mix' : ''}"${style}${title}><span class="iw-hl iw-hl-main">${esc(c.mood)}</span></span>`;
 }
 
 function renderMood(c, L, opts) {
@@ -123,11 +167,11 @@ function renderMood(c, L, opts) {
           <span class="iw-feel-face" title="${esc(FACE_NAMES[face] || '')}">${faceIcon(face)}</span>
           <span class="iw-feel-name">${esc(m.emotion)}</span>
           <span class="iw-feel-power">${esc(WEIGHT_NAMES[m.weight] || '')}</span>
+          ${delBtn('moodlets', i)}
         </div>
         ${m.feel ? `<div class="iw-feel-inner">${esc(m.feel)}</div>` : ''}
         ${m.why ? `<div class="iw-feel-why"><span class="iw-feel-cause">из-за:</span> ${esc(m.why)}</div>` : ''}
         <div class="iw-feel-time">${feelMeter(m, opts.manualTurns)}<span>${esc(moodletLeftLabel(m))}</span></div>
-        ${delBtn('moodlets', i)}
       </li>`;
     };
     const list = c.moodlets || [];
@@ -140,7 +184,7 @@ function renderMood(c, L, opts) {
     return `
     <section class="iw-block iw-b-mood">
       ${blockHead('mood', esc(L.moodTitle))}
-      <div class="iw-mood-now"><span class="iw-mood-lead">${esc(L.moodLead)}</span> ${c.mood ? `<span class="iw-mood-word"><span class="iw-hl iw-hl-main">${esc(c.mood)}</span></span>` : '<span class="iw-muted">— пока не понятно</span>'}</div>
+      <div class="iw-mood-now"><span class="iw-mood-lead">${esc(L.moodLead)}</span> ${c.mood ? moodWord(c) : '<span class="iw-muted">— пока не понятно</span>'}</div>
       ${feels ? `<ul class="iw-feels iw-feels-flat">${feels}</ul>${more}` : '<div class="iw-muted">ничего особенного</div>'}
     </section>`;
 }
@@ -151,6 +195,8 @@ function scoreBadge(score) {
 }
 
 // Маленький график: как менялось отношение от −3 до +3.
+// Как менялось отношение: линия по шкале от −3 до +3, точки — отдельными значками (не сплющиваются),
+// на конце — стрелка: теплеет, остывает или ровно. Вид линии и значков у каждой темы свой.
 function attitudeChart(points) {
     if (!points || points.length < 2) return '';
     const w = 240;
@@ -158,14 +204,23 @@ function attitudeChart(points) {
     const pad = 6;
     const step = (w - pad * 2) / (points.length - 1);
     const y = s => pad + ((3 - s) / 6) * (h - pad * 2);
-    const coords = points.map((p, i) => `${(pad + i * step).toFixed(1)},${y(p.s).toFixed(1)}`);
-    const dots = points.map((p, i) => `<circle cx="${(pad + i * step).toFixed(1)}" cy="${y(p.s).toFixed(1)}" r="3.2"/>`).join('');
+    const xs = points.map((p, i) => pad + i * step);
+    const coords = points.map((p, i) => `${xs[i].toFixed(1)},${y(p.s).toFixed(1)}`);
+    const pct = (v, total) => ((v / total) * 100).toFixed(2);
+    const last = points[points.length - 1].s;
+    const prev = points[points.length - 2].s;
+    const trend = last > prev ? 'up' : (last < prev ? 'down' : 'flat');
+    const trendName = { up: 'теплеет', down: 'остывает', flat: 'без перемен' }[trend];
+    const dots = points.slice(0, -1).map((p, i) => `<span class="iw-chart-dot" style="left:${pct(xs[i], w)}%;top:${pct(y(p.s), h)}%"></span>`).join('');
+    const end = `<span class="iw-chart-end iw-trend-${trend}" style="left:${pct(xs[xs.length - 1], w)}%;top:${pct(y(last), h)}%" title="${trendName}">${icon(trend === 'up' ? 'arrowup' : trend === 'down' ? 'arrowdown' : 'arrowright')}</span>`;
     return `
-      <svg class="iw-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Как менялось отношение: ${points.map(p => signed(p.s)).join(', ')}">
-        <line class="iw-chart-zero" x1="0" x2="${w}" y1="${y(0)}" y2="${y(0)}"/>
-        <polyline points="${coords.join(' ')}"/>
-        <g>${dots}</g>
-      </svg>`;
+      <div class="iw-chart-wrap" role="img" aria-label="Как менялось отношение: ${points.map(p => signed(p.s)).join(', ')} — ${trendName}">
+        <svg class="iw-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+          <line class="iw-chart-zero" x1="0" x2="${w}" y1="${y(0)}" y2="${y(0)}"/>
+          <polyline points="${coords.join(' ')}"/>
+        </svg>
+        ${dots}${end}
+      </div>`;
 }
 
 function renderAttitude(c, L) {
@@ -196,11 +251,14 @@ function renderWants(c, L) {
     const items = (c.wants || []).map((w, i) => {
         const done = w.status === 'done';
         const dropped = w.status === 'dropped';
+        const pin = !done && !dropped
+            ? `<button type="button" class="iw-mini iw-want-pin${w.pinned ? ' on' : ''}" data-iw-want-pin="${i}" title="${w.pinned ? 'Закреплено: не изменится, пока не исполнится. Нажми, чтобы открепить' : 'Закрепить желание: оно останется, пока не исполнится'}" aria-pressed="${!!w.pinned}">${icon(w.pinned ? 'pin' : 'unpin')}</button>`
+            : '';
         return `
-      <li class="iw-want${done ? ' done' : ''}${dropped ? ' dropped' : ''}">
+      <li class="iw-want${done ? ' done' : ''}${dropped ? ' dropped' : ''}${w.pinned && !done ? ' pinned' : ''}">
         <span class="iw-box">${done ? ICON_CHECK : ''}</span>
         <span class="iw-want-text">${esc(w.text)}${done ? ' <b class="iw-tag">сбылось</b>' : ''}${dropped ? ' <b class="iw-tag">уже неважно</b>' : ''}</span>
-        ${delBtn('wants', i)}
+        <span class="iw-row-tools">${pin}${delBtn('wants', i)}</span>
       </li>`;
     }).join('');
     return `
@@ -217,8 +275,7 @@ function renderFears(c, L) {
       <li class="iw-fear iw-fs-${f.strength}${f.status !== 'active' ? ' ' + f.status : ''}">
         <span class="iw-fear-mark" aria-hidden="true">${icon('ghost')}</span>
         <span class="iw-fear-text">${esc(f.text)}${f.status === 'realized' ? ' <b class="iw-tag">сбылся</b>' : ''}${f.status === 'gone' ? ' <b class="iw-tag">прошёл</b>' : ''}</span>
-        <span class="iw-fear-power">${esc(f.level || FEAR_POWER[f.strength])}</span>
-        ${delBtn('fears', i)}
+        <span class="iw-row-tools"><span class="iw-fear-power">${esc(f.level || FEAR_POWER[f.strength])}</span>${delBtn('fears', i)}</span>
       </li>`).join('');
     return `
     <section class="iw-block iw-b-fears">
@@ -250,25 +307,57 @@ function renderDream(c, L, opts = {}) {
 }
 
 function traitChip(t, i) {
-    const mark = t.kind === 'up' ? '<span class="iw-trait-mark">усилилась</span>' : (t.kind === 'down' ? '<span class="iw-trait-mark">слабеет</span>' : '');
+    const gone = t.kind === 'gone';
+    const mark = t.kind === 'up' ? '<span class="iw-trait-mark">усилилась</span>' : (t.kind === 'down' ? '<span class="iw-trait-mark">слабеет</span>' : (gone ? '<span class="iw-trait-mark">ушла</span>' : ''));
+    const tools = gone
+        ? `<button type="button" class="iw-trait-tool" data-iw-trait="back:${i}" title="Вернуть черту: событие её не сломало" aria-label="Вернуть черту">${icon('rotate')}</button>`
+        : `${t.kind === 'new' ? `<button type="button" class="iw-trait-tool" data-iw-trait="keep:${i}" title="Сделать постоянной: перенести в основные черты" aria-label="Сделать постоянной">${icon('tobase')}</button>` : ''}${delBtn('traits', i)}`;
+    const left = gone && t.left ? `<span class="iw-trait-left">${t.left > 1 ? 'исчезнет через ' + t.left + ' ' + plural(t.left, 'ответ', 'ответа', 'ответов') : 'исчезнет после следующего ответа'}</span>` : '';
     return `
       <span class="iw-trait iw-k-${t.kind}">
+        <span class="iw-trait-head">
         <span class="iw-trait-name">${esc(t.name)}${mark}</span>
+        <span class="iw-trait-tools">${tools}</span>
+        </span>
         ${t.why && t.kind !== 'base' ? `<span class="iw-trait-why">${esc(t.why)}</span>` : ''}
-        ${delBtn('traits', i)}
+        ${left}
       </span>`;
+}
+
+// Тип личности (16 типов) и темперамент — строкой в блоке черт, не отдельным блоком.
+const TEMPER_HINT = {
+    choleric: 'быстрый, вспыльчивый, напористый',
+    sanguine: 'живой, общительный, легко переключается',
+    phlegmatic: 'спокойный, ровный, неторопливый',
+    melancholic: 'чуткий, ранимый, глубоко переживает',
+};
+function personaRow(c) {
+    const code = c.ptype ? c.ptype.slice(0, 4) : '';
+    const name = PTYPES[code];
+    const grp = ptypeGroup(code);
+    const bits = [];
+    if (name) {
+        const tail = c.ptype.length > 4 ? c.ptype.slice(4) : '';
+        bits.push(`<span class="iw-persona-chip iw-pt-${grp}" title="Тип личности (16 типов): ${esc(name)}. ${esc(PTYPE_GROUPS[grp] || '')}"><b>${esc(code)}${esc(tail)}</b><span>${esc(name)}</span></span>`);
+    }
+    if (TEMPERS[c.temper]) {
+        bits.push(`<span class="iw-persona-chip iw-tm-${c.temper}" title="Темперамент: ${esc(TEMPER_HINT[c.temper])}"><b>${icon('flame')}</b><span>${esc(TEMPERS[c.temper])}</span></span>`);
+    }
+    return bits.length ? `<div class="iw-persona">${bits.join('')}</div>` : '';
 }
 
 function renderTraits(c, L) {
     const list = (c.traits || []).map((t, i) => ({ t, i }));
-    const base = list.filter(x => x.t.kind !== 'new');
-    const gained = list.filter(x => x.t.kind === 'new');
+    const isNew = t => t.kind === 'new' || (t.kind === 'gone' && t.was === 'new');
+    const base = list.filter(x => !isNew(x.t));
+    const gained = list.filter(x => isNew(x.t));
     if (!list.length) {
-        return `<section class="iw-block iw-b-traits">${blockHead('traits', esc(L.traits))}<span class="iw-muted">пока не разобрались</span></section>`;
+        return `<section class="iw-block iw-b-traits">${blockHead('traits', esc(L.traits))}${personaRow(c)}<span class="iw-muted">пока не разобрались</span></section>`;
     }
     return `
     <section class="iw-block iw-b-traits">
       ${blockHead('traits', esc(L.traits))}
+      ${personaRow(c)}
       <div class="iw-trait-groups">
         <div class="iw-group">
           ${groupHead(L.traitsBase)}
@@ -311,13 +400,13 @@ const REWARD_GROUPS = [
 ];
 
 export function renderShop(c, theme, key, { shopBusy = false } = {}) {
-    const L = themeLabels(theme, c.g);
+    const L = themeLabels(theme, genderOf(c.g, c.name, c.who));
     const pts = c.points || 0;
     const row = r => `
       <li class="iw-reward iw-rk-${r.kind}${pts < r.cost ? ' locked' : ''}">
         <span class="iw-rw-ico iw-rw-big">${icon(r.icon || 'gift')}</span>
         <span class="iw-rw-body"><b class="iw-rw-title">${esc(r.title)}</b><span class="iw-rw-desc">${esc(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
-        <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost ? ' disabled' : ''} title="${pts < r.cost ? 'Не хватает очков' : 'Купить'}">${icon('coin')}<span>${r.cost}</span></button>
+        <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost ? ' disabled' : ''} title="${pts < r.cost ? 'Не хватает очков' : 'Купить'}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
       </li>`;
     const shop = c.shop || [];
     const groups = REWARD_GROUPS.map(g => {
@@ -332,7 +421,7 @@ export function renderShop(c, theme, key, { shopBusy = false } = {}) {
     return `
 <button type="button" class="iw-back" data-iw-view="main:${esc(key)}">${icon('back')}<span>к дневнику</span></button>
 <section class="iw-block iw-b-shop">
-  ${blockHead('rewards', esc(L.shop), `<span class="iw-points">${icon('coin')}<b>${pts}</b></span>`)}
+  ${blockHead('rewards', esc(L.shop), `<span class="iw-points">${icon(currencyIcon(theme))}<b>${pts}</b></span>`)}
   <div class="iw-muted">Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под ${esc(c.name)}.</div>
   ${activeRewards(c)}
   ${groups || '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>'}
@@ -341,7 +430,7 @@ export function renderShop(c, theme, key, { shopBusy = false } = {}) {
 }
 
 export function renderCharacter(c, modules, theme, opts = {}) {
-    const L = themeLabels(theme, c.g);
+    const L = themeLabels(theme, genderOf(c.g, c.name, c.who), bimboNicks(c.name, !!opts.first));
     const blocks = [];
     if (modules.mood) blocks.push(renderMood(c, L, opts));
     if (modules.impression) blocks.push(renderAttitude(c, L));
@@ -369,16 +458,20 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
     }
     for (const e of seenOnly) {
         used.add(e.name);
+        const g = genderOf(e.g, e.name, e.who);
+        const tip = e.checked
+            ? gw(g, 'О нём говорили, но лично он в сцене не появлялся', 'О ней говорили, но лично она в сцене не появлялась', 'Об этом персонаже говорили, но лично в сцене его не было')
+            : gw(g, 'Упоминался', 'Упоминалась', 'Был упомянут') + ' в этом чате. Нажми «Чат», и дневник разберёт историю';
         cards.push(`
-      <div class="iw-npc seen${e.checked ? ' checked' : ''}" title="${e.checked ? 'О нём говорили, но лично он в сцене не появлялся' : 'Упоминался в этом чате — нажми «Чат», и дневник разберёт историю'}">
+      <div class="iw-npc seen${e.checked ? ' checked' : ''}" title="${esc(tip)}">
         ${npcBadge(badgeInfo(e, e))}
         <span class="iw-npc-name">${esc(e.name)}</span>
-        <span class="iw-npc-mood">${e.checked ? 'только упоминался' : 'ждёт разбора'}</span>
+        <span class="iw-npc-mood">${e.checked ? gw(g, 'только упоминался', 'только упоминалась', 'только упоминание') : 'ждёт разбора'}</span>
       </div>`);
     }
     const unknown = ((roster && roster.npc) || []).filter(e => !used.has(e.name) && !npcKeys.some(k => roster.find(k) === e));
     const unknownTiles = unknown.map(() => `
-      <span class="iw-npc-unknown" title="Ещё не появлялся в сцене"><span class="iw-unknown-mark"></span></span>`).join('');
+      <span class="iw-npc-unknown" title="Ещё не было в сцене"><span class="iw-unknown-mark"></span></span>`).join('');
     const known = (roster && roster.npc && roster.npc.length) || 0;
     const studyLabel = known ? 'Изучить заново' : 'Изучить лорбук и карточку';
     return `
@@ -395,7 +488,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
 </div>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '' }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false }) {
     const L = themeLabels(theme, 'm');
     if (view === 'settings') {
         return `
@@ -427,7 +520,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         const c = state.characters[key];
         const entry = roster && roster.find ? roster.find(key) : null;
         current = key;
-        const LL = themeLabels(theme, c.g);
+        const LL = themeLabels(theme, genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, (entry && entry.who) || c.who || ''));
         const who = (entry && entry.who) || c.who || '';
         const loreTraits = (entry && entry.traits) || [];
         const aliases = shownAliases(entry);
@@ -453,7 +546,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         body = renderShop(state.characters[key], theme, key, { shopBusy });
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
-        body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current }, opts));
+        body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0] }, opts));
     } else if (view.startsWith('main:')) {
         const name = view.slice(5);
         body = `
@@ -480,7 +573,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, busy, false, wallet)}
   ${ROUGH_FILTER}
-  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, shopKey, shopLabel: L.shop, labels: L })}
+  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, shopKey, shopLabel: L.shop, labels: L, books, picked, linked, working })}
   <div class="iw-body">${body}</div>
   <div class="iw-foot"><span class="iw-status">${esc(status || '')}</span>${forget}</div>
 </div>`;

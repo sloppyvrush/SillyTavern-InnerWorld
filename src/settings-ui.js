@@ -10,7 +10,7 @@ function esc(s) {
 const n = list => list.map(v => [v, String(v)]);
 
 // Поля, которые хранятся числом.
-export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'maxChars', 'injectDepth'];
+export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'maxChars', 'injectDepth', 'volume'];
 
 const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 
@@ -35,7 +35,8 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'onlyPresent', label: 'Экономия: только те, кто сейчас в сцене', hint: 'Остальные персонажи ждут, пока снова не появятся.' },
                 { type: 'select', key: 'maxChars', label: 'Сколько персонажей держать в дневнике', options: n([4, 6, 8, 12, 16, 20]) },
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
-                { type: 'toggle', key: 'sound', label: 'Звуки', hint: 'Тихий звук, когда сбывается желание, страх или мечта.' },
+                { type: 'toggle', key: 'sound', label: 'Звуки', hint: 'Свой звук на каждое событие, а на кнопки разбора — карандаш по бумаге.' },
+                { type: 'range', key: 'volume', label: 'Громкость звуков', min: 0, max: 100, step: 5, show: s => s.sound },
                 { type: 'toggle', key: 'toasts', label: 'Всплывашки о событиях', hint: '«Желание исполнено», «Страх сбылся», «Новая черта»…' },
                 { type: 'toggle', key: 'fab', label: 'Плавающая кнопка-блокнот', hint: s => (s.fab ? 'Её можно перетащить в любое место экрана.' : 'Дневник открывается из меню расширений у поля ввода (волшебная палочка).') },
             ],
@@ -114,6 +115,10 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                 const opts = list.map(([v, label]) => `<option value="${esc(v)}"${String(v) === cur ? ' selected' : ''}>${esc(label)}</option>`).join('');
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<select class="${st ? 'text_pole' : 'iw-select'}" data-iw-set="${f.key}">${opts}</select></label>${hintHtml}</div>`;
             }
+            if (f.type === 'range') {
+                const v = Number(s[f.key]) || 0;
+                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)} <output class="iw-range-val">${v}%</output><input type="range" class="iw-range" data-iw-set="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}"></label>${hintHtml}</div>`;
+            }
             if (f.type === 'text') {
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<input type="${f.input === 'password' ? 'password' : 'text'}" class="${st ? 'text_pole' : 'iw-input'}" data-iw-set="${f.key}" value="${esc(fieldValue(s, f.key))}" placeholder="${esc(f.placeholder || '')}" autocomplete="off" spellcheck="false"></label>${hintHtml}</div>`;
             }
@@ -166,9 +171,9 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
     }).join('');
     const lang = s.language === 'английском' ? 'en' : 'ru';
     const langPill = `<div class="iw-lang" role="group" aria-label="Язык записей в дневнике">
-      <span class="iw-lang-cap">записи на</span>
-      <button type="button" class="iw-lang-opt${lang === 'ru' ? ' on' : ''}" data-iw-lang="русском" aria-pressed="${lang === 'ru'}">RU</button>
-      <button type="button" class="iw-lang-opt${lang === 'en' ? ' on' : ''}" data-iw-lang="английском" aria-pressed="${lang === 'en'}">English</button>
+      <span class="iw-lang-cap" title="На каком языке модель пишет эмоции, желания, страхи и всё остальное в дневнике. Сами кнопки и настройки остаются на русском.">язык записей</span>
+      <button type="button" class="iw-lang-opt${lang === 'ru' ? ' on' : ''}" data-iw-lang="русском" aria-pressed="${lang === 'ru'}" title="Записи в дневнике на русском">RU</button>
+      <button type="button" class="iw-lang-opt${lang === 'en' ? ' on' : ''}" data-iw-lang="английском" aria-pressed="${lang === 'en'}" title="Записи в дневнике на английском">EN</button>
     </div>`;
     return `<div class="iw-form iw-form-${variant}">${sections}${langPill}</div>`;
 }
