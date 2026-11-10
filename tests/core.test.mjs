@@ -144,7 +144,37 @@ test('события: желание, страх, шаг к мечте, перв
 
     const r3 = applyAnalysis(r2.state, one({ name: 'Марк', wants: [{ text: 'Чтобы Ева осталась на ужин', status: 'done' }, { text: 'Поговорить наедине', pct: 30 }], fears: [{ text: 'Что Лида узнает', status: 'realized' }] }), all, {});
     assert.equal(r3.events.length, 0);
-    assert.deepEqual(r3.state.characters['Марк'].wants.map(w => w.text), ['Поговорить наедине']);
+    // исполненное ещё видно несколько ответов, новое встаёт рядом
+    assert.deepEqual(r3.state.characters['Марк'].wants.map(w => w.text), ['Чтобы Ева осталась на ужин', 'Поговорить наедине']);
+});
+
+test('желания и страхи не переписываются каждый ответ, эмоции не теряют причину', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Марк', g: 'm', mood: 'спокоен',
+        wants: [{ text: 'Найти убийцу' }, { text: 'Выспаться' }, { text: 'Помириться с братом' }],
+        fears: [{ text: 'Что Лида узнает', strength: 3 }, { text: 'Потерять работу', strength: 1 }],
+        moodlets: [{ emotion: 'нежность', why: 'она улыбнулась', weight: 'medium', tone: 'good' }] }), all).state;
+    // модель забыла два желания и предложила три новых: старые остаются, новых не больше одного места
+    st = applyAnalysis(st, one({ name: 'Марк', wants: [{ text: 'Найти убийцу' }, { text: 'Купить машину' }, { text: 'Уехать на море' }, { text: 'Сменить квартиру' }],
+        fears: [{ text: 'что Лида узнает обо всём' }], moodlets: [{ emotion: 'нежность', why: 'совсем другая причина', weight: 'medium', tone: 'good' }] }), all).state;
+    let m = st.characters['Марк'];
+    assert.deepEqual(m.wants.filter(w => w.status === 'active').map(w => w.text), ['Найти убийцу', 'Выспаться', 'Помириться с братом']);
+    assert.deepEqual(m.fears.map(f => f.text), ['Что Лида узнает', 'Потерять работу']);
+    assert.equal(m.moodlets.find(x => x.emotion === 'нежность').why, 'она улыбнулась');
+    // страх сбылся: эмоция появляется сама, страх виден несколько ответов, на его место — максимум один новый
+    st = applyAnalysis(st, one({ name: 'Марк', fears: [{ text: 'Что Лида узнает', status: 'realized' }, { text: 'Тюрьма' }, { text: 'Одиночество' }] }), all).state;
+    m = st.characters['Марк'];
+    assert.ok(m.moodlets.some(x => x.emotion === 'потрясение' && x.weight === 'deep' && x.why.includes('Лида')));
+    assert.deepEqual(m.fears.map(f => f.text + ':' + f.status), ['Что Лида узнает:realized', 'Потерять работу:active', 'Тюрьма:active']);
+    assert.ok(buildInjection(st, all, 'Ева').includes('только что сбылось'));
+    for (let i = 0; i < 2; i++) st = applyAnalysis(st, one({ name: 'Марк', fears: [] }), all).state;
+    assert.ok(st.characters['Марк'].fears.some(f => f.status === 'realized'), 'ещё видно');
+    st = applyAnalysis(st, one({ name: 'Марк', fears: [] }), all).state;
+    assert.ok(!st.characters['Марк'].fears.some(f => f.status === 'realized'), 'через несколько ответов уходит');
+    // отношение обновляется и без label
+    st = applyAnalysis(emptyState(), one({ name: 'Марк', impression: { label: 'интерес', score: 1, now: 'присматривается' } }), all).state;
+    st = applyAnalysis(st, parseAnalysis(JSON.stringify({ characters: [{ name: 'Марк', impression: { now: 'доверяет ей', now_score: 2 } }] })), all).state;
+    assert.equal(st.characters['Марк'].impression.nowScore, 2);
+    assert.equal(st.characters['Марк'].impression.now, 'доверяет ей');
 });
 
 test('выключенные блоки не просятся у модели', () => {

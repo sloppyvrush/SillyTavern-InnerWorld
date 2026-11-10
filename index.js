@@ -714,7 +714,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false, persona: s.persona !== false });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
         writeRecord(messageId, state);
         chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
         if (catchUp) {
