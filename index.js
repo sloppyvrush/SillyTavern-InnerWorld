@@ -125,14 +125,29 @@ function mainNames() {
 }
 
 // Главные — сверху вкладками, даже если дневник по ним ещё пуст; остальные — НПС.
+// Персона игрока в дневнике: ключ её записи (если уже разобрана) и имя.
+function personaKeyOf(state) {
+    const name = ctx().name1 || '';
+    return state.order.find(k => state.characters[k] && (state.characters[k].persona || (name && sameName(k, name)))) || null;
+}
+
 function splitCast(state) {
     const mn = mainNames();
-    const mainsInState = state.order.filter(k => isMain(k, mn));
+    const pk = personaKeyOf(state);
+    const mainsInState = state.order.filter(k => k !== pk && isMain(k, mn));
     // пустая вкладка нужна, только если главного в дневнике ещё нет совсем (одна на персонажа карточки)
     const placeholders = mainsInState.length ? [] : mn.slice(0, 1);
     const mains = [...mainsInState, ...placeholders];
-    const npcKeys = state.order.filter(k => !mainsInState.includes(k));
-    return { mains, npcKeys, mn, placeholders };
+    const npcKeys = state.order.filter(k => k !== pk && !mainsInState.includes(k));
+    return { mains, npcKeys, mn, placeholders, personaKey: pk };
+}
+
+// Аватарка персоны игрока — из модуля персон таверны (подгружаем один раз).
+let personasMod = null;
+import('/scripts/personas.js').then(m => { personasMod = m; }).catch(() => {});
+function personaAvatarUrl() {
+    const file = personasMod && personasMod.user_avatar;
+    return file ? `/thumbnail?type=persona&file=${encodeURIComponent(file)}` : '';
 }
 
 // Кто из НПС лорбука уже упоминался в этом чате (без модели, простым поиском по тексту).
@@ -312,12 +327,19 @@ function chatMeta() {
     return c.chatMetadata[META_KEY];
 }
 
+// Запись дневника привязана к конкретному свайпу ответа (как скрытая отметка у ачивок):
+// перегенерировал ответ — у нового свайпа записи нет, дневник берёт состояние ДО этого ответа
+// и разбирает новый вариант заново; вернулся на старый свайп — возвращается и его запись.
 function recordOf(mes) {
-    const rec = mes && mes.extra && mes.extra[META_KEY];
-    if (!rec || !rec.state) return null;
+    if (!mes) return null;
     const sid = typeof mes.swipe_id === 'number' ? mes.swipe_id : 0;
-    if ((rec.sid ?? 0) !== sid) return null; // копия от другого свайпа
-    return rec;
+    const own = mes.extra && mes.extra[META_KEY];
+    if (own && own.state && (own.sid ?? 0) === sid) return own;
+    // таверна не всегда переносит extra свайпа в сообщение — ищем запись в самом свайпе
+    const sw = Array.isArray(mes.swipe_info) && mes.swipe_info[sid];
+    const fromSwipe = sw && sw.extra && sw.extra[META_KEY];
+    if (fromSwipe && fromSwipe.state && (fromSwipe.sid ?? sid) === sid) return fromSwipe;
+    return null;
 }
 
 // Ищет последнее сохранённое состояние до сообщения beforeId (не включая его).
@@ -608,6 +630,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             card: cardText(c),
             persona: personaText(c),
             trackNames: [c.name2, ...trackNames(s)],
+            trackPersona: s.persona !== false,
             messages: msgs,
             mainNames: mn,
             catchUp,
@@ -632,6 +655,9 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         };
         let present = null;
         if (s.onlyPresent && base.order.length) present = base.order.filter(inScene);
+        // персона игрока всегда «в сцене»: это её реплики
+        const pk = s.persona !== false ? personaKeyOf(base) : null;
+        if (present && pk && !present.includes(pk)) present.push(pk);
         // НПС из лорбука, которые впервые пришли в сцену: даём модели их описание
         if (s.showNpc !== false) {
             for (const e of ros.npc || []) {
@@ -644,8 +670,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const system = buildSystemPrompt(s, info);
         const user = buildUserPrompt(info, base, s.modules, present);
         const cast = present || base.order;
-        const castMains = Math.max(1, cast.filter(k => isMain(k, mn)).length);
-        const castNpcs = (s.showNpc === false ? 0 : cast.length - cast.filter(k => isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0);
+        const castMains = Math.max(1, cast.filter(k => isMain(k, mn)).length) + (s.persona !== false ? 1 : 0);
+        const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0);
         const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
         budget = ask.responseLength;
         raw = await callModel(system, user, ask);
@@ -669,7 +695,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false, persona: s.persona !== false });
         writeRecord(messageId, state);
         chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
         if (catchUp) {
@@ -733,7 +759,8 @@ function showEvent(ev, delay = 0) {
             if (e.target.closest('.iw-toast-close')) return close();
             const st = currentState();
             const key = st.order.find(k => sameName(k, ev.who));
-            if (key) view = splitCast(st).mains.includes(key) ? 'main:' + key : 'npc:' + key;
+            const cast = splitCast(st);
+            if (key) view = key === cast.personaKey ? 'me:' + key : (cast.mains.includes(key) ? 'main:' + key : 'npc:' + key);
             openPanel();
             close();
         });
@@ -898,9 +925,12 @@ function renderPanelNow() {
         return;
     }
     const state = liveState();
-    const { mains, npcKeys } = splitCast(state);
+    const { mains, npcKeys, personaKey } = splitCast(state);
     const showNpc = s.showNpc !== false;
+    const personaOn = s.persona !== false && hasChat();
+    const persona = personaOn ? { key: personaKey, name: ctx().name1 || 'Ты', avatar: personaAvatarUrl() } : null;
     const valid = view === 'settings'
+        || (personaOn && view.startsWith('me:'))
         || (view.startsWith('main:') && mains.includes(view.slice(5)))
         || (view.startsWith('shop:') && !!state.characters[view.slice(5)])
         || (showNpc && view === 'npc')
@@ -912,7 +942,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, working: busy || rosterBusy || dreamBusy || shopBusy });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, working: busy || rosterBusy || dreamBusy || shopBusy });
     const body = el.querySelector('.iw-body');
     if (body) body.scrollTop = keepScroll;
 }

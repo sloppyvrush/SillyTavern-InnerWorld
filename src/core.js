@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
     budgetMode: 'auto',      // auto — запас считается по сцене, но не выше потолка; fixed — ровно responseLength
     budgetCap: 8000,
     responseLength: 4000,
+    persona: true,           // вести дневник персоны игрока (только для информации, на ответы бота не влияет)
     maxChars: 12,
     language: 'русском',
     inject: true,
@@ -793,11 +794,17 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
     const userName = opts.userName || '';
 
     for (const fresh of freshList) {
-        if (userName && sameName(fresh.name, userName)) continue;
-        const key = Object.keys(next.characters).find(k => sameName(k, fresh.name)) || fresh.name;
+        // персона игрока ведётся только если это включено; в лимит персонажей она не входит
+        const isPersona = !!(userName && sameName(fresh.name, userName));
+        if (isPersona && !opts.persona) continue;
+        const key = isPersona
+            ? (Object.keys(next.characters).find(k => next.characters[k].persona || sameName(k, userName)) || userName)
+            : (Object.keys(next.characters).find(k => sameName(k, fresh.name) && !next.characters[k].persona) || fresh.name);
         const old = next.characters[key];
-        if (!old && next.order.length >= maxChars) continue;
+        const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona).length;
+        if (!old && !isPersona && counted >= maxChars) continue;
         const merged = mergeCharacter(old, fresh, modules);
+        if (isPersona) merged.persona = true;
         const evs = diffCharacter(old, merged, modules);
         if (merged.dream) delete merged.dream.event;
         if (opts.points) {
@@ -990,7 +997,9 @@ export function buildSystemPrompt(settings, ctx) {
     const rules = [
         'Ты ведёшь «внутренний мир» персонажей ролевой истории, как в симуляторе жизни. По последним сообщениям обнови их состояние.',
         `Отвечай ТОЛЬКО JSON, без пояснений и без markdown. Все тексты — на ${lang} языке, коротко.`,
-        `Кого вести: ${who}. ${user} — это игрок: его внутренний мир не веди и в список не включай.`,
+        ctx.trackPersona
+            ? `Кого вести: ${who}. Кроме них ВСЕГДА веди и ${user} — это персона игрока: отдельный персонаж с name "${user}". Её состояние выводи только из её описания и из того, что она сама сказала и сделала в сообщениях; не придумывай ей поступков и мыслей. У ${user} impression — её отношение к ${ctx.botName} (а не к игроку).`
+            : `Кого вести: ${who}. ${user} — это игрок: его внутренний мир не веди и в список не включай.`,
         'Если у персонажа уже есть пункты, повторяй их текст дословно, пока они не изменились. Ничего не выдумывай сверх того, что следует из текста и карточки.',
         'who — только для персонажа, которого ещё нет в текущем состоянии: кто это одной строкой (роль, связь с героями). У известных персонажей who не пиши.',
         'g — пол персонажа: m или f. Бери его из карточки, лорбука или текста (она сказала, он ушёл, окончания глаголов, имя). Все слова о персонаже (mood, feel, why, ended) пиши в его роде: «встревожена», «успела», «сама».',
@@ -1086,7 +1095,7 @@ export function buildInjection(state, modules, userName, influence = 'medium') {
     const lines = [];
     for (const key of state.order) {
         const c = state.characters[key];
-        if (!c) continue;
+        if (!c || c.persona || (userName && sameName(c.name, userName))) continue; // дневник персоны — только для игрока
         const bits = [];
         if (modules.mood && c.mood) {
             const ml = (c.moodlets || []).filter(m => (WEIGHT_RANK[m.weight] || 2) >= minRank)

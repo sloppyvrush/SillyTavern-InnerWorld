@@ -1,6 +1,6 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
 import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText } from './core.js';
-import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks } from './themes.js';
+import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
 
 // Данные для подбора значка НПС: роль из лорбука или от модели, черты, имя, пол.
@@ -9,7 +9,7 @@ function badgeInfo(c, entry) {
 }
 
 // Невидимый фильтр «дрожащей линии» для рисованных тем.
-const ROUGH_FILTER = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="iw-rough"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter></svg>';
+const ROUGH_FILTER = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="iw-rough"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter><filter id="iw-pixelate" x="0" y="0" width="100%" height="100%" primitiveUnits="userSpaceOnUse"><feFlood x="1" y="1" width="1" height="1" flood-color="#000"/><feComposite width="2" height="2"/><feTile result="dots"/><feComposite in="SourceGraphic" in2="dots" operator="in"/><feMorphology operator="dilate" radius="1"/></filter><filter id="iw-brush"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.2"/></filter><filter id="iw-stamp"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="5" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.6" result="holes"/><feComposite in="SourceGraphic" in2="holes" operator="in"/></filter></svg>';
 
 export function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -20,6 +20,15 @@ const SCRIBBLE = '<svg class="iw-scribble" width="220" height="12" viewBox="0 0 
 
 function delBtn(kind, i) {
     return `<button type="button" class="iw-del" data-iw-del="${kind}:${i}" title="Убрать из дневника" aria-label="Убрать из дневника">${icon('x')}</button>`;
+}
+
+// Имя не рвётся посреди слова: чем длиннее самое длинное слово, тем мельче шрифт.
+function nameFit(name) {
+    const longest = Math.max(0, ...String(name || '').split(/[\s-]+/).map(w => w.length));
+    if (longest >= 13) return ' iw-name-xxl';
+    if (longest >= 10) return ' iw-name-xl';
+    if (longest >= 8) return ' iw-name-l';
+    return '';
 }
 
 function blockHead(kind, label, extra = '') {
@@ -39,14 +48,17 @@ function renderWallet(wallet, theme = '') {
     return `<details class="iw-wallet"><summary title="Очки за желания и мечту">${coin}<b>${cur.points}</b></summary><ul class="iw-wallet-list">${items}</ul></details>`;
 }
 
-export function renderHeader(settings, theme, busy, inSettings = false, wallet = null) {
+export function renderHeader(settings, theme, busy, inSettings = false, wallet = null, shop = null) {
     const L = themeLabels(theme, 'm');
     const sound = settings.sound !== false;
     return `
 <div class="iw-head">
   <div class="iw-titlebox"><div class="iw-title">${esc(L.title)}</div>${SCRIBBLE}</div>
-  <div class="iw-tools">
+  ${shop || (wallet && wallet.list && wallet.list.length) ? `<div class="iw-shopbar">
+    ${shop ? `<button type="button" class="iw-shop-sticker${shop.on ? ' on' : ''}" data-iw-view="shop:${esc(shop.key)}" aria-pressed="${shop.on}">${icon('shop')}<span>${esc(L.shop || 'Магазин наград')}</span></button>` : ''}
     ${renderWallet(wallet, theme)}
+  </div>` : ''}
+  <div class="iw-tools">
     <details class="iw-vol${sound ? '' : ' off'}">
       <summary class="iw-tool" title="Звук и громкость" aria-label="Звук и громкость">${icon(sound ? 'sound' : 'mute')}</summary>
       <div class="iw-vol-menu">
@@ -62,6 +74,13 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
 }
 
 // Лицо-смайлик на вкладке: цвет и выражение по настроению.
+// Смайлик эмоции рядом с именем в открытом НПС.
+function titleFace(c) {
+    const [face] = moodFaces(c);
+    if (!face) return '';
+    return ` <span class="iw-title-face iw-face-${face}" title="${esc(FACE_NAMES[face] || '')}">${faceIcon(face)}</span>`;
+}
+
 function faceBadge(c) {
     const [face] = moodFaces(c);
     if (!face) return '';
@@ -124,11 +143,11 @@ function photoHtml(c, avatarFor) {
 }
 
 // Вкладки: главные персонажи-фотографии и наклейка «НПС»; справа — кнопки разбора.
-export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', shopKey = null, shopLabel = 'Магазин наград', labels = {}, books = [], picked = [], linked = [], working = false }) {
+export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false }) {
     const tabs = mains.map(key => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
-        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}"><span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${esc(c.mood)}</span>` : ''}</button>`;
+        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}"><span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${esc(c.mood)}</span>` : ''}</button>`;
     }).join('');
     const sticker = npc
         ? `<button type="button" class="iw-npc-sticker${view.startsWith('npc') ? ' on' : ''}" data-iw-view="npc" aria-pressed="${view.startsWith('npc')}">
@@ -136,10 +155,17 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
              <span class="iw-npc-sticker-count">${npc.met}${npc.known ? ` из ${npc.known}` : ''}</span>
            </button>`
         : '';
-    const shop = shopKey
-        ? `<button type="button" class="iw-shop-sticker${view.startsWith('shop:') ? ' on' : ''}" data-iw-view="shop:${esc(shopKey)}" aria-pressed="${view.startsWith('shop:')}">${icon('shop')}<span>${esc(shopLabel)}</span></button>`
-        : '';
-    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${shop}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind)}</div>`;
+    // карточка персоны игрока — такая же, как у персонажа, с подписью «твой герой»
+    let me = '';
+    if (persona) {
+        const pc = (persona.key && state.characters[persona.key]) || { name: persona.name };
+        const on = view.startsWith('me:');
+        const photo = persona.avatar
+            ? `<span class="iw-photo" style="background-image:url('${esc(persona.avatar)}')"></span>`
+            : `<span class="iw-photo iw-photo-letter">${esc((pc.name || '?').slice(0, 1).toUpperCase())}</span>`;
+        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет"><span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-cap">твой герой</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${esc(pc.mood)}</span>` : ''}</button>`;
+    }
+    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind)}</div>`;
 }
 
 function feelMeter(m, manualTurns) {
@@ -196,7 +222,7 @@ function scoreBadge(score) {
 // Маленький график: как менялось отношение от −3 до +3.
 // Как менялось отношение: линия по шкале от −3 до +3, точки — отдельными значками (не сплющиваются),
 // на конце — стрелка: теплеет, остывает или ровно. Вид линии и значков у каждой темы свой.
-function attitudeChart(points) {
+function attitudeChart(points, mark = '♥') {
     if (!points || points.length < 2) return '';
     const w = 240;
     const h = 56;
@@ -211,7 +237,7 @@ function attitudeChart(points) {
     const trend = last > prev ? 'up' : (last < prev ? 'down' : 'flat');
     const trendName = { up: 'теплеет', down: 'остывает', flat: 'без перемен' }[trend];
     const dots = points.slice(0, -1).map((p, i) => `<span class="iw-chart-dot" style="left:${pct(xs[i], w)}%;top:${pct(y(p.s), h)}%"></span>`).join('');
-    const end = `<span class="iw-chart-end iw-trend-${trend}" style="left:${pct(xs[xs.length - 1], w)}%;top:${pct(y(last), h)}%" title="${trendName}">${icon(trend === 'up' ? 'arrowup' : trend === 'down' ? 'arrowdown' : 'arrowright')}</span>`;
+    const end = `<span class="iw-chart-end iw-trend-${trend}" style="left:${pct(xs[xs.length - 1], w)}%;top:${pct(y(last), h)}%" title="${trendName}">${esc(mark)}</span>`;
     return `
       <div class="iw-chart-wrap" role="img" aria-label="Как менялось отношение: ${points.map(p => signed(p.s)).join(', ')} — ${trendName}">
         <svg class="iw-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
@@ -242,12 +268,16 @@ function renderAttitude(c, L) {
           <div class="iw-imp-row">${scoreBadge(nowScore)}<span class="iw-imp-now">${esc(im.now)}</span></div>
         </div>` : ''}
       </div>
-      ${attitudeChart(c.attitude)}
+      ${attitudeChart(c.attitude, L.chartMark)}
     </section>`;
 }
 
 function renderWants(c, L) {
-    const items = (c.wants || []).map((w, i) => {
+    // закреплённые (и ещё не исполненные) желания — наверху списка
+    const ordered = (c.wants || []).map((w, i) => ({ w, i }));
+    const top = x => (x.w.pinned && x.w.status !== 'done' && x.w.status !== 'dropped' ? 0 : 1);
+    ordered.sort((a, b) => top(a) - top(b) || a.i - b.i);
+    const items = ordered.map(({ w, i }) => {
         const done = w.status === 'done';
         const dropped = w.status === 'dropped';
         const pin = !done && !dropped
@@ -322,7 +352,7 @@ function traitChip(t, i) {
       <span class="iw-trait iw-k-${t.kind}${acquired ? ' iw-acquired' : ''}">
         <span class="iw-trait-head">
         <details class="iw-trait-det">
-          <summary class="iw-trait-name" title="Подробнее о черте"><span class="iw-trait-label">${esc(t.name)}</span>${mark}${t.kept ? '<span class="iw-trait-kept">приобретена</span>' : ''}<span class="iw-trait-chev" aria-hidden="true">${icon('chevron')}</span></summary>
+          <summary class="iw-trait-name" title="Подробнее о черте"><span class="iw-trait-label">${esc(t.name)}</span><span class="iw-trait-chev" aria-hidden="true">${icon('chevron')}</span>${mark}${t.kept ? '<span class="iw-trait-kept">приобретена</span>' : ''}</summary>
           <span class="iw-trait-more">${more.join('')}</span>
         </details>
         <span class="iw-trait-tools">${tools}</span>
@@ -492,6 +522,10 @@ export function renderShop(c, theme, key, { shopBusy = false } = {}) {
 
 export function renderCharacter(c, modules, theme, opts = {}) {
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who), bimboNicks(c.name, !!opts.first));
+    if (opts.persona) {
+        const pg = genderOf(c.g, c.name, c.who);
+        L.attitude = `Как ${gw(pg, 'он', 'она', 'твой герой')} относится к ${gw(opts.botG, 'нему', 'ней', 'персонажу')}`;
+    }
     const blocks = [];
     if (modules.mood) blocks.push(renderMood(c, L, opts));
     if (modules.impression) blocks.push(renderAttitude(c, L));
@@ -512,10 +546,13 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         const c = state.characters[key];
         const entry = roster && roster.find ? roster.find(key) : null;
         if (entry) used.add(entry.name);
+        const who = (entry && entry.who) || c.who || '';
         cards.push(`
       <button type="button" class="iw-npc met" data-iw-view="npc:${esc(key)}" title="Открыть: ${esc(c.name)}">
-        ${npcBadge(badgeInfo(c, entry))}
-        <span class="iw-npc-name">${esc(c.name)}</span>
+        <span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${faceBadge(c)}</span>
+        <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
+        ${c.mood ? `<span class="iw-npc-mood iw-npc-now">${esc(c.mood)}</span>` : ''}
+        ${who ? `<span class="iw-npc-who">${esc(who)}</span>` : ''}
       </button>`);
     }
     for (const e of seenOnly) {
@@ -527,7 +564,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         cards.push(`
       <div class="iw-npc seen${e.checked ? ' checked' : ''}" title="${esc(tip)}">
         ${npcBadge(badgeInfo(e, e))}
-        <span class="iw-npc-name">${esc(e.name)}</span>
+        <span class="iw-npc-name${nameFit(e.name)}">${esc(e.name)}</span>
         <span class="iw-npc-mood">${e.checked ? gw(g, 'только упоминался', 'только упоминалась', 'только упоминание') : 'ждёт разбора'}</span>
       </div>`);
     }
@@ -550,7 +587,8 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
 </div>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false }) {
+    setIconTheme(theme);
     const L = themeLabels(theme, 'm');
     if (view === 'settings') {
         return `
@@ -592,7 +630,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   <span class="iw-tape" aria-hidden="true"></span>
   <div class="iw-dossier-face">${npcBadge(badgeInfo(c, entry), 'iw-badge-lg')}</div>
   <div class="iw-dossier-main">
-    <div class="iw-npc-title">${esc(c.name)}</div>
+    <div class="iw-npc-title${nameFit(c.name)}">${esc(c.name)}${titleFace(c)}</div>
     ${aliases.length ? `<div class="iw-npc-aka">ещё зовут: ${esc(aliases.join(', '))}</div>` : ''}
     ${c.mood ? `<div class="iw-dossier-mood">${esc(LL.moodLead)} <span class="iw-hl iw-hl-main">${esc(c.mood)}</span></div>` : ''}
   </div>
@@ -603,6 +641,18 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   </div>
 </section>
 ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
+    } else if (view.startsWith('me:')) {
+        const key = view.slice(3);
+        const pc = key && state.characters[key];
+        const bot = mains[0] && state.characters[mains[0]];
+        const botName = (bot && bot.name) || mains[0] || '';
+        const botG = genderOf(bot && bot.g, botName, bot && bot.who);
+        if (pc) {
+            current = key;
+            body = `<div class="iw-persona-note">${icon('eye')}<span>Дневник твоего героя — только для тебя: на ответы бота он не влияет.</span></div>${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG }, opts))}`;
+        } else {
+            body = `<div class="iw-waiting"><div class="iw-waiting-text"><div class="iw-npc-title">${esc((persona && persona.name) || 'Твой герой')}</div><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
+        }
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
         body = renderShop(state.characters[key], theme, key, { shopBusy });
@@ -615,19 +665,19 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         body = `<div class="iw-empty">${esc(L.empty)}</div>`;
     }
     const shopKey = settings.points !== false
-        ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] ? current : (mains.find(k => state.characters[k]) || null)))
+        ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] && !state.characters[current].persona ? current : (mains.find(k => state.characters[k]) || null)))
         : null;
     const wallet = settings.points !== false
-        ? { current: shopKey, list: state.order.filter(k => state.characters[k] && (mains.includes(k) || (state.characters[k].points || 0) > 0)).map(k => ({ key: k, name: state.characters[k].name, points: state.characters[k].points || 0 })) }
+        ? { current: shopKey, list: state.order.filter(k => state.characters[k] && !state.characters[k].persona && (mains.includes(k) || (state.characters[k].points || 0) > 0)).map(k => ({ key: k, name: state.characters[k].name, points: state.characters[k].points || 0 })) }
         : null;
     const forget = current ? `<button type="button" class="iw-forget" data-iw-forget="${esc(current)}">забыть ${esc(state.characters[current].name)}</button>` : '';
     const npcInfo = showNpc ? { met: npcKeys.length, known: (roster && roster.npc && roster.npc.length) || 0 } : null;
     return `
 <div class="iw-book">
   <div class="iw-margin" aria-hidden="true"></div>
-  ${renderHeader(settings, theme, busy, false, wallet)}
+  ${renderHeader(settings, theme, busy, false, wallet, shopKey && !(persona && shopKey === persona.key) ? { key: shopKey, on: view.startsWith('shop:') } : null)}
   ${ROUGH_FILTER}
-  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, shopKey, shopLabel: L.shop, labels: L, books, picked, linked, working })}
+  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working })}
   <div class="iw-body">${body}</div>
   <div class="iw-foot"><span class="iw-status">${esc(status || '')}</span>${forget}</div>
 </div>`;
@@ -635,6 +685,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
 
 // Всплывашка в стиле темы.
 export function renderToast(ev, theme) {
+    setIconTheme(theme);
     const kicker = toastKicker(theme, ev.type, eventTitle(ev));
     return `
 <div class="iw-toast-card iw-ev-${ev.type}" role="status">
@@ -652,7 +703,15 @@ export function renderToast(ev, theme) {
 // Скетчевая стрелка «сюда»: в рисованных темах — от руки, в технических — ломаная линия.
 const TECH_THEMES = ['cyber', 'grid', 'logbook', 'dossier'];
 function sketchArrow(theme, cls = '') {
-    const path = TECH_THEMES.includes(theme)
+    const tech = TECH_THEMES.includes(theme);
+    // в поле слева от шагов: от подсказки загибается вверх и показывает на кнопки над ней
+    if (cls.includes('iw-arrow-long')) {
+        const path = tech
+            ? '<path d="M31 43H9V9h24"/><path d="M28 4l6 5-6 5"/>'
+            : '<path d="M31 42c-9 3-19 1-22-7-3-9 0-19 7-24 5-3 11-4 17-3"/><path d="M27 3.5c3 1.4 5.3 3 6.8 4.8-2.2 1.3-4.6 3-6.4 5"/>';
+        return `<svg class="iw-sketch-arrow ${cls}" viewBox="0 0 40 48" width="40" height="48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+    }
+    const path = tech
         ? '<path d="M4 30h22V8"/><path d="M19 15l7-7 7 7"/>'
         : '<path d="M4 31c9 1 17-3 20-10s3-11 1-15"/><path d="M18 10c3-2 5-4 7-6 1 3 3 5 5 7"/>';
     return `<svg class="iw-sketch-arrow ${cls}" viewBox="0 0 38 36" width="38" height="36" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
@@ -676,7 +735,7 @@ function renderWaiting(name, s, theme, roster) {
     return `
 <div class="iw-waiting">
   <div class="iw-waiting-text">
-    <div class="iw-npc-title">${esc(name)}</div>
+    <div class="iw-npc-title${nameFit(name)}">${esc(name)}</div>
     <p>Дневник ещё не заполнен. Отправь сообщение, и я запишу, что ${him} на душе. Или нажми кнопку разбора справа сверху:</p>
     <ul class="iw-waiting-list">
       <li><b>«Чат»</b> — прочитаю историю и восстановлю настроение, желания, страхи и отношение к тебе;</li>
@@ -690,9 +749,9 @@ function renderWaiting(name, s, theme, roster) {
       <span class="iw-quick-num">1</span>
       <div class="iw-quick-body">
         <div class="iw-quick-title">Сколько токенов давать модели на ответ</div>
-        <div class="iw-qrow">${quickOpt('budgetMode', 'auto', 'сам, по сцене (советую)', auto)}${quickOpt('budgetMode', 'fixed', 'как я задам', !auto)}</div>
+        <div class="iw-qrow">${quickOpt('budgetMode', 'auto', 'сам, по размеру сцены', auto)}${quickOpt('budgetMode', 'fixed', 'как я задам', !auto)}</div>
         <div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">${auto ? 'потолок:' : 'на каждый ответ:'}</span>${budgetRow}</div>
-        <div class="iw-quick-hint">${sketchArrow(theme, 'iw-arrow-side')}<span>${auto ? 'Дневник сам считает, сколько нужно, и никогда не выходит за потолок. Платишь только за то, что модель написала.' : 'Каждый запрос получит ровно столько.'} Думающим моделям (Gemini 3 Pro и похожие) лучше от 6000: часть запаса уходит на размышления.</span></div>
+        <div class="iw-quick-hint iw-hint-arrow">${sketchArrow(theme, 'iw-arrow-long')}<span>${auto ? 'Дневник сам считает, сколько нужно, и никогда не выходит за потолок. Платишь только за то, что модель написала.' : 'Каждый запрос получит ровно столько.'} Думающим моделям (Gemini 3 Pro и похожие) лучше от 6000: часть запаса уходит на размышления.</span></div>
       </div>
     </div>
     <div class="iw-quick-step">
@@ -720,6 +779,7 @@ function renderWaiting(name, s, theme, roster) {
 
 // Ошибка дневника: что случилось и что сделать — листиком в стиле темы.
 export function renderErrorToast(info, theme) {
+    setIconTheme(theme);
     return `
 <div class="iw-toast-card iw-ev-fear_real iw-toast-error iw-err-${esc(info.kind)}" role="alert">
   <span class="iw-tape" aria-hidden="true"></span>

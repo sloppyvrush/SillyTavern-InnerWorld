@@ -7995,3 +7995,1578 @@ ol {
     background: rgba(255, 92, 240, .14);
     border-color: currentColor;
 }
+
+/* подсказка под кнопками запаса: стрелка в поле слева, под номером шага — текст не сдвигается */
+.iw-quick-hint.iw-hint-arrow {
+    position: relative;
+    display: block;
+}
+
+.iw-quick-hint.iw-hint-arrow .iw-arrow-long {
+    position: absolute;
+    left: -42px;
+    top: -34px;
+    width: 40px;
+    height: 48px;
+    margin: 0;
+    transform: none;
+    pointer-events: none;
+}
+
+/* у каждой темы своя рука */
+.iw-theme-grimoire .iw-arrow-long,
+.iw-theme-medieval .iw-arrow-long { stroke-dasharray: 5 3; }
+.iw-theme-china .iw-arrow-long { stroke-width: 3.2; }
+.iw-theme-bimbo .iw-arrow-long { stroke-width: 2.8; }
+.iw-theme-diary .iw-arrow-long,
+.iw-theme-dark .iw-arrow-long,
+.iw-theme-sims .iw-arrow-long,
+.iw-theme-bimbo .iw-arrow-long,
+.iw-theme-grimoire .iw-arrow-long,
+.iw-theme-medieval .iw-arrow-long { filter: url(#iw-rough); }
+.iw-theme-logbook .iw-arrow-long,
+.iw-theme-cyber .iw-arrow-long { stroke-width: 2; }
+
+/* ---------- Имена целиком: не переносятся по буквам, длинные — мельче ---------- */
+.iw-panel :is(.iw-tab-name, .iw-npc-name, .iw-npc-title) {
+    overflow-wrap: normal;
+    word-break: keep-all;
+    hyphens: none;
+}
+
+.iw-panel .iw-name-l { font-size: .86em; }
+.iw-panel .iw-name-xl { font-size: .75em; letter-spacing: -.01em; }
+.iw-panel .iw-name-xxl { font-size: .64em; letter-spacing: -.02em; }
+.iw-panel .iw-npc-title.iw-name-l { font-size: 1em; }
+.iw-panel .iw-npc-title.iw-name-xl { font-size: .9em; }
+.iw-panel .iw-npc-title.iw-name-xxl { font-size: .8em; }
+.iw-panel .iw-dossier-main .iw-npc-title.iw-name-xl { font-size: 1.6em; }
+.iw-panel .iw-dossier-main .iw-npc-title.iw-name-xxl { font-size: 1.3em; }
+
+/* ---------- Нейроинтерфейс: жирный читаемый ----------
+   У Russo One нет жирного — только обычный вес. Моноширинный жирный на тёмном слипается,
+   поэтому полужирный 600 и чуть светлее. */
+.iw-theme-cyber :is(.iw-npc-title, .iw-quick-num, .iw-quick-go, .iw-persona-name, .iw-toast-who, .iw-dossier-mood) {
+    font-weight: 400;
+}
+
+.iw-theme-cyber :is(b, strong, .iw-quick-title, .iw-qopt.on, .iw-range-val, .iw-trait-name, .iw-feel-name, .iw-group-head, .iw-group-cap, .iw-f-label, .iw-npc-name, .iw-score, .iw-persona-code, .iw-tag, .iw-toast-hint, .iw-trait-kept, .iw-whois-tag, .iw-want.pinned .iw-want-text, .iw-fs-3 .iw-fear-text, .iw-feel-power, .iw-buy, .iw-book-go, .iw-lang-opt.on, .iw-switch, .iw-vol-toggle, .iw-rw-kind, .iw-act, .iw-imp-label, .iw-dream-title) {
+    font-weight: 600;
+    letter-spacing: .02em;
+    -webkit-font-smoothing: antialiased;
+}
+
+.iw-theme-cyber :is(b, strong, .iw-quick-title, .iw-trait-name, .iw-feel-name, .iw-f-label) {
+    color: #e6f7ff;
+}
+
+
+/* плавающая кнопка: свой слой заранее, а тень на время перетаскивания убираем — без неё не лагает */
+#iw_fab {
+    will-change: transform;
+}
+
+/* =====================================================================
+   ПИКСЕЛЬНАЯ ИГРА — розовый и шоколадный, окна как в старой консольной игре,
+   кружево, лапки и искорки, пиксельные шрифты с кириллицей:
+   Всё — шрифтом Press Start 2P, как на старых приставках. Жирного у них нет, поэтому браузеру
+   не даём рисовать поддельный жирный: выделяем цветом и размером
+   ===================================================================== */
+.iw-theme-pixel {
+    --px-heart: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 10%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%222%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%222%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%222%22 width=%224%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%229%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%229%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%225%22 width=%227%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%228%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%227%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%227%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-smile: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%223%22 y=%220%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%221%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%228%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%222%22 width=%227%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%223%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%227%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%223%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%227%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%229%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23e88aa0%22/%3E%3Crect x=%222%22 y=%226%22 width=%227%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23e88aa0%22/%3E%3Crect x=%2210%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%227%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%223%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%227%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%227%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%227%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%224%22 y=%228%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%228%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%229%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%228%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%2210%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-ghost: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%223%22 y=%220%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%221%22 width=%225%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%228%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%222%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%227%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%227%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%225%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23e88aa0%22/%3E%3Crect x=%223%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%228%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23e88aa0%22/%3E%3Crect x=%229%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%227%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%229%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%226%22 y=%229%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%229%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%2210%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%2210%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%2210%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-star: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%225%22 y=%220%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%227%22 y=%223%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%229%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%225%22 width=%227%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%228%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%227%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%225%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%227%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%228%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%224%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%228%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%223%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%2210%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%2210%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-bolt: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 9 12%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%224%22 y=%220%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%221%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%227%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%224%22 y=%224%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%226%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%227%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%226%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%226%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%227%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%228%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%225%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%224%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%2210%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%2210%22 width=%221%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%223%22 y=%2210%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%2211%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-bubble: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%221%22 y=%220%22 width=%229%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%229%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%227%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%226%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%224%22 width=%227%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%222%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%228%22 y=%225%22 width=%222%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%224%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%227%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%227%22 width=%224%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%225%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%227%22 width=%224%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%2210%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%228%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%228%22 width=%222%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%226%22 y=%228%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%225%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%2210%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-book: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 9%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%221%22 y=%220%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%220%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%221%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%222%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%224%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%227%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%223%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%222%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%224%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%227%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%229%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%225%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%222%22 y=%226%22 width=%222%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%224%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%227%22 y=%226%22 width=%222%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%229%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%227%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%225%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%227%22 width=%224%22 height=%221%22 fill=%22%23fff4f6%22/%3E%3Crect x=%2210%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%228%22 width=%2211%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-gift: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%222%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%226%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%227%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%223%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%224%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%224%22 width=%224%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%229%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%227%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%227%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%229%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%228%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%229%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%229%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%229%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%229%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%2210%22 width=%229%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-person: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%223%22 y=%220%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%221%22 width=%225%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%228%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%223%22 y=%222%22 width=%225%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%228%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%238a5a44%22/%3E%3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%223%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%227%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%229%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%224%22 width=%227%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%229%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%23e88aa0%22/%3E%3Crect x=%223%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%228%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%23e88aa0%22/%3E%3Crect x=%229%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%228%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%227%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%228%22 width=%225%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%228%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%229%22 width=%227%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%229%22 y=%229%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%2210%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%2210%22 width=%229%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%2210%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-paw: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 9 8%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%221%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%221%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%220%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%223%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%227%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%220%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%223%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%227%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%222%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%222%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%223%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3C/svg%3E");
+    --px-sparkle: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 7 7%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%223%22 y=%220%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%220%22 y=%223%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3C/svg%3E");
+    --px-bow: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 9%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%220%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%223%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%223%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%225%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%2210%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%225%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%226%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%228%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%224%22 y=%227%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%227%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%228%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-hearts: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 10 7%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%221%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%220%22 y=%222%22 width=%227%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%220%22 y=%223%22 width=%227%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%221%22 y=%224%22 width=%225%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%222%22 y=%225%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%223%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3C/svg%3E");
+    --px-coin: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 11 11%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%223%22 y=%220%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%221%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%228%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%224%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%225%22 y=%222%22 width=%224%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%223%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%224%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%225%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%226%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%227%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%2210%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23c98d1e%22/%3E%3Crect x=%222%22 y=%227%22 width=%227%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%229%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23c98d1e%22/%3E%3Crect x=%2210%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%23c98d1e%22/%3E%3Crect x=%223%22 y=%228%22 width=%225%22 height=%221%22 fill=%22%23ffd35c%22/%3E%3Crect x=%228%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%23c98d1e%22/%3E%3Crect x=%229%22 y=%228%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%229%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%229%22 width=%225%22 height=%221%22 fill=%22%23c98d1e%22/%3E%3Crect x=%228%22 y=%229%22 width=%222%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%223%22 y=%2210%22 width=%225%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-btn_g: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 7 7%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%222%22 y=%220%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%222%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%233f8f3a%22/%3E%3Crect x=%226%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%224%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%233f8f3a%22/%3E%3Crect x=%226%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%237ccf5b%22/%3E%3Crect x=%224%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%233f8f3a%22/%3E%3Crect x=%226%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%225%22 width=%223%22 height=%221%22 fill=%22%233f8f3a%22/%3E%3Crect x=%225%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-btn_r: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 7 7%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%222%22 y=%220%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%221%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%222%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%222%22 width=%222%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%236b3a44%22/%3E%3Crect x=%226%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%223%22 width=%224%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%225%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%236b3a44%22/%3E%3Crect x=%226%22 y=%223%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%220%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23d9667f%22/%3E%3Crect x=%224%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%236b3a44%22/%3E%3Crect x=%226%22 y=%224%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%221%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%225%22 width=%223%22 height=%221%22 fill=%22%236b3a44%22/%3E%3Crect x=%225%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect x=%222%22 y=%226%22 width=%223%22 height=%221%22 fill=%22%234a2730%22/%3E%3C/svg%3E");
+    --px-bg: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2246%22 y=%220%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%222%22 y=%222%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2244%22 y=%222%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%224%22 y=%224%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2242%22 y=%224%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%226%22 y=%226%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2240%22 y=%226%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%228%22 y=%228%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2238%22 y=%228%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2210%22 y=%2210%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2236%22 y=%2210%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2212%22 y=%2212%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2234%22 y=%2212%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2214%22 y=%2214%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2232%22 y=%2214%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2216%22 y=%2216%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2230%22 y=%2216%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2218%22 y=%2218%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2228%22 y=%2218%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2220%22 y=%2220%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2226%22 y=%2220%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2222%22 y=%2222%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2224%22 y=%2222%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2224%22 y=%2224%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2222%22 y=%2224%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2226%22 y=%2226%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2220%22 y=%2226%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2228%22 y=%2228%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2218%22 y=%2228%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2230%22 y=%2230%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2216%22 y=%2230%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2232%22 y=%2232%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2214%22 y=%2232%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2234%22 y=%2234%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2212%22 y=%2234%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2236%22 y=%2236%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2210%22 y=%2236%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2238%22 y=%2238%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%228%22 y=%2238%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2240%22 y=%2240%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%226%22 y=%2240%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2242%22 y=%2242%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%224%22 y=%2242%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2244%22 y=%2244%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%222%22 y=%2244%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%2246%22 y=%2246%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Crect x=%220%22 y=%2246%22 width=%222%22 height=%222%22 fill=%22%23f8c9d4%22/%3E%3Cg transform=%22translate%2819 4%29%22 opacity=%22.5%22%3E%3Crect x=%221%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%226%22 y=%220%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%221%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%226%22 y=%221%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%220%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%223%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%227%22 y=%223%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%220%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%223%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%227%22 y=%224%22 width=%222%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%222%22 y=%225%22 width=%225%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%222%22 y=%226%22 width=%225%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%223%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3Crect x=%225%22 y=%227%22 width=%221%22 height=%221%22 fill=%22%23eea0b2%22/%3E%3C/g%3E%3Cg transform=%22translate%286 30%29%22 opacity=%22.7%22%3E%3Crect x=%223%22 y=%220%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%220%22 y=%223%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3C/g%3E%3Cg transform=%22translate%2836 28%29%22 opacity=%22.45%22%3E%3Crect x=%223%22 y=%220%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%221%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%222%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%220%22 y=%223%22 width=%227%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%222%22 y=%224%22 width=%223%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%225%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3Crect x=%223%22 y=%226%22 width=%221%22 height=%221%22 fill=%22%23ffffff%22/%3E%3C/g%3E%3C/svg%3E");
+    --px-lace: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 8 7%22 shape-rendering=%22crispEdges%22%3E%3Crect x=%220%22 y=%220%22 width=%228%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%220%22 y=%221%22 width=%228%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%220%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%222%22 y=%222%22 width=%224%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%227%22 y=%222%22 width=%221%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%220%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%225%22 y=%223%22 width=%223%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%221%22 y=%224%22 width=%226%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%222%22 y=%225%22 width=%224%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3Crect x=%223%22 y=%226%22 width=%222%22 height=%221%22 fill=%22%23ffe3ea%22/%3E%3C/svg%3E");
+    --px-stripes: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 4 12%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%224%22 height=%222%22 fill=%22%234a2730%22/%3E%3Crect y=%222%22 width=%224%22 height=%222%22 fill=%22%23d9667f%22/%3E%3Crect y=%224%22 width=%224%22 height=%221%22 fill=%22%234a2730%22/%3E%3Crect y=%225%22 width=%224%22 height=%227%22 fill=%22%23f4b6c4%22/%3E%3C/svg%3E");
+    --px-k: #4a2730;
+    --px-rose: #d9667f;
+    --px-pink: #f4b6c4;
+    --px-cream: #fff4f6;
+    --px-green: #7ccf5b;
+    --px-edge: 0 -3px 0 0 var(--px-k), 0 3px 0 0 var(--px-k), -3px 0 0 0 var(--px-k), 3px 0 0 0 var(--px-k);
+    --iw-bg: #f4b6c4;
+    --iw-paper: var(--px-bg);
+    --iw-paper-size: 96px 96px;
+    --iw-ink: #4a2730;
+    --iw-muted: #8b5462;
+    --iw-title-font: 'Press Start 2P', monospace;
+    --iw-body-font: 'Press Start 2P', monospace;
+    --iw-title-color: #4a2730;
+    --iw-scribble: #d9667f;
+    --iw-label-color: #4a2730;
+    --iw-label-size: 12px;
+    --iw-sub-size: 19px;
+    --iw-wants: #3f8f3a;
+    --iw-fears: #c23a55;
+    --iw-dream: #b07612;
+    --iw-traits: #8a4fa0;
+    --iw-hl-good: rgba(124, 207, 91, .4);
+    --iw-hl-bad: rgba(217, 102, 127, .38);
+    --iw-hl-mid: rgba(244, 182, 196, .7);
+    --iw-hl-main: rgba(255, 211, 92, .6);
+    --iw-block-bg: #fff4f6;
+    --iw-block-border: 0;
+    --iw-block-radius: 0;
+    --iw-block-shadow: var(--px-edge), 7px 7px 0 0 rgba(74, 39, 48, .22);
+    --iw-block-pad: 0 14px 14px;
+    --iw-divider: rgba(74, 39, 48, .22);
+    --iw-note-bg: #4a2730;
+    --iw-note-ink: #fff4f6;
+    --iw-bar-border: 2px solid #4a2730;
+    --iw-bar-bg: #fff;
+    --iw-lvl-low: #ffd35c;
+    --iw-lvl-mid: #7ccf5b;
+    --iw-lvl-high: #d9667f;
+    --iw-dream-fill: #ffd35c;
+    --iw-dream-border: 0;
+    --iw-dream-radius: 0;
+    --iw-sticker-bg: #fff4f6;
+    --iw-sticker-border: 0;
+    --iw-sticker-radius: 0;
+    --iw-new-bg: #7ccf5b;
+    --iw-new-ink: #4a2730;
+    --iw-margin: transparent;
+    --iw-tape: transparent;
+    --iw-chip-ink: #4a2730;
+    --iw-chip-on: #ffd35c;
+    --iw-shell: #4a2730;
+    --iw-text-size: 19px;
+    --iw-feel-bg: #ffffff;
+    --iw-scroll-thumb: #d9667f;
+    --iw-scroll-hover: #4a2730;
+    --iw-scroll-track: #f8c9d4;
+    --iw-scroll-radius: 0;
+    --iw-frame: 0 0 0 3px #fff4f6, 0 0 0 6px #4a2730, 5px 5px 0 6px rgba(74, 39, 48, .25);
+    --iw-frame-radius: 0;
+    --iw-gained: #8a4fa0;
+}
+
+.iw-theme-pixel,
+.iw-toasts.iw-theme-pixel {
+    font-synthesis: none;
+}
+
+/* всё квадратное — это же пиксели */
+.iw-theme-pixel :is(*, *::before, *::after) {
+    border-radius: 0 !important;
+}
+
+.iw-theme-pixel .iw-book {
+    padding: 64px 20px 14px;
+    border-radius: 0;
+    -webkit-font-smoothing: none;
+}
+
+/* шапка: полоски как в игровом меню и кружевная кайма */
+.iw-theme-pixel .iw-book::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 12px;
+    background: var(--px-stripes) 0 0 / 8px 24px repeat-x;
+    pointer-events: none;
+}
+
+.iw-theme-pixel .iw-book::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 12px;
+    height: 14px;
+    background: var(--px-lace) 0 0 / 16px 14px repeat-x;
+    pointer-events: none;
+}
+
+.iw-theme-pixel .iw-margin,
+.iw-theme-pixel .iw-scribble { display: none; }
+
+.iw-theme-pixel .iw-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+    text-shadow: 3px 3px 0 #fff4f6;
+}
+
+.iw-theme-pixel .iw-title::before {
+    content: '';
+    flex: none;
+    width: 33px;
+    height: 30px;
+    background: var(--px-heart) center / contain no-repeat;
+    image-rendering: pixelated;
+}
+
+.iw-theme-pixel .iw-titlebox::after {
+    content: '♥ PLAYER 1 ♥';
+    margin-top: 6px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: .1em;
+    color: #d9667f;
+}
+
+/* блоки — окна с пиксельной рамкой и розовой полосой заголовка */
+.iw-theme-pixel .iw-block {
+    margin: 3px;
+}
+
+.iw-theme-pixel .iw-block-head {
+    align-items: center;
+    margin: 0 -14px 4px;
+    padding: 8px 12px 7px;
+    border-bottom: 0;
+    background: #d9667f;
+    box-shadow: inset 0 -3px 0 #4a2730;
+    color: #fff;
+}
+
+.iw-theme-pixel :is(.iw-b-wants, .iw-b-fears, .iw-b-dream, .iw-b-traits, .iw-b-persona, .iw-b-impression, .iw-b-mood, .iw-b-chronicle, .iw-b-shop) .iw-block-head { color: #fff; }
+.iw-theme-pixel .iw-b-wants .iw-block-head { background: #6fbf52; }
+.iw-theme-pixel .iw-b-fears .iw-block-head { background: #c23a55; }
+.iw-theme-pixel .iw-b-dream .iw-block-head { background: #e0a526; }
+.iw-theme-pixel .iw-b-traits .iw-block-head,
+.iw-theme-pixel .iw-b-persona .iw-block-head { background: #9a62b3; }
+.iw-theme-pixel .iw-b-chronicle .iw-block-head { background: #8a5a44; }
+
+.iw-theme-pixel .iw-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: var(--iw-label-size);
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    text-shadow: 2px 2px 0 #4a2730;
+}
+
+.iw-theme-pixel .iw-block-head .iw-count,
+.iw-theme-pixel .iw-block-head .iw-muted {
+    color: #fff4f6;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+}
+
+/* иконки блоков — пиксель-арт */
+.iw-theme-pixel .iw-block-icon {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    flex: none;
+    opacity: 1;
+    background: center / contain no-repeat;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0 #4a2730);
+}
+
+.iw-theme-pixel .iw-block-icon .iw-ico { display: none; }
+.iw-theme-pixel .iw-b-mood .iw-block-icon { background-image: var(--px-smile); }
+.iw-theme-pixel .iw-b-wants .iw-block-icon { background-image: var(--px-heart); }
+.iw-theme-pixel .iw-b-fears .iw-block-icon { background-image: var(--px-ghost); }
+.iw-theme-pixel .iw-b-dream .iw-block-icon { background-image: var(--px-star); }
+.iw-theme-pixel .iw-b-traits .iw-block-icon { background-image: var(--px-bolt); }
+.iw-theme-pixel .iw-b-impression .iw-block-icon { background-image: var(--px-bubble); }
+.iw-theme-pixel .iw-b-chronicle .iw-block-icon { background-image: var(--px-book); }
+.iw-theme-pixel .iw-b-shop .iw-block-icon { background-image: var(--px-gift); }
+.iw-theme-pixel .iw-b-persona .iw-block-icon { background-image: var(--px-person); }
+
+/* подзаголовки и текст */
+.iw-theme-pixel :is(.iw-mood-now, .iw-imp-label, .iw-dream-title, .iw-npc-title, .iw-persona-name, .iw-quick-go) {
+    font-family: 'Press Start 2P', monospace;
+    font-weight: 700;
+}
+
+.iw-theme-pixel .iw-dream-title {
+    color: #4a2730;
+    text-shadow: 2px 2px 0 #ffd35c;
+}
+
+.iw-theme-pixel .iw-mood-word .iw-hl {
+    padding: 0 6px;
+    background: var(--face-bg, #ffd35c);
+    box-shadow: 0 0 0 2px #4a2730;
+}
+
+.iw-theme-pixel :is(b, strong) { font-weight: 700; }
+
+/* кнопки — пиксельные, с «глубиной» снизу, при нажатии проседают */
+.iw-theme-pixel :is(.iw-act, .iw-btn, .iw-study, .iw-qopt, .iw-buy, .iw-book-go, .iw-tool, .iw-gear, .iw-back, .iw-forget) {
+    border: 0 !important;
+    background: #fff4f6;
+    color: #4a2730;
+    box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730, 0 5px 0 0 #4a2730;
+    transition: transform .05s, box-shadow .05s;
+    font-family: 'Press Start 2P', monospace;
+}
+
+.iw-theme-pixel :is(.iw-act, .iw-btn, .iw-study, .iw-qopt, .iw-buy, .iw-book-go, .iw-tool, .iw-gear, .iw-back):active:not(:disabled) {
+    transform: translateY(3px);
+    box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730;
+}
+
+.iw-theme-pixel :is(.iw-act, .iw-btn, .iw-qopt):hover:not(:disabled) {
+    background: #ffe3ea;
+}
+
+.iw-theme-pixel .iw-act-all,
+.iw-theme-pixel .iw-qopt.on,
+.iw-theme-pixel .iw-book-go {
+    background: #7ccf5b;
+    color: #24451f;
+    font-weight: 700;
+}
+
+.iw-theme-pixel .iw-act-all:hover:not(:disabled),
+.iw-theme-pixel .iw-qopt.on:hover {
+    background: #8fdc6e;
+}
+
+.iw-theme-pixel .iw-act.iw-act-stop {
+    background: #d9667f;
+    color: #fff;
+}
+
+.iw-theme-pixel .iw-acts-cap {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #4a2730;
+}
+
+.iw-theme-pixel .iw-acts {
+    gap: 10px;
+}
+
+/* вкладки персонажей и наклейки */
+.iw-theme-pixel .iw-tab {
+    background: transparent;
+    box-shadow: none;
+}
+
+.iw-theme-pixel .iw-tab .iw-photo-wrap::before,
+.iw-theme-pixel .iw-tab .iw-photo-wrap::after,
+.iw-theme-pixel .iw-tape { display: none; }
+
+.iw-theme-pixel .iw-tab-name {
+    margin-top: 6px;
+    padding: 2px 6px;
+    background: #4a2730;
+    color: #fff4f6;
+    font-weight: 600;
+}
+
+.iw-theme-pixel .iw-tab.on .iw-tab-name {
+    background: #d9667f;
+}
+
+.iw-theme-pixel :is(.iw-npc-sticker, .iw-shop-sticker) {
+    border: 0;
+    background: #fff4f6;
+    box-shadow: var(--px-edge), 5px 5px 0 0 rgba(74, 39, 48, .22);
+    transform: none;
+    color: #4a2730;
+}
+
+.iw-theme-pixel :is(.iw-npc-sticker, .iw-shop-sticker).on {
+    background: #ffd35c;
+}
+
+.iw-theme-pixel .iw-npc-sticker-title,
+.iw-theme-pixel .iw-shop-sticker span {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    font-weight: 400;
+}
+
+.iw-theme-pixel .iw-npc-sticker-title .iw-ico,
+.iw-theme-pixel .iw-shop-sticker .iw-ico { display: none; }
+
+.iw-theme-pixel .iw-npc-sticker-title::before,
+.iw-theme-pixel .iw-shop-sticker::before {
+    content: '';
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    vertical-align: -4px;
+    background: var(--px-person) center / contain no-repeat;
+    image-rendering: pixelated;
+}
+
+.iw-theme-pixel .iw-shop-sticker::before { background-image: var(--px-gift); }
+
+/* карточки внутри блоков: эмоции, черты, тип личности, НПС */
+.iw-theme-pixel :is(.iw-feel, .iw-trait, .iw-persona-card, .iw-npc, .iw-reward, .iw-quick, .iw-waiting) {
+    border: 0 !important;
+    background: #ffffff;
+    box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730;
+}
+
+.iw-theme-pixel .iw-waiting {
+    background: #fff4f6;
+    margin: 4px;
+}
+
+.iw-theme-pixel .iw-quick {
+    background: #ffe3ea;
+}
+
+.iw-theme-pixel .iw-trait.iw-acquired {
+    box-shadow: 0 -2px 0 0 #8a4fa0, 0 2px 0 0 #8a4fa0, -2px 0 0 0 #8a4fa0, 2px 0 0 0 #8a4fa0, inset 4px 0 0 #8a4fa0;
+}
+
+.iw-theme-pixel .iw-trait.iw-k-gone {
+    background: #f3e6e9;
+    box-shadow: 0 -2px 0 0 #b98a96, 0 2px 0 0 #b98a96, -2px 0 0 0 #b98a96, 2px 0 0 0 #b98a96;
+}
+
+.iw-theme-pixel .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 14%, #fff);
+    border-left-width: 0 !important;
+    box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730, inset 5px 0 0 var(--pt);
+}
+
+.iw-theme-pixel .iw-persona-code {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    box-shadow: 2px 2px 0 #4a2730;
+}
+
+.iw-theme-pixel .iw-tag,
+.iw-theme-pixel .iw-trait-kept {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: 3px 5px;
+}
+
+.iw-theme-pixel .iw-box {
+    border: 2px solid #4a2730;
+    background: #fff;
+}
+
+.iw-theme-pixel .iw-want.done .iw-box {
+    background: #7ccf5b;
+}
+
+.iw-theme-pixel .iw-fear-mark .iw-ico { display: none; }
+
+.iw-theme-pixel .iw-fear-mark::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background: var(--px-ghost) center / contain no-repeat;
+    image-rendering: pixelated;
+}
+
+.iw-theme-pixel .iw-step .iw-star .iw-ico { display: none; }
+
+.iw-theme-pixel .iw-step .iw-star::before {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background: var(--px-star) center / contain no-repeat;
+    image-rendering: pixelated;
+    vertical-align: -2px;
+}
+
+.iw-theme-pixel .iw-step:not(.done) .iw-star::before {
+    filter: grayscale(1) opacity(.45);
+}
+
+/* шкалы — полоски из квадратиков */
+.iw-theme-pixel :is(.iw-feel-meter, .iw-meter, .iw-bar) {
+    border: 2px solid #4a2730;
+    background: #fff;
+    image-rendering: pixelated;
+}
+
+.iw-theme-pixel :is(.iw-feel-meter, .iw-meter, .iw-bar) > span {
+    background: repeating-linear-gradient(90deg, var(--px-green) 0 6px, transparent 6px 8px);
+    filter: none;
+}
+
+/* график отношения: квадратные точки */
+.iw-theme-pixel :is(.iw-chart-dot, .iw-chart .iw-dot, .iw-chart-end) {
+    border-radius: 0 !important;
+}
+
+/* кошелёк: пиксельная монетка */
+.iw-theme-pixel .iw-wallet summary {
+    border: 0;
+    background: #fff4f6;
+    box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730;
+    color: #4a2730;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+}
+
+.iw-theme-pixel .iw-wallet .iw-ico,
+.iw-theme-pixel .iw-buy .iw-ico,
+.iw-theme-pixel .iw-reward .iw-ico { color: #e0a526; }
+
+/* быстрые настройки и стрелки */
+.iw-theme-pixel .iw-quick-num {
+    border: 0;
+    background: #d9667f;
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    box-shadow: 2px 2px 0 #4a2730;
+}
+
+.iw-theme-pixel .iw-sketch-arrow { color: #d9667f; }
+
+.iw-theme-pixel .iw-quick-go { color: #4a2730; }
+
+/* хроника */
+.iw-theme-pixel .iw-log-icon { color: #d9667f; }
+
+/* настройки */
+.iw-theme-pixel .iw-f-section > summary {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.iw-theme-pixel .iw-f-section {
+    border: 0;
+    background: #fff4f6;
+    box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730;
+    margin: 4px;
+}
+
+/* всплывашки — диалоговое окно как в RPG */
+.iw-toasts.iw-theme-pixel .iw-toast-card {
+    background: #4a2730;
+    color: #fff4f6;
+    transform: none;
+    box-shadow: 0 0 0 3px #fff4f6, 0 0 0 6px #4a2730, 7px 7px 0 4px rgba(0, 0, 0, .25);
+    font-family: 'Press Start 2P', monospace;
+}
+
+.iw-toasts.iw-theme-pixel .iw-toast-kicker {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #ffd35c;
+}
+
+.iw-toasts.iw-theme-pixel .iw-toast-who {
+    font-weight: 700;
+    color: #f4b6c4;
+}
+
+.iw-toasts.iw-theme-pixel .iw-toast-card::after {
+    content: '▼';
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    font-size: 10px;
+    color: #ffd35c;
+    animation: iw-px-blink 1s steps(2) infinite;
+}
+
+.iw-toasts.iw-theme-pixel .iw-toast-error .iw-toast-who { color: #ff8fa6; }
+
+@keyframes iw-px-blink { 50% { opacity: 0; } }
+
+.iw-theme-pixel .iw-toast-error {
+    --iw-ev: #ff8fa6;
+}
+
+/* аватар в окне рассказа о персонаже */
+.iw-theme-pixel .iw-npc-head .iw-photo,
+.iw-theme-pixel .iw-tab .iw-photo-wrap > .iw-photo {
+    border-radius: 0;
+}
+
+/* лицо-смайлик — квадратный значок */
+.iw-theme-pixel .iw-face {
+    box-shadow: 0 0 0 2px #4a2730;
+}
+
+@media (max-width: 560px) {
+    .iw-theme-pixel .iw-book { padding: 52px 12px 12px; }
+    .iw-theme-pixel .iw-title { font-size: 17px; }
+}
+
+/* пиксельная игра: подзаголовки крупнее, а не «жирнее» */
+.iw-theme-pixel :is(.iw-mood-word, .iw-imp-label, .iw-persona-name, .iw-npc-title) {
+    font-size: 1.15em;
+    letter-spacing: .01em;
+}
+
+.iw-theme-pixel .iw-dream-title {
+    font-size: 1.5em;
+}
+
+.iw-theme-pixel :is(.iw-feel-name, .iw-trait-name, .iw-quick-title, .iw-want.pinned .iw-want-text) {
+    color: #2e151b;
+}
+
+/* впечатление — тёмное окно-диалог, как реплика в RPG */
+.iw-theme-pixel .iw-b-impression {
+    transform: none;
+    box-shadow: 0 -3px 0 0 #fff4f6, 0 3px 0 0 #fff4f6, -3px 0 0 0 #fff4f6, 3px 0 0 0 #fff4f6, 0 -6px 0 0 #4a2730, 0 6px 0 0 #4a2730, -6px 0 0 0 #4a2730, 6px 0 0 0 #4a2730, 9px 9px 0 0 rgba(74, 39, 48, .22);
+    margin: 6px;
+}
+
+.iw-theme-pixel .iw-b-impression :is(.iw-muted, .iw-imp-why, small) {
+    color: #f4b6c4;
+}
+
+.iw-theme-pixel .iw-b-impression .iw-imp-label {
+    color: #ffd35c;
+}
+
+.iw-theme-pixel .iw-tab-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    line-height: 1.1;
+    max-width: 104px;
+}
+
+.iw-theme-pixel .iw-tab-mood {
+    font-family: 'Press Start 2P', monospace;
+}
+
+.iw-theme-pixel .iw-block-head :is(.iw-mini, .iw-btn) {
+    color: #4a2730;
+    background: #fff4f6;
+}
+
+.iw-theme-pixel .iw-step .iw-star {
+    font-size: 0;
+    line-height: 0;
+}
+
+.iw-theme-pixel .iw-group-head,
+.iw-theme-pixel .iw-group-cap {
+    color: #8a4fa0;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.iw-theme-pixel .iw-group-hint {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: var(--iw-muted);
+}
+
+/* пиксельная игра: текст крупнее и чуть разреженнее — Tiny5 так читается намного легче */
+.iw-theme-pixel .iw-book {
+    letter-spacing: .03em;
+    line-height: 1.4;
+}
+
+.iw-theme-pixel :is(.iw-muted, .iw-f-hint, .iw-quick-hint, .iw-group-hint, .iw-feel-why, .iw-trait-why, .iw-trait-left, .iw-tab-mood, .iw-npc-mood, .iw-imp-why, .iw-persona-general, small) {
+    font-size: max(15px, .82em);
+    line-height: 1.4;
+}
+
+/* подписи вне цветных полос заголовков — шоколадные, а не белые */
+.iw-theme-pixel .iw-label {
+    color: #4a2730;
+    text-shadow: 2px 2px 0 #fff4f6;
+}
+
+.iw-theme-pixel .iw-block-head .iw-label {
+    color: #ffffff;
+    text-shadow: 2px 2px 0 #4a2730;
+}
+
+/* настройки: тёмный текст на светлом */
+.iw-theme-pixel .iw-f-section > summary {
+    color: #4a2730;
+    padding: 10px 12px;
+    letter-spacing: .04em;
+}
+
+.iw-theme-pixel .iw-f-section[open] > summary {
+    background: #d9667f;
+    color: #ffffff;
+    text-shadow: 2px 2px 0 #4a2730;
+}
+
+.iw-theme-pixel :is(.iw-f-label, .iw-f, .iw-f-body, .iw-theme-card, .iw-lang, .iw-lang-cap) {
+    color: #4a2730;
+}
+
+.iw-theme-pixel .iw-f-hint {
+    color: #8b5462;
+}
+
+.iw-theme-pixel :is(.iw-select, .iw-input, .iw-panel select, .iw-panel input[type="text"], .iw-panel input[type="password"]) {
+    border: 2px solid #4a2730;
+    background: #ffffff;
+    color: #4a2730;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 17px;
+}
+
+.iw-theme-pixel .iw-settings-head .iw-label {
+    font-size: 13px;
+}
+
+/* =====================================================================
+   ПИКСЕЛЬНАЯ ИГРА — одна палитра: розовый, малиновый, шоколад, крем.
+   Свои цвета остаются только у эмоций и настроения.
+   ===================================================================== */
+.iw-theme-pixel {
+    --iw-wants: #4a2730;
+    --iw-fears: #b4405c;
+    --iw-dream: #4a2730;
+    --iw-traits: #4a2730;
+    --iw-gained: #d9667f;
+    --iw-hl-main: rgba(244, 182, 196, .9);
+    --iw-chip-on: #f4b6c4;
+    --iw-new-bg: #d9667f;
+    --iw-new-ink: #ffffff;
+    --iw-lvl-low: #f4b6c4;
+    --iw-lvl-mid: #d9667f;
+    --iw-lvl-high: #b4405c;
+    --iw-dream-fill: #d9667f;
+    --px-green: #d9667f;
+}
+
+/* полосы заголовков блоков: малиновые, у журнала и класса — шоколадные */
+.iw-theme-pixel :is(.iw-b-wants, .iw-b-fears, .iw-b-dream, .iw-b-traits, .iw-b-impression, .iw-b-mood, .iw-b-shop) .iw-block-head { background: #d9667f; }
+.iw-theme-pixel :is(.iw-b-persona, .iw-b-chronicle) .iw-block-head { background: #6b3a44; }
+
+/* кнопки: главная и выбранные — малиновые, остальные — кремовые */
+.iw-theme-pixel .iw-act-all,
+.iw-theme-pixel .iw-qopt.on,
+.iw-theme-pixel .iw-book-go,
+.iw-theme-pixel .iw-lang-opt.on {
+    background: #d9667f;
+    color: #ffffff;
+    text-shadow: 1px 1px 0 #4a2730;
+}
+
+.iw-theme-pixel .iw-act-all:hover:not(:disabled),
+.iw-theme-pixel .iw-qopt.on:hover {
+    background: #e47a91;
+}
+
+.iw-theme-pixel .iw-act.iw-act-stop {
+    background: #4a2730;
+    color: #fff4f6;
+}
+
+.iw-theme-pixel :is(.iw-npc-sticker, .iw-shop-sticker).on {
+    background: #f4b6c4;
+}
+
+.iw-theme-pixel .iw-want.done .iw-box {
+    background: #d9667f;
+    color: #ffffff;
+}
+
+.iw-theme-pixel .iw-box {
+    color: #ffffff;
+}
+
+/* мечта, тип личности и знак — без лишних цветов */
+.iw-theme-pixel .iw-dream-title {
+    text-shadow: 2px 2px 0 #f4b6c4;
+}
+
+.iw-theme-pixel .iw-persona-card {
+    --pt: #d9667f;
+}
+
+.iw-theme-pixel .iw-persona-name {
+    color: #4a2730;
+}
+
+.iw-theme-pixel .iw-trait.iw-acquired {
+    box-shadow: 0 -2px 0 0 #d9667f, 0 2px 0 0 #d9667f, -2px 0 0 0 #d9667f, 2px 0 0 0 #d9667f, inset 4px 0 0 #d9667f;
+}
+
+.iw-theme-pixel .iw-group-head,
+.iw-theme-pixel .iw-group-cap {
+    color: #b4405c;
+}
+
+.iw-toasts.iw-theme-pixel .iw-toast-kicker { color: #f4b6c4; }
+.iw-toasts.iw-theme-pixel .iw-toast-who { color: #ffffff; }
+.iw-toasts.iw-theme-pixel .iw-toast-card::after { color: #f4b6c4; }
+.iw-toasts.iw-theme-pixel .iw-toast-icon { color: #f4b6c4; }
+.iw-theme-pixel .iw-b-impression .iw-imp-label { color: #f4b6c4; }
+
+/* смайлик настроения у портрета — без рамки */
+.iw-theme-pixel .iw-face {
+    box-shadow: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+}
+
+/* =====================================================================
+   ЗНАЧКИ НПС И НАГРАД — у каждой темы свой «рисунок»: рамка, линия, фактура.
+   Рисунок архетипа общий, а выглядит он под тему; значки лавки — в той же манере
+   ===================================================================== */
+
+/* дневник: пастельный кружок, дрожащая карандашная линия */
+.iw-theme-diary .iw-rw-ico {
+    border: 2px solid #2b2a4a;
+    border-radius: 47% 53% 50% 50% / 52% 46% 54% 48%;
+}
+
+.iw-theme-diary .iw-rw-ico .iw-ico,
+.iw-theme-dark .iw-rw-ico .iw-ico,
+.iw-theme-grid .iw-rw-ico .iw-ico,
+.iw-theme-medieval .iw-rw-ico .iw-ico {
+    filter: url(#iw-rough);
+}
+
+/* тёмный дневник: ночной кружок с лиловой каймой */
+.iw-theme-dark .iw-rw-ico {
+    border: 2px solid #c6a8ff;
+    border-radius: 47% 53% 50% 50% / 52% 46% 54% 48%;
+    background: #2a2733;
+    color: #ff9ec7;
+}
+
+/* симс: синие кругляши с белой каймой */
+.iw-theme-sims .iw-rw-ico {
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #2f73c0;
+    color: #fff;
+    box-shadow: 0 3px 0 #c5dcf1;
+}
+
+/* летопись: медальон с двойной каймой, чернила */
+.iw-theme-medieval .iw-rw-ico {
+    border: 3px double #8a5a2b;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #fbf1d8, #e8d3a6);
+    color: #4a2f17;
+}
+
+/* нейроинтерфейс: неоновый шестиугольник */
+.iw-theme-cyber .iw-rw-ico {
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(135deg, rgba(62, 240, 255, .25), rgba(255, 62, 165, .2)), #10131d;
+    color: #3ef0ff;
+    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+    filter: drop-shadow(0 0 5px rgba(62, 240, 255, .5));
+}
+
+/* тетрадь: квадрат шариковой ручкой */
+.iw-theme-grid .iw-rw-ico {
+    border: 2px solid #1f3a93;
+    border-radius: 4px;
+    background: #fff;
+    color: #1f3a93;
+    transform: rotate(-3deg);
+}
+
+/* бимбо: розовая глянцевая пуговка */
+.iw-theme-bimbo .iw-rw-ico {
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, .8) 0 14%, transparent 15%), linear-gradient(160deg, #ffc1e3, #ff7ab8);
+    color: #fff;
+    box-shadow: 0 0 0 2px #ff7ab8, 0 3px 8px rgba(255, 61, 150, .3);
+}
+
+/* китайский свиток: красная печать, знак «вырезан» в киновари, линия кистью */
+.iw-theme-china :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 0;
+    border-radius: 3px;
+    background: #c8312b;
+    color: #f6efe0;
+    box-shadow: inset 0 0 0 2px #c8312b, inset 0 0 0 4px #f6efe0, 2px 2px 0 rgba(90, 29, 23, .35);
+    transform: rotate(-2deg);
+}
+
+.iw-theme-china :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 2.2;
+    filter: url(#iw-brush);
+}
+
+.iw-theme-china .iw-npc.met:hover .iw-npc-badge { transform: rotate(-6deg) scale(1.05); }
+
+/* ведьмин гримуар: золотой амулет в звёздах */
+.iw-theme-grimoire :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 2px solid #e8c77a;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #3a2a4d, #1b1324 70%);
+    color: #e8c77a;
+    box-shadow: 0 0 0 3px #1b1324, 0 0 0 4px rgba(232, 199, 122, .55), 0 0 12px rgba(143, 227, 155, .25);
+}
+
+.iw-theme-grimoire .iw-npc-badge::after {
+    content: '✦';
+    position: absolute;
+    top: -6px;
+    right: -2px;
+    font-size: 14px;
+    color: #8fe39b;
+    text-shadow: 0 0 6px rgba(143, 227, 155, .8);
+}
+
+.iw-theme-grimoire :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 3px rgba(232, 199, 122, .6));
+}
+
+/* досье 90-х: штамп чернилами по картону */
+.iw-theme-dossier :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 0;
+    border-radius: 2px;
+    background: #efe2c4;
+    color: #2a2a2a;
+    box-shadow: inset 0 0 0 2px #2a2a2a, inset 0 0 0 4px #efe2c4, inset 0 0 0 5px #2a2a2a;
+    transform: rotate(-3deg);
+}
+
+.iw-theme-dossier :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 2.2;
+    filter: url(#iw-stamp);
+}
+
+.iw-theme-dossier .iw-npc-badge::after {
+    content: '№';
+    position: absolute;
+    right: 4px;
+    bottom: 1px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #c0262d;
+}
+
+.iw-theme-dossier .iw-npc.met:hover .iw-npc-badge { transform: rotate(-6deg) scale(1.05); }
+
+/* бортовой журнал: шестигранник-скан на пульте */
+.iw-theme-logbook :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(160deg, rgba(98, 214, 200, .18), rgba(12, 20, 26, .9));
+    color: #62d6c8;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+
+.iw-theme-logbook .iw-npc-badge::before,
+.iw-theme-logbook .iw-rw-ico::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #62d6c8;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%, 0 25%, 3px 26.5%, 3px 73.5%, 50% calc(100% - 3px), calc(100% - 3px) 73.5%, calc(100% - 3px) 26.5%, 50% 3px, 3px 26.5%, 0 25%);
+    opacity: .7;
+}
+
+.iw-theme-logbook .iw-rw-ico { position: relative; }
+
+.iw-theme-logbook :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    position: relative;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 3px rgba(98, 214, 200, .6));
+}
+
+/* пиксельная игра: квадратное окошко, значок рассыпан на пиксели */
+.iw-theme-pixel :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 0 !important;
+    background: #ffe3ea;
+    color: #4a2730;
+    box-shadow: 0 -3px 0 0 #4a2730, 0 3px 0 0 #4a2730, -3px 0 0 0 #4a2730, 3px 0 0 0 #4a2730, 4px 5px 0 0 rgba(74, 39, 48, .25);
+    margin: 3px;
+}
+
+.iw-theme-pixel .iw-npc:nth-child(3n+1) .iw-npc-badge { background: #f4b6c4; }
+.iw-theme-pixel .iw-npc:nth-child(3n+2) .iw-npc-badge { background: #fff4f6; }
+
+.iw-theme-pixel :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 2.6;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    filter: url(#iw-pixelate);
+}
+
+.iw-theme-pixel .iw-reward .iw-rw-ico { color: #b4405c; }
+.iw-theme-pixel .iw-npc.met:hover .iw-npc-badge { transform: translateY(-2px); }
+
+.iw-theme-pixel :is(.iw-npc-name, .iw-npc-title) {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 17px;
+    line-height: 1.15;
+}
+
+.iw-theme-pixel .iw-npc-title {
+    font-size: 22px;
+}
+
+.iw-theme-pixel :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 2;
+}
+
+/* пиксельные значки — готовый пиксель-арт, фильтр «рассыпания» больше не нужен */
+.iw-theme-pixel :is(.iw-npc-ico, .iw-rw-ico .iw-ico, .iw-ico) {
+    filter: none;
+}
+
+.iw-panel .iw-px,
+.iw-toasts .iw-px {
+    stroke: none !important;
+    fill: currentColor;
+    shape-rendering: crispEdges;
+}
+
+.iw-theme-pixel .iw-npc-ico {
+    width: 62%;
+    height: 62%;
+}
+
+/* пиксельная игра: категории лута — в палитре темы */
+.iw-theme-pixel .iw-rk-buff { --rk: #d9667f; --rk-bg: #ffe3ea; }
+.iw-theme-pixel .iw-rk-event { --rk: #8a5a44; --rk-bg: #f6e3dc; }
+.iw-theme-pixel .iw-rk-collect { --rk: #b4405c; --rk-bg: #fbd9e1; }
+.iw-theme-pixel .iw-reward { background: var(--rk-bg); }
+.iw-theme-pixel .iw-reward .iw-rw-ico { color: var(--rk); }
+
+/* =====================================================================
+   Правки: знак темы в конце графика, компактные черты, мечта с заглавной,
+   читаемые названия типа личности
+   ===================================================================== */
+/* график отношения: в конце не стрелка в кружке, а знак темы цвета перемены */
+.iw-panel .iw-chart-end {
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    clip-path: none;
+    color: var(--iw-wants);
+    font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+    text-shadow: 0 0 0 transparent, 1px 1px 0 var(--iw-block-bg, transparent);
+}
+
+.iw-panel .iw-chart-end.iw-trend-down { color: var(--iw-fears); }
+.iw-panel .iw-chart-end.iw-trend-flat { color: var(--iw-muted); }
+.iw-theme-cyber .iw-chart-end { text-shadow: 0 0 8px currentColor; }
+.iw-theme-grimoire .iw-chart-end { text-shadow: 0 0 8px currentColor; }
+.iw-theme-pixel .iw-chart-end { font-family: 'Press Start 2P', monospace; font-size: 14px; }
+.iw-theme-pixel .iw-chart-end.iw-trend-up { color: #d9667f; }
+
+/* черты: рамки компактнее */
+.iw-panel .iw-traits {
+    gap: 8px 8px;
+}
+
+.iw-panel .iw-trait {
+    padding: 4px 9px;
+    gap: 1px;
+}
+
+.iw-panel .iw-trait-head {
+    gap: 4px;
+}
+
+.iw-panel .iw-trait-tools {
+    gap: 2px;
+}
+
+.iw-panel .iw-trait-tools .iw-del,
+.iw-panel .iw-trait-tool {
+    width: 22px;
+    height: 22px;
+}
+
+.iw-panel .iw-trait.iw-acquired {
+    padding-left: 12px;
+}
+
+.iw-panel .iw-trait-why {
+    line-height: 1.25;
+}
+
+/* мечта всегда с заглавной */
+.iw-panel .iw-dream-title::first-letter {
+    text-transform: uppercase;
+}
+
+/* название типа личности, темперамента и знака: без поддельного жирного */
+.iw-panel .iw-persona-name {
+    font-weight: 400;
+    font-synthesis: none;
+}
+
+.iw-theme-diary .iw-persona-name,
+.iw-theme-dark .iw-persona-name { font-weight: 700; }
+.iw-theme-sims .iw-persona-name { font-weight: 800; font-family: 'Nunito', sans-serif; }
+.iw-theme-logbook .iw-persona-name { font-weight: 500; }
+.iw-theme-cyber .iw-persona-name,
+.iw-theme-dossier .iw-persona-name {
+    font-family: var(--iw-body-font);
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+
+/* подписи групп («Исходные данные», «Выявлено») стоят ровно в строку и не уезжают при переносе */
+.iw-panel .iw-group-head {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 2px;
+    line-height: 1.3;
+}
+
+.iw-panel .iw-group-head::before {
+    align-self: flex-start;
+    margin-top: .25em;
+}
+
+.iw-panel .iw-group-head > span:first-of-type {
+    white-space: nowrap;
+}
+
+.iw-theme-dossier .iw-group-head {
+    letter-spacing: .04em;
+    word-spacing: 0;
+}
+
+/* ---------- Карточки НПС: смайлик эмоции, кто это, подписи на одном уровне ---------- */
+.iw-npc-face-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.iw-npc-face-wrap .iw-face {
+    right: -10px;
+    bottom: -6px;
+    font-size: 24px;
+    z-index: 2;
+}
+
+/* имя занимает ровно две строки: «только упоминался» и настроение у всех на одной высоте */
+.iw-npc .iw-npc-name {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.4em;
+    line-height: 1.15;
+}
+
+.iw-npc .iw-npc-now {
+    font-weight: 700;
+    color: var(--iw-ink);
+}
+
+.iw-npc .iw-npc-who {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 100%;
+    color: var(--iw-muted);
+}
+
+.iw-npc-grid {
+    align-items: stretch;
+}
+
+.iw-npc {
+    justify-content: flex-start;
+}
+
+/* открытый НПС: смайлик эмоции у имени */
+.iw-title-face {
+    display: inline-flex;
+    vertical-align: middle;
+    font-size: .8em;
+    line-height: 0;
+    color: var(--face-ink, var(--iw-ink));
+    margin-left: 4px;
+}
+
+.iw-title-face .iw-face-ico {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+.iw-title-face .iw-face-ico .iw-face-bg {
+    fill: var(--face-bg, #eee7dc);
+    stroke: var(--face-ink, #5a5048);
+}
+
+/* пиксельные портреты НПС */
+.iw-theme-pixel .iw-npc-badge-px {
+    padding: 0;
+    overflow: hidden;
+}
+
+.iw-theme-pixel .iw-npc-px {
+    width: 86%;
+    height: 86%;
+    image-rendering: pixelated;
+    filter: none !important;
+}
+
+
+/* =====================================================================
+   ПИКСЕЛЬНАЯ ИГРА: весь текст — Press Start 2P (как на старых приставках).
+   Шрифт широкий, поэтому кегль меньше, а строки просторнее
+   ===================================================================== */
+.iw-theme-pixel {
+    --iw-text-size: 12.5px;
+    --iw-label-size: 11px;
+    --iw-sub-size: 14px;
+}
+
+.iw-theme-pixel .iw-book {
+    letter-spacing: 0;
+    line-height: 1.75;
+}
+
+.iw-theme-pixel :is(.iw-muted, .iw-f-hint, .iw-quick-hint, .iw-group-hint, .iw-feel-why, .iw-trait-why, .iw-trait-left, .iw-tab-mood, .iw-npc-mood, .iw-npc-who, .iw-imp-why, .iw-persona-general, small, .iw-tag, .iw-trait-kept) {
+    font-size: 10px;
+    line-height: 1.7;
+}
+
+.iw-theme-pixel :is(.iw-mood-word, .iw-imp-label, .iw-persona-name) {
+    font-size: 1.05em;
+}
+
+.iw-theme-pixel .iw-dream-title { font-size: 1.25em; line-height: 1.5; }
+.iw-theme-pixel .iw-title { font-size: 20px; }
+.iw-theme-pixel .iw-tab-name { font-size: 10.5px; line-height: 1.5; max-width: 112px; }
+.iw-theme-pixel .iw-npc-name { font-size: 10.5px; line-height: 1.5; }
+.iw-theme-pixel .iw-npc-title { font-size: 15px; line-height: 1.4; }
+.iw-theme-pixel :is(.iw-act, .iw-btn, .iw-study, .iw-qopt, .iw-buy, .iw-tool, .iw-back, .iw-forget) { font-size: 11px; }
+.iw-theme-pixel :is(.iw-select, .iw-input, .iw-panel select, .iw-panel input[type="text"], .iw-panel input[type="password"]) { font-size: 11px; }
+.iw-toasts.iw-theme-pixel .iw-toast-card { font-family: 'Press Start 2P', monospace; font-size: 11px; line-height: 1.7; }
+.iw-toasts.iw-theme-pixel .iw-toast-who { font-size: 12px; }
+
+@media (max-width: 560px) {
+    .iw-theme-pixel { --iw-text-size: 11.5px; }
+    .iw-theme-pixel .iw-title { font-size: 15px; }
+}
+
+.iw-theme-pixel .iw-acts .iw-act {
+    font-size: 10px;
+    gap: 6px;
+    padding-inline: 8px;
+}
+
+.iw-theme-pixel .iw-act-split .iw-act {
+    padding-right: 4px;
+}
+
+/* =====================================================================
+   ПЕРСОНА ИГРОКА: карточка рядом с НПС, лавка — значком в шапке
+   ===================================================================== */
+.iw-persona-tab {
+    position: relative;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 8px;
+    padding: 8px 14px 8px 8px;
+    border: var(--iw-sticker-border, 2px solid var(--iw-ink));
+    border-radius: var(--iw-sticker-radius, 10px);
+    background: var(--iw-sticker-bg, var(--iw-block-bg));
+    color: var(--iw-ink);
+    cursor: pointer;
+    box-shadow: var(--iw-block-shadow);
+    font: inherit;
+    text-align: left;
+    max-width: 210px;
+    transition: transform .15s;
+}
+
+.iw-persona-tab:hover {
+    transform: translateY(-2px);
+}
+
+.iw-persona-tab.on {
+    outline: 3px solid var(--iw-scribble);
+    outline-offset: 2px;
+}
+
+.iw-persona-tab .iw-photo-wrap {
+    position: relative;
+    flex: none;
+}
+
+.iw-panel .iw-persona-tab .iw-photo {
+    width: 46px;
+    height: 46px;
+    margin: 0;
+    border-radius: var(--iw-frame-radius, 50%);
+    box-shadow: var(--iw-frame);
+}
+
+.iw-persona-tab .iw-face {
+    font-size: 20px;
+    right: -9px;
+    bottom: -6px;
+}
+
+.iw-persona-tab-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.15;
+}
+
+.iw-persona-tab-cap {
+    font-size: .68em;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--iw-muted);
+}
+
+.iw-persona-tab-name {
+    font-family: var(--iw-title-font);
+    font-size: 1.05em;
+    font-weight: 700;
+    word-break: keep-all;
+    overflow-wrap: normal;
+}
+
+.iw-persona-tab .iw-tab-mood {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iw-persona-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border: 1.5px dashed var(--iw-divider);
+    border-radius: 8px;
+    font-size: .85em;
+    color: var(--iw-muted);
+}
+
+.iw-shop-tool.on {
+    background: var(--iw-hl-main);
+}
+
+.iw-theme-cyber .iw-persona-tab,
+.iw-theme-dossier .iw-persona-tab,
+.iw-theme-grid .iw-persona-tab { border-radius: 0; }
+.iw-theme-logbook .iw-persona-tab { border-radius: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+.iw-theme-bimbo .iw-persona-tab { border: 2px dashed #ff7ab8; border-radius: 18px; background: rgba(255, 255, 255, .8); }
+.iw-theme-pixel .iw-persona-tab {
+    border: 0;
+    background: #fff4f6;
+    box-shadow: 0 -3px 0 0 #4a2730, 0 3px 0 0 #4a2730, -3px 0 0 0 #4a2730, 3px 0 0 0 #4a2730, 5px 5px 0 0 rgba(74, 39, 48, .22);
+}
+.iw-theme-pixel .iw-persona-tab-name { font-weight: 400; font-size: 10.5px; line-height: 1.5; }
+.iw-theme-pixel .iw-persona-tab-cap { font-size: 8px; }
+.iw-theme-pixel .iw-persona-note { border-radius: 0; border-style: solid; }
+.iw-theme-dark .iw-persona-tab,
+.iw-theme-cyber .iw-persona-tab,
+.iw-theme-grimoire .iw-persona-tab,
+.iw-theme-logbook .iw-persona-tab { color: var(--iw-ink); }
+
+@media (max-width: 760px) {
+    .iw-persona-tab { max-width: 160px; padding: 6px 10px 6px 6px; }
+    .iw-panel .iw-persona-tab .iw-photo { width: 38px; height: 38px; }
+}
+
+/* ---------- Лавка и монеты — одной плашкой в шапке, сразу после названия дневника ---------- */
+.iw-panel .iw-head {
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.iw-shopbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
+    padding: 4px 6px 4px 4px;
+}
+
+.iw-shopbar .iw-shop-sticker {
+    margin-left: 0;
+}
+
+.iw-shopbar .iw-wallet {
+    position: relative;
+}
+
+.iw-panel .iw-head .iw-tools {
+    margin-left: auto;
+}
+
+/* персона — такая же вкладка, как у персонажа, с подписью сверху */
+.iw-tab-persona .iw-tab-cap {
+    margin-top: 4px;
+    font-size: .68em;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--iw-muted);
+}
+
+.iw-tab-persona {
+    margin-left: 6px;
+}
+
+.iw-theme-pixel .iw-tab-persona .iw-tab-cap { font-size: 8px; }
+
+@media (max-width: 560px) {
+    .iw-shopbar { order: 3; width: 100%; margin-right: 0; }
+}
+
+/* лавка и кошелёк — в одной плашке: слева «Лавка», справа монеты */
+.iw-panel .iw-shopbar {
+    gap: 0;
+    margin-left: 22px;
+    padding: 0;
+    border: 2px dashed var(--iw-ink);
+    border-radius: 8px;
+    background: var(--iw-hl-mid);
+    box-shadow: 0 3px 8px rgba(40, 30, 20, .16);
+    transform: rotate(-1.5deg);
+}
+
+.iw-panel .iw-shopbar .iw-shop-sticker {
+    transform: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    opacity: 1;
+    padding: 7px 12px;
+}
+
+.iw-panel .iw-shopbar .iw-shop-sticker.on {
+    background: var(--iw-hl-main);
+}
+
+.iw-panel .iw-shopbar .iw-wallet > summary {
+    border: 0;
+    border-left: 2px dashed var(--iw-ink);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 7px 12px;
+}
+
+/* в темах — рамка плашки в их манере */
+.iw-theme-dark .iw-shopbar { border-color: #c6a8ff; background: #2a2733; }
+.iw-theme-dark .iw-shopbar .iw-wallet > summary { border-left-color: #c6a8ff; }
+.iw-theme-sims .iw-shopbar { border: 3px solid #fff; background: #2f73c0; color: #fff; transform: none; border-radius: 999px; }
+.iw-theme-sims .iw-shopbar .iw-shop-sticker, .iw-theme-sims .iw-shopbar .iw-wallet > summary { color: #fff; border-left-color: rgba(255, 255, 255, .6); }
+.iw-theme-medieval .iw-shopbar { border: 3px double #8a5a2b; background: #f6ead0; transform: none; }
+.iw-theme-medieval .iw-shopbar .iw-wallet > summary { border-left: 1px solid #8a5a2b; }
+.iw-theme-cyber .iw-shopbar { border: 1px solid #ff3ea5; background: rgba(255, 62, 165, .1); border-radius: 0; transform: none; box-shadow: 0 0 10px rgba(255, 62, 165, .35); }
+.iw-theme-cyber .iw-shopbar .iw-shop-sticker, .iw-theme-cyber .iw-shopbar .iw-wallet > summary { color: #ff3ea5; border-left-color: #ff3ea5; }
+.iw-theme-grid .iw-shopbar { border: 2px solid #1f3a93; background: #fff; border-radius: 3px; }
+.iw-theme-grid .iw-shopbar .iw-wallet > summary { border-left: 2px solid #1f3a93; }
+.iw-theme-bimbo .iw-shopbar { border: 2px dashed #ff7ab8; background: #fff0f7; border-radius: 999px; }
+.iw-theme-bimbo .iw-shopbar .iw-wallet > summary { border-left-color: #ff7ab8; }
+.iw-theme-china .iw-shopbar { border: 2px solid #c8312b; background: #fbf7ee; border-radius: 3px; transform: none; box-shadow: 2px 2px 0 rgba(90, 29, 23, .25); }
+.iw-theme-china .iw-shopbar .iw-wallet > summary { border-left: 1px solid #c8312b; }
+.iw-theme-grimoire .iw-shopbar { border: 1px solid #e8c77a; background: rgba(232, 199, 122, .08); border-radius: 999px; transform: none; }
+.iw-theme-grimoire .iw-shopbar .iw-shop-sticker, .iw-theme-grimoire .iw-shopbar .iw-wallet > summary { color: #e8c77a; border-left: 1px solid rgba(232, 199, 122, .5); }
+.iw-theme-dossier .iw-shopbar { border: 2px solid #c0262d; background: transparent; border-radius: 0; transform: rotate(-2deg); }
+.iw-theme-dossier .iw-shopbar .iw-shop-sticker, .iw-theme-dossier .iw-shopbar .iw-wallet > summary { color: #c0262d; border-left: 2px solid #c0262d; }
+.iw-theme-logbook .iw-shopbar { border: 1px solid rgba(130, 175, 190, .45); background: rgba(38, 56, 66, .55); border-radius: 999px; transform: none; box-shadow: none; }
+.iw-theme-logbook .iw-shopbar .iw-shop-sticker, .iw-theme-logbook .iw-shopbar .iw-wallet > summary { color: #dce5e9; border-left: 1px solid rgba(130, 175, 190, .45); }
+.iw-theme-pixel .iw-shopbar { border: 0; background: #fff4f6; border-radius: 0; transform: none; box-shadow: 0 -3px 0 0 #4a2730, 0 3px 0 0 #4a2730, -3px 0 0 0 #4a2730, 3px 0 0 0 #4a2730, 5px 5px 0 0 rgba(74, 39, 48, .22); }
+.iw-theme-pixel .iw-shopbar .iw-shop-sticker { box-shadow: none !important; }
+.iw-theme-pixel .iw-shopbar .iw-wallet > summary { border-left: 3px solid #4a2730; box-shadow: none !important; }
+.iw-theme-china .iw-titlebox { padding-right: 34px; }
+
+
+/* лавка — по центру между названием дневника и значками справа */
+.iw-panel .iw-head .iw-shopbar {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.iw-panel .iw-head .iw-shopbar ~ .iw-tools {
+    margin-left: 0;
+}
+
+@media (max-width: 560px) {
+    .iw-panel .iw-head .iw-shopbar { margin-left: 0; margin-right: 0; }
+}
+
+/* ---------- Шапка: лавка и значки ровно по линии названия ----------
+   Подчёркивание и подписи под названием не влияют на высоту строки — висят под ней */
+.iw-panel .iw-titlebox {
+    position: relative;
+}
+
+.iw-panel .iw-titlebox > .iw-scribble {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: -4px;
+    pointer-events: none;
+}
+
+.iw-panel .iw-titlebox::after {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    white-space: nowrap;
+}
+
+.iw-panel .iw-head {
+    align-items: center;
+    padding-bottom: 12px;
+}
+
+.iw-panel .iw-head > .iw-tools,
+.iw-panel .iw-head > .iw-shopbar {
+    align-self: center;
+}
+
+/* ---------- Карточки персонажа и героя — одного размера ---------- */
+.iw-panel .iw-tabs {
+    align-items: stretch;
+}
+
+.iw-panel .iw-tabs > .iw-tab {
+    box-sizing: border-box;
+    width: 116px;
+    min-height: 140px;
+    flex: none;
+    justify-content: flex-start;
+}
+
+.iw-panel .iw-tabs > .iw-tab .iw-tab-name {
+    max-width: 100%;
+}
+
+@media (max-width: 760px) {
+    .iw-panel .iw-tabs > .iw-tab { width: 96px; min-height: 120px; }
+}

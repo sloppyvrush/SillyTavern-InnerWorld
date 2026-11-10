@@ -595,4 +595,30 @@ test('пустой дневник: без фото, с быстрыми наст
     assert.ok(waiting.includes('data-iw-quick-open="connect"'));
 });
 
+test('пиксельная тема: есть, со своими подписями, монеткой и звуками', async () => {
+    assert.equal(validTheme('pixel'), 'pixel');
+    const L = themeLabels('pixel', 'f');
+    assert.equal(L.wants, 'Квесты');
+    assert.equal(L.analyze, 'Сохранить игру');
+    const html = renderPanel({ state: applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'спокоен' }), all).state, settings: DEFAULT_SETTINGS, theme: 'pixel', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
+    assert.ok(html.includes('Квесты') && html.includes('Перки') && html.includes('iw-px'));
+    assert.ok(!renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: '', mains: [], npcKeys: [] }).includes('iw-px'));
+    const snd = await import('../src/sound.js');
+    assert.ok(snd.PATTERNS.pixel && snd.PATTERNS.pixel.want_done.length);
+});
+
+test('персона игрока: ведётся отдельно, не влияет на ответы, карточка вместо наклейки лавки', () => {
+    const fresh = [{ name: 'Роберт', mood: 'спокоен' }, { name: 'Ева', mood: 'встревожена', impression: { label: 'симпатия', score: 1 } }].map(x => parseAnalysis(JSON.stringify({ characters: [x] }))[0]);
+    const off = applyAnalysis(emptyState(), fresh, all, { userName: 'Ева', maxChars: 1 }).state;
+    assert.ok(!off.characters['Ева']);
+    const on = applyAnalysis(emptyState(), fresh, all, { userName: 'Ева', maxChars: 1, persona: true }).state;
+    assert.ok(on.characters['Ева'] && on.characters['Ева'].persona);
+    assert.ok(on.characters['Роберт']);
+    assert.ok(!buildInjection(on, all, 'Ева').includes('встревожена'));
+    const sys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Роберт', trackNames: [], trackPersona: true });
+    assert.ok(sys.includes('персона игрока') && sys.includes('отношение к Роберт'));
+    const html = renderPanel({ state: on, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'me:Ева', mains: ['Роберт'], npcKeys: [], persona: { key: 'Ева', name: 'Ева', avatar: '' } });
+    assert.ok(html.includes('iw-tab-persona') && html.includes('Как она относится к нему') && html.includes('iw-shopbar') && html.includes('iw-shop-sticker'));
+});
+
 console.log(`значки: ${passed} проверок прошло`);

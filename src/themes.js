@@ -1,4 +1,5 @@
 // Темы оформления дневника. Тему выбирает пользователь.
+import { PX_ICONS } from './pixel-icons.js';
 
 export const THEMES = {
     diary: {
@@ -6,7 +7,7 @@ export const THEMES = {
         fonts: 'family=Caveat:wght@600;700&family=Neucha',
     },
     dark: {
-        name: 'Тёмный блокнот',
+        name: 'Тёмный дневник',
         fonts: 'family=Caveat:wght@600;700&family=Neucha',
     },
     sims: {
@@ -19,7 +20,7 @@ export const THEMES = {
     },
     cyber: {
         name: 'Нейроинтерфейс',
-        fonts: 'family=Russo+One&family=JetBrains+Mono:wght@400;700',
+        fonts: 'family=Russo+One&family=JetBrains+Mono:wght@400;500;600;700',
     },
     grid: {
         name: 'Тетрадь в клетку',
@@ -48,6 +49,11 @@ export const THEMES = {
         // как на сайте Stellar Fleet: Oswald — заголовки, Onest — текст, JetBrains Mono — служебное
         fonts: 'family=Oswald:wght@400;500;600&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500',
     },
+    pixel: {
+        name: 'Пиксельная игра',
+        // пиксельный шрифт с кириллицей, как на старых приставках — для всего текста
+        fonts: 'family=Press+Start+2P',
+    },
 };
 
 // Цвета для карточек выбора темы: фон, чернила, акцент.
@@ -63,12 +69,13 @@ export const THEME_SWATCHES = {
     grimoire: ['#1b1324', '#e8c77a', '#8fe39b'],
     dossier: ['#d8bf8a', '#2a2a2a', '#c0262d'],
     logbook: ['#0c141a', '#f2a93f', '#62d6c8'],
+    pixel: ['#f4b6c4', '#4a2730', '#7ccf5b'],
 };
 
 export const THEME_IDS = Object.keys(THEMES);
 
 // Значок валюты: в журнале — кредиты, в свитке — монетка с квадратным отверстием, в остальных — монета.
-const CURRENCY_ICONS = { logbook: 'credit', china: 'cashcoin' };
+const CURRENCY_ICONS = { logbook: 'credit', china: 'cashcoin', pixel: 'pxcoin' };
 export function currencyIcon(theme) {
     return CURRENCY_ICONS[theme] || 'coin';
 }
@@ -86,6 +93,7 @@ const BASE_LABELS = {
     dream: 'Мечта жизни',
     traits: 'Черты характера',
     persona: 'Тип личности',
+    chartMark: '♥',
     traitsBase: 'Основные',
     traitsGained: 'Приобретённые',
     attitude: 'Отношение к тебе',
@@ -107,6 +115,7 @@ const BASE_LABELS = {
 
 const THEME_LABELS = {
     bimbo: {
+        chartMark: '♡',
         persona: 'Типаж и вайб ✨',
         title: 'Мой дневничок ♡',
         moodTitle: 'Вайб дня',
@@ -135,6 +144,7 @@ const THEME_LABELS = {
         analyzing: 'Секундочку, коть',
     },
     sims: {
+        chartMark: '◆',
         persona: 'Тип личности',
         wants: 'Желания',
         fears: 'Страхи',
@@ -142,6 +152,7 @@ const THEME_LABELS = {
         analyzing: 'Загрузка',
     },
     medieval: {
+        chartMark: '⚜',
         persona: 'Склад и нрав',
         title: 'Летопись души',
         moodTitle: 'Расположение духа',
@@ -166,6 +177,7 @@ const THEME_LABELS = {
         analyzing: 'Летописец пишет',
     },
     cyber: {
+        chartMark: '◉',
         persona: 'Психотип',
         title: 'NEURO//LINK',
         moodTitle: 'Эмоц. статус',
@@ -193,9 +205,11 @@ const THEME_LABELS = {
         analyzing: 'Сканирую',
     },
     dark: {
+        chartMark: '☾',
         analyze: 'Разобрать',
     },
     china: {
+        chartMark: '◈',
         persona: 'Стихия души',
         title: 'Книга сердца',
         moodTitle: 'Состояние духа',
@@ -222,6 +236,7 @@ const THEME_LABELS = {
         analyzing: 'Кисть пишет',
     },
     grimoire: {
+        chartMark: '✦',
         persona: 'Натальная суть',
         title: 'Гримуар',
         moodTitle: 'Аура',
@@ -249,6 +264,7 @@ const THEME_LABELS = {
         analyzing: 'Варю зелье',
     },
     dossier: {
+        chartMark: '●',
         persona: 'Психотип',
         title: 'Личное дело',
         moodTitle: 'Состояние',
@@ -276,6 +292,7 @@ const THEME_LABELS = {
         analyzing: 'Печатаю',
     },
     logbook: {
+        chartMark: '✧',
         persona: 'Психопрофиль',
         title: 'Бортовой журнал',
         moodTitle: 'Состояние',
@@ -301,6 +318,37 @@ const THEME_LABELS = {
         shop: 'Склад снабжения',
         analyze: 'Запросить телеметрию',
         analyzing: 'Приём данных',
+    },
+    pixel: {
+        chartMark: '♥',
+        persona: 'Класс персонажа',
+        title: 'Дневник игрока',
+        moodTitle: 'Статус',
+        moodLead: 'Сейчас {он}',
+        feels: 'Эффекты',
+        wants: 'Квесты',
+        fears: 'Угрозы',
+        dream: 'Главный квест',
+        traits: 'Перки',
+        traitsBase: 'Стартовые',
+        traitsGained: 'Открыты в игре',
+        attitude: 'Отношение к тебе',
+        first: 'первая встреча',
+        now: 'сейчас',
+        chronicle: 'Журнал игры',
+        chronicleEmpty: 'Пока ничего не случилось. Игра только начинается!',
+        whois: 'Кто это?',
+        whoisTraits: 'из лорбука',
+        empty: 'Сохранений пока нет. Дневник заполнится после следующего ответа.',
+        noChat: 'Нажми START: открой чат с персонажем.',
+        settings: 'Опции',
+        rewards: 'Лут',
+        shop: 'Лавка лута',
+        analyze: 'Сохранить игру',
+        analyzing: 'Сохраняю',
+    },
+    grid: {
+        chartMark: '✓',
     },
 };
 
@@ -345,6 +393,8 @@ const PATHS = {
     book: '<path d="M3 5.5c3-1.4 6-1.4 9 .8 3-2.2 6-2.2 9-.8v13c-3-1.4-6-1.4-9 .8-3-2.2-6-2.2-9-.8z"/><path d="M12 6.3v13"/>',
     rotate: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    pxcoin: '<g transform="translate(0 0) scale(2)" shape-rendering="crispEdges"><rect x="4" y="0" width="4" height="1" fill="currentColor" stroke="none"/><rect x="2" y="1" width="8" height="1" fill="currentColor" stroke="none"/><rect x="1" y="2" width="10" height="1" fill="currentColor" stroke="none"/><rect x="1" y="3" width="4" height="1" fill="currentColor" stroke="none"/><rect x="7" y="3" width="4" height="1" fill="currentColor" stroke="none"/><rect x="0" y="4" width="5" height="1" fill="currentColor" stroke="none"/><rect x="7" y="4" width="5" height="1" fill="currentColor" stroke="none"/><rect x="0" y="5" width="5" height="1" fill="currentColor" stroke="none"/><rect x="7" y="5" width="5" height="1" fill="currentColor" stroke="none"/><rect x="0" y="6" width="5" height="1" fill="currentColor" stroke="none"/><rect x="7" y="6" width="5" height="1" fill="currentColor" stroke="none"/><rect x="0" y="7" width="5" height="1" fill="currentColor" stroke="none"/><rect x="7" y="7" width="5" height="1" fill="currentColor" stroke="none"/><rect x="1" y="8" width="4" height="1" fill="currentColor" stroke="none"/><rect x="7" y="8" width="4" height="1" fill="currentColor" stroke="none"/><rect x="1" y="9" width="10" height="1" fill="currentColor" stroke="none"/><rect x="2" y="10" width="8" height="1" fill="currentColor" stroke="none"/><rect x="4" y="11" width="4" height="1" fill="currentColor" stroke="none"/></g>',
+    pxheart: '<g transform="translate(0 0) scale(2)" shape-rendering="crispEdges"><rect x="1" y="0" width="2" height="1" fill="currentColor" stroke="none"/><rect x="6" y="0" width="2" height="1" fill="currentColor" stroke="none"/><rect x="0" y="1" width="4" height="1" fill="currentColor" stroke="none"/><rect x="5" y="1" width="4" height="1" fill="currentColor" stroke="none"/><rect x="0" y="2" width="9" height="1" fill="currentColor" stroke="none"/><rect x="0" y="3" width="9" height="1" fill="currentColor" stroke="none"/><rect x="1" y="4" width="7" height="1" fill="currentColor" stroke="none"/><rect x="2" y="5" width="5" height="1" fill="currentColor" stroke="none"/><rect x="3" y="6" width="3" height="1" fill="currentColor" stroke="none"/><rect x="4" y="7" width="1" height="1" fill="currentColor" stroke="none"/></g>',
     alert: '<path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><path d="M12 17.3v.2"/>',
     zodiac: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17"/><circle cx="12" cy="12" r="3.2"/>',
     flame: '<path d="M12 21c-3.6 0-6-2.4-6-5.6 0-3.3 2.4-5 3.4-8.4 1.9 1.4 2.6 3.2 2.6 4.6 1-.8 1.6-2 1.7-3.4 2.4 1.9 4.3 4.4 4.3 7.2 0 3.2-2.4 5.6-6 5.6z"/>',
@@ -423,7 +473,20 @@ export function faceIcon(face, cls = '') {
     return `<svg class="iw-face-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="iw-face-bg" d="M12 3.2c4.9-.2 8.9 3.6 8.8 8.7-.1 4.9-3.9 8.8-8.9 8.8-4.9 0-8.7-3.8-8.7-8.8 0-4.8 3.9-8.5 8.8-8.7z"/>${inner}</svg>`;
 }
 
+// В пиксельной теме значки рисуются пиксель-артом (16×16), в остальных — контуром.
+let iconTheme = '';
+export function setIconTheme(theme) {
+    iconTheme = theme || '';
+}
+export function iconStyle() {
+    return iconTheme;
+}
+export function pxSvg(d, cls = '') {
+    return `<svg class="iw-ico iw-px ${cls}" viewBox="0 0 16 16" width="1em" height="1em" fill="currentColor" stroke="none" shape-rendering="crispEdges" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
 export function icon(name, cls = '') {
+    if (iconTheme === 'pixel' && PX_ICONS[name]) return pxSvg(PX_ICONS[name], cls);
     return `<svg class="iw-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.star}</svg>`;
 }
 
@@ -465,13 +528,14 @@ const TOAST_KICKERS = {
     dossier: { want_done: 'Мотив реализован', fear_real: 'ВНИМАНИЕ: уязвимость подтвердилась', fear_gone: 'Угроза снята', trait_new: 'Выявлена новая черта', trait_up: 'Черта усилилась', trait_down: 'Черта ослабла', trait_gone: 'Черта утрачена', dream_step: 'Продвижение к цели', dream_done: 'Цель достигнута', dream_change: 'Цель сменилась', dream_grow: 'Цель расширена', impression: 'Новый фигурант', attitude: 'Отношение изменилось', reward: 'Поощрение выдано' },
     logbook: { want_done: 'Задача выполнена', fear_real: 'ТРЕВОГА: риск сработал', fear_gone: 'Риск миновал', trait_new: 'Профиль обновлён', trait_up: 'Профиль обновлён', trait_down: 'Профиль обновлён', trait_gone: 'Профиль обновлён', dream_step: 'Курс выдержан', dream_done: 'Пункт назначения достигнут', dream_change: 'Курс изменён', dream_grow: 'Курс продлён', impression: 'Первый контакт', attitude: 'Связь изменилась', reward: 'Груз получен' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
+    pixel: { want_done: 'Квест выполнен!', fear_real: 'Получен урон!', fear_gone: 'Угроза пройдена', trait_new: 'Новый перк!', trait_up: 'Перк прокачан', trait_down: 'Перк ослаб', trait_gone: 'Перк потерян', dream_step: 'Прогресс главного квеста', dream_done: 'Главный квест пройден!', dream_change: 'Новый главный квест', dream_grow: 'Квест расширен', impression: 'Новый персонаж!', attitude: 'Отношение изменилось', reward: 'Лут получен!' },
 };
 
 // Подпись листика с ошибкой дневника — в голосе темы.
 const ERROR_KICKERS = {
     diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка', grid: 'Ошибка',
     bimbo: 'Ой-ой, ошибочка…', medieval: 'Худая весть', cyber: 'ERR // сбой', china: 'Кисть сорвалась',
-    grimoire: 'Заклинание сорвалось', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ',
+    grimoire: 'Заклинание сорвалось', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', pixel: 'GAME OVER? Нет, просто ошибка',
 };
 export function errorKicker(theme) {
     return ERROR_KICKERS[theme] || 'Не получилось';

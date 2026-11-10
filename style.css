@@ -159,6 +159,8 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
     filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .4));
+    will-change: transform;
+    contain: layout style;
 }
 
 #iw_fab *,
@@ -333,6 +335,12 @@
 #iw_fab.iw-dragging {
     will-change: transform;
     transition: none;
+    filter: none;
+}
+
+#iw_fab.iw-dragging * {
+    transition: none !important;
+    animation: none !important;
 }
 
 /* новые темы: красный лаковый свиток, гримуар, папка «дело», бортовой журнал */
@@ -344,3 +352,12 @@
 #iw_fab.iw-theme-dossier .iw-fab-cover { border-radius: 2px 6px 6px 2px; }
 #iw_fab.iw-theme-logbook { --iwf-bg: #0a1022; --iwf-paper: radial-gradient(circle at 25% 30%, #dce6ff 0 1px, transparent 1.5px), radial-gradient(circle at 70% 65%, #dce6ff 0 1px, transparent 1.5px); --iwf-ink: #ffb347; --iwf-spine: #8fb8ff; --iwf-accent: #ffb347; }
 #iw_fab.iw-theme-logbook .iw-fab-cover { border-radius: 8px; box-shadow: 0 0 10px rgba(143, 184, 255, .45); }
+
+/* пиксельная игра: розовый блокнотик с шоколадной пиксельной рамкой */
+#iw_fab.iw-theme-pixel { --iwf-bg: #f4b6c4; --iwf-paper: linear-gradient(45deg, transparent 46%, #f8c9d4 46% 54%, transparent 54%) 0 0 / 8px 8px; --iwf-ink: #4a2730; --iwf-spine: #d9667f; --iwf-accent: #d9667f; }
+#iw_fab.iw-theme-pixel .iw-fab-book { transform: none; image-rendering: pixelated; }
+#iw_fab.iw-theme-pixel .iw-fab-cover { border-radius: 0; border-width: 3px; box-shadow: 3px 3px 0 #4a2730; }
+#iw_fab.iw-theme-pixel .iw-fab-spine { border-radius: 0; border-width: 3px; }
+#iw_fab.iw-theme-pixel .iw-fab-ribbon { border-radius: 0; background: #7ccf5b; }
+#iw_fab.iw-theme-pixel .iw-fab-heart { fill: #d9667f; stroke: #4a2730; stroke-linejoin: miter; }
+#iw_fab.iw-theme-pixel:hover .iw-fab-book { transform: translateY(-2px); }
