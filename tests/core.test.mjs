@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
-    DEFAULT_SETTINGS, mergeSettings, emptyState, parseAnalysis, applyAnalysis, buildInjection, decayState,
-    buildSystemPrompt, buildUserPrompt, cleanMessageText, extractJson, eventText, lowerWord, moodletLeftLabel, mentioned, plural,
+    DEFAULT_SETTINGS, mergeSettings, emptyState, parseAnalysis, applyAnalysis, buildInjection, buildAttrInjection, decayState,
+    buildSystemPrompt, buildUserPrompt, buildDreamPrompt, cleanMessageText, extractJson, eventText, lowerWord, moodletLeftLabel, mentioned, plural,
 } from '../src/core.js';
 import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
@@ -84,9 +84,12 @@ test('эмоции угасают сами и освежаются без дуб
     ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'рад', moodlets: [{ emotion: 'Радость', weight: 'medium', turns: 4 }], ended: ['влюблённость'] }), all, {}));
     assert.deepEqual(state.characters['Марк'].moodlets.map(m => [m.emotion, m.left]), [['радость', 4]]);
     // без новых эмоций старые остаются как были
-    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'спокоен' }), all, {}));
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'рад' }), all, {}));
     assert.equal(state.characters['Марк'].moodlets.length, 1);
-    assert.equal(state.characters['Марк'].mood, 'спокоен');
+    assert.equal(state.characters['Марк'].mood, 'рад');
+    // состояние без эмоции за ним: эмоция добавляется сама
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'сосредоточен' }), all, {}));
+    assert.ok(state.characters['Марк'].moodlets.some(m => m.emotion === 'сосредоточенность' && m.face === 'focus'));
 });
 
 test('черты: при знакомстве все исходные, потом одно изменение и пауза', () => {
@@ -246,7 +249,7 @@ test('подписи по полу и теме', () => {
     assert.equal(themeLabels('diary', 'm').wants, 'Хочет…');
     assert.equal(themeLabels('dark', 'm').fears, 'Боится…');
     assert.equal(themeLabels('medieval', 'f').moodLead, 'Ныне она');
-    for (const t of ['diary', 'dark', 'medieval', 'grid', 'sims']) assert.equal(themeLabels(t, 'm').traits, 'Черты характера');
+    for (const t of ['diary', 'dark', 'medieval', 'sims']) assert.equal(themeLabels(t, 'm').traits, 'Черты характера');
     assert.equal(themeLabels('bimbo', 'f').moodLead, 'Сейчас она');
     assert.equal(validTheme('bimbo'), 'bimbo');
 });
@@ -260,7 +263,7 @@ test('дневник и всплывашка рисуются и экранир�
     }), all, {});
     const html = renderPanel({ state, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:' + state.order[0], busy: false, status: '', mains: state.order, npcKeys: [], roster: null });
     assert.ok(!html.includes('<script>'));
-    assert.ok(html.includes('&lt;b&gt;x&lt;/b&gt;'));
+    assert.ok(html.toLowerCase().includes('&lt;b&gt;x&lt;/b&gt;'));
     assert.ok(html.includes('1 из 2'));
     assert.ok(!html.includes('Чувствует') && html.includes('iw-feels-flat'));
     assert.ok(html.includes('Сейчас он'));
@@ -491,10 +494,15 @@ test('общее состояние: цвет из эмоций, смешанн�
 });
 
 test('новые темы на месте: надписи, шрифты, громкость', () => {
-    for (const th of ['china', 'grimoire', 'dossier', 'logbook']) {
+    for (const th of ['china', 'herbal', 'arcana', 'seance', 'dossier', 'logbook']) {
         assert.equal(validTheme(th), th);
         assert.ok(themeLabels(th, 'm').analyze);
     }
+    // старые темы переезжают на новые: гримуар → травница, тетрадь в клетку → аркан
+    assert.equal(validTheme('grimoire'), 'herbal');
+    assert.equal(validTheme('grid'), 'arcana');
+    assert.equal(mergeSettings({ theme: 'grid' }).theme, 'arcana');
+    assert.equal(mergeSettings({ theme: 'grimoire' }).theme, 'herbal');
     assert.equal(mergeSettings({}).volume, 45);
     assert.equal(mergeSettings({ volume: 300 }).volume, 100);
 });
@@ -585,7 +593,7 @@ test('черты: «подробнее» дописывается, приобр�
     st.characters['Роберт'].traits.push({ name: 'осторожный', kind: 'base', kept: true, why: 'чуть не погиб' });
     const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
     assert.ok(html.includes('вырос среди старших братьев'));
-    assert.ok(html.includes('iw-acquired') && html.includes('приобретена') && html.includes('чуть не погиб'));
+    assert.ok(html.includes('iw-acquired') && html.includes('Приобретена') && html.toLowerCase().includes('чуть не погиб'));
     assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('no_about'));
 });
 
@@ -673,6 +681,112 @@ test('тип личности и темперамент — в роде перс
     const st2 = applyAnalysis(emptyState(), one({ name: 'Олег', g: 'm', mood: 'спокоен', temper: 'phlegmatic' }), all).state;
     const h2 = renderPanel({ state: st2, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Олег', mains: ['Олег'], npcKeys: [] });
     assert.ok(h2.includes('Спокойный и ровный') && !h2.includes('к нервам'));
+});
+
+test('привязанные лорбуки, карточку и персону можно снять галочкой', () => {
+    const h = renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Марк', mains: ['Марк'], npcKeys: [], books: ['Мир', 'Город'], picked: [], linked: [{ name: 'Мир', from: 'char' }, { name: 'Ева-лор', from: 'persona' }], off: ['Мир'], persona: { key: 'Ева', name: 'Ева' } });
+    assert.ok(h.includes('data-iw-skip-book="__card" aria-pressed="true"'));
+    assert.ok(h.includes('data-iw-skip-book="__persona" aria-pressed="true"'));
+    assert.ok(h.includes('data-iw-skip-book="Мир" aria-pressed="false"'));
+    assert.ok(h.includes('data-iw-skip-book="Ева-лор" aria-pressed="true"') && h.includes('<em>персоны</em>'));
+});
+
+test('валюта: своё имя в каждой теме, пояснение в кошельке, очки во всплывашке', async () => {
+    const { renderToast } = await import('../src/render.js');
+    for (const th of ['diary', 'pixel', 'logbook', 'medieval', 'cyber']) assert.ok(themeLabels(th, 'm').currency, th);
+    const t = renderToast({ type: 'want_done', who: 'Марк', text: 'чай', points: 10 }, 'medieval');
+    assert.ok(t.includes('iw-toast-points') && t.includes('+10') && t.includes('золотые'));
+    assert.ok(!renderToast({ type: 'want_done', who: 'Марк', text: 'чай' }, 'medieval').includes('iw-toast-points'));
+    let st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен' }), all).state;
+    st.characters['Марк'].points = 35;
+    const h = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'logbook', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
+    assert.ok(h.includes('iw-wallet-info') && h.includes('Кредиты снабжения') && h.includes('Склад снабжения'));
+});
+
+test('совместимость и первое впечатление как мнение', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', impression: { label: 'смелая чудачка', score: 1, why: 'не полезла к зевакам' }, chem: { level: 'good', why: 'оба упрямые' } }), all).state;
+    assert.equal(st.characters['Марк'].chem.level, 'good');
+    const h = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
+    assert.ok(h.includes('iw-chem-good') && h.includes('Есть контакт') && h.includes('Оба упрямые'));
+    // без пересборки совместимость не перезаписывается
+    st = applyAnalysis(st, one({ name: 'Марк', chem: { level: 'awful', why: 'x' } }), all).state;
+    assert.equal(st.characters['Марк'].chem.level, 'good');
+    const sys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] });
+    assert.ok(sys.includes('МНЕНИЕ персонажа') && sys.includes('amazing'));
+});
+
+test('что привлекает: модель заполняет один раз, правки игрока не перезаписываются', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', turn_ons: ['Темноволосые', 'надёжные'], turn_offs: ['грубые'] }), all).state;
+    assert.deepEqual(st.characters['Марк'].likes, ['темноволосые', 'надёжные']);
+    st = applyAnalysis(st, one({ name: 'Марк', turn_ons: ['другое'] }), all).state;
+    assert.deepEqual(st.characters['Марк'].likes, ['темноволосые', 'надёжные']);
+    st.characters['Марк'].likes = [];
+    st.characters['Марк'].dislikes = [];
+    st.characters['Марк'].attrSet = true;
+    st = applyAnalysis(st, one({ name: 'Марк', turn_ons: ['другое'] }), all).state;
+    assert.deepEqual(st.characters['Марк'].likes, []);
+    const h = renderPanel({ state: applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', turn_ons: ['темноволосые'] }), all).state, settings: DEFAULT_SETTINGS, theme: 'pixel', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
+    assert.ok(h.includes('iw-b-attraction') && h.includes('Симпатии') && h.includes('Темноволосые') && h.includes('data-iw-attr="toggle:likes:рыжие"'));
+});
+
+test('совместимость: первая не меняется, «сейчас» живёт по чату; давно знакомые; «что привлекает» — только из лорбука', () => {
+    let st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', impression: { label: 'жена', score: 2, why: 'родная', known: 'супруги' }, chem: { level: 'good', why: 'x' } }), all).state;
+    assert.equal(st.characters['Марк'].chemNow.score, 2);
+    st = applyAnalysis(st, one({ name: 'Марк', chem: { level: 'awful' }, chem_now: { score: -1, why: 'поссорились' } }), all).state;
+    const m = st.characters['Марк'];
+    assert.equal(m.chem.level, 'good');
+    assert.equal(m.chemNow.score, -1);
+    const h = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
+    assert.ok(h.includes('Давно знакомы: супруги') && h.includes('Холодок') && h.includes('iw-chem-meter') && h.includes('Поссорились'));
+    const chatSys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [], kind: 'chat' });
+    const loreSys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [], kind: 'lore', fromLore: true });
+    assert.ok(!chatSys.includes('turn_ons') && loreSys.includes('turn_ons'));
+    assert.ok(chatSys.includes('chem_now'));
+});
+
+test('блоки сворачиваются: у свёрнутого только заголовок', () => {
+    const st = applyAnalysis(emptyState(), one({ name: 'Марк', g: 'm', mood: 'насторожен', moodlets: [{ emotion: 'тревога', weight: 'medium', tone: 'bad' }], wants: [{ text: 'найти убийцу' }], turn_ons: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }), all, {}).state;
+    const s2 = Object.assign({}, DEFAULT_SETTINGS, { collapsed: { mood: true, wants: true } });
+    const h = renderPanel({ state: st, settings: s2, theme: 'diary', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
+    assert.ok(h.includes('iw-b-mood iw-collapsed') && h.includes('iw-b-wants iw-collapsed') && !h.includes('iw-fold-sum'));
+    assert.ok(!h.includes('iw-b-fears iw-collapsed'));
+    assert.ok(h.includes('ещё 2'));
+});
+
+test('притяжение попадает в чат своей подсказкой и выключается', () => {
+    const st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', turn_ons: ['рыжие'], turn_offs: ['лживые'], impression: { label: 'x', score: 1 }, chem: { level: 'good' } }), all).state;
+    const t = buildAttrInjection(st, 'Ева', 'strong');
+    assert.ok(t.includes('привлекает: рыжие') && t.includes('отталкивает: лживые') && t.includes('тянет друг к другу') && t.includes('заметно'));
+    assert.equal(buildAttrInjection(st, 'Ева', 'none'), '');
+});
+
+test('очки коротко: 1,2К и 15К, полное число — в пояснении', async () => {
+    const { shortPoints } = await import('../src/render.js');
+    assert.equal(shortPoints(999), '999');
+    assert.equal(shortPoints(1200), '1,2К');
+    assert.equal(shortPoints(15300), '15К');
+    assert.equal(shortPoints(2500000), '2,5М');
+    const st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен' }), all).state;
+    st.characters['Марк'].points = 1234;
+    const h = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'pixel', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
+    assert.ok(h.includes('<b>1,2К</b>') && h.includes('1\u00a0234'));
+});
+
+
+test('притяжение и отторжение — одна настройка силы', () => {
+    assert.equal(mergeSettings({}).attrPower, 'medium');
+    const s = mergeSettings({ attrPower: 'max' });
+    assert.equal(s.attrInfluence, 'strong');
+    assert.equal(s.attrDepth, 1);
+    assert.equal(mergeSettings({ attrPower: 'none' }).attrInfluence, 'none');
+    // старые две настройки переезжают в одну
+    assert.equal(mergeSettings({ attrInfluence: 'light', attrDepth: 10 }).attrPower, 'faint');
+    assert.equal(mergeSettings({ attrInfluence: 'none' }).attrPower, 'none');
+});
+
+test('мечта персоны придумывается по её описанию, а не по карточке персонажа', () => {
+    const { system, user } = buildDreamPrompt({ persona: true, card: 'Ева — журналистка', botName: 'Ева', userName: 'Виктор', messages: [], loreMain: [] }, { name: 'Ева', dream: { title: 'старое' } });
+    assert.ok(user.includes('[Описание персоны игрока: Ева]') && system.includes('мечту ИМЕННО ЕГО') && system.includes('Это не мечта Виктор'));
 });
 
 console.log(`значки: ${passed} проверок прошло`);

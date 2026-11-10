@@ -140,7 +140,6 @@
 #iw_fab.iw-theme-sims { --iwf-bg: #2f73c0; --iwf-paper: none; --iwf-ink: #ffffff; --iwf-spine: #2f73c0; --iwf-accent: #ffffff; }
 #iw_fab.iw-theme-medieval { --iwf-bg: #efe0bd; --iwf-paper: none; --iwf-ink: #8a5a2b; --iwf-spine: #7a1f14; --iwf-accent: #a3241a; }
 #iw_fab.iw-theme-cyber { --iwf-bg: #0b0d14; --iwf-paper: none; --iwf-ink: #3ef0ff; --iwf-spine: #3ef0ff; --iwf-accent: #ff3ea5; }
-#iw_fab.iw-theme-grid { --iwf-bg: #f7f8f2; --iwf-paper: linear-gradient(#cfe0e8 1px, transparent 1px) 0 0 / 6px 6px, linear-gradient(90deg, #cfe0e8 1px, transparent 1px) 0 0 / 6px 6px; --iwf-ink: #1f3a93; --iwf-spine: #1f3a93; --iwf-accent: #c0262d; }
 
 #iw_fab {
     all: initial;
@@ -343,11 +342,17 @@
     animation: none !important;
 }
 
-/* новые темы: красный лаковый свиток, гримуар, папка «дело», бортовой журнал */
-#iw_fab.iw-theme-china { --iwf-bg: #f6efe0; --iwf-paper: none; --iwf-ink: #1d1a17; --iwf-spine: #c8312b; --iwf-accent: #c8312b; }
-#iw_fab.iw-theme-china .iw-fab-cover { border-radius: 2px; box-shadow: inset 0 3px 0 #5a1d17, inset 0 -3px 0 #5a1d17; }
-#iw_fab.iw-theme-grimoire { --iwf-bg: #2a1d36; --iwf-paper: radial-gradient(circle at 70% 30%, rgba(232, 199, 122, .35) 0 6%, transparent 7%); --iwf-ink: #e8c77a; --iwf-spine: #5b3d78; --iwf-accent: #8fe39b; }
-#iw_fab.iw-theme-grimoire .iw-fab-cover { box-shadow: 0 0 10px rgba(201, 162, 255, .5); }
+/* новые темы: красный лаковый свиток, травница, аркан, сеанс, папка «дело», бортовой журнал */
+#iw_fab.iw-theme-china { --iwf-bg: #3a1216; --iwf-paper: none; --iwf-ink: #d4a64a; --iwf-spine: #d4a64a; --iwf-accent: #e65a46; }
+#iw_fab.iw-theme-china .iw-fab-cover { border-radius: 2px; box-shadow: inset 0 3px 0 #d4a64a, inset 0 -3px 0 #d4a64a, 0 0 10px rgba(212, 166, 74, .3); }
+#iw_fab.iw-theme-herbal { --iwf-bg: #2a321f; --iwf-paper: radial-gradient(circle at 70% 30%, rgba(169, 191, 110, .4) 0 6%, transparent 7%); --iwf-ink: #d29a3c; --iwf-spine: #6f7f3a; --iwf-accent: #a9bf6e; }
+#iw_fab.iw-theme-herbal .iw-fab-cover { box-shadow: 0 0 10px rgba(210, 154, 60, .35); }
+#iw_fab.iw-theme-arcana { --iwf-bg: #151b42; --iwf-paper: radial-gradient(circle at 25% 30%, #f1d27f 0 1px, transparent 1.5px), radial-gradient(circle at 72% 62%, #a8b8f2 0 1px, transparent 1.5px); --iwf-ink: #e6c46e; --iwf-spine: #c9a45c; --iwf-accent: #a8b8f2; }
+#iw_fab.iw-theme-arcana .iw-fab-cover { border-radius: 10px 10px 4px 4px; box-shadow: 0 0 10px rgba(242, 207, 124, .4); }
+#iw_fab.iw-theme-seance { --iwf-bg: #2b2521; --iwf-paper: none; --iwf-ink: #e3d3b5; --iwf-spine: #8a7558; --iwf-accent: #d39a8c; }
+#iw_fab.iw-theme-nav { --iwf-bg: #111814; --iwf-paper: radial-gradient(circle at 50% 50%, #d6392e 0 2px, transparent 2.5px); --iwf-ink: #e3d9c2; --iwf-spine: #d6392e; --iwf-accent: #d6392e; }
+#iw_fab.iw-theme-nav .iw-fab-cover { border-radius: 3px; box-shadow: inset 0 0 0 2px #111814, inset 0 0 0 3px rgba(214, 57, 46, .6); }
+#iw_fab.iw-theme-seance .iw-fab-cover { border-radius: 3px; box-shadow: inset 0 0 0 2px #2b2521, inset 0 0 0 3px rgba(214, 201, 179, .45); }
 #iw_fab.iw-theme-dossier { --iwf-bg: #d6bd88; --iwf-paper: none; --iwf-ink: #262422; --iwf-spine: #b89a5e; --iwf-accent: #c0262d; }
 #iw_fab.iw-theme-dossier .iw-fab-cover { border-radius: 2px 6px 6px 2px; }
 #iw_fab.iw-theme-logbook { --iwf-bg: #0a1022; --iwf-paper: radial-gradient(circle at 25% 30%, #dce6ff 0 1px, transparent 1.5px), radial-gradient(circle at 70% 65%, #dce6ff 0 1px, transparent 1.5px); --iwf-ink: #ffb347; --iwf-spine: #8fb8ff; --iwf-accent: #ffb347; }
@@ -361,3 +366,29 @@
 #iw_fab.iw-theme-pixel .iw-fab-ribbon { border-radius: 0; background: #7ccf5b; }
 #iw_fab.iw-theme-pixel .iw-fab-heart { fill: #d9667f; stroke: #4a2730; stroke-linejoin: miter; }
 #iw_fab.iw-theme-pixel:hover .iw-fab-book { transform: translateY(-2px); }
+
+/* подраздел в настройках расширения */
+.iw-settings-form .iw-f-sub {
+    margin: 10px 0 2px;
+    padding-bottom: 3px;
+    border-bottom: 1px dashed rgba(127, 127, 127, .4);
+    font-weight: 700;
+    font-size: .85em;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    opacity: .85;
+}
+
+/* без анимаций — блокнот не качается при наведении */
+#iw_fab.iw-noanim .iw-fab-book,
+#iw_fab.iw-noanim:hover .iw-fab-book {
+    transition: none !important;
+    transform: rotate(-7deg) !important;
+}
+
+/* низ настроек в панели таверны: язык, кнопки очистки и сброса, подпись */
+.iw-form-st .iw-form-foot { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, .2)); }
+.iw-form-st .iw-foot-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.iw-form-st .iw-sign { font-size: .85em; opacity: .7; text-align: center; line-height: 1.45; }
+.iw-form-st .iw-sign-nick { color: inherit; font-weight: 700; text-decoration: underline dotted; }
+.iw-form-st .iw-lang-opt.on { background: var(--SmartThemeQuoteColor, #e18a24); color: var(--SmartThemeBlurTintColor, #111); }

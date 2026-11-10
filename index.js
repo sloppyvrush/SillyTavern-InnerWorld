@@ -1,23 +1,26 @@
 // «Внутренний мир» — желания, страхи, настроение, мечта, черты и первое впечатление персонажей.
 import {
     MODULES, MODEL_MODULES, MODULE_NAMES, normText, mergeSettings, emptyState, parseAnalysis, applyAnalysis, sameName, decayState,
-    buildSystemPrompt, buildUserPrompt, buildInjection, cleanMessageText, mentioned,
+    buildSystemPrompt, buildUserPrompt, buildInjection, buildAttrInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError,
 } from './src/core.js';
 import { playSound, setVolume } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
-import { renderPanel, renderToast, renderErrorToast, renderFab, esc } from './src/render.js';
+import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
 const VERSION = '0.4.0';
+const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
+setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
 const SETTINGS_KEY = 'innerWorld';
 const META_KEY = 'inner_world';
 const PROMPT_KEY = 'inner_world';
+const ATTR_PROMPT_KEY = 'inner_world_attraction';
 const KEEP_SNAPSHOTS = 12;
 const SKIP_TYPES = ['first_message', 'command', 'extension', 'impersonate', 'quiet'];
 
@@ -30,6 +33,13 @@ let view = '';            // 'main:<имя>' | 'npc' | 'npc:<имя>' | 'setting
 let lastView = '';
 let rosterBusy = false;
 let status = '';
+// Живой листок поверх дневника, пока модель пишет: этап, что уже написано и черновое состояние за размытием.
+let live = null;
+let liveTimer = null;
+// Выбор «что привлекает»: какой список пополняем и открыт ли каталог.
+let attrMode = 'likes';
+let attrOpen = false;
+let attrMore = {};
 let currentTheme = 'diary';
 const loadedFonts = new Set();
 
@@ -210,9 +220,10 @@ async function collectLoreSources(onlyBook = '') {
         return out;
     }
     const ch = c.characters && c.characters[c.characterId];
-    const card = cardDescription(c);
+    const off = new Set(offBooks());
+    const card = off.has('__card') ? '' : cardDescription(c);
     if (card.trim()) out.push({ title: `Карточка: ${c.name2}`, text: cleanMessageText(card, 5000) });
-    const persona = c.powerUserSettings && c.powerUserSettings.persona_description;
+    const persona = !off.has('__persona') && c.powerUserSettings && c.powerUserSettings.persona_description;
     if (persona) out.push({ title: `Игрок: ${c.name1}`, text: cleanMessageText(persona, 1500) });
 
     const books = new Set();
@@ -226,6 +237,8 @@ async function collectLoreSources(onlyBook = '') {
     if (c.chatMetadata && c.chatMetadata.world_info) books.add(c.chatMetadata.world_info);
     const personaBook = c.powerUserSettings && c.powerUserSettings.persona_description_lorebook;
     if (personaBook) books.add(personaBook);
+    // снятые галочками привязанные лорбуки не читаем
+    for (const b of off) books.delete(b);
     // лорбуки, отмеченные галочками для этого чата
     for (const b of pickedBooks()) books.add(b);
     const per = Math.max(3000, Math.floor(14000 / Math.max(1, books.size)));
@@ -252,6 +265,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     rosterBusy = true;
     busyKind = mode === 'all' ? 'all' : 'lore';
     status = book ? `Читаю лорбук «${book}»…` : 'Читаю карточку и лорбуки…';
+    setLive({ kind: 'roster', stage: 'prep', t0: Date.now(), chars: [], len: 0 });
     renderAll();
     let sources = [];
     let loreFp = '';
@@ -267,6 +281,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         if (sameLore && (mode === 'lore' || sameChat) && !missingPersona()) {
             rosterBusy = false;
             busyKind = '';
+            setLive(null);
             status = 'Ничего нового с прошлого разбора';
             nothingNew(mode === 'lore' ? 'карточка и лорбуки' : 'чат, карточка и лорбуки');
             renderAll();
@@ -274,7 +289,11 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         }
         if (!sameLore && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
             const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
-            const raw = await callModel(system, user, withBudget('roster'));
+            liveStage('think');
+            const raw = await callModel(system, user, withBudget('roster'), text => {
+                if (live && text && live.stage !== 'write') liveStage('write');
+                if (live) live.len = text.length;
+            });
             const fresh = verifyAliases(parseRoster(raw, c.name1), sources.map(x => x.text).join('\n'));
             const old = settings().rosters[key];
             const merged = old && old.at ? mergeRoster(old, fresh) : { main: fresh.main, npc: fresh.npc };
@@ -292,6 +311,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         const info = classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) });
         status = 'Не получилось изучить: ' + info.title;
         showError(info, { manual: true, what: 'Изучение лорбука' });
+        setLive(null);
         rosterBusy = false;
         busyKind = '';
         renderAll();
@@ -299,6 +319,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     }
     if (my !== runId) return;
     rosterBusy = false;
+    if (live) live.stage = 'prep';
     renderAll();
     // сведения из карточки и лорбука — главному персонажу и тем, кто в сцене
     const last = lastBotMessageId();
@@ -308,6 +329,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     if (my !== runId) return;
     chatMeta().fp = Object.assign({}, chatMeta().fp, { lore: loreFp });
     ctx().saveMetadataDebounced?.();
+    setLive(null);
     busyKind = '';
     syncSettingsForm();
     renderAll();
@@ -430,6 +452,12 @@ function updateInjection(beforeId) {
         text = buildInjection(liveState(beforeId), s.modules, c.name1, s.moodInfluence);
     }
     c.setExtensionPrompt(PROMPT_KEY, text, 1, Number(s.injectDepth) || 0, false, 0);
+    // притяжение — своей подсказкой, со своей настойчивостью
+    let attr = '';
+    if (s.enabled && s.inject && s.modules.attraction !== false && s.attrInfluence !== 'none' && hasChat() && c.chat && c.chat.length) {
+        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence);
+    }
+    c.setExtensionPrompt(ATTR_PROMPT_KEY, attr, 1, Number(s.attrDepth) || 4, false, 0);
 }
 
 // ---------- Анализ ----------
@@ -522,14 +550,14 @@ function modelName(s) {
     return String(cc[`${src}_model`] || cc.custom_model || cc.model || '');
 }
 
-async function callModel(system, user, s) {
+async function callModel(system, user, s, onText = null) {
     lastCall = { raw: '', budget: Number(s.responseLength) || 0 };
     const my = runId;
     if (!abortCtl || abortCtl.signal.aborted) abortCtl = new AbortController();
     const signal = abortCtl.signal;
     let res;
     try {
-        res = await callModelRaw(system, user, s, signal);
+        res = await callModelRaw(system, user, s, signal, onText && s.liveView !== false ? (t, r) => { if (my === runId) onText(t, r); } : null);
     } catch (err) {
         if (my !== runId || signal.aborted) throw cancelledError();
         throw err;
@@ -539,8 +567,9 @@ async function callModel(system, user, s) {
     return res;
 }
 
-function stopAnalysis() {
+function stopAnalysis(msg = '') {
     runId++;
+    setLive(null);
     if (abortCtl) abortCtl.abort();
     abortCtl = null;
     busy = false;
@@ -549,29 +578,155 @@ function stopAnalysis() {
     shopBusy = false;
     busyKind = '';
     pending = null;
-    status = 'Разбор остановлен';
+    status = msg || 'Разбор остановлен';
     updateInjection();
     renderAll();
 }
 
-async function callModelRaw(system, user, s, signal) {
+// Поток от таверны (профиль подключения или основное подключение): генератор отдаёт текст целиком на сейчас.
+async function drainStream(gen, onText) {
+    let text = '';
+    for await (const chunk of gen()) {
+        text = (chunk && chunk.text) || text;
+        onText(text, (chunk && chunk.state && chunk.state.reasoning) || '');
+    }
+    if (!text) throw new Error('модель вернула пустой ответ');
+    return text;
+}
+
+// Основное подключение таверны (Chat Completion) — тем же запросом, но потоком.
+function mainStreamRequest(c, system, user, max) {
+    const o = c.chatCompletionSettings || {};
+    const num = v => (v === undefined || v === null || v === '' || isNaN(Number(v)) ? undefined : Number(v));
+    return {
+        stream: true,
+        messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        max_tokens: max,
+        model: c.getChatCompletionModel ? c.getChatCompletionModel() : undefined,
+        chat_completion_source: o.chat_completion_source,
+        temperature: num(o.temp_openai),
+        top_p: num(o.top_p_openai),
+        custom_url: o.custom_url,
+        custom_include_body: o.custom_include_body,
+        custom_exclude_body: o.custom_exclude_body,
+        custom_include_headers: o.custom_include_headers,
+        custom_prompt_post_processing: o.custom_prompt_post_processing,
+        reverse_proxy: o.reverse_proxy,
+        proxy_password: o.proxy_password,
+        reasoning_effort: o.reasoning_effort,
+        include_reasoning: !!o.show_thoughts,
+        vertexai_auth_mode: o.vertexai_auth_mode,
+        vertexai_region: o.vertexai_region,
+        vertexai_express_project_id: o.vertexai_express_project_id,
+    };
+}
+
+async function callModelRaw(system, user, s, signal, onText = null) {
     const c = ctx();
     const max = Number(s.responseLength) || 4000;
+    let got = false;
+    const watch = onText ? (t, r) => { if (t) got = true; onText(t, r); } : null;
+    // поток не получился ещё до первого слова — тихо пробуем обычным запросом
+    const fallback = err => {
+        if (signal.aborted || got) throw err;
+        console.warn('[Внутренний мир] поток не получился, пишу без него', err);
+    };
     if (s.source === 'custom') {
         const missing = missingFields(s);
         if (missing.length) throw new Error(`в настройках подключения не заполнено: ${missing.join(', ')}`);
-        if (s.apiKind !== 'profile') return await chatRequest(s, system, user, max, (url, opts) => fetch(url, Object.assign({}, opts, { signal })));
+        if (s.apiKind !== 'profile') {
+            const f = (url, opts) => fetch(url, Object.assign({}, opts, { signal }));
+            if (watch) {
+                try { return await chatRequest(s, system, user, max, f, watch); } catch (err) { fallback(err); }
+            }
+            return await chatRequest(s, system, user, max, f);
+        }
     }
     if (s.source === 'custom' && s.apiKind === 'profile' && s.profileId && c.ConnectionManagerRequestService) {
-        const res = await c.ConnectionManagerRequestService.sendRequest(
-            s.profileId,
-            [{ role: 'system', content: system }, { role: 'user', content: user }],
-            Number(s.responseLength) || 4000,
-            { stream: false, extractData: true, includePreset: true, includeInstruct: true },
-        );
+        const msgs = [{ role: 'system', content: system }, { role: 'user', content: user }];
+        if (watch) {
+            try {
+                const res = await c.ConnectionManagerRequestService.sendRequest(s.profileId, msgs, max, { stream: true, signal, extractData: true, includePreset: true, includeInstruct: true });
+                if (typeof res === 'function') return await drainStream(res, watch);
+                const text = typeof res === 'string' ? res : (res && res.content) || '';
+                if (text) return text;
+            } catch (err) { fallback(err); }
+        }
+        const res = await c.ConnectionManagerRequestService.sendRequest(s.profileId, msgs, max, { stream: false, extractData: true, includePreset: true, includeInstruct: true });
         return typeof res === 'string' ? res : (res && res.content) || '';
     }
-    return await c.generateRaw({ systemPrompt: system, prompt: user, responseLength: Number(s.responseLength) || 4000, trimNames: false });
+    if (watch && c.mainApi === 'openai' && c.ChatCompletionService && c.chatCompletionSettings) {
+        try {
+            const res = await c.ChatCompletionService.processRequest(mainStreamRequest(c, system, user, max), {}, true, signal);
+            if (typeof res === 'function') return await drainStream(res, watch);
+            const text = typeof res === 'string' ? res : (res && res.content) || '';
+            if (text) return text;
+        } catch (err) { fallback(err); }
+    }
+    return await c.generateRaw({ systemPrompt: system, prompt: user, responseLength: max, trimNames: false });
+}
+
+// ---------- Живой листок ----------
+function setLive(next) {
+    live = next;
+    if (liveTimer) clearInterval(liveTimer);
+    liveTimer = null;
+    // секунды на листке тикают сами, без перерисовки всего дневника
+    if (live) {
+        liveTimer = setInterval(() => {
+            const el = panelEl().querySelector('.iw-live-secs');
+            if (el && live) el.textContent = String(Math.round((Date.now() - live.t0) / 1000));
+        }, 1000);
+    }
+}
+
+function liveStage(stage, extra = {}) {
+    if (!live) return;
+    Object.assign(live, { stage }, extra);
+    renderAll();
+}
+
+// Что уже написано: по черновому ответу собираем строки «кто — что готово» и черновое состояние.
+function livePreview(raw, base, s, opts) {
+    if (!live) return;
+    live.len = raw.length;
+    live.raw = raw;
+    if (live.previewAt && Date.now() - live.previewAt < 900) {
+        if (!live.previewPending) {
+            live.previewPending = setTimeout(() => {
+                if (!live) return;
+                live.previewPending = null;
+                live.previewAt = 0;
+                livePreview(live.raw, base, s, opts);
+            }, 900);
+        }
+        return;
+    }
+    live.previewAt = Date.now();
+    try {
+        const fresh = parseAnalysis(raw, { manualTurns: s.moodMode === 'manual' ? s.moodTurns : null });
+        const ros = roster();
+        for (const f of fresh) {
+            const entry = ros.find(f.name);
+            if (entry) f.name = entry.name;
+            const known = base.order.find(k => namesMatch(k, f.name));
+            if (known) f.name = known;
+        }
+        live.chars = fresh.map(f => ({
+            name: f.name,
+            mood: f.mood || '',
+            parts: [
+                f.moodlets && f.moodlets.length ? `эмоции: ${f.moodlets.length}` : '',
+                f.wants && f.wants.length ? 'желания' : '',
+                f.fears && f.fears.length ? 'страхи' : '',
+                f.dream ? 'мечта' : '',
+                f.traits && f.traits.length ? 'черты' : '',
+                f.impression ? 'отношение' : '',
+            ].filter(Boolean),
+        }));
+        if (fresh.length) live.preview = applyAnalysis(base, fresh, s.modules, opts).state;
+    } catch { /* ответ ещё слишком короткий */ }
+    renderAll();
 }
 
 async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat' } = {}) {
@@ -592,6 +747,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     busy = true;
     if (manual) busyKind = kind;
     status = fromLore ? 'Дополняю дневник по карточке и лорбуку…' : 'Пишу в дневник…';
+    setLive({ kind: fromLore ? kind : (catchUp ? 'catchup' : 'chat'), stage: 'prep', t0: (live && live.t0) || Date.now(), chars: [], len: 0, hidden: !!(live && live.hidden) });
     renderAll();
     try {
         const chat = c.chat;
@@ -646,8 +802,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const info = {
             botName: c.name2,
             userName: c.name1,
-            card: cardText(c),
-            persona: personaText(c),
+            card: kind !== 'chat' && offBooks().includes('__card') ? '' : cardText(c),
+            persona: kind !== 'chat' && offBooks().includes('__persona') ? '' : personaText(c),
             trackNames: [c.name2, ...trackNames(s)],
             trackPersona: s.persona !== false,
             messages: msgs,
@@ -693,7 +849,19 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0);
         const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
         budget = ask.responseLength;
-        raw = await callModel(system, user, ask);
+        const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
+        liveStage('think');
+        raw = await callModel(system, user, ask, (text, think) => {
+            if (!live) return;
+            if (text) {
+                if (live.stage !== 'write') live.stage = 'write';
+                livePreview(text, base, s, previewOpts);
+            } else if (think && live.stage === 'think' && !live.thinking) {
+                live.thinking = true;
+                renderAll();
+            }
+        });
+        liveStage('done');
         if (chatId && c.getCurrentChatId && ctx().getCurrentChatId() !== chatId) return; // чат сменился
         if (looksCut(raw)) {
             console.warn('[Внутренний мир] ответ модели оборвался', String(raw || '').slice(-300));
@@ -741,6 +909,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     } finally {
         if (my !== runId) return; // этот разбор остановили — флаги уже сброшены
         busy = false;
+        if (live && live.previewPending) clearTimeout(live.previewPending);
+        setLive(null);
         if (manual && kind === 'chat') busyKind = '';
         updateInjection();
         renderAll();
@@ -760,7 +930,7 @@ function toastBox() {
         box.setAttribute('aria-live', 'polite');
         ui().appendChild(box);
     }
-    box.className = `iw-toasts iw-toasts-${settings().toastPos === 'bottom' ? 'bottom' : 'top'} iw-theme-${currentTheme}`;
+    box.className = `iw-toasts iw-toasts-${settings().toastPos === 'bottom' ? 'bottom' : 'top'} iw-theme-${currentTheme}${settings().animations === false ? ' iw-noanim' : ''}`;
     return box;
 }
 
@@ -869,6 +1039,7 @@ function setFabTheme(fab) {
     fab.classList.add('iw-fab');
     for (const cls of [...fab.classList]) if (cls.startsWith('iw-theme-') && cls !== `iw-theme-${currentTheme}`) fab.classList.remove(cls);
     fab.classList.add(`iw-theme-${currentTheme}`);
+    fab.classList.toggle('iw-noanim', settings().animations === false);
 }
 
 function loadFonts(theme) {
@@ -939,11 +1110,11 @@ function renderPanelNow() {
     if (el.hidden) return;
     const s = settings();
     if (!hasChat() && view !== 'settings') {
-        el.className = `iw-panel iw-theme-${currentTheme}`;
+        el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
         el.innerHTML = renderPanel({ state: emptyState(), settings: s, theme: currentTheme, view: '', busy: false, status: '', mains: [], npcKeys: [], roster: null, noChat: true });
         return;
     }
-    const state = liveState();
+    const state = (live && live.preview) || liveState();
     const { mains, npcKeys, personaKey } = splitCast(state);
     const showNpc = s.showNpc !== false;
     const personaOn = s.persona !== false && hasChat();
@@ -955,18 +1126,20 @@ function renderPanelNow() {
         || (showNpc && view === 'npc')
         || (showNpc && view.startsWith('npc:') && npcKeys.includes(view.slice(4)));
     if (!valid) view = mains.length ? 'main:' + mains[0] : (showNpc ? 'npc' : '');
-    el.className = `iw-panel iw-theme-${currentTheme}`;
+    el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
     const keepScroll = el.querySelector('.iw-body')?.scrollTop || 0;
     const hs = showNpc ? historySeen() : { seen: [], pending: [] };
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, working: busy || rosterBusy || dreamBusy || shopBusy });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy });
     const body = el.querySelector('.iw-body');
     if (body) body.scrollTop = keepScroll;
 }
 
 function renderAll() {
+    const fab = document.getElementById('iw_fab');
+    if (fab) fab.classList.toggle('iw-noanim', settings().animations === false);
     renderPanelNow();
 }
 
@@ -994,11 +1167,68 @@ function togglePanel() {
     else openPanel();
 }
 
+// В настройках на кнопке списка лорбуков — «Отмечено: N из M»; обновляем на месте.
+function updateBooksCount(el) {
+    const wrap = el.closest('.iw-books-wide');
+    const text = wrap && wrap.querySelector('.iw-books-field-text');
+    if (!text) return;
+    const all = wrap.querySelectorAll('.iw-book-opt').length;
+    const on = wrap.querySelectorAll('.iw-book-opt.on').length;
+    text.textContent = `Отмечено: ${on} из ${all}`;
+}
+
+// Карандаш по бумаге — на всех кнопках, которые заново что-то пишут: разбор, мечта, НПС, лавка.
+function writeSound() {
+    if (settings().sound !== false) playSound('write', currentTheme);
+}
+
+// ВРЕМЕННО: проверка уведомлений и звуков из меню с колокольчиком в шапке. Потом убрать вместе с TEST_MENU в render.js.
+const TEST_SAMPLES = {
+    want_done: { text: 'напоить свидетельницу горячим чаем', points: 10 },
+    dream_step: { text: 'собрать старые записи', points: 25 },
+    dream_grow: { text: 'написать книгу — вместе с ней', why: 'она поверила в него' },
+    dream_change: { text: 'уехать к морю и начать заново', why: 'после того вечера всё изменилось' },
+    dream_done: { text: 'написать книгу', points: 100 },
+    fear_real: { text: 'снова потерять близких' },
+    fear_gone: { text: 'остаться одному' },
+    trait_new: { text: 'Покровительственный', why: 'опекает её с первой встречи' },
+    trait_up: { text: 'Заботливый', why: 'всё чаще думает о других' },
+    trait_down: { text: 'Недоверчивый', why: 'начал открываться' },
+    impression: { text: 'Напуганная, но стойкая', score: 1, why: 'не лезет в толпу' },
+    attitude: { from: 1, to: 2, text: 'стал теплее' },
+    reward: { text: 'Термос с горячим чаем' },
+};
+function testNotice(kind) {
+    const who = (currentState().order || []).map(k => currentState().characters[k] && currentState().characters[k].name).find(Boolean) || ctx().name2 || 'Персонаж';
+    if (kind === 'write') return writeSound();
+    if (kind === 'error') return showError({ kind: 'test', title: 'Модель не ответила', text: 'Это проверочная ошибка: так выглядит листок, если разбор не удался.' }, { manual: true, what: 'Проверка' });
+    if (kind === 'all') {
+        const kinds = Object.keys(TEST_SAMPLES);
+        kinds.forEach((k, i) => showEvent(Object.assign({ type: k, who }, TEST_SAMPLES[k]), i * 2600));
+        return;
+    }
+    showEvent(Object.assign({ type: kind, who }, TEST_SAMPLES[kind] || {}));
+}
+
 async function onPanelClick(e) {
     // всплывающие меню (кошелёк, звук, лорбуки) закрываются, если нажать мимо них
     for (const d of panelEl().querySelectorAll('details.iw-wallet[open], details.iw-vol[open], details.iw-books[open]')) {
         if (!d.contains(e.target)) d.open = false;
     }
+    // свернуть / развернуть блок: стрелка или заголовок; свёрнутый — кликом в любом его месте
+    const folded = e.target.closest('.iw-block.iw-collapsed');
+    const fold = e.target.closest('[data-iw-fold]')
+        || (folded && !e.target.closest('a, input, select, textarea') && folded.querySelector('[data-iw-fold]'));
+    if (fold) {
+        const s0 = settings();
+        const k = fold.dataset.iwFold;
+        s0.collapsed = Object.assign({}, s0.collapsed, { [k]: !(s0.collapsed && s0.collapsed[k]) });
+        if (!s0.collapsed[k]) delete s0.collapsed[k];
+        saveSettings();
+        return renderAll();
+    }
+    const attrSum = e.target.closest('summary.iw-attr-add');
+    if (attrSum) attrOpen = !attrSum.parentElement.open;
     const t = e.target.closest('button');
     if (!t) return;
     const s = settings();
@@ -1009,6 +1239,12 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwAction) return onSettingsAction(t.dataset.iwAction, t);
     if (t.dataset.iwLang) return setLanguage(t.dataset.iwLang);
+    if (t.classList.contains('iw-anim')) {
+        s.animations = s.animations === false;
+        saveSettings();
+        syncSettingsForm();
+        return renderAll();
+    }
     if (t.classList.contains('iw-sound')) {
         s.sound = s.sound === false;
         saveSettings();
@@ -1029,7 +1265,25 @@ async function onPanelClick(e) {
         }
         return renderAll();
     }
-    if (t.dataset.iwStop !== undefined) return stopAnalysis();
+    if (t.dataset.iwTest) return testNotice(t.dataset.iwTest);
+    if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : '');
+    if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
+    if (t.dataset.iwLiveHide !== undefined) {
+        if (live) live.hidden = true;
+        return renderAll();
+    }
+    if (t.dataset.iwLiveShow !== undefined) {
+        if (live) live.hidden = false;
+        return renderAll();
+    }
+    if (t.dataset.iwSkipBook) {
+        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        const on = toggleOffBook(t.dataset.iwSkipBook);
+        t.classList.toggle('on', on);
+        t.setAttribute('aria-pressed', String(on));
+        updateBooksCount(t);
+        return;
+    }
     if (t.dataset.iwPickBook) {
         if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
         // галочка ставится на месте, меню не закрывается
@@ -1039,7 +1293,8 @@ async function onPanelClick(e) {
         const menu = t.closest('.iw-books-menu');
         const n = menu ? menu.querySelectorAll('.iw-book-opt.on:not(.linked)').length : 0;
         const cnt = menu && menu.querySelector('.iw-books-count');
-        if (cnt) cnt.textContent = n ? `отмечено: ${n}` : '';
+        if (cnt) cnt.textContent = n ? `ещё отмечено: ${n}` : '';
+        updateBooksCount(t);
         return;
     }
     if (t.dataset.iwAnalyze) {
@@ -1073,8 +1328,14 @@ async function onPanelClick(e) {
         syncSettingsForm();
         return renderAll();
     }
-    if (t.dataset.iwDream) return onDreamAction(t.dataset.iwDream);
-    if (t.dataset.iwShop) return regenShop();
+    if (t.dataset.iwDream) {
+        if (t.dataset.iwDream === 'regen' && !dreamBusy) writeSound();
+        return onDreamAction(t.dataset.iwDream);
+    }
+    if (t.dataset.iwShop) {
+        if (!shopBusy) writeSound();
+        return regenShop();
+    }
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
@@ -1092,7 +1353,10 @@ async function onPanelClick(e) {
         if (body) body.scrollTop = 0;
         return renderPanelNow();
     }
-    if (t.dataset.iwStudy) return studyLore({ mode: 'lore' });
+    if (t.dataset.iwStudy) {
+        if (!rosterBusy && !busy) writeSound();
+        return studyLore({ mode: 'lore' });
+    }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
     if (t.dataset.iwDel) {
@@ -1219,11 +1483,25 @@ async function onDreamAction(action) {
         renderAll();
         try {
             const info = analysisInfo(6);
-            const cached = knowledgeLore(3);
-            if (cached) info.loreMain = cached;
-            else {
-                const lore = await collectLoreSources().catch(() => []);
-                info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
+            const c0 = ctx();
+            const isPersona = key === personaKeyOf(state);
+            if (isPersona) {
+                // мечта персоны игрока — по её описанию и её лорбуку, а не по карточке персонажа
+                const pdesc = c0.powerUserSettings && c0.powerUserSettings.persona_description;
+                const pbook = c0.powerUserSettings && c0.powerUserSettings.persona_description_lorebook;
+                info.persona = true;
+                info.card = cleanMessageText(pdesc || '', 4000);
+                info.botName = ch.name || c0.name1;
+                info.userName = c0.name2;
+                const lore = pbook ? await collectLoreSources().catch(() => []) : [];
+                info.loreMain = lore.filter(x => x.title === `Лорбук: ${pbook}`).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 1);
+            } else {
+                const cached = knowledgeLore(3);
+                if (cached) info.loreMain = cached;
+                else {
+                    const lore = await collectLoreSources().catch(() => []);
+                    info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
+                }
             }
             const { system, user } = buildDreamPrompt(info, ch, settings().language);
             const raw = await callModel(system, user, withBudget('dream'));
@@ -1263,6 +1541,7 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
     try {
         const info = analysisInfo(4);
         info.loreMain = knowledgeLore(2) || [];
+        info.style = (THEMES[currentTheme] && THEMES[currentTheme].name) || '';
         const { system, user } = buildRewardsPrompt(info, ch, settings().language);
         const raw = await callModel(system, user, withBudget('rewards'));
         const rewards = parseRewards(raw);
@@ -1281,6 +1560,46 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
             renderAll();
         }
     }
+}
+
+// «Что привлекает»: убрать тег, переключить список, добавить из каталога или своё.
+async function onAttrAction(spec, btn) {
+    const [act, list, ...rest] = spec.split(':');
+    if (act === 'more') {
+        attrMore = Object.assign({}, attrMore, { [list]: !attrMore[list] });
+        return renderAll();
+    }
+    if (act === 'mode') {
+        attrMode = list === 'dislikes' ? 'dislikes' : 'likes';
+        attrOpen = true;
+        return renderAll();
+    }
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    if (!ch || !['likes', 'dislikes'].includes(list)) return;
+    const arr = (ch[list] = Array.isArray(ch[list]) ? ch[list] : []);
+    const other = list === 'likes' ? 'dislikes' : 'likes';
+    if (act === 'del') {
+        arr.splice(Number(rest[0]), 1);
+    } else {
+        let tag = act === 'own' ? String((btn.closest('.iw-attr-own') && btn.closest('.iw-attr-own').querySelector('.iw-attr-input') || {}).value || '') : rest.join(':');
+        tag = tag.trim().replace(/\s+/g, ' ').slice(0, 40).toLowerCase();
+        if (!tag) return;
+        const at = arr.findIndex(x => x.toLowerCase() === tag);
+        if (at >= 0 && act === 'toggle') arr.splice(at, 1);
+        else if (at < 0) {
+            arr.push(tag);
+            // один и тот же тег не может и привлекать, и отталкивать
+            if (Array.isArray(ch[other])) ch[other] = ch[other].filter(x => x.toLowerCase() !== tag);
+        }
+        attrOpen = true;
+    }
+    ch.attrSet = true;
+    markEdited(ch, 'likes');
+    markEdited(ch, 'dislikes');
+    await saveEditedState(st);
+    renderAll();
 }
 
 // Отметка «игрок правил этот блок руками» — при повторном разборе того же ответа правка не потеряется.
@@ -1550,24 +1869,41 @@ function togglePickedBook(name) {
     return list.has(name);
 }
 
-// Лорбуки, которые и так привязаны к персонажу, чату или персоне: читаются всегда.
+// Лорбуки, которые привязаны к персонажу, чату или персоне: отмечены сами, но их можно снять галочкой.
 let linkedBooks = [];
 
 async function loadLinkedBooks() {
     const c = ctx();
-    const out = new Set();
+    const out = new Map();
     try {
         const ch = c.characters && c.characters[c.characterId];
         const charBook = ch && ch.data && ch.data.extensions && ch.data.extensions.world;
-        if (charBook) out.add(charBook);
+        if (charBook) out.set(charBook, 'char');
         const wi = await import('/scripts/world-info.js');
         const extra = wi.world_info && wi.world_info.charLore && ch && wi.world_info.charLore.find(e => e.name === String(ch.avatar).replace(/\.[^.]+$/, ''));
-        for (const b of (extra && extra.extraBooks) || []) out.add(b);
-        if (c.chatMetadata && c.chatMetadata.world_info) out.add(c.chatMetadata.world_info);
+        for (const b of (extra && extra.extraBooks) || []) if (!out.has(b)) out.set(b, 'char');
+        if (c.chatMetadata && c.chatMetadata.world_info && !out.has(c.chatMetadata.world_info)) out.set(c.chatMetadata.world_info, 'chat');
         const personaBook = c.powerUserSettings && c.powerUserSettings.persona_description_lorebook;
-        if (personaBook) out.add(personaBook);
+        if (personaBook && !out.has(personaBook)) out.set(personaBook, 'persona');
     } catch { /* без привязанных */ }
-    linkedBooks = [...out];
+    linkedBooks = [...out].map(([name, from]) => ({ name, from }));
+}
+
+// Что из «отмеченного само» игрок снял в этом чате: '__card', '__persona' или имя привязанного лорбука.
+function offBooks() {
+    if (!hasChat()) return [];
+    const off = chatMeta().off;
+    return Array.isArray(off) ? off : [];
+}
+
+function toggleOffBook(key) {
+    const meta = chatMeta();
+    const list = new Set(offBooks());
+    if (list.has(key)) list.delete(key);
+    else list.add(key);
+    meta.off = [...list];
+    ctx().saveMetadataDebounced?.();
+    return !list.has(key); // true — снова отмечено
 }
 
 function studiedBooks() {
@@ -1576,7 +1912,11 @@ function studiedBooks() {
 }
 
 function settingsFormHtml(variant) {
-    return renderSettingsForm(settings(), { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant] });
+    const s = settings();
+    const booksHtml = variant === 'diary' && hasChat()
+        ? renderBooksField({ books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), busy: busy || rosterBusy, hasPersona: s.persona !== false })
+        : '';
+    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, version: VERSION, updated: UPDATED });
 }
 
 function refreshForms() {
@@ -1611,7 +1951,7 @@ function syncSettingsForm() {
 }
 
 // Быстрые настройки на пустом дневнике: запас на ответ, сколько читать, какая модель.
-const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, source: ['main', 'custom'] };
+const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, catchUpMessages: null, source: ['main', 'custom'] };
 function onQuickSetting(spec) {
     const i = spec.indexOf(':');
     const key = spec.slice(0, i);
@@ -1701,6 +2041,8 @@ async function onSettingsAction(action, el) {
         openPanel();
     } else if (action === 'reset') {
         await resetChat();
+    } else if (action === 'resetSettings') {
+        await resetAllSettings();
     }
 }
 
@@ -1719,6 +2061,28 @@ function addSettings() {
         if (l) setLanguage(l.dataset.iwLang);
     });
     root.querySelector('#iw_set_open').addEventListener('click', openPanel);
+}
+
+// Все настройки — к начальным, как при установке. Записи дневников живут в чатах и не трогаются;
+// изученные лорбуки и найденные НПС (rosters) — тоже записи, их оставляем.
+async function resetAllSettings() {
+    const c = ctx();
+    const ok = await c.callGenericPopup('Сбросить все настройки «Внутреннего мира» к начальным? Тема, звуки, подключение и ключ API вернутся как были при установке. Записи дневников в чатах останутся.', c.POPUP_TYPE.CONFIRM);
+    if (!ok) return;
+    const old = settings();
+    const fresh = mergeSettings({});
+    fresh.rosters = old.rosters || {}; // изученные лорбуки и НПС — это записи, а не настройки
+    for (const k of Object.keys(old)) delete old[k];
+    Object.assign(old, fresh);
+    saveSettings();
+    refreshTheme();
+    addFab();
+    syncMenuItem();
+    setVolume(old.volume ?? 45);
+    status = 'Настройки сброшены';
+    syncSettingsForm();
+    updateInjection();
+    renderAll();
 }
 
 async function resetChat() {

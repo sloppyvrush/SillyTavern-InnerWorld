@@ -1,7 +1,14 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText } from './core.js';
+import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
+
+// Всё, что стоит отдельной строкой или плашкой, — с заглавной буквы (модель пишет со строчной).
+function cap(v) {
+    const t = String(v ?? '');
+    return t.replace(/^([^\p{L}\p{N}]*)(\p{L})/u, (m, a, b) => a + b.toUpperCase());
+}
+const ce = v => esc(cap(v));
 
 // Данные для подбора значка НПС: роль из лорбука или от модели, черты, имя, пол.
 function badgeInfo(c, entry) {
@@ -9,7 +16,7 @@ function badgeInfo(c, entry) {
 }
 
 // Невидимый фильтр «дрожащей линии» для рисованных тем.
-const ROUGH_FILTER = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="iw-rough"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter><filter id="iw-pixelate" x="0" y="0" width="100%" height="100%" primitiveUnits="userSpaceOnUse"><feFlood x="1" y="1" width="1" height="1" flood-color="#000"/><feComposite width="2" height="2"/><feTile result="dots"/><feComposite in="SourceGraphic" in2="dots" operator="in"/><feMorphology operator="dilate" radius="1"/></filter><filter id="iw-brush"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.2"/></filter><filter id="iw-stamp"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="5" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.6" result="holes"/><feComposite in="SourceGraphic" in2="holes" operator="in"/></filter></svg>';
+const ROUGH_FILTER = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="iw-ink" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="3.2"/></filter><filter id="iw-rough"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="1.6"/></filter><filter id="iw-pixelate" x="0" y="0" width="100%" height="100%" primitiveUnits="userSpaceOnUse"><feFlood x="1" y="1" width="1" height="1" flood-color="#000"/><feComposite width="2" height="2"/><feTile result="dots"/><feComposite in="SourceGraphic" in2="dots" operator="in"/><feMorphology operator="dilate" radius="1"/></filter><filter id="iw-brush"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="8" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.2"/></filter><filter id="iw-stamp"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="2" seed="5" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.2 1.6" result="holes"/><feComposite in="SourceGraphic" in2="holes" operator="in"/></filter></svg>';
 
 export function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -31,22 +38,52 @@ function nameFit(name) {
     return '';
 }
 
+// Сворачивание блоков: какие свёрнуты. У свёрнутого блока виден только заголовок.
+let FOLD = { collapsed: {} };
+
 function blockHead(kind, label, extra = '') {
-    return `<div class="iw-block-head"><span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label">${label}</span>${extra}</div>`;
+    const folded = !!FOLD.collapsed[kind];
+    const btn = kind === 'rewards' ? '' : `<button type="button" class="iw-fold" data-iw-fold="${kind}" title="${folded ? 'Развернуть' : 'Свернуть'}" aria-label="${folded ? 'Развернуть' : 'Свернуть'}" aria-expanded="${!folded}">${icon('chevron')}</button>`;
+    return `<div class="iw-block-head"><span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label"${kind === 'rewards' ? '' : ` data-iw-fold="${kind}"`}>${label}</span>${folded ? '' : extra}${btn}</div>`;
 }
 
 function groupHead(label, hint = '') {
     return `<div class="iw-group-head"><span>${esc(label)}</span>${hint ? `<span class="iw-group-hint">${esc(hint)}</span>` : ''}</div>`;
 }
 
-// Кошелёк в шапке: очки текущего персонажа, по нажатию — у всех.
+// Кошелёк в шапке: крупный значок валюты и очки текущего персонажа;
+// по нажатию — что это за валюта в этой теме, за что даётся и на что тратится.
 function renderWallet(wallet, theme = '') {
     const coin = icon(currencyIcon(theme));
     if (!wallet || !wallet.list.length) return '';
+    const L = themeLabels(theme, 'm');
     const cur = wallet.list.find(x => x.key === wallet.current) || wallet.list[0];
-    const items = wallet.list.map(x => `<li><button type="button" class="iw-wallet-row${x.key === cur.key ? ' on' : ''}" data-iw-view="shop:${esc(x.key)}"><span>${esc(x.name)}</span><b>${coin}${x.points}</b></button></li>`).join('');
-    return `<details class="iw-wallet"><summary title="Очки за желания и мечту">${coin}<b>${cur.points}</b></summary><ul class="iw-wallet-list">${items}</ul></details>`;
+    const name = L.currency || 'монетки';
+    const Name = name.charAt(0).toUpperCase() + name.slice(1);
+    return `<details class="iw-wallet"><summary title="${esc(Name)}: что это">${coin}<b>${shortPoints(cur.points)}</b></summary>
+      <div class="iw-wallet-info">
+        <div class="iw-wallet-title">${coin}<span>${esc(Name)}</span></div>
+        <p>Валюта дневника. Персонаж получает её, когда что-то сбывается: исполненное желание <b>+10</b>, преодолённый страх <b>+5</b>, шаг к мечте <b>+25</b>, мечта целиком <b>+100</b>.</p>
+        <p>Тратится на награды для персонажа: открой «${esc(L.shop || 'Магазин наград')}» рядом, там настроение, события и вещи в коллекцию.</p>
+        <p class="iw-wallet-now"><span>Сейчас:</span><b>${coin}<span>${Number(cur.points || 0).toLocaleString('ru-RU')}</span></b></p>
+      </div></details>`;
 }
+
+// ВРЕМЕННО: меню проверки уведомлений и звуков. Потом убрать вместе с обработчиком data-iw-test в index.js.
+const TEST_EVENTS = [
+    ['want_done', 'Желание сбылось'], ['dream_step', 'Шаг к мечте'], ['dream_grow', 'Мечта дополнилась'], ['dream_change', 'Мечта изменилась'],
+    ['dream_done', 'Мечта сбылась'], ['fear_real', 'Страх сбылся'], ['fear_gone', 'Страх отступил'], ['trait_new', 'Новая черта'],
+    ['trait_up', 'Черта сильнее'], ['trait_down', 'Черта слабее'], ['impression', 'Первое впечатление'], ['attitude', 'Отношение'],
+    ['reward', 'Покупка'], ['write', 'Карандаш (разбор)'], ['error', 'Ошибка'],
+];
+const TEST_MENU = `<details class="iw-vol iw-testmenu">
+      <summary class="iw-tool" title="Проверка уведомлений и звуков (временно)" aria-label="Проверка уведомлений и звуков">${'<svg class="iw-ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>'}</summary>
+      <div class="iw-vol-menu iw-test-menu">
+        <div class="iw-vol-row"><span>Проверка (временно)</span></div>
+        <button type="button" class="iw-test-all" data-iw-test="all">▶ Все по очереди</button>
+        <div class="iw-test-grid">${TEST_EVENTS.map(([k, n]) => `<button type="button" data-iw-test="${k}">${n}</button>`).join('')}</div>
+      </div>
+    </details>`;
 
 export function renderHeader(settings, theme, busy, inSettings = false, wallet = null, shop = null) {
     const L = themeLabels(theme, 'm');
@@ -67,6 +104,8 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
         <input type="range" class="iw-range iw-vol-range" data-iw-volume min="0" max="100" step="5" value="${Number(settings.volume ?? 45)}" aria-label="Громкость звуков"${sound ? '' : ' disabled'}>
       </div>
     </details>
+    ${TEST_MENU}
+    <button type="button" class="iw-tool iw-anim${settings.animations === false ? ' off' : ''}" title="${settings.animations === false ? 'Анимации выключены: нажми, чтобы включить' : 'Выключить анимации'}" aria-label="Анимации" aria-pressed="${settings.animations !== false}">${icon(settings.animations === false ? 'sparkle_off' : 'sparkle')}</button>
     <button type="button" class="iw-tool iw-gear${inSettings ? ' on' : ''}" title="${inSettings ? 'Вернуться к дневнику' : 'Настройки'}" aria-label="Настройки" aria-pressed="${inSettings}">${icon('gear')}</button>
     <button type="button" class="iw-tool iw-close" title="Закрыть" aria-label="Закрыть">${icon('x')}</button>
   </div>
@@ -89,31 +128,55 @@ function faceBadge(c) {
 
 // Кнопки разбора: над ними надпись «Проанализировать» с рисованной стрелкой к кнопкам;
 // пока идёт разбор, надпись сменяется загрузкой в стиле темы (точки, сердечки, полоска).
-// Меню у кнопки «Лорбук»: галочками отмечаются лорбуки для этого чата —
-// их берут и «Лорбук», и «Всё сразу». Привязанные к персонажу и чату читаются всегда.
-function booksMenu(books = [], picked = [], linked = [], busy = false) {
+// Меню у кнопки «Лорбук»: галочками отмечается, что разбирать в этом чате —
+// его берут и «Лорбук», и «Всё сразу». Карточка, описание персоны и привязанные лорбуки
+// (персонажа, чата, персоны) отмечены сами, но их тоже можно снять.
+const LINK_TAG = { char: 'персонажа', chat: 'чата', persona: 'персоны' };
+function booksMenu(books = [], picked = [], linked = [], busy = false, off = [], hasPersona = false, wide = false) {
     const on = new Set(picked);
-    const own = new Set(linked);
+    const offSet = new Set(off);
+    const links = linked.map(x => (typeof x === 'string' ? { name: x, from: 'char' } : x));
+    const own = new Set(links.map(x => x.name));
     const box = `<span class="iw-book-box" aria-hidden="true">${icon('tick')}</span>`;
-    const ownRows = books.filter(n => own.has(n)).map(name => `<div class="iw-book-opt on linked">${box}<span>${esc(name)}</span><em>свой</em></div>`).join('');
+    const opt = (key, label, tag, isOn) => `<button type="button" class="iw-book-opt linked${isOn ? ' on' : ''}" data-iw-skip-book="${esc(key)}" aria-pressed="${isOn}">${box}<span>${esc(label)}</span>${tag ? `<em>${esc(tag)}</em>` : ''}</button>`;
+    const fixedRows = opt('__card', 'Карточка персонажа', 'описание', !offSet.has('__card'))
+        + (hasPersona ? opt('__persona', 'Описание персоны', 'твоё', !offSet.has('__persona')) : '');
+    const ownRows = links.map(x => opt(x.name, x.name, LINK_TAG[x.from] || 'свой', !offSet.has(x.name))).join('');
     const rows = books.filter(n => !own.has(n)).map(name => `<button type="button" class="iw-book-opt${on.has(name) ? ' on' : ''}" data-iw-pick-book="${esc(name)}" aria-pressed="${on.has(name)}">${box}<span>${esc(name)}</span></button>`).join('');
     const n = books.filter(x => !own.has(x) && on.has(x)).length;
     return `
-      <details class="iw-books">
-        <summary class="iw-books-btn" title="Выбрать лорбуки для разбора" aria-label="Выбрать лорбуки">${icon('chevron')}</summary>
+      <details class="iw-books${wide ? ' iw-books-wide' : ''}">
+        ${wide
+            ? `<summary class="iw-books-btn iw-books-field" title="Выбрать лорбуки для разбора">${icon('bookopen')}<span class="iw-books-field-text">${booksSummary(links, books, on, offSet, hasPersona)}</span>${icon('chevron')}</summary>`
+            : `<summary class="iw-books-btn" title="Выбрать лорбуки для разбора" aria-label="Выбрать лорбуки">${icon('chevron')}</summary>`}
         <div class="iw-books-menu">
-          <div class="iw-books-cap">Какие лорбуки разбирать <span class="iw-books-count">${n ? `отмечено: ${n}` : ''}</span></div>
+          <div class="iw-books-cap">Что разбирать <span class="iw-books-count">${n ? `ещё отмечено: ${n}` : ''}</span></div>
           <div class="iw-books-list">
-            <div class="iw-book-opt on linked">${box}<span>Карточка персонажа</span><em>всегда</em></div>
-            ${ownRows}${rows || (ownRows ? '' : '<div class="iw-books-empty">Других лорбуков в таверне нет.</div>')}
+            ${fixedRows}${ownRows}${rows || (ownRows ? '' : '<div class="iw-books-empty">Других лорбуков в таверне нет.</div>')}
           </div>
           <button type="button" class="iw-book-go" data-iw-analyze="lore"${busy ? ' disabled' : ''}>${icon('bookopen')}<span>Разобрать отмеченные</span></button>
-          <div class="iw-books-hint">Галочки запоминаются для этого чата. «Всё сразу» тоже берёт отмеченные лорбуки. Сведения добавляются к уже собранным, ничего не стирается.</div>
+          <div class="iw-books-hint">Привязанное к персонажу, чату и персоне отмечено само, но галочку можно снять. Галочки запоминаются для этого чата, «Всё сразу» берёт то же самое. Сведения добавляются к уже собранным, ничего не стирается.</div>
         </div>
       </details>`;
 }
 
-function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked = [], working = false) {
+// Подпись на кнопке списка в настройках: сколько всего отмечено.
+function booksSummary(links, books, on, offSet, hasPersona) {
+    const own = new Set(links.map(x => x.name));
+    const fixed = 1 + (hasPersona ? 1 : 0);
+    const total = fixed + links.length + books.filter(n => !own.has(n)).length;
+    const picked = ['__card', ...(hasPersona ? ['__persona'] : [])].filter(k => !offSet.has(k)).length
+        + links.filter(x => !offSet.has(x.name)).length
+        + books.filter(n => !own.has(n) && on.has(n)).length;
+    return `Отмечено: ${picked} из ${total}`;
+}
+
+// Тот же список лорбуков с галочками — для настроек дневника, во всю ширину.
+export function renderBooksField({ books = [], picked = [], linked = [], busy = false, off = [], hasPersona = false } = {}) {
+    return booksMenu(books, picked, linked, busy, off, hasPersona, true);
+}
+
+function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked = [], working = false, off = [], hasPersona = false) {
     const btn = (kind, ic, label, title) => {
         // Кнопка, которая сейчас работает, сама становится «Стоп» — на том же месте и того же размера.
         if (busyKind === kind) {
@@ -129,7 +192,7 @@ function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked =
     <div class="iw-acts-cap${working ? ' busy' : ''}" role="status">${cap}</div>
     <div class="iw-acts" role="group" aria-label="Проанализировать" aria-busy="${working}">
       ${btn('chat', 'chat', 'Чат', 'Разобрать последние сообщения')}
-      <span class="iw-act-split">${btn('lore', 'bookopen', 'Лорбук', 'Разобрать карточку и лорбуки: НПС и сведения о персонажах')}${booksMenu(books, picked, linked, working)}</span>
+      <span class="iw-act-split">${btn('lore', 'bookopen', 'Лорбук', 'Разобрать карточку и лорбуки: НПС и сведения о персонажах')}${booksMenu(books, picked, linked, working, off, hasPersona)}</span>
       ${btn('all', 'sparkle', 'Всё сразу', 'Сначала лорбук и карточка, потом чат')}
     </div>
   </div>`;
@@ -143,11 +206,11 @@ function photoHtml(c, avatarFor) {
 }
 
 // Вкладки: главные персонажи-фотографии и наклейка «НПС»; справа — кнопки разбора.
-export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false }) {
+export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [] }) {
     const tabs = mains.map(key => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
-        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}"><span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${esc(c.mood)}</span>` : ''}</button>`;
+        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}"><span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}</button>`;
     }).join('');
     const sticker = npc
         ? `<button type="button" class="iw-npc-sticker${view.startsWith('npc') ? ' on' : ''}" data-iw-view="npc" aria-pressed="${view.startsWith('npc')}">
@@ -163,9 +226,9 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
         const photo = persona.avatar
             ? `<span class="iw-photo" style="background-image:url('${esc(persona.avatar)}')"></span>`
             : `<span class="iw-photo iw-photo-letter">${esc((pc.name || '?').slice(0, 1).toUpperCase())}</span>`;
-        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет"><span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${esc(pc.mood)}</span>` : ''}</button>`;
+        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет"><span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${ce(pc.mood)}</span>` : ''}</button>`;
     }
-    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind)}</div>`;
+    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind, off, !!persona)}</div>`;
 }
 
 function feelMeter(m, manualTurns) {
@@ -190,12 +253,12 @@ function renderMood(c, L, opts) {
       <li class="iw-feel iw-tone-${m.tone || 'mid'} iw-face-${face} iw-w-${m.weight || 'medium'}">
         <div class="iw-feel-top">
           <span class="iw-feel-face" title="${esc(FACE_NAMES[face] || '')}">${faceIcon(face)}</span>
-          <span class="iw-feel-name">${esc(m.emotion)}</span>
-          <span class="iw-feel-power">${esc(WEIGHT_NAMES[m.weight] || '')}</span>
+          <span class="iw-feel-name">${ce(m.emotion)}</span>
+          <span class="iw-feel-power">${ce(WEIGHT_NAMES[m.weight] || '')}</span>
           ${delBtn('moodlets', i)}
         </div>
-        ${m.feel ? `<div class="iw-feel-inner">${esc(m.feel)}</div>` : ''}
-        ${m.why ? `<div class="iw-feel-why"><span class="iw-feel-cause">из-за:</span> ${esc(m.why)}</div>` : ''}
+        ${m.feel ? `<div class="iw-feel-inner">${ce(m.feel)}</div>` : ''}
+        ${m.why ? `<div class="iw-feel-why"><span class="iw-feel-cause">из-за:</span> ${ce(m.why)}</div>` : ''}
         <div class="iw-feel-time">${feelMeter(m, opts.manualTurns)}<span>${esc(moodletLeftLabel(m))}</span></div>
       </li>`;
     };
@@ -210,7 +273,7 @@ function renderMood(c, L, opts) {
     <section class="iw-block iw-b-mood">
       ${blockHead('mood', esc(L.moodTitle))}
       <div class="iw-mood-now"><span class="iw-mood-lead">${esc(L.moodLead)}</span> ${c.mood ? moodWord(c) : '<span class="iw-muted">— пока не понятно</span>'}</div>
-      ${feels ? `<ul class="iw-feels iw-feels-flat">${feels}</ul>${more}` : '<div class="iw-muted">ничего особенного</div>'}
+      ${feels ? `<ul class="iw-feels iw-feels-flat">${feels}</ul>${more}` : '<div class="iw-muted">Ничего особенного</div>'}
     </section>`;
 }
 
@@ -248,7 +311,79 @@ function attitudeChart(points, mark = '♥') {
       </div>`;
 }
 
-function renderAttitude(c, L) {
+// Совместимость: первая (при знакомстве, не меняется) и как складывается сейчас — по чату, со шкалой.
+function chemPlate(c) {
+    if (!c.chem || !CHEM_NAMES[c.chem.level]) return '';
+    const known = c.impression && c.impression.known;
+    const nowScore = c.chemNow ? c.chemNow.score : (CHEM_SCORE[c.chem.level] ?? 0);
+    const nowLevel = chemLevelOf(nowScore);
+    const cells = [-3, -2, -1, 0, 1, 2, 3].map(v => `<span class="iw-chem-cell${(nowScore > 0 && v > 0 && v <= nowScore) || (nowScore < 0 && v < 0 && v >= nowScore) || (v === 0) ? ' on' : ''}${v < 0 ? ' neg' : (v > 0 ? ' pos' : ' mid')}"></span>`).join('');
+    return `<div class="iw-chem-wrap">
+      <div class="iw-chem iw-chem-${esc(c.chem.level)}" title="Совместимость по чертам и типу личности">
+        <span class="iw-chem-ico">${icon('chem_' + c.chem.level)}</span>
+        <span class="iw-chem-body"><span class="iw-att-cap">${known ? `Давно знакомы: ${esc(known)}` : 'Первая совместимость'}</span><b class="iw-chem-name">${esc(CHEM_NAMES[c.chem.level])}</b>${c.chem.why ? `<span class="iw-chem-why">${ce(c.chem.why)}</span>` : ''}</span>
+      </div>
+      <div class="iw-chem iw-chem-now iw-chem-${nowLevel}" title="Как совместимость складывается сейчас, по событиям чата">
+        <span class="iw-chem-ico">${icon('chem_' + nowLevel)}</span>
+        <span class="iw-chem-body"><span class="iw-att-cap">Сейчас</span><b class="iw-chem-name">${esc(CHEM_NOW_NAMES[nowScore] || '')}</b>
+          <span class="iw-chem-meter" aria-label="от отторжения до притяжения: ${nowScore > 0 ? '+' : ''}${nowScore}">${cells}</span>
+          ${c.chemNow && c.chemNow.why ? `<span class="iw-chem-why">${ce(c.chemNow.why)}</span>` : ''}</span>
+      </div>
+    </div>`;
+}
+
+// Очки коротко, чтобы влезали в плашку: 1 200 → «1,2К», 15 300 → «15К», 2 500 000 → «2,5М».
+export function shortPoints(n) {
+    const v = Math.max(0, Math.round(Number(n) || 0));
+    const one = x => (Math.floor(x * 10) / 10).toFixed(1).replace(/\.0$/, '').replace('.', ',');
+    if (v < 1000) return String(v);
+    if (v < 10000) return one(v / 1000) + 'К';
+    if (v < 1000000) return Math.floor(v / 1000) + 'К';
+    return one(v / 1000000) + 'М';
+}
+
+const ATTR_SHOWN = 6; // столько тегов видно сразу, остальные — по стрелке
+
+// Что привлекает и что отталкивает (как в «Симс»): теги от модели, их можно убрать и добавить свои из списка.
+function renderAttraction(c, L, opts = {}) {
+    const likes = c.likes || [];
+    const dislikes = c.dislikes || [];
+    const mode = opts.attrMode === 'dislikes' ? 'dislikes' : 'likes';
+    const chip = (list, t, i) => `<span class="iw-attr-chip iw-attr-${list}"><span>${ce(t)}</span><button type="button" class="iw-attr-x" data-iw-attr="del:${list}:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></span>`;
+    const row = (list, cap, items) => `
+        <div class="iw-attr-row iw-attr-row-${list}">
+          <span class="iw-attr-cap">${icon(list === 'likes' ? 'heart' : 'x')}<span>${cap}</span><span class="iw-attr-count">${items.length || ''}</span></span>
+          <div class="iw-attr-chips">${items.length ? items.map((t, i) => (i < ATTR_SHOWN || (opts.attrMore && opts.attrMore[list]) ? chip(list, t, i) : '')).join('') : '<span class="iw-muted">Пока ничего</span>'}${items.length > ATTR_SHOWN ? `<button type="button" class="iw-attr-more" data-iw-attr="more:${list}">${opts.attrMore && opts.attrMore[list] ? 'свернуть' : `ещё ${items.length - ATTR_SHOWN}`}${icon('chevron')}</button>` : ''}</div>
+        </div>`;
+    const have = new Set((mode === 'likes' ? likes : dislikes).map(x => x.toLowerCase()));
+    const other = new Set((mode === 'likes' ? dislikes : likes).map(x => x.toLowerCase()));
+    const cats = Object.entries(ATTRACT_CATALOG).map(([cat, tags]) => `
+          <div class="iw-attr-cat"><div class="iw-attr-cat-name">${esc(cat)}</div><div class="iw-attr-opts">${tags.map(t => `<button type="button" class="iw-attr-opt${have.has(t) ? ' on' : ''}${other.has(t) ? ' other' : ''}" data-iw-attr="toggle:${mode}:${esc(t)}" aria-pressed="${have.has(t)}">${ce(t)}</button>`).join('')}</div></div>`).join('');
+    const empty = !likes.length && !dislikes.length;
+    return `
+    <section class="iw-block iw-b-attraction">
+      ${blockHead('attraction', esc(L.attraction || 'Что привлекает'))}
+      ${chemPlate(c)}
+      ${empty ? '<div class="iw-muted">Определится при следующем разборе, или выбери сама.</div>' : ''}
+      <div class="iw-attr-cols">
+      ${row('likes', 'Привлекает', likes)}
+      ${row('dislikes', 'Отталкивает', dislikes)}
+      </div>
+      <details class="iw-attr-pick"${opts.attrOpen ? ' open' : ''}>
+        <summary class="iw-btn iw-attr-add">${icon('plus')}<span>Выбрать из списка</span></summary>
+        <div class="iw-attr-panel">
+          <div class="iw-attr-modes">
+            <button type="button" class="iw-qopt${mode === 'likes' ? ' on' : ''}" data-iw-attr="mode:likes" aria-pressed="${mode === 'likes'}">Привлекает</button>
+            <button type="button" class="iw-qopt${mode === 'dislikes' ? ' on' : ''}" data-iw-attr="mode:dislikes" aria-pressed="${mode === 'dislikes'}">Отталкивает</button>
+          </div>
+          ${cats}
+          <div class="iw-attr-own"><input type="text" class="iw-input iw-attr-input" maxlength="40" placeholder="Своё, например «шрам на брови»"><button type="button" class="iw-btn" data-iw-attr="own:${mode}">${icon('plus')}<span>Добавить</span></button></div>
+        </div>
+      </details>
+    </section>`;
+}
+
+function renderAttitude(c, L, opts = {}) {
     if (!c.impression) return '';
     const im = c.impression;
     const nowScore = im.nowScore ?? im.score;
@@ -256,16 +391,17 @@ function renderAttitude(c, L) {
     <section class="iw-block iw-b-impression">
       <span class="iw-tape iw-tape-blue"></span>
       ${blockHead('impression', esc(L.attitude))}
+      ${opts.attrBlock ? '' : chemPlate(c)}
       <div class="iw-att-row">
         <div class="iw-att-cell">
-          <div class="iw-att-cap">${esc(L.first)}</div>
-          <div class="iw-imp-row">${scoreBadge(im.score)}<span class="iw-imp-label">${esc(im.label)}</span></div>
-          ${im.why ? `<div class="iw-imp-why">${esc(im.why)}</div>` : ''}
+          <div class="iw-att-cap">${im.known ? `Давно знакомы: ${esc(im.known)}` : ce(L.first)}</div>
+          <div class="iw-imp-row">${scoreBadge(im.score)}<span class="iw-imp-label">${ce(im.label)}</span></div>
+          ${im.why ? `<div class="iw-imp-why">${ce(im.why)}</div>` : ''}
         </div>
         ${im.now ? `
         <div class="iw-att-cell">
-          <div class="iw-att-cap">${esc(L.now)}</div>
-          <div class="iw-imp-row">${scoreBadge(nowScore)}<span class="iw-imp-now">${esc(im.now)}</span></div>
+          <div class="iw-att-cap">${ce(L.now)}</div>
+          <div class="iw-imp-row">${scoreBadge(nowScore)}<span class="iw-imp-now">${ce(im.now)}</span></div>
         </div>` : ''}
       </div>
       ${attitudeChart(c.attitude, L.chartMark)}
@@ -286,14 +422,14 @@ function renderWants(c, L) {
         return `
       <li class="iw-want${done ? ' done' : ''}${dropped ? ' dropped' : ''}${w.pinned && !done ? ' pinned' : ''}">
         <span class="iw-box">${done ? ICON_CHECK : ''}</span>
-        <span class="iw-want-text">${esc(w.text)}${done ? ' <b class="iw-tag">сбылось</b>' : ''}${dropped ? ' <b class="iw-tag">уже неважно</b>' : ''}</span>
+        <span class="iw-want-text">${ce(w.text)}${done ? ' <b class="iw-tag">Сбылось</b>' : ''}${dropped ? ' <b class="iw-tag">Уже неважно</b>' : ''}</span>
         <span class="iw-row-tools">${pin}${delBtn('wants', i)}</span>
       </li>`;
     }).join('');
     return `
     <section class="iw-block iw-b-wants">
       ${blockHead('wants', esc(L.wants))}
-      ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">ничего особенного</div>'}
+      ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">Ничего особенного</div>'}
     </section>`;
 }
 
@@ -303,13 +439,13 @@ function renderFears(c, L) {
     const items = (c.fears || []).map((f, i) => `
       <li class="iw-fear iw-fs-${f.strength}${f.status !== 'active' ? ' ' + f.status : ''}">
         <span class="iw-fear-mark" aria-hidden="true">${icon('ghost')}</span>
-        <span class="iw-fear-text">${esc(f.text)}${f.status === 'realized' ? ' <b class="iw-tag">сбылся</b>' : ''}${f.status === 'gone' ? ' <b class="iw-tag">прошёл</b>' : ''}</span>
-        <span class="iw-row-tools"><span class="iw-fear-power">${esc(f.level || FEAR_POWER[f.strength])}</span>${delBtn('fears', i)}</span>
+        <span class="iw-fear-text">${ce(f.text)}${f.status === 'realized' ? ' <b class="iw-tag">Сбылся</b>' : ''}${f.status === 'gone' ? ' <b class="iw-tag">Прошёл</b>' : ''}</span>
+        <span class="iw-row-tools"><span class="iw-fear-power">${ce(f.level || FEAR_POWER[f.strength])}</span>${delBtn('fears', i)}</span>
       </li>`).join('');
     return `
     <section class="iw-block iw-b-fears">
       ${blockHead('fears', esc(L.fears))}
-      ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">ничего не пугает</div>'}
+      ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">Ничего не пугает</div>'}
     </section>`;
 }
 
@@ -317,28 +453,30 @@ function dreamTools(c, busy) {
     const pinned = !!(c.dream && c.dream.pinned);
     return `<span class="iw-dream-tools">
       <button type="button" class="iw-mini${pinned ? ' on' : ''}" data-iw-dream="pin" title="${pinned ? 'Мечта закреплена — не изменится. Нажми, чтобы отпустить' : 'Закрепить мечту: она не будет меняться'}" aria-pressed="${pinned}">${icon(pinned ? 'pin' : 'unpin')}</button>
-      <button type="button" class="iw-mini${busy ? ' busy' : ''}" data-iw-dream="regen" title="${pinned ? 'Сначала открепи мечту' : 'Придумать мечту заново'}"${pinned || busy ? ' disabled' : ''}>${icon(busy ? 'rotate' : 'dice')}</button>
+      ${busy
+        ? `<button type="button" class="iw-mini iw-mini-stop" data-iw-stop="dream" title="Остановить: мечта останется прежней" aria-label="Остановить">${icon('stop')}</button>`
+        : `<button type="button" class="iw-mini" data-iw-dream="regen" title="${pinned ? 'Сначала открепи мечту' : 'Придумать мечту заново'}"${pinned ? ' disabled' : ''}>${icon('dice')}</button>`}
     </span>`;
 }
 
 function renderDream(c, L, opts = {}) {
     if (!c.dream) {
-        return `<section class="iw-block iw-b-dream">${blockHead('dream', esc(L.dream), dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key)))}<div class="iw-muted">ещё не ясна</div></section>`;
+        return `<section class="iw-block iw-b-dream">${blockHead('dream', esc(L.dream), dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key)))}<div class="iw-muted">Ещё не ясна</div></section>`;
     }
     const steps = c.dream.steps;
     const done = steps.filter(s => s.done).length;
     return `
     <section class="iw-block iw-b-dream${c.dream.pinned ? ' pinned' : ''}">
       ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key))}`)}
-      <div class="iw-dream-title">${esc(c.dream.title)}${c.dream.plus ? ` <span class="iw-dream-plus">${esc(c.dream.plus)}</span>` : ''}</div>
-      <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${esc(s.text)}</span></li>`).join('')}</ol>
+      <div class="iw-dream-title">${esc(c.dream.title)}${c.dream.plus ? `${/^[…,;:—–-]/.test(c.dream.plus.trim()) ? ' ' : ', '}<span class="iw-dream-plus">${esc(c.dream.plus.trim())}</span>` : ''}</div>
+      <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${ce(s.text)}</span></li>`).join('')}</ol>
     </section>`;
 }
 
 function traitChip(t, i) {
     const gone = t.kind === 'gone';
     const acquired = t.kind === 'new' || !!t.kept || (gone && t.was === 'new');
-    const mark = t.kind === 'up' ? '<span class="iw-trait-mark">усилилась</span>' : (t.kind === 'down' ? '<span class="iw-trait-mark">слабеет</span>' : (gone ? '<span class="iw-trait-mark">ушла</span>' : ''));
+    const mark = t.kind === 'up' ? '<span class="iw-trait-mark">Усилилась</span>' : (t.kind === 'down' ? '<span class="iw-trait-mark">Слабеет</span>' : (gone ? '<span class="iw-trait-mark">Ушла</span>' : ''));
     const tools = gone
         ? `<button type="button" class="iw-trait-tool" data-iw-trait="back:${i}" title="Вернуть черту: событие её не сломало" aria-label="Вернуть черту">${icon('rotate')}</button>`
         : `${t.kind === 'new' ? `<button type="button" class="iw-trait-tool" data-iw-trait="keep:${i}" title="Сделать постоянной: перенести в основные черты" aria-label="Сделать постоянной">${icon('tobase')}</button>` : ''}${delBtn('traits', i)}`;
@@ -346,18 +484,19 @@ function traitChip(t, i) {
     // «Подробнее»: откуда черта у персонажа, а у приобретённой — какое событие её породило.
     const more = [];
     if (t.about) more.push(`<p>${esc(t.about)}</p>`);
-    if (t.why && (t.kept || t.kind === 'base')) more.push(`<p class="iw-trait-origin"><b>Появилась:</b> ${esc(t.why)}</p>`);
+    if (t.why && (t.kept || t.kind === 'base')) more.push(`<p class="iw-trait-origin"><b>Появилась:</b> ${ce(t.why)}</p>`);
     if (!more.length) more.push(`<p class="iw-muted">${acquired ? 'Подробности появятся после следующего разбора.' : 'Откуда эта черта, станет ясно после разбора «Всё сразу» или «Лорбук».'}</p>`);
     return `
       <span class="iw-trait iw-k-${t.kind}${acquired ? ' iw-acquired' : ''}">
         <span class="iw-trait-head">
         <details class="iw-trait-det">
-          <summary class="iw-trait-name" title="Подробнее о черте"><span class="iw-trait-label">${esc(t.name)}</span><span class="iw-trait-chev" aria-hidden="true">${icon('chevron')}</span>${mark}${t.kept ? '<span class="iw-trait-kept">приобретена</span>' : ''}</summary>
+          <summary class="iw-trait-name" title="Подробнее о черте"><span class="iw-trait-label">${ce(t.name)}</span><span class="iw-trait-chev" aria-hidden="true">${icon('chevron')}</span>${mark}</summary>
           <span class="iw-trait-more">${more.join('')}</span>
         </details>
         <span class="iw-trait-tools">${tools}</span>
         </span>
-        ${t.why && t.kind !== 'base' && !t.kept ? `<span class="iw-trait-why">${esc(t.why)}</span>` : ''}
+        ${t.kept ? '<span class="iw-trait-kept">Приобретена</span>' : ''}
+        ${t.why && t.kind !== 'base' && !t.kept ? `<span class="iw-trait-why">${ce(t.why)}</span>` : ''}
         ${left}
       </span>`;
 }
@@ -440,7 +579,7 @@ function renderPersona(c, L) {
     return `
     <section class="iw-block iw-b-persona">
       ${blockHead('persona', esc(L.persona || 'Тип личности'))}
-      ${cards.length ? `<div class="iw-persona-grid">${cards.join('')}</div>` : '<div class="iw-muted">определится при следующем разборе: «Всё сразу» или «Лорбук»</div>'}
+      ${cards.length ? `<div class="iw-persona-grid">${cards.join('')}</div>` : '<div class="iw-muted">Определится при следующем разборе: «Всё сразу» или «Лорбук»</div>'}
     </section>`;
 }
 
@@ -450,7 +589,7 @@ function renderTraits(c, L) {
     const base = list.filter(x => !isNew(x.t));
     const gained = list.filter(x => isNew(x.t));
     if (!list.length) {
-        return `<section class="iw-block iw-b-traits">${blockHead('traits', esc(L.traits))}<span class="iw-muted">пока не разобрались</span></section>`;
+        return `<section class="iw-block iw-b-traits">${blockHead('traits', esc(L.traits))}<span class="iw-muted">Пока не разобрались</span></section>`;
     }
     return `
     <section class="iw-block iw-b-traits">
@@ -462,7 +601,7 @@ function renderTraits(c, L) {
         </div>
         <div class="iw-group">
           ${groupHead(L.traitsGained, 'после важных событий')}
-          <div class="iw-traits">${gained.map(x => traitChip(x.t, x.i)).join('') || '<span class="iw-muted iw-group-empty">пока ничего</span>'}</div>
+          <div class="iw-traits">${gained.map(x => traitChip(x.t, x.i)).join('') || '<span class="iw-muted iw-group-empty">Пока ничего</span>'}</div>
         </div>
       </div>
     </section>`;
@@ -472,7 +611,7 @@ function renderChronicle(c, L) {
     const items = (c.log || []).map(e => `
       <li class="iw-log iw-ev-${e.type}">
         <span class="iw-log-icon">${icon(EVENT_ICONS[e.type] || 'star')}</span>
-        <span class="iw-log-body"><b>${esc(eventTitle(e))}</b> ${esc(e.text)}</span>
+        <span class="iw-log-body"><b>${esc(eventTitle(e))}</b> ${ce(e.text)}</span>
         ${e.m !== null && e.m !== undefined ? `<span class="iw-log-at">#${esc(e.m)}</span>` : ''}
       </li>`).join('');
     return `
@@ -484,7 +623,7 @@ function renderChronicle(c, L) {
 
 // Что сейчас действует и коллекция.
 function activeRewards(c) {
-    const buffs = (c.buffs || []).map(b => `<li class="iw-buff iw-buff-${b.kind} iw-rk-${b.kind}"><span class="iw-rw-ico">${icon(b.icon || 'gift')}</span><span><b>${esc(b.title)}</b> <span class="iw-muted">${b.kind === 'event' ? 'в следующем ответе' : `ещё ${b.left} ${plural(b.left, 'ответ', 'ответа', 'ответов')}`}</span></span></li>`).join('');
+    const buffs = (c.buffs || []).map(b => `<li class="iw-buff iw-buff-${b.kind} iw-rk-${b.kind}"><span class="iw-rw-ico">${icon(b.icon || 'gift')}</span><span><b>${ce(b.title)}</b> <span class="iw-muted">${b.kind === 'event' ? 'в следующем ответе' : `ещё ${b.left} ${plural(b.left, 'ответ', 'ответа', 'ответов')}`}</span></span></li>`).join('');
     const coll = (c.collection || []).map(x => `<span class="iw-coll" title="${esc(x.title)}${x.desc ? ' — ' + esc(x.desc) : ''}">${icon(x.icon || 'gift')}</span>`).join('');
     return `${buffs ? `<div class="iw-group-cap">сейчас действует</div><ul class="iw-list iw-buffs">${buffs}</ul>` : ''}${coll ? `<div class="iw-group-cap">коллекция</div><div class="iw-colls iw-rk-collect">${coll}</div>` : ''}`;
 }
@@ -502,7 +641,7 @@ export function renderShop(c, theme, key, { shopBusy = false } = {}) {
     const row = r => `
       <li class="iw-reward iw-rk-${r.kind}${pts < r.cost ? ' locked' : ''}">
         <span class="iw-rw-ico iw-rw-big">${icon(r.icon || 'gift')}</span>
-        <span class="iw-rw-body"><b class="iw-rw-title">${esc(r.title)}</b><span class="iw-rw-desc">${esc(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
+        <span class="iw-rw-body"><b class="iw-rw-title">${ce(r.title)}</b><span class="iw-rw-desc">${ce(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
         <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost ? ' disabled' : ''} title="${pts < r.cost ? 'Не хватает очков' : 'Купить'}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
       </li>`;
     const shop = c.shop || [];
@@ -518,11 +657,11 @@ export function renderShop(c, theme, key, { shopBusy = false } = {}) {
     return `
 <button type="button" class="iw-back" data-iw-view="main:${esc(key)}">${icon('back')}<span>к дневнику</span></button>
 <section class="iw-block iw-b-shop">
-  ${blockHead('rewards', esc(L.shop), `<span class="iw-points">${icon(currencyIcon(theme))}<b>${pts}</b></span>`)}
-  <div class="iw-muted">Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под ${esc(c.name)}.</div>
+  ${blockHead('rewards', esc(L.shop), `<span class="iw-points" title="${Number(pts || 0).toLocaleString('ru-RU')}">${icon(currencyIcon(theme))}<b>${shortPoints(pts)}</b></span>`)}
+  <div class="iw-muted">Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под персонажа: ${esc(c.name)}.</div>
+  <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button></div>
   ${activeRewards(c)}
   ${groups || '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>'}
-  <button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button>
 </section>`;
 }
 
@@ -532,16 +671,20 @@ export function renderCharacter(c, modules, theme, opts = {}) {
         const pg = genderOf(c.g, c.name, c.who);
         L.attitude = `Как ${gw(pg, 'он', 'она', 'твой герой')} относится к ${gw(opts.botG, 'нему', 'ней', 'персонажу')}`;
     }
+    FOLD = { collapsed: opts.collapsed || {} };
     const blocks = [];
     if (modules.mood) blocks.push(renderMood(c, L, opts));
-    if (modules.impression) blocks.push(renderAttitude(c, L));
+    if (modules.impression) blocks.push(renderAttitude(c, L, { attrBlock: !!modules.attraction }));
     if (modules.wants) blocks.push(renderWants(c, L));
     if (modules.fears) blocks.push(renderFears(c, L));
     if (modules.dream) blocks.push(renderDream(c, L, opts));
     if (modules.traits) blocks.push(renderTraits(c, L));
     if (modules.traits) blocks.push(renderPersona(c, L));
+    if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
-    return `<div class="iw-grid">${blocks.join('')}</div>`;
+    const html = blocks.join('').replace(/class="iw-block iw-b-([a-z]+)(?=[" ])/g, (m, k) => (FOLD.collapsed[k] ? `${m} iw-collapsed` : m));
+    FOLD = { collapsed: {} };
+    return `<div class="iw-grid">${html}</div>`;
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
@@ -557,8 +700,8 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
       <button type="button" class="iw-npc met" data-iw-view="npc:${esc(key)}" title="Открыть: ${esc(c.name)}">
         <span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${faceBadge(c)}</span>
         <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
-        ${c.mood ? `<span class="iw-npc-mood iw-npc-now">${esc(c.mood)}</span>` : ''}
-        ${who ? `<span class="iw-npc-who">${esc(who)}</span>` : ''}
+        ${c.mood ? `<span class="iw-npc-mood iw-npc-now">${ce(c.mood)}</span>` : ''}
+        ${who ? `<span class="iw-npc-who">${ce(who)}</span>` : ''}
       </button>`);
     }
     for (const e of seenOnly) {
@@ -593,7 +736,17 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
 </div>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false }) {
+// Подпись внизу дневника: версия, дата обновления и автор со ссылкой на телеграм-канал.
+let SIGN_INFO = { version: '', updated: '' };
+export function setSignInfo(version = '', updated = '') {
+    SIGN_INFO = { version, updated };
+}
+function signHtml() {
+    const { version, updated } = SIGN_INFO;
+    return `<span class="iw-foot-sign">«Внутренний мир»${version ? ` · v${esc(version)}` : ''}${updated ? ` · ${esc(updated)}` : ''} · от <a class="iw-sign-nick" href="https://t.me/sillysloppy" target="_blank" rel="noopener" title="Телеграм-канал: t.me/sillysloppy">Слоппи ♥</a></span>`;
+}
+
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {} }) {
     setIconTheme(theme);
     const L = themeLabels(theme, 'm');
     if (view === 'settings') {
@@ -612,13 +765,14 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, false)}
   <div class="iw-body"><div class="iw-empty">${esc(L.noChat)}</div></div>
-  <div class="iw-foot"><span class="iw-status"></span></div>
+  <div class="iw-foot"><span class="iw-status"></span>${signHtml()}</div>
 </div>`;
     }
-    const opts = { manualTurns: settings.moodMode === 'manual' ? settings.moodTurns : null, dreamBusy, points: settings.points !== false };
+    const opts = { manualTurns: settings.moodMode === 'manual' ? settings.moodTurns : null, dreamBusy, points: settings.points !== false, attrMode, attrOpen, attrMore, collapsed: settings.collapsed || {} };
     const showNpc = settings.showNpc !== false;
     let body;
     let current = null;
+    let personaNote = false;
     // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
     const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
     if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
@@ -646,7 +800,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   </div>
   <div class="iw-whois">
     <span class="iw-whois-tag">${esc(LL.whois)}</span>
-    <div class="iw-whois-text">${who ? esc(who) : '<span class="iw-muted">пока неизвестно</span>'}</div>
+    <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
     ${loreTraits.length ? `<div class="iw-whois-traits"><span class="iw-muted">${esc(LL.whoisTraits)}:</span> ${esc(loreTraits.join(', '))}</div>` : ''}
   </div>
 </section>
@@ -659,7 +813,8 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         const botG = genderOf(bot && bot.g, botName, bot && bot.who);
         if (pc) {
             current = key;
-            body = `<div class="iw-persona-note">${icon('eye')}<span>Дневник твоего героя — только для тебя: на ответы бота он не влияет.</span></div>${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG }, opts))}`;
+            personaNote = true;
+            body = `${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG }, opts))}`;
         } else {
             body = `<div class="iw-waiting"><div class="iw-waiting-text"><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
         }
@@ -687,10 +842,48 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, busy, false, wallet, shopKey && !(persona && shopKey === persona.key) ? { key: shopKey, on: view.startsWith('shop:') } : null)}
   ${ROUGH_FILTER}
-  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working })}
-  <div class="iw-body">${body}</div>
-  <div class="iw-foot"><span class="iw-status">${esc(status || '')}</span>${forget}</div>
+  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off })}
+  <div class="iw-body${live && !live.hidden ? ' iw-live-on' : ''}">${live && !live.hidden ? renderLive(live, theme, L) : ''}${live && live.hidden ? livePeek(live) : ''}${body}</div>
+  <div class="iw-foot"><span class="iw-status">${esc(status || '')}</span>${personaNote ? `<span class="iw-persona-note iw-foot-note">${icon('eye')}<span>Дневник твоего героя только для тебя: на ответы бота он не влияет.</span></span>` : ''}${forget}${signHtml()}</div>
 </div>`;
+}
+
+// Свёрнутый листок: маленький ярлычок, по нажатию листок возвращается.
+function livePeek(live) {
+    const secs = Math.round((Date.now() - live.t0) / 1000);
+    return `<div class="iw-live iw-live-mini"><button type="button" class="iw-live-peek" data-iw-live-show title="Вернуть листок">${icon('feather')}<span>Пишу дневник · <span class="iw-live-secs">${secs}</span> с</span><span class="iw-live-dots" aria-hidden="true"><i></i><i></i><i></i></span></button></div>`;
+}
+
+// Живой листок, пока модель пишет дневник: этап, секунды, что уже готово. За ним — размытый черновик.
+const LIVE_STEPS = ['prep', 'think', 'write', 'done'];
+function renderLive(live, theme, L) {
+    const prepText = { chat: 'Листаю последние сообщения', catchup: 'Листаю историю чата', lore: 'Читаю карточку и лорбуки', all: 'Читаю карточку, лорбуки и чат', roster: 'Ищу, кто живёт в этом мире' }[live.kind] || 'Собираю, что было';
+    const steps = [
+        ['prep', prepText],
+        ['think', live.thinking ? 'Модель размышляет' : 'Модель думает'],
+        ['write', live.kind === 'roster' ? 'Модель составляет список' : 'Модель пишет дневник'],
+        ['done', 'Раскладываю по страницам'],
+    ];
+    const at = Math.max(0, LIVE_STEPS.indexOf(live.stage));
+    const secs = Math.round((Date.now() - live.t0) / 1000);
+    const delay = `style="animation-delay:-${((Date.now() - live.t0) / 1000).toFixed(2)}s"`;
+    const list = steps.map(([k, text], i) => `<li class="iw-live-step${i < at ? ' done' : (i === at ? ' now' : '')}"><span class="iw-live-dot" aria-hidden="true">${i < at ? icon('tick') : ''}</span><span>${esc(text)}${i === at ? '<span class="iw-live-dots" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}</span></li>`).join('');
+    const chars = (live.chars || []).map(c => `<li class="iw-live-char"><b>${esc(c.name)}</b>${c.mood ? ` <span class="iw-muted">— ${esc(c.mood)}</span>` : ''}${c.parts.length ? `<span class="iw-live-parts">${c.parts.map(p => `<span class="iw-live-part">${esc(p)}</span>`).join('')}</span>` : ''}</li>`).join('');
+    return `
+    <div class="iw-live" role="status" aria-live="polite">
+      <div class="iw-live-card" ${delay}>
+        <span class="iw-tape" aria-hidden="true"></span>
+        <div class="iw-live-head">
+          <span class="iw-live-title">${esc(L.analyzing || 'Записываю')}</span>
+          <span class="iw-live-time"><span class="iw-live-secs">${secs}</span> с</span>
+          <button type="button" class="iw-mini iw-live-hide" data-iw-live-hide title="Свернуть листок: разбор продолжится" aria-label="Свернуть">${icon('x')}</button>
+        </div>
+        <svg class="iw-live-scribble" viewBox="0 0 220 14" preserveAspectRatio="none" aria-hidden="true"><path ${delay} d="M2 8c14-6 22 5 36 0s22-6 36 0 22 5 36 0 22-6 36 0 22 5 36 0 20-5 34 0"/></svg>
+        <ol class="iw-live-steps">${list}</ol>
+        ${chars ? `<ul class="iw-live-chars">${chars}</ul>` : ''}
+        ${live.len ? `<div class="iw-live-len iw-muted">Написано ~${Math.round(live.len / 5)} слов</div>` : ''}
+      </div>
+    </div>`;
 }
 
 // Всплывашка в стиле темы.
@@ -704,14 +897,15 @@ export function renderToast(ev, theme) {
   <div class="iw-toast-body">
     <div class="iw-toast-kicker">${esc(kicker)}</div>
     <div class="iw-toast-who">${esc(ev.who)}</div>
-    <div class="iw-toast-text">${esc(eventText(ev))}</div>
+    <div class="iw-toast-text">${ce(eventText(ev))}</div>
+    ${ev.points ? `<div class="iw-toast-points">+${esc(String(ev.points))} ${icon(currencyIcon(theme))}<span>${esc(themeLabels(theme, 'm').currency || '')}</span></div>` : ''}
   </div>
   <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
 </div>`;
 }
 
 // Скетчевая стрелка «сюда»: в рисованных темах — от руки, в технических — ломаная линия.
-const TECH_THEMES = ['cyber', 'grid', 'logbook', 'dossier'];
+const TECH_THEMES = ['cyber', 'logbook', 'dossier'];
 function sketchArrow(theme, cls = '') {
     const tech = TECH_THEMES.includes(theme);
     // в поле слева от шагов: от подсказки загибается вверх и показывает на кнопки над ней
@@ -737,8 +931,8 @@ function renderWaiting(name, s, theme, roster) {
     const g = genderOf(entry && entry.g, name, entry && entry.who);
     const him = gw(g, 'у него', 'у неё', 'у персонажа');
     const auto = s.budgetMode !== 'fixed';
-    const caps = [4000, 6000, 8000, 12000, 16000];
-    const fixed = [2000, 3000, 4000, 6000, 8000, 12000];
+    const caps = BUDGET_CAP_OPTIONS;
+    const fixed = RESPONSE_LENGTH_OPTIONS;
     const budgetRow = auto
         ? caps.map(v => quickOpt('budgetCap', v, String(v), Number(s.budgetCap) === v)).join('')
         : fixed.map(v => quickOpt('responseLength', v, String(v), Number(s.responseLength) === v)).join('');
@@ -767,12 +961,20 @@ function renderWaiting(name, s, theme, roster) {
       <span class="iw-quick-num">2</span>
       <div class="iw-quick-body">
         <div class="iw-quick-title">Сколько последних сообщений читать</div>
-        <div class="iw-qrow">${[4, 6, 10, 15].map(v => quickOpt('contextMessages', v, String(v), Number(s.contextMessages) === v)).join('')}</div>
+        <div class="iw-qrow">${CONTEXT_OPTIONS.map(v => quickOpt('contextMessages', v, String(v), Number(s.contextMessages) === v)).join('')}</div>
         <div class="iw-quick-hint"><span>Больше — точнее, но дороже. Обычно хватает 6.</span></div>
       </div>
     </div>
     <div class="iw-quick-step">
       <span class="iw-quick-num">3</span>
+      <div class="iw-quick-body">
+        <div class="iw-quick-title">Если чат уже идёт: сколько сообщений прочитать в первый раз</div>
+        <div class="iw-qrow">${CATCHUP_OPTIONS.map(v => quickOpt('catchUpMessages', v, String(v), Number(s.catchUpMessages) === v)).join('')}</div>
+        <div class="iw-quick-hint"><span>Разовый запрос при первом заполнении: ≈ ${catchUpTokens(s.catchUpMessages).toLocaleString('ru-RU')} токенов. Дальше дневник читает только последние сообщения.</span></div>
+      </div>
+    </div>
+    <div class="iw-quick-step">
+      <span class="iw-quick-num">4</span>
       <div class="iw-quick-body">
         <div class="iw-quick-title">Какая модель пишет дневник</div>
         <div class="iw-qrow">${quickOpt('source', 'main', 'та же, что в чате', s.source !== 'custom')}${quickOpt('source', 'custom', 'отдельная — настроить', s.source === 'custom')}</div>

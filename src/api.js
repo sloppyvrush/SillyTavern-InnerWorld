@@ -63,8 +63,54 @@ export async function fetchModels(s, fetchImpl = fetch) {
     return list.map(m => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean).sort();
 }
 
-export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch) {
+// Читает поток SSE: на каждую строку «data: …» вызывает onData(разобранный JSON).
+async function readSse(res, onData) {
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (!line.startsWith('data:')) continue;
+            const data = line.slice(5).trim();
+            if (!data || data === '[DONE]') continue;
+            try { onData(JSON.parse(data)); } catch { /* неполная строка — пропускаем */ }
+        }
+    }
+}
+
+// onText(весь текст на сейчас, размышления на сейчас) — если передан, ответ идёт потоком.
+export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch, onText = null) {
     const key = cleanKey(s.apiKey);
+    if (s.apiKind === 'gemini' && onText) {
+        const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                systemInstruction: { parts: [{ text: system }] },
+                contents: [{ role: 'user', parts: [{ text: user }] }],
+                generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+            }),
+        });
+        if (!res.ok) throw new Error(await readError(res));
+        let text = '';
+        let think = '';
+        await readSse(res, d => {
+            const parts = (d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [];
+            for (const p of parts) {
+                if (p.thought) think += p.text || '';
+                else text += p.text || '';
+            }
+            onText(text, think);
+        });
+        if (!text) throw new Error('модель вернула пустой ответ');
+        return text;
+    }
     if (s.apiKind === 'gemini') {
         const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:generateContent?key=${encodeURIComponent(key)}`, {
             method: 'POST',
@@ -97,9 +143,25 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch)
             messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
             max_tokens: maxTokens,
             temperature: 0.7,
+            ...(onText ? { stream: true } : {}),
         }),
     });
     if (!res.ok) throw new Error(await readError(res));
+    if (onText && res.body && /event-stream/i.test(res.headers.get('content-type') || '')) {
+        let text = '';
+        let think = '';
+        await readSse(res, d => {
+            const delta = d.choices && d.choices[0] && (d.choices[0].delta || d.choices[0].message) || {};
+            const c = delta.content;
+            if (typeof c === 'string') text += c;
+            else if (Array.isArray(c)) text += c.map(x => x.text || '').join('');
+            const r = delta.reasoning || delta.reasoning_content;
+            if (typeof r === 'string') think += r;
+            onText(text, think);
+        });
+        if (!text) throw new Error('модель вернула пустой ответ');
+        return text;
+    }
     const data = await res.json();
     const msg = data.choices && data.choices[0] && (data.choices[0].message || data.choices[0]);
     const text = msg && (msg.content ?? msg.text);

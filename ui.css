@@ -443,7 +443,7 @@ ol {
     font-size: 15px;
 }
 
-.iw-tool:hover {
+.iw-tool:hover:where(:not(.iw-noanim *)) {
     background: var(--iw-hl-mid);
 }
 
@@ -1769,7 +1769,7 @@ ol {
     transition: transform .18s ease;
 }
 
-.iw-fab:hover .iw-fab-book {
+.iw-fab:hover:where(:not(.iw-noanim *)) .iw-fab-book {
     transform: rotate(-2deg) translateY(-2px);
 }
 
@@ -1983,8 +1983,8 @@ ol {
     font-size: 14px;
 }
 
-.iw-study:hover,
-.iw-back:hover {
+.iw-study:hover:where(:not(.iw-noanim *)),
+.iw-back:hover:where(:not(.iw-noanim *)) {
     background: var(--iw-hl-mid);
 }
 
@@ -2017,7 +2017,7 @@ ol {
     cursor: pointer;
 }
 
-.iw-npc.met:hover {
+.iw-npc.met:hover:where(:not(.iw-noanim *)) {
     transform: translateY(-2px) rotate(-1deg);
 }
 
@@ -2537,7 +2537,7 @@ ol {
     font-size: .9em;
 }
 
-.iw-btn:hover {
+.iw-btn:hover:where(:not(.iw-noanim *)) {
     background: var(--iw-hl-mid);
 }
 
@@ -2683,11 +2683,11 @@ ol {
     font-size: 1.05em;
 }
 
-.iw-npc.met:hover .iw-npc-badge {
+.iw-npc.met:hover:where(:not(.iw-noanim *)) .iw-npc-badge {
     transform: rotate(-6deg) scale(1.05);
 }
 
-.iw-theme-cyber .iw-npc.met:hover .iw-npc-badge {
+.iw-theme-cyber .iw-npc.met:hover:where(:not(.iw-noanim *)) .iw-npc-badge {
     transform: scale(1.05);
 }
 
@@ -3471,7 +3471,7 @@ ol {
     transform: rotate(-.5deg);
 }
 
-.iw-act:hover:not(:disabled) {
+.iw-act:hover:where(:not(.iw-noanim *)):not(:disabled) {
     background: var(--iw-hl-main);
     transform: rotate(0) translateY(-1px);
 }
@@ -4003,7 +4003,7 @@ ol {
 }
 
 .iw-wallet-row.on,
-.iw-wallet-row:hover {
+.iw-wallet-row:hover:where(:not(.iw-noanim *)) {
     background: var(--iw-hl-mid);
 }
 
@@ -4493,7 +4493,7 @@ ol {
     background-clip: border-box;
 }
 
-.iw-panel ::-webkit-scrollbar-thumb:hover {
+.iw-panel ::-webkit-scrollbar-thumb:hover:where(:not(.iw-noanim *)) {
     background: var(--iw-scroll-hover);
     background-clip: padding-box;
 }
@@ -4901,65 +4901,65 @@ ol {
 
 /* ---------- Китайский свиток: рисовая бумага, тушь, красные печати ---------- */
 .iw-theme-china {
-    --iw-bg: #f6efe0;
-    --iw-paper: radial-gradient(ellipse 60% 40% at 100% 0%, rgba(200, 49, 43, .07), transparent 70%), radial-gradient(ellipse 70% 35% at 0% 100%, rgba(29, 26, 23, .07), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%23e3d5b8' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M18 40c0-8 10-11 15-5 2-9 15-9 17 0 7-3 13 4 9 10H22c-3 0-4-3-4-5z'/%3E%3Cpath d='M28 45c-1 4 3 7 7 6M52 45c2 3 0 7-4 7'/%3E%3Cpath d='M88 104c0-7 9-10 13-4 2-8 13-8 15 0 6-3 11 3 8 9H91c-2 0-3-3-3-5z'/%3E%3C/g%3E%3C/svg%3E");
+    --iw-bg: #2a0c10;
+    --iw-paper: radial-gradient(ellipse 60% 40% at 100% 0%, rgba(212, 166, 74, .07), transparent 70%), radial-gradient(ellipse 70% 35% at 0% 100%, rgba(240, 224, 190, .07), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%23782c30' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M18 40c0-8 10-11 15-5 2-9 15-9 17 0 7-3 13 4 9 10H22c-3 0-4-3-4-5z'/%3E%3Cpath d='M28 45c-1 4 3 7 7 6M52 45c2 3 0 7-4 7'/%3E%3Cpath d='M88 104c0-7 9-10 13-4 2-8 13-8 15 0 6-3 11 3 8 9H91c-2 0-3-3-3-5z'/%3E%3C/g%3E%3C/svg%3E");
     --iw-paper-size: 100% 100%, 100% 100%, 140px 140px;
-    --iw-ink: #1d1a17;
-    --iw-muted: #7a6a58;
+    --iw-ink: #f0e0be;
+    --iw-muted: #c4a88c;
     --iw-title-font: 'Prata', Georgia, serif;
     --iw-body-font: 'PT Serif', Georgia, serif;
-    --iw-title-color: #1d1a17;
-    --iw-scribble: #c8312b;
-    --iw-label-color: #1d1a17;
+    --iw-title-color: #f0e0be;
+    --iw-scribble: #d4a64a;
+    --iw-label-color: #f0e0be;
     --iw-label-size: 21px;
-    --iw-wants: #3f7a5f;
-    --iw-fears: #c8312b;
-    --iw-dream: #9c7a2c;
-    --iw-traits: #1d1a17;
-    --iw-hl-good: rgba(63, 122, 95, .18);
-    --iw-hl-bad: rgba(200, 49, 43, .16);
-    --iw-hl-mid: rgba(184, 145, 58, .18);
-    --iw-hl-main: rgba(200, 49, 43, .16);
-    --iw-block-bg: #fbf7ee;
-    --iw-block-border: 1px solid rgba(29, 26, 23, .14);
+    --iw-wants: #78b48c;
+    --iw-fears: #d4a64a;
+    --iw-dream: #e8c578;
+    --iw-traits: #f0e0be;
+    --iw-hl-good: rgba(120, 180, 140, .18);
+    --iw-hl-bad: rgba(212, 166, 74, .16);
+    --iw-hl-mid: rgba(232, 197, 120, .18);
+    --iw-hl-main: rgba(212, 166, 74, .16);
+    --iw-block-bg: #3a1216;
+    --iw-block-border: 1px solid rgba(240, 224, 190, .14);
     --iw-block-radius: 2px;
-    --iw-block-shadow: 0 6px 14px rgba(60, 40, 20, .08);
+    --iw-block-shadow: 0 6px 14px rgba(0, 0, 0, .08);
     --iw-block-pad: 14px 16px;
-    --iw-divider: rgba(29, 26, 23, .15);
-    --iw-note-bg: #fbf7ee;
-    --iw-note-ink: #1d1a17;
-    --iw-bar-border: 1px solid #1d1a17;
+    --iw-divider: rgba(240, 224, 190, .15);
+    --iw-note-bg: #3a1216;
+    --iw-note-ink: #f0e0be;
+    --iw-bar-border: 1px solid #f0e0be;
     --iw-bar-bg: transparent;
-    --iw-lvl-low: #b8913a;
-    --iw-lvl-mid: #d9732b;
-    --iw-lvl-high: #c8312b;
-    --iw-dream-fill: #c8312b;
-    --iw-dream-border: 1px solid rgba(29, 26, 23, .2);
+    --iw-lvl-low: #e8c578;
+    --iw-lvl-mid: #e68c46;
+    --iw-lvl-high: #d4a64a;
+    --iw-dream-fill: #d4a64a;
+    --iw-dream-border: 1px solid rgba(240, 224, 190, .2);
     --iw-dream-radius: 2px;
-    --iw-sticker-bg: #fbf7ee;
-    --iw-sticker-border: 1px solid #c8312b;
+    --iw-sticker-bg: #3a1216;
+    --iw-sticker-border: 1px solid #d4a64a;
     --iw-sticker-radius: 2px;
-    --iw-new-bg: #c8312b;
-    --iw-new-ink: #fbf7ee;
+    --iw-new-bg: #d4a64a;
+    --iw-new-ink: #3a1216;
     --iw-margin: transparent;
     --iw-tape: transparent;
-    --iw-chip-ink: #1d1a17;
-    --iw-chip-on: rgba(200, 49, 43, .15);
-    --iw-shell: #4a1714;
+    --iw-chip-ink: #f0e0be;
+    --iw-chip-on: rgba(212, 166, 74, .15);
+    --iw-shell: #1a0609;
     --iw-text-size: 16px;
-    --iw-feel-bg: rgba(255, 255, 255, .6);
-    --iw-scroll-thumb: #c8312b;
-    --iw-scroll-hover: #9a1f1a;
-    --iw-scroll-track: rgba(29, 26, 23, .07);
+    --iw-feel-bg: rgba(70, 24, 28, .6);
+    --iw-scroll-thumb: #d4a64a;
+    --iw-scroll-hover: #f0cd82;
+    --iw-scroll-track: rgba(240, 224, 190, .07);
     --iw-scroll-radius: 2px;
-    --iw-frame: 0 0 0 2px #fbf7ee, 0 0 0 5px #c8312b, 0 0 0 6px #b8913a;
+    --iw-frame: 0 0 0 2px #3a1216, 0 0 0 5px #d4a64a, 0 0 0 6px #e8c578;
     --iw-frame-radius: 50%;
 }
 
 .iw-theme-china .iw-book {
     padding-left: 26px;
     border-radius: 2px;
-    box-shadow: inset 0 9px 0 #5a1d17, inset 0 11px 0 #b8913a, inset 0 -9px 0 #5a1d17, inset 0 -11px 0 #b8913a;
+    box-shadow: inset 0 9px 0 #140608, inset 0 11px 0 #e8c578, inset 0 -9px 0 #140608, inset 0 -11px 0 #e8c578;
     padding-top: 22px;
     padding-bottom: 18px;
 }
@@ -4985,13 +4985,13 @@ ol {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #c8312b;
-    color: #fbf7ee;
+    background: #d4a64a;
+    color: #3a1216;
     font-family: 'Ma Shan Zheng', 'KaiTi', 'STKaiti', serif;
     font-size: 26px;
     line-height: 1;
     border-radius: 3px;
-    box-shadow: inset 0 0 0 2px rgba(251, 247, 238, .55);
+    box-shadow: inset 0 0 0 2px rgba(58, 18, 22, .55);
     transform: rotate(-6deg);
 }
 
@@ -5000,8 +5000,8 @@ ol {
 .iw-theme-china .iw-block {
     border-left: none;
     border-right: none;
-    border-top: 2px solid #1d1a17;
-    border-bottom: 2px solid #1d1a17;
+    border-top: 2px solid #f0e0be;
+    border-bottom: 2px solid #f0e0be;
 }
 
 .iw-theme-china .iw-block-head { border-bottom: 1px solid var(--iw-divider); }
@@ -5015,15 +5015,15 @@ ol {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #c8312b;
-    color: #fbf7ee;
+    background: #d4a64a;
+    color: #3a1216;
     border-radius: 3px;
     font-family: 'Ma Shan Zheng', 'KaiTi', 'STKaiti', serif;
     font-size: 19px;
     line-height: 1;
     opacity: 1;
     transform: rotate(-4deg);
-    box-shadow: inset 0 0 0 1.5px rgba(251, 247, 238, .5);
+    box-shadow: inset 0 0 0 1.5px rgba(58, 18, 22, .5);
 }
 
 .iw-theme-china .iw-block-icon .iw-ico { display: none; }
@@ -5043,156 +5043,528 @@ ol {
 
 .iw-theme-china .iw-b-impression {
     transform: none;
-    border-top: 2px solid #c8312b;
-    border-bottom: 2px solid #c8312b;
+    border-top: 2px solid #d4a64a;
+    border-bottom: 2px solid #d4a64a;
 }
 
 .iw-theme-china .iw-tab {
-    background: #fbf7ee;
+    background: #3a1216;
     transform: none;
-    box-shadow: 0 0 0 1px rgba(29, 26, 23, .2), 0 4px 10px rgba(60, 40, 20, .15);
+    box-shadow: 0 0 0 1px rgba(240, 224, 190, .2), 0 4px 10px rgba(0, 0, 0, .15);
 }
 
 .iw-theme-china .iw-toast-card {
     transform: none;
-    background: #fbf7ee;
-    border-top: 3px solid #1d1a17;
-    border-bottom: 3px solid #1d1a17;
-    box-shadow: 0 10px 22px rgba(60, 40, 20, .3);
+    background: #3a1216;
+    border-top: 3px solid #f0e0be;
+    border-bottom: 3px solid #f0e0be;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .3);
 }
 
 .iw-theme-china .iw-toast-icon {
     border: none;
     border-radius: 3px;
-    background: #c8312b;
-    color: #fbf7ee;
+    background: #d4a64a;
+    color: #3a1216;
 }
 
 .iw-theme-china .iw-toast-kicker { font-weight: 400; font-size: 19px; }
 
 /* ---------- Ведьмин гримуар: ночь, золото, зелья ---------- */
-.iw-theme-grimoire {
-    --iw-bg: #1a1220;
-    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(140, 90, 200, .22), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='%23e8c77a'%3E%3Ccircle cx='12' cy='18' r='1' opacity='.5'/%3E%3Ccircle cx='70' cy='40' r='.8' opacity='.35'/%3E%3Ccircle cx='130' cy='22' r='1.2' opacity='.45'/%3E%3Ccircle cx='40' cy='110' r='.9' opacity='.4'/%3E%3Ccircle cx='100' cy='130' r='1' opacity='.3'/%3E%3Ccircle cx='150' cy='90' r='.8' opacity='.4'/%3E%3Cpath d='M118 70l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z' opacity='.35'/%3E%3Cpath d='M30 70a9 9 0 1 0 9 12 7 7 0 1 1-9-12z' opacity='.18'/%3E%3C/g%3E%3C/svg%3E");
+.iw-theme-herbal {
+    --iw-bg: #171c13;
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(160, 130, 60, .22), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='%23d29a3c'%3E%3Ccircle cx='12' cy='18' r='1' opacity='.5'/%3E%3Ccircle cx='70' cy='40' r='.8' opacity='.35'/%3E%3Ccircle cx='130' cy='22' r='1.2' opacity='.45'/%3E%3Ccircle cx='40' cy='110' r='.9' opacity='.4'/%3E%3Ccircle cx='100' cy='130' r='1' opacity='.3'/%3E%3Ccircle cx='150' cy='90' r='.8' opacity='.4'/%3E%3Cpath d='M118 70l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z' opacity='.35'/%3E%3Cpath d='M30 70a9 9 0 1 0 9 12 7 7 0 1 1-9-12z' opacity='.18'/%3E%3C/g%3E%3C/svg%3E");
     --iw-paper-size: 100% 100%, 160px 160px;
-    --iw-ink: #eadfcf;
-    --iw-muted: #a796b5;
-    --iw-title-font: 'Bad Script', cursive;
-    --iw-body-font: 'Lora', Georgia, serif;
-    --iw-title-color: #e8c77a;
-    --iw-scribble: #8fe39b;
-    --iw-label-color: #e8c77a;
+    --iw-ink: #e2d8bb;
+    --iw-muted: #a79c7d;
+    --iw-title-font: 'Pacifico', cursive;
+    --iw-body-font: 'Comfortaa', Georgia, serif;
+    --iw-title-color: #d29a3c;
+    --iw-scribble: #a9bf6e;
+    --iw-label-color: #d29a3c;
     --iw-label-size: 25px;
-    --iw-wants: #8fe39b;
-    --iw-fears: #e8738f;
-    --iw-dream: #c9a2ff;
-    --iw-traits: #e8c77a;
-    --iw-hl-good: rgba(143, 227, 155, .18);
-    --iw-hl-bad: rgba(232, 115, 143, .2);
-    --iw-hl-mid: rgba(201, 162, 255, .18);
-    --iw-hl-main: rgba(232, 199, 122, .22);
-    --iw-block-bg: linear-gradient(180deg, rgba(44, 31, 55, .94), rgba(30, 21, 38, .94));
-    --iw-block-border: 1px solid rgba(232, 199, 122, .38);
+    --iw-wants: #a9bf6e;
+    --iw-fears: #d06a55;
+    --iw-dream: #d68c6e;
+    --iw-traits: #d29a3c;
+    --iw-hl-good: rgba(169, 191, 110, .18);
+    --iw-hl-bad: rgba(208, 106, 85, .2);
+    --iw-hl-mid: rgba(214, 140, 110, .18);
+    --iw-hl-main: rgba(210, 154, 60, .22);
+    --iw-block-bg: linear-gradient(180deg, rgba(38, 46, 31, .94), rgba(27, 32, 22, .94));
+    --iw-block-border: 1px solid rgba(210, 154, 60, .38);
     --iw-block-radius: 6px;
-    --iw-block-shadow: inset 0 0 0 3px rgba(26, 18, 32, .9), inset 0 0 0 4px rgba(232, 199, 122, .22), 0 8px 18px rgba(0, 0, 0, .35);
+    --iw-block-shadow: inset 0 0 0 3px rgba(23, 28, 19, .9), inset 0 0 0 4px rgba(210, 154, 60, .22), 0 8px 18px rgba(0, 0, 0, .35);
     --iw-block-pad: 14px 16px;
-    --iw-divider: rgba(232, 199, 122, .2);
-    --iw-note-bg: #251a30;
-    --iw-note-ink: #eadfcf;
-    --iw-bar-border: 1px solid rgba(232, 199, 122, .5);
+    --iw-divider: rgba(210, 154, 60, .2);
+    --iw-note-bg: #22291c;
+    --iw-note-ink: #e2d8bb;
+    --iw-bar-border: 1px solid rgba(210, 154, 60, .5);
     --iw-bar-bg: transparent;
-    --iw-lvl-low: #c9a2ff;
-    --iw-lvl-mid: #e8c77a;
-    --iw-lvl-high: #e8738f;
-    --iw-dream-fill: #c9a2ff;
-    --iw-dream-border: 1px solid rgba(201, 162, 255, .5);
+    --iw-lvl-low: #d68c6e;
+    --iw-lvl-mid: #d29a3c;
+    --iw-lvl-high: #d06a55;
+    --iw-dream-fill: #d68c6e;
+    --iw-dream-border: 1px solid rgba(214, 140, 110, .5);
     --iw-dream-radius: 6px;
-    --iw-sticker-bg: #251a30;
-    --iw-sticker-border: 1px solid rgba(232, 199, 122, .55);
+    --iw-sticker-bg: #22291c;
+    --iw-sticker-border: 1px solid rgba(210, 154, 60, .55);
     --iw-sticker-radius: 6px;
-    --iw-new-bg: #8fe39b;
-    --iw-new-ink: #1a1220;
+    --iw-new-bg: #a9bf6e;
+    --iw-new-ink: #171c13;
     --iw-margin: transparent;
-    --iw-tape: rgba(232, 199, 122, .25);
-    --iw-chip-ink: #eadfcf;
-    --iw-chip-on: rgba(143, 227, 155, .2);
-    --iw-shell: #0d0910;
+    --iw-tape: rgba(210, 154, 60, .25);
+    --iw-chip-ink: #e2d8bb;
+    --iw-chip-on: rgba(169, 191, 110, .2);
+    --iw-shell: #0b0e09;
     --iw-text-size: 16px;
     --iw-feel-bg: rgba(255, 255, 255, .04);
-    --iw-scroll-thumb: linear-gradient(180deg, #e8c77a, #8a6a2a);
-    --iw-scroll-hover: #e8c77a;
-    --iw-scroll-track: rgba(232, 199, 122, .08);
+    --iw-scroll-thumb: linear-gradient(180deg, #d29a3c, #825a1e);
+    --iw-scroll-hover: #d29a3c;
+    --iw-scroll-track: rgba(210, 154, 60, .08);
     --iw-scroll-radius: 6px 6px 2px 2px;
-    --iw-frame: 0 0 0 2px #1a1220, 0 0 0 4px #e8c77a, 0 0 14px rgba(201, 162, 255, .5);
+    --iw-frame: 0 0 0 2px #171c13, 0 0 0 4px #d29a3c, 0 0 14px rgba(214, 140, 110, .5);
     --iw-frame-radius: 50% 50% 8px 8px / 40% 40% 8px 8px;
 }
 
-.iw-theme-grimoire .iw-book {
+.iw-theme-arcana {
+    --iw-bg: #0d1130;
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(90, 110, 220, .22), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='%23e6c46e'%3E%3Ccircle cx='12' cy='18' r='1' opacity='.5'/%3E%3Ccircle cx='70' cy='40' r='.8' opacity='.35'/%3E%3Ccircle cx='130' cy='22' r='1.2' opacity='.45'/%3E%3Ccircle cx='40' cy='110' r='.9' opacity='.4'/%3E%3Ccircle cx='100' cy='130' r='1' opacity='.3'/%3E%3Ccircle cx='150' cy='90' r='.8' opacity='.4'/%3E%3Cpath d='M118 70l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z' opacity='.35'/%3E%3Cpath d='M30 70a9 9 0 1 0 9 12 7 7 0 1 1-9-12z' opacity='.18'/%3E%3C/g%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 160px 160px;
+    --iw-ink: #e9e2cf;
+    --iw-muted: #9ea3cc;
+    --iw-title-font: 'Forum', cursive;
+    --iw-body-font: 'Jura', Georgia, serif;
+    --iw-title-color: #e6c46e;
+    --iw-scribble: #9fd39a;
+    --iw-label-color: #e6c46e;
+    --iw-label-size: 25px;
+    --iw-wants: #9fd39a;
+    --iw-fears: #e07a7a;
+    --iw-dream: #a8b8f2;
+    --iw-traits: #e6c46e;
+    --iw-hl-good: rgba(159, 211, 154, .18);
+    --iw-hl-bad: rgba(224, 122, 122, .2);
+    --iw-hl-mid: rgba(168, 184, 242, .18);
+    --iw-hl-main: rgba(230, 196, 110, .22);
+    --iw-block-bg: linear-gradient(180deg, rgba(24, 30, 72, .94), rgba(15, 20, 51, .94));
+    --iw-block-border: 1px solid rgba(230, 196, 110, .38);
+    --iw-block-radius: 6px;
+    --iw-block-shadow: inset 0 0 0 3px rgba(13, 17, 48, .9), inset 0 0 0 4px rgba(230, 196, 110, .22), 0 8px 18px rgba(0, 0, 0, .35);
+    --iw-block-pad: 14px 16px;
+    --iw-divider: rgba(230, 196, 110, .2);
+    --iw-note-bg: #1a204c;
+    --iw-note-ink: #e9e2cf;
+    --iw-bar-border: 1px solid rgba(230, 196, 110, .5);
+    --iw-bar-bg: transparent;
+    --iw-lvl-low: #a8b8f2;
+    --iw-lvl-mid: #e6c46e;
+    --iw-lvl-high: #e07a7a;
+    --iw-dream-fill: #a8b8f2;
+    --iw-dream-border: 1px solid rgba(168, 184, 242, .5);
+    --iw-dream-radius: 6px;
+    --iw-sticker-bg: #1a204c;
+    --iw-sticker-border: 1px solid rgba(230, 196, 110, .55);
+    --iw-sticker-radius: 6px;
+    --iw-new-bg: #9fd39a;
+    --iw-new-ink: #0d1130;
+    --iw-margin: transparent;
+    --iw-tape: rgba(230, 196, 110, .25);
+    --iw-chip-ink: #e9e2cf;
+    --iw-chip-on: rgba(159, 211, 154, .2);
+    --iw-shell: #06081a;
+    --iw-text-size: 16px;
+    --iw-feel-bg: rgba(255, 255, 255, .04);
+    --iw-scroll-thumb: linear-gradient(180deg, #e6c46e, #967832);
+    --iw-scroll-hover: #e6c46e;
+    --iw-scroll-track: rgba(230, 196, 110, .08);
+    --iw-scroll-radius: 6px 6px 2px 2px;
+    --iw-frame: 0 0 0 2px #0d1130, 0 0 0 4px #e6c46e, 0 0 14px rgba(168, 184, 242, .5);
+    --iw-frame-radius: 50% 50% 8px 8px / 40% 40% 8px 8px;
+}
+
+.iw-theme-seance {
+    --iw-bg: #110e0c;
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(150, 110, 70, .22), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='%23c4a26f'%3E%3Ccircle cx='12' cy='18' r='1' opacity='.5'/%3E%3Ccircle cx='70' cy='40' r='.8' opacity='.35'/%3E%3Ccircle cx='130' cy='22' r='1.2' opacity='.45'/%3E%3Ccircle cx='40' cy='110' r='.9' opacity='.4'/%3E%3Ccircle cx='100' cy='130' r='1' opacity='.3'/%3E%3Ccircle cx='150' cy='90' r='.8' opacity='.4'/%3E%3Cpath d='M118 70l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z' opacity='.35'/%3E%3Cpath d='M30 70a9 9 0 1 0 9 12 7 7 0 1 1-9-12z' opacity='.18'/%3E%3C/g%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 160px 160px;
+    --iw-ink: #d6ccba;
+    --iw-muted: #9e8e76;
+    --iw-title-font: 'Spectral SC', cursive;
+    --iw-body-font: 'Ledger', Georgia, serif;
+    --iw-title-color: #c4a26f;
+    --iw-scribble: #d39a8c;
+    --iw-label-color: #c4a26f;
+    --iw-label-size: 25px;
+    --iw-wants: #d39a8c;
+    --iw-fears: #c2525a;
+    --iw-dream: #a9b98a;
+    --iw-traits: #c4a26f;
+    --iw-hl-good: rgba(211, 154, 140, .18);
+    --iw-hl-bad: rgba(194, 82, 90, .2);
+    --iw-hl-mid: rgba(169, 185, 138, .18);
+    --iw-hl-main: rgba(196, 162, 111, .22);
+    --iw-block-bg: linear-gradient(180deg, rgba(43, 37, 33, .94), rgba(29, 25, 22, .94));
+    --iw-block-border: 1px solid rgba(196, 162, 111, .38);
+    --iw-block-radius: 6px;
+    --iw-block-shadow: inset 0 0 0 3px rgba(17, 14, 12, .9), inset 0 0 0 4px rgba(196, 162, 111, .22), 0 8px 18px rgba(0, 0, 0, .35);
+    --iw-block-pad: 14px 16px;
+    --iw-divider: rgba(196, 162, 111, .2);
+    --iw-note-bg: #2e2823;
+    --iw-note-ink: #d6ccba;
+    --iw-bar-border: 1px solid rgba(196, 162, 111, .5);
+    --iw-bar-bg: transparent;
+    --iw-lvl-low: #a9b98a;
+    --iw-lvl-mid: #c4a26f;
+    --iw-lvl-high: #c2525a;
+    --iw-dream-fill: #a9b98a;
+    --iw-dream-border: 1px solid rgba(169, 185, 138, .5);
+    --iw-dream-radius: 6px;
+    --iw-sticker-bg: #2e2823;
+    --iw-sticker-border: 1px solid rgba(196, 162, 111, .55);
+    --iw-sticker-radius: 6px;
+    --iw-new-bg: #d39a8c;
+    --iw-new-ink: #110e0c;
+    --iw-margin: transparent;
+    --iw-tape: rgba(196, 162, 111, .25);
+    --iw-chip-ink: #d6ccba;
+    --iw-chip-on: rgba(211, 154, 140, .2);
+    --iw-shell: #0a0806;
+    --iw-text-size: 16px;
+    --iw-feel-bg: rgba(255, 255, 255, .04);
+    --iw-scroll-thumb: linear-gradient(180deg, #c4a26f, #785f3c);
+    --iw-scroll-hover: #c4a26f;
+    --iw-scroll-track: rgba(196, 162, 111, .08);
+    --iw-scroll-radius: 6px 6px 2px 2px;
+    --iw-frame: 0 0 0 2px #110e0c, 0 0 0 4px #c4a26f, 0 0 14px rgba(169, 185, 138, .5);
+    --iw-frame-radius: 50% 50% 8px 8px / 40% 40% 8px 8px;
+}
+
+.iw-theme-nav {
+    --iw-bg: #0f1612;
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(120, 40, 30, .22), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='%23d9c8a6'%3E%3Ccircle cx='12' cy='18' r='1' opacity='.5'/%3E%3Ccircle cx='70' cy='40' r='.8' opacity='.35'/%3E%3Ccircle cx='130' cy='22' r='1.2' opacity='.45'/%3E%3Ccircle cx='40' cy='110' r='.9' opacity='.4'/%3E%3Ccircle cx='100' cy='130' r='1' opacity='.3'/%3E%3Ccircle cx='150' cy='90' r='.8' opacity='.4'/%3E%3Cpath d='M118 70l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z' opacity='.35'/%3E%3Cpath d='M30 70a9 9 0 1 0 9 12 7 7 0 1 1-9-12z' opacity='.18'/%3E%3C/g%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 160px 160px;
+    --iw-ink: #e3d9c2;
+    --iw-muted: #a39a82;
+    --iw-title-font: 'Kurale', cursive;
+    --iw-body-font: 'Andika', Georgia, serif;
+    --iw-title-color: #d9c8a6;
+    --iw-scribble: #9fc4a0;
+    --iw-label-color: #d9c8a6;
+    --iw-label-size: 25px;
+    --iw-wants: #9fc4a0;
+    --iw-fears: #d6392e;
+    --iw-dream: #f2aa46;
+    --iw-traits: #d9c8a6;
+    --iw-hl-good: rgba(159, 196, 160, .18);
+    --iw-hl-bad: rgba(214, 57, 46, .2);
+    --iw-hl-mid: rgba(242, 170, 70, .18);
+    --iw-hl-main: rgba(217, 200, 166, .22);
+    --iw-block-bg: linear-gradient(180deg, rgba(24, 34, 28, .94), rgba(17, 24, 20, .94));
+    --iw-block-border: 1px solid rgba(217, 200, 166, .38);
+    --iw-block-radius: 6px;
+    --iw-block-shadow: inset 0 0 0 3px rgba(15, 22, 18, .9), inset 0 0 0 4px rgba(217, 200, 166, .22), 0 8px 18px rgba(0, 0, 0, .35);
+    --iw-block-pad: 14px 16px;
+    --iw-divider: rgba(217, 200, 166, .2);
+    --iw-note-bg: #1b251f;
+    --iw-note-ink: #e3d9c2;
+    --iw-bar-border: 1px solid rgba(217, 200, 166, .5);
+    --iw-bar-bg: transparent;
+    --iw-lvl-low: #f2aa46;
+    --iw-lvl-mid: #d9c8a6;
+    --iw-lvl-high: #d6392e;
+    --iw-dream-fill: #f2aa46;
+    --iw-dream-border: 1px solid rgba(242, 170, 70, .5);
+    --iw-dream-radius: 6px;
+    --iw-sticker-bg: #1b251f;
+    --iw-sticker-border: 1px solid rgba(217, 200, 166, .55);
+    --iw-sticker-radius: 6px;
+    --iw-new-bg: #9fc4a0;
+    --iw-new-ink: #0f1612;
+    --iw-margin: transparent;
+    --iw-tape: rgba(217, 200, 166, .25);
+    --iw-chip-ink: #e3d9c2;
+    --iw-chip-on: rgba(159, 196, 160, .2);
+    --iw-shell: #080c0a;
+    --iw-text-size: 16px;
+    --iw-feel-bg: rgba(255, 255, 255, .04);
+    --iw-scroll-thumb: linear-gradient(180deg, #d9c8a6, #967850);
+    --iw-scroll-hover: #d9c8a6;
+    --iw-scroll-track: rgba(217, 200, 166, .08);
+    --iw-scroll-radius: 6px 6px 2px 2px;
+    --iw-frame: 0 0 0 2px #0f1612, 0 0 0 4px #d9c8a6, 0 0 14px rgba(242, 170, 70, .5);
+    --iw-frame-radius: 50% 50% 8px 8px / 40% 40% 8px 8px;
+}
+
+.iw-theme-herbal .iw-book {
     padding-left: 26px;
     box-shadow: inset 0 0 80px rgba(0, 0, 0, .55);
 }
 
-.iw-theme-grimoire .iw-margin { display: none; }
-
-.iw-theme-grimoire .iw-titlebox { position: relative; }
-
-.iw-theme-grimoire .iw-title {
-    font-weight: 400;
-    font-size: 44px;
-    text-shadow: 0 0 14px rgba(232, 199, 122, .35);
+.iw-theme-arcana .iw-book {
+    padding-left: 26px;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, .55);
 }
 
-.iw-theme-grimoire .iw-titlebox::after {
+.iw-theme-seance .iw-book {
+    padding-left: 26px;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, .55);
+}
+
+.iw-theme-nav .iw-book {
+    padding-left: 26px;
+    box-shadow: inset 0 0 80px rgba(0, 0, 0, .55);
+}
+
+.iw-theme-herbal .iw-margin { display: none; }
+
+.iw-theme-arcana .iw-margin { display: none; }
+
+.iw-theme-seance .iw-margin { display: none; }
+
+.iw-theme-nav .iw-margin { display: none; }
+
+.iw-theme-herbal .iw-titlebox { position: relative; }
+
+.iw-theme-arcana .iw-titlebox { position: relative; }
+
+.iw-theme-seance .iw-titlebox { position: relative; }
+
+.iw-theme-nav .iw-titlebox { position: relative; }
+
+.iw-theme-herbal .iw-title {
+    font-weight: 400;
+    font-size: 44px;
+    text-shadow: 0 0 14px rgba(210, 154, 60, .35);
+}
+
+.iw-theme-arcana .iw-title {
+    font-weight: 400;
+    font-size: 44px;
+    text-shadow: 0 0 14px rgba(230, 196, 110, .35);
+}
+
+.iw-theme-seance .iw-title {
+    font-weight: 400;
+    font-size: 44px;
+    text-shadow: 0 0 14px rgba(196, 162, 111, .35);
+}
+
+.iw-theme-nav .iw-title {
+    font-weight: 400;
+    font-size: 44px;
+    text-shadow: 0 0 14px rgba(217, 200, 166, .35);
+}
+
+.iw-theme-herbal .iw-titlebox::after {
     content: '☾';
     position: absolute;
     right: -30px;
     top: 2px;
     font-size: 26px;
-    color: #c9a2ff;
-    text-shadow: 0 0 10px rgba(201, 162, 255, .7);
+    color: #d68c6e;
+    text-shadow: 0 0 10px rgba(214, 140, 110, .7);
 }
 
-.iw-theme-grimoire .iw-label { font-weight: 400; }
-
-.iw-theme-grimoire .iw-block-head { border-bottom: 1px solid var(--iw-divider); }
-
-.iw-theme-grimoire .iw-block-icon {
-    color: #8fe39b;
-    filter: drop-shadow(0 0 4px rgba(143, 227, 155, .6));
+.iw-theme-arcana .iw-titlebox::after {
+    content: '☾';
+    position: absolute;
+    right: -30px;
+    top: 2px;
+    font-size: 26px;
+    color: #a8b8f2;
+    text-shadow: 0 0 10px rgba(168, 184, 242, .7);
 }
 
-.iw-theme-grimoire .iw-mood-word {
-    font-family: 'Lora', Georgia, serif;
+.iw-theme-seance .iw-titlebox::after {
+    content: '☾';
+    position: absolute;
+    right: -30px;
+    top: 2px;
+    font-size: 26px;
+    color: #a9b98a;
+    text-shadow: 0 0 10px rgba(169, 185, 138, .7);
+}
+
+.iw-theme-nav .iw-titlebox::after {
+    content: '☾';
+    position: absolute;
+    right: -30px;
+    top: 2px;
+    font-size: 26px;
+    color: #f2aa46;
+    text-shadow: 0 0 10px rgba(242, 170, 70, .7);
+}
+
+.iw-theme-herbal .iw-label { font-weight: 400; }
+
+.iw-theme-arcana .iw-label { font-weight: 400; }
+
+.iw-theme-seance .iw-label { font-weight: 400; }
+
+.iw-theme-nav .iw-label { font-weight: 400; }
+
+.iw-theme-herbal .iw-block-head { border-bottom: 1px solid var(--iw-divider); }
+
+.iw-theme-arcana .iw-block-head { border-bottom: 1px solid var(--iw-divider); }
+
+.iw-theme-seance .iw-block-head { border-bottom: 1px solid var(--iw-divider); }
+
+.iw-theme-nav .iw-block-head { border-bottom: 1px solid var(--iw-divider); }
+
+.iw-theme-herbal .iw-block-icon {
+    color: #a9bf6e;
+    filter: drop-shadow(0 0 4px rgba(169, 191, 110, .6));
+}
+
+.iw-theme-arcana .iw-block-icon {
+    color: #9fd39a;
+    filter: drop-shadow(0 0 4px rgba(159, 211, 154, .6));
+}
+
+.iw-theme-seance .iw-block-icon {
+    color: #d39a8c;
+    filter: drop-shadow(0 0 4px rgba(211, 154, 140, .6));
+}
+
+.iw-theme-nav .iw-block-icon {
+    color: #9fc4a0;
+    filter: drop-shadow(0 0 4px rgba(159, 196, 160, .6));
+}
+
+.iw-theme-herbal .iw-mood-word {
+    font-family: 'Comfortaa', Georgia, serif;
     font-style: italic;
     font-weight: 600;
 }
 
-.iw-theme-grimoire .iw-b-impression {
-    transform: none;
-    border: 1px solid rgba(201, 162, 255, .45);
-    box-shadow: 0 0 18px rgba(201, 162, 255, .18);
+.iw-theme-arcana .iw-mood-word {
+    font-family: 'Jura', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
 }
 
-.iw-theme-grimoire .iw-tab {
-    background: #251a30;
-    transform: none;
-    box-shadow: 0 0 0 1px rgba(232, 199, 122, .4), 0 6px 14px rgba(0, 0, 0, .4);
+.iw-theme-seance .iw-mood-word {
+    font-family: 'Ledger', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
 }
 
-.iw-theme-grimoire .iw-tab-name,
-.iw-theme-grimoire .iw-photo-letter { color: #eadfcf; }
-.iw-theme-grimoire .iw-tab-mood { color: #a796b5; }
+.iw-theme-nav .iw-mood-word {
+    font-family: 'Andika', Georgia, serif;
+    font-style: italic;
+    font-weight: 600;
+}
 
-.iw-theme-grimoire .iw-toast-card {
+.iw-theme-herbal .iw-b-impression {
     transform: none;
-    background: #1e1527;
-    color: #eadfcf;
-    border: 1px solid rgba(232, 199, 122, .5);
+    border: 1px solid rgba(214, 140, 110, .45);
+    box-shadow: 0 0 18px rgba(214, 140, 110, .18);
+}
+
+.iw-theme-arcana .iw-b-impression {
+    transform: none;
+    border: 1px solid rgba(168, 184, 242, .45);
+    box-shadow: 0 0 18px rgba(168, 184, 242, .18);
+}
+
+.iw-theme-seance .iw-b-impression {
+    transform: none;
+    border: 1px solid rgba(169, 185, 138, .45);
+    box-shadow: 0 0 18px rgba(169, 185, 138, .18);
+}
+
+.iw-theme-nav .iw-b-impression {
+    transform: none;
+    border: 1px solid rgba(242, 170, 70, .45);
+    box-shadow: 0 0 18px rgba(242, 170, 70, .18);
+}
+
+.iw-theme-herbal .iw-tab {
+    background: #22291c;
+    transform: none;
+    box-shadow: 0 0 0 1px rgba(210, 154, 60, .4), 0 6px 14px rgba(0, 0, 0, .4);
+}
+
+.iw-theme-arcana .iw-tab {
+    background: #1a204c;
+    transform: none;
+    box-shadow: 0 0 0 1px rgba(230, 196, 110, .4), 0 6px 14px rgba(0, 0, 0, .4);
+}
+
+.iw-theme-seance .iw-tab {
+    background: #2e2823;
+    transform: none;
+    box-shadow: 0 0 0 1px rgba(196, 162, 111, .4), 0 6px 14px rgba(0, 0, 0, .4);
+}
+
+.iw-theme-nav .iw-tab {
+    background: #1b251f;
+    transform: none;
+    box-shadow: 0 0 0 1px rgba(217, 200, 166, .4), 0 6px 14px rgba(0, 0, 0, .4);
+}
+
+.iw-theme-herbal .iw-tab-name,
+.iw-theme-herbal .iw-photo-letter { color: #e2d8bb; }
+
+.iw-theme-arcana .iw-tab-name,
+.iw-theme-arcana .iw-photo-letter { color: #e9e2cf; }
+
+.iw-theme-seance .iw-tab-name,
+.iw-theme-seance .iw-photo-letter { color: #d6ccba; }
+
+.iw-theme-nav .iw-tab-name,
+.iw-theme-nav .iw-photo-letter { color: #e3d9c2; }
+.iw-theme-herbal .iw-tab-mood { color: #a79c7d; }
+
+.iw-theme-arcana .iw-tab-mood { color: #9ea3cc; }
+
+.iw-theme-seance .iw-tab-mood { color: #9e8e76; }
+
+.iw-theme-nav .iw-tab-mood { color: #a39a82; }
+
+.iw-theme-herbal .iw-toast-card {
+    transform: none;
+    background: #1b2016;
+    color: #e2d8bb;
+    border: 1px solid rgba(210, 154, 60, .5);
     border-radius: 8px;
-    box-shadow: 0 0 22px rgba(201, 162, 255, .25), 0 10px 22px rgba(0, 0, 0, .5);
+    box-shadow: 0 0 22px rgba(214, 140, 110, .25), 0 10px 22px rgba(0, 0, 0, .5);
 }
 
-.iw-theme-grimoire .iw-toast-kicker { font-weight: 400; font-size: 24px; }
+.iw-theme-arcana .iw-toast-card {
+    transform: none;
+    background: #0f1433;
+    color: #e9e2cf;
+    border: 1px solid rgba(230, 196, 110, .5);
+    border-radius: 8px;
+    box-shadow: 0 0 22px rgba(168, 184, 242, .25), 0 10px 22px rgba(0, 0, 0, .5);
+}
+
+.iw-theme-seance .iw-toast-card {
+    transform: none;
+    background: #1d1916;
+    color: #d6ccba;
+    border: 1px solid rgba(196, 162, 111, .5);
+    border-radius: 8px;
+    box-shadow: 0 0 22px rgba(169, 185, 138, .25), 0 10px 22px rgba(0, 0, 0, .5);
+}
+
+.iw-theme-nav .iw-toast-card {
+    transform: none;
+    background: #111814;
+    color: #e3d9c2;
+    border: 1px solid rgba(217, 200, 166, .5);
+    border-radius: 8px;
+    box-shadow: 0 0 22px rgba(242, 170, 70, .25), 0 10px 22px rgba(0, 0, 0, .5);
+}
+
+.iw-theme-herbal .iw-toast-kicker { font-weight: 400; font-size: 24px; }
+
+.iw-theme-arcana .iw-toast-kicker { font-weight: 400; font-size: 24px; }
+
+.iw-theme-seance .iw-toast-kicker { font-weight: 400; font-size: 24px; }
+
+.iw-theme-nav .iw-toast-kicker { font-weight: 400; font-size: 24px; }
 
 /* ---------- Досье 90-х: картонная папка, машинка, печати ---------- */
 .iw-theme-dossier {
@@ -5473,25 +5845,110 @@ ol {
 }
 
 /* тёмные темы: эмоции и награды — светлым цветом по тёмному */
-.iw-theme-grimoire .iw-feels .iw-feel[class*="iw-face-"],
 .iw-theme-logbook .iw-feels .iw-feel[class*="iw-face-"] {
     --emo-text: var(--face-bg);
     --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
     background: color-mix(in srgb, var(--face-bg) 12%, transparent);
 }
 
-.iw-theme-grimoire .iw-rg-buff, .iw-theme-logbook .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
-.iw-theme-grimoire .iw-rg-event, .iw-theme-logbook .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
-.iw-theme-grimoire .iw-rg-collect, .iw-theme-logbook .iw-rg-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
-.iw-theme-grimoire .iw-rk-buff, .iw-theme-logbook .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
-.iw-theme-grimoire .iw-rk-event, .iw-theme-logbook .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
-.iw-theme-grimoire .iw-rk-collect, .iw-theme-logbook .iw-rk-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
+.iw-theme-herbal .iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-bg);
+    --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 12%, transparent);
+}
 
-.iw-theme-grimoire .iw-reward .iw-rw-title,
+.iw-theme-arcana .iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-bg);
+    --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 12%, transparent);
+}
+
+.iw-theme-seance .iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-bg);
+    --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 12%, transparent);
+}
+
+.iw-theme-nav .iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-bg);
+    --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 12%, transparent);
+}
+
+.iw-theme-logbook .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-herbal .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-arcana .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-seance .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-nav .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+.iw-theme-logbook .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-herbal .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-arcana .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-seance .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-nav .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+.iw-theme-logbook .iw-rg-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
+
+.iw-theme-herbal .iw-rg-collect { --rk: #d68c6e; --rk-bg: rgba(214, 140, 110, .14); }
+
+.iw-theme-arcana .iw-rg-collect { --rk: #a8b8f2; --rk-bg: rgba(168, 184, 242, .14); }
+
+.iw-theme-seance .iw-rg-collect { --rk: #a9b98a; --rk-bg: rgba(169, 185, 138, .14); }
+
+.iw-theme-nav .iw-rg-collect { --rk: #f2aa46; --rk-bg: rgba(242, 170, 70, .14); }
+.iw-theme-logbook .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-herbal .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-arcana .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-seance .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+
+.iw-theme-nav .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+.iw-theme-logbook .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-herbal .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-arcana .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-seance .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+
+.iw-theme-nav .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+.iw-theme-logbook .iw-rk-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
+
+.iw-theme-herbal .iw-rk-collect { --rk: #d68c6e; --rk-bg: rgba(214, 140, 110, .14); }
+
+.iw-theme-arcana .iw-rk-collect { --rk: #a8b8f2; --rk-bg: rgba(168, 184, 242, .14); }
+
+.iw-theme-seance .iw-rk-collect { --rk: #a9b98a; --rk-bg: rgba(169, 185, 138, .14); }
+
+.iw-theme-nav .iw-rk-collect { --rk: #f2aa46; --rk-bg: rgba(242, 170, 70, .14); }
+
 .iw-theme-logbook .iw-reward .iw-rw-title { color: var(--rk); }
 
-.iw-theme-grimoire .iw-rw-cat-name,
+.iw-theme-herbal .iw-reward .iw-rw-title { color: var(--rk); }
+
+.iw-theme-arcana .iw-reward .iw-rw-title { color: var(--rk); }
+
+.iw-theme-seance .iw-reward .iw-rw-title { color: var(--rk); }
+
+.iw-theme-nav .iw-reward .iw-rw-title { color: var(--rk); }
+
 .iw-theme-logbook .iw-rw-cat-name { color: #0b0d14; }
+
+.iw-theme-herbal .iw-rw-cat-name { color: #0b0d14; }
+
+.iw-theme-arcana .iw-rw-cat-name { color: #0b0d14; }
+
+.iw-theme-seance .iw-rw-cat-name { color: #0b0d14; }
+
+.iw-theme-nav .iw-rw-cat-name { color: #0b0d14; }
 
 /* загрузка над кнопками в новых темах */
 .iw-theme-china .iw-loader i,
@@ -5501,7 +5958,7 @@ ol {
     display: block;
     width: 0;
     height: 14px;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 70 14'%3E%3Cpath d='M2 8c8-5 18-6 30-4s24 2 36-2c-6 5-18 8-32 7S10 7 2 8z' fill='%231d1a17'/%3E%3C/svg%3E") left center / 70px 14px no-repeat;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 70 14'%3E%3Cpath d='M2 8c8-5 18-6 30-4s24 2 36-2c-6 5-18 8-32 7S10 7 2 8z' fill='%23f0e0be'/%3E%3C/svg%3E") left center / 70px 14px no-repeat;
     animation: iw-brush 1.5s ease-in-out infinite;
 }
 
@@ -5512,19 +5969,64 @@ ol {
 }
 
 /* гримуар — пузырьки в котле поднимаются */
-.iw-theme-grimoire .iw-loader { align-items: flex-end; height: 20px; }
+.iw-theme-herbal .iw-loader { align-items: flex-end; height: 20px; }
 
-.iw-theme-grimoire .iw-loader i {
+.iw-theme-arcana .iw-loader { align-items: flex-end; height: 20px; }
+
+.iw-theme-seance .iw-loader { align-items: flex-end; height: 20px; }
+
+.iw-theme-nav .iw-loader { align-items: flex-end; height: 20px; }
+
+.iw-theme-herbal .iw-loader i {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #d9ffdf, #8fe39b 55%, #3d9a52);
-    box-shadow: 0 0 6px rgba(143, 227, 155, .8);
+    background: radial-gradient(circle at 35% 35%, #e8f0ce, #a9bf6e 55%, #6f7f3a);
+    box-shadow: 0 0 6px rgba(169, 191, 110, .8);
     animation: iw-bubble 1.4s ease-in infinite;
 }
 
-.iw-theme-grimoire .iw-loader i:nth-child(2) { animation-delay: .45s; width: 6px; height: 6px; }
-.iw-theme-grimoire .iw-loader i:nth-child(3) { animation-delay: .9s; }
+.iw-theme-arcana .iw-loader i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #dcf5dc, #9fd39a 55%, #468c5a);
+    box-shadow: 0 0 6px rgba(159, 211, 154, .8);
+    animation: iw-bubble 1.4s ease-in infinite;
+}
+
+.iw-theme-seance .iw-loader i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #f0e4d2, #d39a8c 55%, #786450);
+    box-shadow: 0 0 6px rgba(211, 154, 140, .8);
+    animation: iw-bubble 1.4s ease-in infinite;
+}
+
+.iw-theme-nav .iw-loader i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #e8f0e2, #9fc4a0 55%, #4d6656);
+    box-shadow: 0 0 6px rgba(159, 196, 160, .8);
+    animation: iw-bubble 1.4s ease-in infinite;
+}
+
+.iw-theme-herbal .iw-loader i:nth-child(2) { animation-delay: .45s; width: 6px; height: 6px; }
+
+.iw-theme-arcana .iw-loader i:nth-child(2) { animation-delay: .45s; width: 6px; height: 6px; }
+
+.iw-theme-seance .iw-loader i:nth-child(2) { animation-delay: .45s; width: 6px; height: 6px; }
+
+.iw-theme-nav .iw-loader i:nth-child(2) { animation-delay: .45s; width: 6px; height: 6px; }
+.iw-theme-herbal .iw-loader i:nth-child(3) { animation-delay: .9s; }
+
+.iw-theme-arcana .iw-loader i:nth-child(3) { animation-delay: .9s; }
+
+.iw-theme-seance .iw-loader i:nth-child(3) { animation-delay: .9s; }
+
+.iw-theme-nav .iw-loader i:nth-child(3) { animation-delay: .9s; }
 
 @keyframes iw-bubble {
     0% { transform: translateY(4px) scale(.6); opacity: 0; }
@@ -5575,19 +6077,46 @@ ol {
 
 .iw-theme-dossier .iw-acts-cap { font-family: 'IBM Plex Mono', monospace; }
 .iw-theme-china .iw-acts-cap { font-size: 18px; }
-.iw-theme-grimoire .iw-acts-cap { font-size: 22px; }
+.iw-theme-herbal .iw-acts-cap { font-size: 22px; }
+
+.iw-theme-arcana .iw-acts-cap { font-size: 22px; }
+
+.iw-theme-seance .iw-acts-cap { font-size: 22px; }
+
+.iw-theme-nav .iw-acts-cap { font-size: 22px; }
 
 @media (max-width: 760px) {
     .iw-theme-china .iw-book,
-    .iw-theme-grimoire .iw-book,
-    .iw-theme-dossier .iw-book,
-    .iw-theme-logbook .iw-book {
+.iw-theme-dossier .iw-book,
+.iw-theme-logbook .iw-book {
+        padding-left: 14px;
+    }
+
+.iw-theme-herbal .iw-book {
+        padding-left: 14px;
+    }
+
+.iw-theme-arcana .iw-book {
+        padding-left: 14px;
+    }
+
+.iw-theme-seance .iw-book {
+        padding-left: 14px;
+    }
+
+.iw-theme-nav .iw-book {
         padding-left: 14px;
     }
 
     .iw-theme-china .iw-title { font-size: 26px; }
     .iw-theme-china .iw-titlebox::after { width: 26px; height: 26px; font-size: 20px; right: -34px; }
-    .iw-theme-grimoire .iw-title { font-size: 32px; }
+    .iw-theme-herbal .iw-title { font-size: 32px; }
+
+.iw-theme-arcana .iw-title { font-size: 32px; }
+
+.iw-theme-seance .iw-title { font-size: 32px; }
+
+.iw-theme-nav .iw-title { font-size: 32px; }
     .iw-theme-dossier .iw-title { font-size: 16px; }
     .iw-theme-logbook .iw-title { font-size: 22px; }
 }
@@ -5716,21 +6245,60 @@ ol {
     inset: -3px;
     z-index: 2;
     border-radius: 50%;
-    border: 1px dashed rgba(200, 49, 43, .6);
+    border: 1px dashed rgba(212, 166, 74, .6);
 }
 
 /* гримуар — арочное окошко со звёздочкой */
-.iw-theme-grimoire .iw-tab .iw-photo-wrap::after {
+.iw-theme-herbal .iw-tab .iw-photo-wrap::after {
     content: '✦';
     position: absolute;
     left: 50%;
     top: -10px;
     z-index: 2;
     transform: translateX(-50%);
-    color: #e8c77a;
+    color: #d29a3c;
     font-size: 13px;
     line-height: 1;
-    text-shadow: 0 0 8px rgba(232, 199, 122, .9);
+    text-shadow: 0 0 8px rgba(210, 154, 60, .9);
+}
+
+.iw-theme-arcana .iw-tab .iw-photo-wrap::after {
+    content: '✦';
+    position: absolute;
+    left: 50%;
+    top: -10px;
+    z-index: 2;
+    transform: translateX(-50%);
+    color: #e6c46e;
+    font-size: 13px;
+    line-height: 1;
+    text-shadow: 0 0 8px rgba(230, 196, 110, .9);
+}
+
+.iw-theme-seance .iw-tab .iw-photo-wrap::after {
+    content: '✦';
+    position: absolute;
+    left: 50%;
+    top: -10px;
+    z-index: 2;
+    transform: translateX(-50%);
+    color: #c4a26f;
+    font-size: 13px;
+    line-height: 1;
+    text-shadow: 0 0 8px rgba(196, 162, 111, .9);
+}
+
+.iw-theme-nav .iw-tab .iw-photo-wrap::after {
+    content: '✦';
+    position: absolute;
+    left: 50%;
+    top: -10px;
+    z-index: 2;
+    transform: translateX(-50%);
+    color: #d9c8a6;
+    font-size: 13px;
+    line-height: 1;
+    text-shadow: 0 0 8px rgba(217, 200, 166, .9);
 }
 
 /* досье — чёрно-белое фото со скрепкой */
@@ -5891,8 +6459,27 @@ ol {
 
 .iw-theme-dark .iw-mood-word[class*="iw-face-"],
 .iw-theme-cyber .iw-mood-word[class*="iw-face-"],
-.iw-theme-grimoire .iw-mood-word[class*="iw-face-"],
 .iw-theme-logbook .iw-mood-word[class*="iw-face-"] {
+    --mw-ink: var(--face-bg);
+    --mw-alpha: 30%;
+}
+
+.iw-theme-herbal .iw-mood-word[class*="iw-face-"] {
+    --mw-ink: var(--face-bg);
+    --mw-alpha: 30%;
+}
+
+.iw-theme-arcana .iw-mood-word[class*="iw-face-"] {
+    --mw-ink: var(--face-bg);
+    --mw-alpha: 30%;
+}
+
+.iw-theme-seance .iw-mood-word[class*="iw-face-"] {
+    --mw-ink: var(--face-bg);
+    --mw-alpha: 30%;
+}
+
+.iw-theme-nav .iw-mood-word[class*="iw-face-"] {
     --mw-ink: var(--face-bg);
     --mw-alpha: 30%;
 }
@@ -6112,7 +6699,7 @@ ol {
     font-weight: 700;
 }
 
-.iw-book-opt:hover:not(:disabled) {
+.iw-book-opt:hover:where(:not(.iw-noanim *)):not(:disabled) {
     background: var(--iw-hl-main);
 }
 
@@ -6220,7 +6807,7 @@ ol {
     opacity: .75;
 }
 
-.iw-book-opt.linked:hover {
+.iw-book-opt.linked:hover:where(:not(.iw-noanim *)) {
     background: transparent;
 }
 
@@ -6255,7 +6842,7 @@ ol {
     cursor: pointer;
 }
 
-.iw-book-go:hover:not(:disabled) {
+.iw-book-go:hover:where(:not(.iw-noanim *)):not(:disabled) {
     background: var(--iw-hl-main);
 }
 
@@ -6287,17 +6874,40 @@ ol {
     font-size: 12px;
 }
 
-.iw-stop:hover {
+.iw-stop:hover:where(:not(.iw-noanim *)) {
     background: rgba(192, 38, 45, .2);
 }
 
 .iw-theme-dark .iw-stop,
 .iw-theme-cyber .iw-stop,
-.iw-theme-grimoire .iw-stop,
 .iw-theme-logbook .iw-stop {
     border-color: #ff7a85;
     color: #ff9aa2;
     background: rgba(255, 122, 133, .12);
+}
+
+.iw-theme-herbal .iw-stop {
+    border-color: #e07862;
+    color: #eaa08c;
+    background: rgba(224, 120, 98, .12);
+}
+
+.iw-theme-arcana .iw-stop {
+    border-color: #f08282;
+    color: #f5aaaa;
+    background: rgba(240, 130, 130, .12);
+}
+
+.iw-theme-seance .iw-stop {
+    border-color: #d66e73;
+    color: #e19696;
+    background: rgba(214, 110, 115, .12);
+}
+
+.iw-theme-nav .iw-stop {
+    border-color: #e0574a;
+    color: #eb8c78;
+    background: rgba(224, 87, 74, .12);
 }
 
 .iw-theme-cyber .iw-stop,
@@ -6321,7 +6931,13 @@ ol {
 .iw-theme-sims { --iw-label-size: 16px; --iw-sub-size: 16px; }
 .iw-theme-cyber { --iw-label-size: 16px; --iw-sub-size: 16px; }
 .iw-theme-china { --iw-sub-size: 18px; }
-.iw-theme-grimoire { --iw-sub-size: 19px; }
+.iw-theme-herbal { --iw-sub-size: 19px; }
+
+.iw-theme-arcana { --iw-sub-size: 19px; }
+
+.iw-theme-seance { --iw-sub-size: 19px; }
+
+.iw-theme-nav { --iw-sub-size: 19px; }
 .iw-theme-dossier { --iw-label-size: 15px; --iw-sub-size: 15px; }
 .iw-theme-logbook { --iw-label-size: 18px; --iw-sub-size: 16px; }
 
@@ -6405,7 +7021,7 @@ ol {
     font-weight: 500;
 }
 
-.iw-theme-dossier :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go):hover:not(:disabled) {
+.iw-theme-dossier :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go):hover:where(:not(.iw-noanim *)):not(:disabled) {
     background: #fffbe0;
     transform: translate(-1px, -1px);
     box-shadow: 3px 3px 0 rgba(38, 36, 34, .3);
@@ -6416,7 +7032,7 @@ ol {
     color: #f7f3e8;
 }
 
-.iw-theme-dossier :is(.iw-act-all, .iw-book-go):hover:not(:disabled) {
+.iw-theme-dossier :is(.iw-act-all, .iw-book-go):hover:where(:not(.iw-noanim *)):not(:disabled) {
     background: #3a3632;
 }
 
@@ -6472,35 +7088,35 @@ ol {
    КИТАЙСКИЙ СВИТОК: тонкие линии, прямые углы, красный лак и золото
    ===================================================================== */
 .iw-theme-china :is(.iw-act, .iw-tool, .iw-wallet > summary, .iw-back, .iw-btn, .iw-buy, .iw-mini, .iw-more > summary, .iw-mod, .iw-theme-card, .iw-lang-opt, .iw-book-go, .iw-vol-toggle) {
-    border: 1px solid #1d1a17;
+    border: 1px solid #f0e0be;
     border-radius: 2px;
-    background: #fbf7ee;
-    color: #1d1a17;
+    background: #3a1216;
+    color: #f0e0be;
     box-shadow: none;
     transform: none;
 }
 
-.iw-theme-china :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mod, .iw-theme-card):hover:not(:disabled) {
-    background: #f3e6cf;
+.iw-theme-china :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mod, .iw-theme-card):hover:where(:not(.iw-noanim *)):not(:disabled) {
+    background: #501c20;
     transform: none;
 }
 
 .iw-theme-china :is(.iw-act-all, .iw-book-go) {
-    border-color: #8f1f1a;
-    background: #c8312b;
-    color: #fbf7ee;
-    box-shadow: inset 0 0 0 2px rgba(251, 247, 238, .35);
+    border-color: #966e28;
+    background: #d4a64a;
+    color: #3a1216;
+    box-shadow: inset 0 0 0 2px rgba(58, 18, 22, .35);
 }
 
-.iw-theme-china :is(.iw-act-all, .iw-book-go):hover:not(:disabled) { background: #a92822; }
+.iw-theme-china :is(.iw-act-all, .iw-book-go):hover:where(:not(.iw-noanim *)):not(:disabled) { background: #ecc46e; }
 
 /* НПС — красная табличка с золотой каймой */
 .iw-theme-china .iw-npc-sticker {
     border: none;
     border-radius: 2px;
-    background: #c8312b;
-    color: #fbf7ee;
-    box-shadow: inset 0 0 0 2px #c8312b, inset 0 0 0 3px #e3c27a, 0 4px 10px rgba(90, 30, 20, .25);
+    background: #d4a64a;
+    color: #3a1216;
+    box-shadow: inset 0 0 0 2px #d4a64a, inset 0 0 0 3px #f0d28c, 0 4px 10px rgba(20, 6, 8, .25);
     transform: none;
 }
 
@@ -6509,23 +7125,23 @@ ol {
 
 /* лавка — золотая бирка */
 .iw-theme-china .iw-shop-sticker {
-    border: 1px solid #b8913a;
+    border: 1px solid #e8c578;
     border-radius: 2px;
-    background: #fbf7ee;
-    color: #1d1a17;
-    box-shadow: inset 0 0 0 2px #fbf7ee, inset 0 0 0 3px rgba(184, 145, 58, .5);
+    background: #3a1216;
+    color: #f0e0be;
+    box-shadow: inset 0 0 0 2px #3a1216, inset 0 0 0 3px rgba(232, 197, 120, .5);
     font-family: 'Prata', serif;
     font-weight: 400;
     transform: none;
 }
 
-.iw-theme-china .iw-shop-sticker .iw-ico { color: #c8312b; }
+.iw-theme-china .iw-shop-sticker .iw-ico { color: #d4a64a; }
 
 .iw-theme-china .iw-divider {
     width: 1px;
     -webkit-mask: none;
     mask: none;
-    background: linear-gradient(transparent, #1d1a17 20%, #1d1a17 80%, transparent);
+    background: linear-gradient(transparent, #f0e0be 20%, #f0e0be 80%, transparent);
     opacity: .35;
 }
 
@@ -6537,100 +7153,355 @@ ol {
 .iw-theme-china .iw-new {
     border-radius: 2px;
     transform: rotate(-6deg);
-    box-shadow: inset 0 0 0 1.5px rgba(251, 247, 238, .5);
+    box-shadow: inset 0 0 0 1.5px rgba(58, 18, 22, .5);
 }
 
-.iw-theme-china .iw-box { border-radius: 2px; border: 1.5px solid #c8312b; }
+.iw-theme-china .iw-box { border-radius: 2px; border: 1.5px solid #d4a64a; }
 .iw-theme-china .iw-feels .iw-feel { border-radius: 2px; }
 .iw-theme-china .iw-score { border-width: 1px; background: transparent; }
 .iw-theme-china .iw-tape { display: none; }
 .iw-theme-china .iw-tab { border-radius: 2px; }
 .iw-theme-china .iw-f-section > summary { font-weight: 400; }
-.iw-theme-china .iw-cap-arrow { color: #c8312b; }
+.iw-theme-china .iw-cap-arrow { color: #d4a64a; }
 
 /* =====================================================================
    ВЕДЬМИН ГРИМУАР: золотая филигрань, свечение, круглые амулеты
    ===================================================================== */
-.iw-theme-grimoire :is(.iw-act, .iw-tool, .iw-wallet > summary, .iw-back, .iw-btn, .iw-buy, .iw-mini, .iw-more > summary, .iw-mod, .iw-theme-card, .iw-lang-opt, .iw-book-go, .iw-vol-toggle) {
-    border: 1px solid rgba(232, 199, 122, .55);
+.iw-theme-herbal :is(.iw-act, .iw-tool, .iw-wallet > summary, .iw-back, .iw-btn, .iw-buy, .iw-mini, .iw-more > summary, .iw-mod, .iw-theme-card, .iw-lang-opt, .iw-book-go, .iw-vol-toggle) {
+    border: 1px solid rgba(210, 154, 60, .55);
     border-radius: 999px;
-    background: rgba(44, 31, 55, .9);
-    color: #eadfcf;
+    background: rgba(38, 46, 31, .9);
+    color: #e2d8bb;
     box-shadow: none;
     transform: none;
 }
 
-.iw-theme-grimoire :is(.iw-theme-card, .iw-mod) { border-radius: 12px; }
-
-.iw-theme-grimoire :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:not(:disabled) {
-    border-color: #e8c77a;
-    box-shadow: 0 0 12px rgba(232, 199, 122, .35);
+.iw-theme-arcana :is(.iw-act, .iw-tool, .iw-wallet > summary, .iw-back, .iw-btn, .iw-buy, .iw-mini, .iw-more > summary, .iw-mod, .iw-theme-card, .iw-lang-opt, .iw-book-go, .iw-vol-toggle) {
+    border: 1px solid rgba(230, 196, 110, .55);
+    border-radius: 999px;
+    background: rgba(24, 30, 72, .9);
+    color: #e9e2cf;
+    box-shadow: none;
     transform: none;
 }
 
-.iw-theme-grimoire :is(.iw-act-all, .iw-book-go) {
-    border-color: #e8c77a;
-    background: linear-gradient(180deg, #3d2a52, #2a1d3a);
-    color: #e8c77a;
-    box-shadow: 0 0 12px rgba(201, 162, 255, .3);
+.iw-theme-seance :is(.iw-act, .iw-tool, .iw-wallet > summary, .iw-back, .iw-btn, .iw-buy, .iw-mini, .iw-more > summary, .iw-mod, .iw-theme-card, .iw-lang-opt, .iw-book-go, .iw-vol-toggle) {
+    border: 1px solid rgba(196, 162, 111, .55);
+    border-radius: 999px;
+    background: rgba(43, 37, 33, .9);
+    color: #d6ccba;
+    box-shadow: none;
+    transform: none;
+}
+
+.iw-theme-nav :is(.iw-act, .iw-tool, .iw-wallet > summary, .iw-back, .iw-btn, .iw-buy, .iw-mini, .iw-more > summary, .iw-mod, .iw-theme-card, .iw-lang-opt, .iw-book-go, .iw-vol-toggle) {
+    border: 1px solid rgba(217, 200, 166, .55);
+    border-radius: 999px;
+    background: rgba(24, 34, 28, .9);
+    color: #e3d9c2;
+    box-shadow: none;
+    transform: none;
+}
+
+.iw-theme-herbal :is(.iw-theme-card, .iw-mod) { border-radius: 12px; }
+
+.iw-theme-arcana :is(.iw-theme-card, .iw-mod) { border-radius: 12px; }
+
+.iw-theme-seance :is(.iw-theme-card, .iw-mod) { border-radius: 12px; }
+
+.iw-theme-nav :is(.iw-theme-card, .iw-mod) { border-radius: 12px; }
+
+.iw-theme-herbal :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:where(:not(.iw-noanim *)):not(:disabled) {
+    border-color: #d29a3c;
+    box-shadow: 0 0 12px rgba(210, 154, 60, .35);
+    transform: none;
+}
+
+.iw-theme-arcana :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:where(:not(.iw-noanim *)):not(:disabled) {
+    border-color: #e6c46e;
+    box-shadow: 0 0 12px rgba(230, 196, 110, .35);
+    transform: none;
+}
+
+.iw-theme-seance :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:where(:not(.iw-noanim *)):not(:disabled) {
+    border-color: #c4a26f;
+    box-shadow: 0 0 12px rgba(196, 162, 111, .35);
+    transform: none;
+}
+
+.iw-theme-nav :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:where(:not(.iw-noanim *)):not(:disabled) {
+    border-color: #d9c8a6;
+    box-shadow: 0 0 12px rgba(217, 200, 166, .35);
+    transform: none;
+}
+
+.iw-theme-herbal :is(.iw-act-all, .iw-book-go) {
+    border-color: #d29a3c;
+    background: linear-gradient(180deg, #38422a, #262d1e);
+    color: #d29a3c;
+    box-shadow: 0 0 12px rgba(214, 140, 110, .3);
+}
+
+.iw-theme-arcana :is(.iw-act-all, .iw-book-go) {
+    border-color: #e6c46e;
+    background: linear-gradient(180deg, #2f3874, #1e2558);
+    color: #e6c46e;
+    box-shadow: 0 0 12px rgba(168, 184, 242, .3);
+}
+
+.iw-theme-seance :is(.iw-act-all, .iw-book-go) {
+    border-color: #c4a26f;
+    background: linear-gradient(180deg, #4c4138, #38302a);
+    color: #c4a26f;
+    box-shadow: 0 0 12px rgba(169, 185, 138, .3);
+}
+
+.iw-theme-nav :is(.iw-act-all, .iw-book-go) {
+    border-color: #d9c8a6;
+    background: linear-gradient(180deg, #2d3d32, #1e2a23);
+    color: #d9c8a6;
+    box-shadow: 0 0 12px rgba(242, 170, 70, .3);
 }
 
 /* НПС — карта таро в золотой рамке */
-.iw-theme-grimoire .iw-npc-sticker {
-    border: 1px solid #e8c77a;
+.iw-theme-herbal .iw-npc-sticker {
+    border: 1px solid #d29a3c;
     border-radius: 8px;
-    background: radial-gradient(circle at 50% 0%, rgba(201, 162, 255, .25), transparent 70%), #241a2e;
-    color: #eadfcf;
-    box-shadow: inset 0 0 0 3px #241a2e, inset 0 0 0 4px rgba(232, 199, 122, .35), 0 6px 16px rgba(0, 0, 0, .45);
+    background: radial-gradient(circle at 50% 0%, rgba(214, 140, 110, .25), transparent 70%), #21281b;
+    color: #e2d8bb;
+    box-shadow: inset 0 0 0 3px #21281b, inset 0 0 0 4px rgba(210, 154, 60, .35), 0 6px 16px rgba(0, 0, 0, .45);
     transform: none;
 }
 
-.iw-theme-grimoire .iw-npc-sticker-title { font-family: 'Bad Script', cursive; font-weight: 400; font-size: 22px; color: #e8c77a; }
+.iw-theme-arcana .iw-npc-sticker {
+    border: 1px solid #e6c46e;
+    border-radius: 8px;
+    background: radial-gradient(circle at 50% 0%, rgba(168, 184, 242, .25), transparent 70%), #191f4a;
+    color: #e9e2cf;
+    box-shadow: inset 0 0 0 3px #191f4a, inset 0 0 0 4px rgba(230, 196, 110, .35), 0 6px 16px rgba(0, 0, 0, .45);
+    transform: none;
+}
+
+.iw-theme-seance .iw-npc-sticker {
+    border: 1px solid #c4a26f;
+    border-radius: 8px;
+    background: radial-gradient(circle at 50% 0%, rgba(169, 185, 138, .25), transparent 70%), #2d2722;
+    color: #d6ccba;
+    box-shadow: inset 0 0 0 3px #2d2722, inset 0 0 0 4px rgba(196, 162, 111, .35), 0 6px 16px rgba(0, 0, 0, .45);
+    transform: none;
+}
+
+.iw-theme-nav .iw-npc-sticker {
+    border: 1px solid #d9c8a6;
+    border-radius: 8px;
+    background: radial-gradient(circle at 50% 0%, rgba(242, 170, 70, .25), transparent 70%), #1a241e;
+    color: #e3d9c2;
+    box-shadow: inset 0 0 0 3px #1a241e, inset 0 0 0 4px rgba(217, 200, 166, .35), 0 6px 16px rgba(0, 0, 0, .45);
+    transform: none;
+}
+
+.iw-theme-herbal .iw-npc-sticker-title { font-family: 'Pacifico', cursive; font-weight: 400; font-size: 22px; color: #d29a3c; }
+
+.iw-theme-arcana .iw-npc-sticker-title { font-family: 'Forum', cursive; font-weight: 400; font-size: 22px; color: #e6c46e; }
+
+.iw-theme-seance .iw-npc-sticker-title { font-family: 'Spectral SC', cursive; font-weight: 400; font-size: 22px; color: #c4a26f; }
+
+.iw-theme-nav .iw-npc-sticker-title { font-family: 'Kurale', cursive; font-weight: 400; font-size: 22px; color: #d9c8a6; }
 
 /* лавка зелий — светящийся флакон */
-.iw-theme-grimoire .iw-shop-sticker {
-    border: 1px solid #8fe39b;
+.iw-theme-herbal .iw-shop-sticker {
+    border: 1px solid #a9bf6e;
     border-radius: 999px;
-    background: radial-gradient(circle at 25% 30%, rgba(143, 227, 155, .35), transparent 60%), #241a2e;
-    color: #8fe39b;
-    box-shadow: 0 0 14px rgba(143, 227, 155, .3);
+    background: radial-gradient(circle at 25% 30%, rgba(169, 191, 110, .35), transparent 60%), #21281b;
+    color: #a9bf6e;
+    box-shadow: 0 0 14px rgba(169, 191, 110, .3);
     transform: none;
 }
 
-.iw-theme-grimoire .iw-divider {
+.iw-theme-arcana .iw-shop-sticker {
+    border: 1px solid #9fd39a;
+    border-radius: 999px;
+    background: radial-gradient(circle at 25% 30%, rgba(159, 211, 154, .35), transparent 60%), #191f4a;
+    color: #9fd39a;
+    box-shadow: 0 0 14px rgba(159, 211, 154, .3);
+    transform: none;
+}
+
+.iw-theme-seance .iw-shop-sticker {
+    border: 1px solid #d39a8c;
+    border-radius: 999px;
+    background: radial-gradient(circle at 25% 30%, rgba(211, 154, 140, .35), transparent 60%), #2d2722;
+    color: #d39a8c;
+    box-shadow: 0 0 14px rgba(211, 154, 140, .3);
+    transform: none;
+}
+
+.iw-theme-nav .iw-shop-sticker {
+    border: 1px solid #9fc4a0;
+    border-radius: 999px;
+    background: radial-gradient(circle at 25% 30%, rgba(159, 196, 160, .35), transparent 60%), #1a241e;
+    color: #9fc4a0;
+    box-shadow: 0 0 14px rgba(159, 196, 160, .3);
+    transform: none;
+}
+
+.iw-theme-herbal .iw-divider {
     width: 1px;
     -webkit-mask: none;
     mask: none;
-    background: linear-gradient(transparent, #e8c77a 25%, #c9a2ff 75%, transparent);
+    background: linear-gradient(transparent, #d29a3c 25%, #d68c6e 75%, transparent);
     opacity: .6;
 }
 
-.iw-theme-grimoire :is(.iw-trait, .iw-feel-power, .iw-tag, .iw-points, .iw-chip) {
+.iw-theme-arcana .iw-divider {
+    width: 1px;
+    -webkit-mask: none;
+    mask: none;
+    background: linear-gradient(transparent, #e6c46e 25%, #a8b8f2 75%, transparent);
+    opacity: .6;
+}
+
+.iw-theme-seance .iw-divider {
+    width: 1px;
+    -webkit-mask: none;
+    mask: none;
+    background: linear-gradient(transparent, #c4a26f 25%, #a9b98a 75%, transparent);
+    opacity: .6;
+}
+
+.iw-theme-nav .iw-divider {
+    width: 1px;
+    -webkit-mask: none;
+    mask: none;
+    background: linear-gradient(transparent, #d9c8a6 25%, #f2aa46 75%, transparent);
+    opacity: .6;
+}
+
+.iw-theme-herbal :is(.iw-trait, .iw-feel-power, .iw-tag, .iw-points, .iw-chip) {
     border-radius: 999px;
     transform: none;
 }
 
-.iw-theme-grimoire .iw-block-icon {
+.iw-theme-arcana :is(.iw-trait, .iw-feel-power, .iw-tag, .iw-points, .iw-chip) {
+    border-radius: 999px;
+    transform: none;
+}
+
+.iw-theme-seance :is(.iw-trait, .iw-feel-power, .iw-tag, .iw-points, .iw-chip) {
+    border-radius: 999px;
+    transform: none;
+}
+
+.iw-theme-nav :is(.iw-trait, .iw-feel-power, .iw-tag, .iw-points, .iw-chip) {
+    border-radius: 999px;
+    transform: none;
+}
+
+.iw-theme-herbal .iw-block-icon {
     width: 26px;
     height: 26px;
     flex: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid rgba(232, 199, 122, .6);
+    border: 1px solid rgba(210, 154, 60, .6);
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(143, 227, 155, .18), transparent 70%);
+    background: radial-gradient(circle, rgba(169, 191, 110, .18), transparent 70%);
     font-size: 13px;
     opacity: 1;
 }
 
-.iw-theme-grimoire .iw-box { border-radius: 50%; border: 1.5px solid #8fe39b; }
-.iw-theme-grimoire .iw-new { border-radius: 999px; transform: none; box-shadow: 0 0 10px rgba(143, 227, 155, .5); }
-.iw-theme-grimoire .iw-feels .iw-feel { border-radius: 12px; }
-.iw-theme-grimoire .iw-score { border-color: #e8c77a; background: transparent; color: #e8c77a; }
-.iw-theme-grimoire .iw-tape { display: none; }
-.iw-theme-grimoire .iw-tab { border-radius: 10px; }
-.iw-theme-grimoire .iw-f-section > summary { font-weight: 400; }
+.iw-theme-arcana .iw-block-icon {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(230, 196, 110, .6);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(159, 211, 154, .18), transparent 70%);
+    font-size: 13px;
+    opacity: 1;
+}
+
+.iw-theme-seance .iw-block-icon {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(196, 162, 111, .6);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(211, 154, 140, .18), transparent 70%);
+    font-size: 13px;
+    opacity: 1;
+}
+
+.iw-theme-nav .iw-block-icon {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(217, 200, 166, .6);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(159, 196, 160, .18), transparent 70%);
+    font-size: 13px;
+    opacity: 1;
+}
+
+.iw-theme-herbal .iw-box { border-radius: 50%; border: 1.5px solid #a9bf6e; }
+
+.iw-theme-arcana .iw-box { border-radius: 50%; border: 1.5px solid #9fd39a; }
+
+.iw-theme-seance .iw-box { border-radius: 50%; border: 1.5px solid #d39a8c; }
+
+.iw-theme-nav .iw-box { border-radius: 50%; border: 1.5px solid #9fc4a0; }
+.iw-theme-herbal .iw-new { border-radius: 999px; transform: none; box-shadow: 0 0 10px rgba(169, 191, 110, .5); }
+
+.iw-theme-arcana .iw-new { border-radius: 999px; transform: none; box-shadow: 0 0 10px rgba(159, 211, 154, .5); }
+
+.iw-theme-seance .iw-new { border-radius: 999px; transform: none; box-shadow: 0 0 10px rgba(211, 154, 140, .5); }
+
+.iw-theme-nav .iw-new { border-radius: 999px; transform: none; box-shadow: 0 0 10px rgba(159, 196, 160, .5); }
+.iw-theme-herbal .iw-feels .iw-feel { border-radius: 12px; }
+
+.iw-theme-arcana .iw-feels .iw-feel { border-radius: 12px; }
+
+.iw-theme-seance .iw-feels .iw-feel { border-radius: 12px; }
+
+.iw-theme-nav .iw-feels .iw-feel { border-radius: 12px; }
+.iw-theme-herbal .iw-score { border-color: #d29a3c; background: transparent; color: #d29a3c; }
+
+.iw-theme-arcana .iw-score { border-color: #e6c46e; background: transparent; color: #e6c46e; }
+
+.iw-theme-seance .iw-score { border-color: #c4a26f; background: transparent; color: #c4a26f; }
+
+.iw-theme-nav .iw-score { border-color: #d9c8a6; background: transparent; color: #d9c8a6; }
+.iw-theme-herbal .iw-tape { display: none; }
+
+.iw-theme-arcana .iw-tape { display: none; }
+
+.iw-theme-seance .iw-tape { display: none; }
+
+.iw-theme-nav .iw-tape { display: none; }
+.iw-theme-herbal .iw-tab { border-radius: 10px; }
+
+.iw-theme-arcana .iw-tab { border-radius: 10px; }
+
+.iw-theme-seance .iw-tab { border-radius: 10px; }
+
+.iw-theme-nav .iw-tab { border-radius: 10px; }
+.iw-theme-herbal .iw-f-section > summary { font-weight: 400; }
+
+.iw-theme-arcana .iw-f-section > summary { font-weight: 400; }
+
+.iw-theme-seance .iw-f-section > summary { font-weight: 400; }
+
+.iw-theme-nav .iw-f-section > summary { font-weight: 400; }
 
 /* =====================================================================
    БОРТОВОЙ ЖУРНАЛ — в стиле сайта Stellar Fleet: графит, бирюза и янтарь
@@ -6744,7 +7615,7 @@ ol {
     background: transparent;
 }
 
-.iw-theme-logbook :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:not(:disabled) {
+.iw-theme-logbook :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini):hover:where(:not(.iw-noanim *)):not(:disabled) {
     border-color: #62d6c8;
     box-shadow: 0 0 18px rgba(98, 214, 200, .3);
     transform: none;
@@ -6755,7 +7626,7 @@ ol {
     background: linear-gradient(180deg, rgba(242, 169, 63, .24), rgba(242, 169, 63, .08));
 }
 
-.iw-theme-logbook :is(.iw-act-all, .iw-book-go):hover:not(:disabled) {
+.iw-theme-logbook :is(.iw-act-all, .iw-book-go):hover:where(:not(.iw-noanim *)):not(:disabled) {
     box-shadow: 0 0 18px rgba(242, 169, 63, .3);
 }
 
@@ -6916,7 +7787,7 @@ ol {
     box-shadow: 0 2px 5px rgba(0, 0, 0, .18);
 }
 
-.iw-trait-tool:hover,
+.iw-trait-tool:hover:where(:not(.iw-noanim *)),
 .iw-trait-tool.on {
     background: var(--iw-hl-main);
 }
@@ -6950,7 +7821,13 @@ ol {
 .iw-theme-dossier .iw-trait-tool { border-radius: 0; }
 .iw-theme-china .iw-trait-tool { border-radius: 2px; border-width: 1px; }
 .iw-theme-logbook .iw-trait-tool { border-color: #62d6c8; background: #16222a; }
-.iw-theme-grimoire .iw-trait-tool { border-color: rgba(232, 199, 122, .6); background: #241a2e; }
+.iw-theme-herbal .iw-trait-tool { border-color: rgba(210, 154, 60, .6); background: #21281b; }
+
+.iw-theme-arcana .iw-trait-tool { border-color: rgba(230, 196, 110, .6); background: #191f4a; }
+
+.iw-theme-seance .iw-trait-tool { border-color: rgba(196, 162, 111, .6); background: #2d2722; }
+
+.iw-theme-nav .iw-trait-tool { border-color: rgba(217, 200, 166, .6); background: #1a241e; }
 
 /* у желания булавка и крестик стоят рядом, а не друг на друге */
 .iw-want .iw-del {
@@ -7104,7 +7981,7 @@ ol {
     opacity: 1;
 }
 
-.iw-theme-cyber .iw-shop-sticker:hover,
+.iw-theme-cyber .iw-shop-sticker:hover:where(:not(.iw-noanim *)),
 .iw-theme-cyber .iw-shop-sticker.on {
     background: linear-gradient(90deg, rgba(255, 62, 165, .32), rgba(255, 62, 165, .1));
     outline: none;
@@ -7220,16 +8097,40 @@ ol {
 .iw-theme-bimbo .iw-chart-end { box-shadow: 0 0 0 2px #fff, 0 3px 8px rgba(255, 61, 150, .4); }
 
 /* китайский свиток — линия тушью, красные печати-точки, стрелка в квадратной печати */
-.iw-theme-china .iw-chart-wrap { --ch-line: #1d1a17; --ch-dot: #c8312b; --ch-dot-line: #c8312b; --ch-end: #c8312b; --ch-end-ink: #fbf7ee; --ch-zero: #b8913a; }
+.iw-theme-china .iw-chart-wrap { --ch-line: #f0e0be; --ch-dot: #d4a64a; --ch-dot-line: #d4a64a; --ch-end: #d4a64a; --ch-end-ink: #3a1216; --ch-zero: #e8c578; }
 .iw-theme-china .iw-chart-wrap .iw-chart polyline { stroke-width: 2.6; }
 .iw-theme-china .iw-chart-dot { border-radius: 1px; width: 8px; height: 8px; transform: translate(-50%, -50%) rotate(45deg); }
-.iw-theme-china .iw-chart-end { border-radius: 3px; box-shadow: inset 0 0 0 1.5px rgba(251, 247, 238, .5); }
+.iw-theme-china .iw-chart-end { border-radius: 3px; box-shadow: inset 0 0 0 1.5px rgba(58, 18, 22, .5); }
 
 /* гримуар — золотая нить со свечением, светящиеся зелёные капли */
-.iw-theme-grimoire .iw-chart-wrap { --ch-line: #e8c77a; --ch-dot: #8fe39b; --ch-dot-line: #1a1220; --ch-end: #241a2e; --ch-end-ink: #e8c77a; --ch-zero: #c9a2ff; }
-.iw-theme-grimoire .iw-chart-wrap .iw-chart polyline { filter: drop-shadow(0 0 3px rgba(232, 199, 122, .7)); stroke-width: 1.8; }
-.iw-theme-grimoire .iw-chart-dot { box-shadow: 0 0 6px rgba(143, 227, 155, .9); }
-.iw-theme-grimoire .iw-chart-end { border: 1px solid #e8c77a; box-shadow: 0 0 10px rgba(201, 162, 255, .5); }
+.iw-theme-herbal .iw-chart-wrap { --ch-line: #d29a3c; --ch-dot: #a9bf6e; --ch-dot-line: #171c13; --ch-end: #21281b; --ch-end-ink: #d29a3c; --ch-zero: #d68c6e; }
+
+.iw-theme-arcana .iw-chart-wrap { --ch-line: #e6c46e; --ch-dot: #9fd39a; --ch-dot-line: #0d1130; --ch-end: #191f4a; --ch-end-ink: #e6c46e; --ch-zero: #a8b8f2; }
+
+.iw-theme-seance .iw-chart-wrap { --ch-line: #c4a26f; --ch-dot: #d39a8c; --ch-dot-line: #110e0c; --ch-end: #2d2722; --ch-end-ink: #c4a26f; --ch-zero: #a9b98a; }
+
+.iw-theme-nav .iw-chart-wrap { --ch-line: #d9c8a6; --ch-dot: #9fc4a0; --ch-dot-line: #0f1612; --ch-end: #1a241e; --ch-end-ink: #d9c8a6; --ch-zero: #f2aa46; }
+.iw-theme-herbal .iw-chart-wrap .iw-chart polyline { filter: drop-shadow(0 0 3px rgba(210, 154, 60, .7)); stroke-width: 1.8; }
+
+.iw-theme-arcana .iw-chart-wrap .iw-chart polyline { filter: drop-shadow(0 0 3px rgba(230, 196, 110, .7)); stroke-width: 1.8; }
+
+.iw-theme-seance .iw-chart-wrap .iw-chart polyline { filter: drop-shadow(0 0 3px rgba(196, 162, 111, .7)); stroke-width: 1.8; }
+
+.iw-theme-nav .iw-chart-wrap .iw-chart polyline { filter: drop-shadow(0 0 3px rgba(217, 200, 166, .7)); stroke-width: 1.8; }
+.iw-theme-herbal .iw-chart-dot { box-shadow: 0 0 6px rgba(169, 191, 110, .9); }
+
+.iw-theme-arcana .iw-chart-dot { box-shadow: 0 0 6px rgba(159, 211, 154, .9); }
+
+.iw-theme-seance .iw-chart-dot { box-shadow: 0 0 6px rgba(211, 154, 140, .9); }
+
+.iw-theme-nav .iw-chart-dot { box-shadow: 0 0 6px rgba(159, 196, 160, .9); }
+.iw-theme-herbal .iw-chart-end { border: 1px solid #d29a3c; box-shadow: 0 0 10px rgba(214, 140, 110, .5); }
+
+.iw-theme-arcana .iw-chart-end { border: 1px solid #e6c46e; box-shadow: 0 0 10px rgba(168, 184, 242, .5); }
+
+.iw-theme-seance .iw-chart-end { border: 1px solid #c4a26f; box-shadow: 0 0 10px rgba(169, 185, 138, .5); }
+
+.iw-theme-nav .iw-chart-end { border: 1px solid #d9c8a6; box-shadow: 0 0 10px rgba(242, 170, 70, .5); }
 
 /* досье — красный маркер по бумаге, кнопки-«кнопки» и стрелка в квадрате */
 .iw-theme-dossier .iw-chart-wrap { --ch-line: #c0262d; --ch-dot: #262422; --ch-dot-line: #f7f3e8; --ch-end: #262422; --ch-end-ink: #f7f3e8; --ch-zero: #262422; }
@@ -7245,8 +8146,20 @@ ol {
 /* в темах с тёмной «кнопкой» стрелки цвет тренда меняет сама стрелка, а не фон */
 .iw-theme-cyber .iw-trend-down { --ch-end: #0b0d14; --ch-end-ink: #ff6b6b; }
 .iw-theme-cyber .iw-trend-flat { --ch-end: #0b0d14; --ch-end-ink: #6f90a8; }
-.iw-theme-grimoire .iw-trend-down { --ch-end: #241a2e; --ch-end-ink: #e8738f; }
-.iw-theme-grimoire .iw-trend-flat { --ch-end: #241a2e; --ch-end-ink: #a796b5; }
+.iw-theme-herbal .iw-trend-down { --ch-end: #21281b; --ch-end-ink: #d06a55; }
+
+.iw-theme-arcana .iw-trend-down { --ch-end: #191f4a; --ch-end-ink: #e07a7a; }
+
+.iw-theme-seance .iw-trend-down { --ch-end: #2d2722; --ch-end-ink: #c2525a; }
+
+.iw-theme-nav .iw-trend-down { --ch-end: #1a241e; --ch-end-ink: #d6392e; }
+.iw-theme-herbal .iw-trend-flat { --ch-end: #21281b; --ch-end-ink: #a79c7d; }
+
+.iw-theme-arcana .iw-trend-flat { --ch-end: #191f4a; --ch-end-ink: #9ea3cc; }
+
+.iw-theme-seance .iw-trend-flat { --ch-end: #2d2722; --ch-end-ink: #9e8e76; }
+
+.iw-theme-nav .iw-trend-flat { --ch-end: #1a241e; --ch-end-ink: #a39a82; }
 .iw-theme-logbook .iw-trend-down { --ch-end: rgba(232, 99, 79, .16); --ch-end-ink: #e8634f; }
 .iw-theme-logbook .iw-trend-flat { --ch-end: rgba(130, 175, 190, .14); --ch-end-ink: #8c9ea8; }
 .iw-theme-dossier .iw-trend-down { --ch-end: #c0262d; }
@@ -7277,7 +8190,7 @@ ol {
     font-size: 14px;
 }
 
-.iw-panel .iw-del:hover,
+.iw-panel .iw-del:hover:where(:not(.iw-noanim *)),
 .iw-panel .iw-del:focus-visible {
     opacity: 1;
     color: var(--iw-fears) !important;
@@ -7334,8 +8247,8 @@ ol {
     color: var(--iw-bg);
 }
 
-.iw-panel .iw-want .iw-want-pin:hover,
-.iw-panel .iw-trait-tool:hover {
+.iw-panel .iw-want .iw-want-pin:hover:where(:not(.iw-noanim *)),
+.iw-panel .iw-trait-tool:hover:where(:not(.iw-noanim *)) {
     opacity: 1;
 }
 
@@ -7377,12 +8290,12 @@ ol {
     font-size: .8em;
 }
 
-.iw-act.iw-act-stop:hover .iw-stop-ring::before {
+.iw-act.iw-act-stop:hover:where(:not(.iw-noanim *)) .iw-stop-ring::before {
     border-color: #e0414a;
     border-right-color: transparent;
 }
 
-.iw-act.iw-act-stop:hover {
+.iw-act.iw-act-stop:hover:where(:not(.iw-noanim *)) {
     color: #e0414a;
 }
 
@@ -7598,23 +8511,68 @@ ol {
     border-radius: 999px;
 }
 
-.iw-theme-grimoire .iw-persona-card,
 .iw-theme-medieval .iw-persona-card,
 .iw-theme-china .iw-persona-card {
     border-radius: 4px;
 }
 
+.iw-theme-herbal .iw-persona-card {
+    border-radius: 4px;
+}
+
+.iw-theme-arcana .iw-persona-card {
+    border-radius: 4px;
+}
+
+.iw-theme-seance .iw-persona-card {
+    border-radius: 4px;
+}
+
+.iw-theme-nav .iw-persona-card {
+    border-radius: 4px;
+}
+
 .iw-theme-dark .iw-persona-card,
 .iw-theme-cyber .iw-persona-card,
-.iw-theme-grimoire .iw-persona-card,
 .iw-theme-logbook .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 16%, transparent);
+}
+
+.iw-theme-herbal .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 16%, transparent);
+}
+
+.iw-theme-arcana .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 16%, transparent);
+}
+
+.iw-theme-seance .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 16%, transparent);
+}
+
+.iw-theme-nav .iw-persona-card {
     background: color-mix(in srgb, var(--pt) 16%, transparent);
 }
 
 .iw-theme-dark .iw-persona-name,
 .iw-theme-cyber .iw-persona-name,
-.iw-theme-grimoire .iw-persona-name,
 .iw-theme-logbook .iw-persona-name {
+    color: color-mix(in srgb, var(--pt) 55%, #fff);
+}
+
+.iw-theme-herbal .iw-persona-name {
+    color: color-mix(in srgb, var(--pt) 55%, #fff);
+}
+
+.iw-theme-arcana .iw-persona-name {
+    color: color-mix(in srgb, var(--pt) 55%, #fff);
+}
+
+.iw-theme-seance .iw-persona-name {
+    color: color-mix(in srgb, var(--pt) 55%, #fff);
+}
+
+.iw-theme-nav .iw-persona-name {
     color: color-mix(in srgb, var(--pt) 55%, #fff);
 }
 
@@ -7622,12 +8580,22 @@ ol {
 
 /* ---------- Черта: «подробнее» по нажатию, приобретённые — своим цветом ---------- */
 .iw-panel { --iw-gained: #b0569a; }
-.iw-theme-dark, .iw-theme-cyber, .iw-theme-grimoire, .iw-theme-logbook { --iw-gained: #e7a0d6; }
+.iw-theme-dark,
+.iw-theme-cyber,
+.iw-theme-logbook { --iw-gained: #e7a0d6; }
+
+.iw-theme-herbal { --iw-gained: #e2a082; }
+
+.iw-theme-arcana { --iw-gained: #beaaf0; }
+
+.iw-theme-seance { --iw-gained: #d39a8c; }
+
+.iw-theme-nav { --iw-gained: #eb8c78; }
 .iw-theme-bimbo { --iw-gained: #9b4dd4; }
 .iw-theme-logbook { --iw-gained: #f2a93f; }
 .iw-theme-cyber { --iw-gained: #ff5cf0; }
 .iw-theme-dossier { --iw-gained: #9a2f22; }
-.iw-theme-china { --iw-gained: #b8322a; }
+.iw-theme-china { --iw-gained: #e87864; }
 .iw-theme-medieval { --iw-gained: #7a4a9a; }
 
 .iw-trait-det {
@@ -7774,8 +8742,14 @@ ol {
 .iw-theme-logbook .iw-toast-error { --iw-ev: #ff6b6b; }
 .iw-theme-dossier .iw-toast-error { --iw-ev: #9a2f22; }
 .iw-theme-bimbo .iw-toast-error { --iw-ev: #e0336f; }
-.iw-theme-china .iw-toast-error { --iw-ev: #b8322a; }
-.iw-theme-grimoire .iw-toast-error { --iw-ev: #e06a5a; }
+.iw-theme-china .iw-toast-error { --iw-ev: #e87864; }
+.iw-theme-herbal .iw-toast-error { --iw-ev: #d06a55; }
+
+.iw-theme-arcana .iw-toast-error { --iw-ev: #e07a7a; }
+
+.iw-theme-seance .iw-toast-error { --iw-ev: #c2525a; }
+
+.iw-theme-nav .iw-toast-error { --iw-ev: #d6392e; }
 
 /* знак зодиака: цвет по стихии */
 .iw-zd-fire { --pt: #d9603a; }
@@ -7889,7 +8863,7 @@ ol {
     transition: background .15s, border-color .15s;
 }
 
-.iw-qopt:hover {
+.iw-qopt:hover:where(:not(.iw-noanim *)) {
     border-color: var(--iw-scribble);
 }
 
@@ -7973,8 +8947,23 @@ ol {
 
 .iw-theme-dark .iw-qopt.on,
 .iw-theme-cyber .iw-qopt.on,
-.iw-theme-grimoire .iw-qopt.on,
 .iw-theme-logbook .iw-qopt.on {
+    color: var(--iw-ink);
+}
+
+.iw-theme-herbal .iw-qopt.on {
+    color: var(--iw-ink);
+}
+
+.iw-theme-arcana .iw-qopt.on {
+    color: var(--iw-ink);
+}
+
+.iw-theme-seance .iw-qopt.on {
+    color: var(--iw-ink);
+}
+
+.iw-theme-nav .iw-qopt.on {
     color: var(--iw-ink);
 }
 
@@ -8014,16 +9003,30 @@ ol {
 }
 
 /* у каждой темы своя рука */
-.iw-theme-grimoire .iw-arrow-long,
 .iw-theme-medieval .iw-arrow-long { stroke-dasharray: 5 3; }
+
+.iw-theme-herbal .iw-arrow-long { stroke-dasharray: 5 3; }
+
+.iw-theme-arcana .iw-arrow-long { stroke-dasharray: 5 3; }
+
+.iw-theme-seance .iw-arrow-long { stroke-dasharray: 5 3; }
+
+.iw-theme-nav .iw-arrow-long { stroke-dasharray: 5 3; }
 .iw-theme-china .iw-arrow-long { stroke-width: 3.2; }
 .iw-theme-bimbo .iw-arrow-long { stroke-width: 2.8; }
 .iw-theme-diary .iw-arrow-long,
 .iw-theme-dark .iw-arrow-long,
 .iw-theme-sims .iw-arrow-long,
 .iw-theme-bimbo .iw-arrow-long,
-.iw-theme-grimoire .iw-arrow-long,
 .iw-theme-medieval .iw-arrow-long { filter: url(#iw-rough); }
+
+.iw-theme-herbal .iw-arrow-long { filter: url(#iw-rough); }
+
+.iw-theme-arcana .iw-arrow-long { filter: url(#iw-rough); }
+
+.iw-theme-seance .iw-arrow-long { filter: url(#iw-rough); }
+
+.iw-theme-nav .iw-arrow-long { filter: url(#iw-rough); }
 .iw-theme-logbook .iw-arrow-long,
 .iw-theme-cyber .iw-arrow-long { stroke-width: 2; }
 
@@ -8321,7 +9324,7 @@ ol {
     box-shadow: 0 -2px 0 0 #4a2730, 0 2px 0 0 #4a2730, -2px 0 0 0 #4a2730, 2px 0 0 0 #4a2730;
 }
 
-.iw-theme-pixel :is(.iw-act, .iw-btn, .iw-qopt):hover:not(:disabled) {
+.iw-theme-pixel :is(.iw-act, .iw-btn, .iw-qopt):hover:where(:not(.iw-noanim *)):not(:disabled) {
     background: #ffe3ea;
 }
 
@@ -8333,8 +9336,8 @@ ol {
     font-weight: 700;
 }
 
-.iw-theme-pixel .iw-act-all:hover:not(:disabled),
-.iw-theme-pixel .iw-qopt.on:hover {
+.iw-theme-pixel .iw-act-all:hover:where(:not(.iw-noanim *)):not(:disabled),
+.iw-theme-pixel .iw-qopt.on:hover:where(:not(.iw-noanim *)) {
     background: #8fdc6e;
 }
 
@@ -8762,8 +9765,8 @@ ol {
     text-shadow: 1px 1px 0 #4a2730;
 }
 
-.iw-theme-pixel .iw-act-all:hover:not(:disabled),
-.iw-theme-pixel .iw-qopt.on:hover {
+.iw-theme-pixel .iw-act-all:hover:where(:not(.iw-noanim *)):not(:disabled),
+.iw-theme-pixel .iw-qopt.on:hover:where(:not(.iw-noanim *)) {
     background: #e47a91;
 }
 
@@ -8896,9 +9899,9 @@ ol {
 .iw-theme-china :is(.iw-npc-badge, .iw-rw-ico) {
     border: 0;
     border-radius: 3px;
-    background: #c8312b;
-    color: #f6efe0;
-    box-shadow: inset 0 0 0 2px #c8312b, inset 0 0 0 4px #f6efe0, 2px 2px 0 rgba(90, 29, 23, .35);
+    background: #d4a64a;
+    color: #2a0c10;
+    box-shadow: inset 0 0 0 2px #d4a64a, inset 0 0 0 4px #2a0c10, 2px 2px 0 rgba(20, 6, 8, .35);
     transform: rotate(-2deg);
 }
 
@@ -8907,30 +9910,99 @@ ol {
     filter: url(#iw-brush);
 }
 
-.iw-theme-china .iw-npc.met:hover .iw-npc-badge { transform: rotate(-6deg) scale(1.05); }
+.iw-theme-china .iw-npc.met:hover:where(:not(.iw-noanim *)) .iw-npc-badge { transform: rotate(-6deg) scale(1.05); }
 
 /* ведьмин гримуар: золотой амулет в звёздах */
-.iw-theme-grimoire :is(.iw-npc-badge, .iw-rw-ico) {
-    border: 2px solid #e8c77a;
+.iw-theme-herbal :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 2px solid #d29a3c;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 40%, #3a2a4d, #1b1324 70%);
-    color: #e8c77a;
-    box-shadow: 0 0 0 3px #1b1324, 0 0 0 4px rgba(232, 199, 122, .55), 0 0 12px rgba(143, 227, 155, .25);
+    background: radial-gradient(circle at 50% 40%, #343e28, #181d13 70%);
+    color: #d29a3c;
+    box-shadow: 0 0 0 3px #181d13, 0 0 0 4px rgba(210, 154, 60, .55), 0 0 12px rgba(169, 191, 110, .25);
 }
 
-.iw-theme-grimoire .iw-npc-badge::after {
+.iw-theme-arcana :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 2px solid #e6c46e;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #2c346e, #0e1231 70%);
+    color: #e6c46e;
+    box-shadow: 0 0 0 3px #0e1231, 0 0 0 4px rgba(230, 196, 110, .55), 0 0 12px rgba(159, 211, 154, .25);
+}
+
+.iw-theme-seance :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 2px solid #c4a26f;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #483e36, #141110 70%);
+    color: #c4a26f;
+    box-shadow: 0 0 0 3px #141110, 0 0 0 4px rgba(196, 162, 111, .55), 0 0 12px rgba(211, 154, 140, .25);
+}
+
+.iw-theme-nav :is(.iw-npc-badge, .iw-rw-ico) {
+    border: 2px solid #d9c8a6;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #2a3a30, #101713 70%);
+    color: #d9c8a6;
+    box-shadow: 0 0 0 3px #101713, 0 0 0 4px rgba(217, 200, 166, .55), 0 0 12px rgba(159, 196, 160, .25);
+}
+
+.iw-theme-herbal .iw-npc-badge::after {
     content: '✦';
     position: absolute;
     top: -6px;
     right: -2px;
     font-size: 14px;
-    color: #8fe39b;
-    text-shadow: 0 0 6px rgba(143, 227, 155, .8);
+    color: #a9bf6e;
+    text-shadow: 0 0 6px rgba(169, 191, 110, .8);
 }
 
-.iw-theme-grimoire :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+.iw-theme-arcana .iw-npc-badge::after {
+    content: '✦';
+    position: absolute;
+    top: -6px;
+    right: -2px;
+    font-size: 14px;
+    color: #9fd39a;
+    text-shadow: 0 0 6px rgba(159, 211, 154, .8);
+}
+
+.iw-theme-seance .iw-npc-badge::after {
+    content: '✦';
+    position: absolute;
+    top: -6px;
+    right: -2px;
+    font-size: 14px;
+    color: #d39a8c;
+    text-shadow: 0 0 6px rgba(211, 154, 140, .8);
+}
+
+.iw-theme-nav .iw-npc-badge::after {
+    content: '✦';
+    position: absolute;
+    top: -6px;
+    right: -2px;
+    font-size: 14px;
+    color: #9fc4a0;
+    text-shadow: 0 0 6px rgba(159, 196, 160, .8);
+}
+
+.iw-theme-herbal :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
     stroke-width: 1.5;
-    filter: drop-shadow(0 0 3px rgba(232, 199, 122, .6));
+    filter: drop-shadow(0 0 3px rgba(210, 154, 60, .6));
+}
+
+.iw-theme-arcana :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 3px rgba(230, 196, 110, .6));
+}
+
+.iw-theme-seance :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 3px rgba(196, 162, 111, .6));
+}
+
+.iw-theme-nav :is(.iw-npc-ico, .iw-rw-ico .iw-ico) {
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 3px rgba(217, 200, 166, .6));
 }
 
 /* досье 90-х: штамп чернилами по картону */
@@ -8959,7 +10031,7 @@ ol {
     color: #c0262d;
 }
 
-.iw-theme-dossier .iw-npc.met:hover .iw-npc-badge { transform: rotate(-6deg) scale(1.05); }
+.iw-theme-dossier .iw-npc.met:hover:where(:not(.iw-noanim *)) .iw-npc-badge { transform: rotate(-6deg) scale(1.05); }
 
 /* бортовой журнал: шестигранник-скан на пульте */
 .iw-theme-logbook :is(.iw-npc-badge, .iw-rw-ico) {
@@ -9008,7 +10080,7 @@ ol {
 }
 
 .iw-theme-pixel .iw-reward .iw-rw-ico { color: #b4405c; }
-.iw-theme-pixel .iw-npc.met:hover .iw-npc-badge { transform: translateY(-2px); }
+.iw-theme-pixel .iw-npc.met:hover:where(:not(.iw-noanim *)) .iw-npc-badge { transform: translateY(-2px); }
 
 .iw-theme-pixel :is(.iw-npc-name, .iw-npc-title) {
     font-family: 'Press Start 2P', monospace;
@@ -9072,7 +10144,13 @@ ol {
 .iw-panel .iw-chart-end.iw-trend-down { color: var(--iw-fears); }
 .iw-panel .iw-chart-end.iw-trend-flat { color: var(--iw-muted); }
 .iw-theme-cyber .iw-chart-end { text-shadow: 0 0 8px currentColor; }
-.iw-theme-grimoire .iw-chart-end { text-shadow: 0 0 8px currentColor; }
+.iw-theme-herbal .iw-chart-end { text-shadow: 0 0 8px currentColor; }
+
+.iw-theme-arcana .iw-chart-end { text-shadow: 0 0 8px currentColor; }
+
+.iw-theme-seance .iw-chart-end { text-shadow: 0 0 8px currentColor; }
+
+.iw-theme-nav .iw-chart-end { text-shadow: 0 0 8px currentColor; }
 .iw-theme-pixel .iw-chart-end { font-family: 'Press Start 2P', monospace; font-size: 14px; }
 .iw-theme-pixel .iw-chart-end.iw-trend-up { color: #d9667f; }
 
@@ -9302,7 +10380,7 @@ ol {
     transition: transform .15s;
 }
 
-.iw-persona-tab:hover {
+.iw-persona-tab:hover:where(:not(.iw-noanim *)) {
     transform: translateY(-2px);
 }
 
@@ -9390,8 +10468,15 @@ ol {
 .iw-theme-pixel .iw-persona-note { border-radius: 0; border-style: solid; }
 .iw-theme-dark .iw-persona-tab,
 .iw-theme-cyber .iw-persona-tab,
-.iw-theme-grimoire .iw-persona-tab,
 .iw-theme-logbook .iw-persona-tab { color: var(--iw-ink); }
+
+.iw-theme-herbal .iw-persona-tab { color: var(--iw-ink); }
+
+.iw-theme-arcana .iw-persona-tab { color: var(--iw-ink); }
+
+.iw-theme-seance .iw-persona-tab { color: var(--iw-ink); }
+
+.iw-theme-nav .iw-persona-tab { color: var(--iw-ink); }
 
 @media (max-width: 760px) {
     .iw-persona-tab { max-width: 160px; padding: 6px 10px 6px 6px; }
@@ -9491,10 +10576,26 @@ ol {
 .iw-theme-grid .iw-shopbar .iw-wallet > summary { border-left: 2px solid #1f3a93; }
 .iw-theme-bimbo .iw-shopbar { border: 2px dashed #ff7ab8; background: #fff0f7; border-radius: 999px; }
 .iw-theme-bimbo .iw-shopbar .iw-wallet > summary { border-left-color: #ff7ab8; }
-.iw-theme-china .iw-shopbar { border: 2px solid #c8312b; background: #fbf7ee; border-radius: 3px; transform: none; box-shadow: 2px 2px 0 rgba(90, 29, 23, .25); }
-.iw-theme-china .iw-shopbar .iw-wallet > summary { border-left: 1px solid #c8312b; }
-.iw-theme-grimoire .iw-shopbar { border: 1px solid #e8c77a; background: rgba(232, 199, 122, .08); border-radius: 999px; transform: none; }
-.iw-theme-grimoire .iw-shopbar .iw-shop-sticker, .iw-theme-grimoire .iw-shopbar .iw-wallet > summary { color: #e8c77a; border-left: 1px solid rgba(232, 199, 122, .5); }
+.iw-theme-china .iw-shopbar { border: 2px solid #d4a64a; background: #3a1216; border-radius: 3px; transform: none; box-shadow: 2px 2px 0 rgba(20, 6, 8, .25); }
+.iw-theme-china .iw-shopbar .iw-wallet > summary { border-left: 1px solid #d4a64a; }
+.iw-theme-herbal .iw-shopbar { border: 1px solid #d29a3c; background: rgba(210, 154, 60, .08); border-radius: 999px; transform: none; }
+
+.iw-theme-arcana .iw-shopbar { border: 1px solid #e6c46e; background: rgba(230, 196, 110, .08); border-radius: 999px; transform: none; }
+
+.iw-theme-seance .iw-shopbar { border: 1px solid #c4a26f; background: rgba(196, 162, 111, .08); border-radius: 999px; transform: none; }
+
+.iw-theme-nav .iw-shopbar { border: 1px solid #d9c8a6; background: rgba(217, 200, 166, .08); border-radius: 999px; transform: none; }
+.iw-theme-herbal .iw-shopbar .iw-shop-sticker,
+.iw-theme-herbal .iw-shopbar .iw-wallet > summary { color: #d29a3c; border-left: 1px solid rgba(210, 154, 60, .5); }
+
+.iw-theme-arcana .iw-shopbar .iw-shop-sticker,
+.iw-theme-arcana .iw-shopbar .iw-wallet > summary { color: #e6c46e; border-left: 1px solid rgba(230, 196, 110, .5); }
+
+.iw-theme-seance .iw-shopbar .iw-shop-sticker,
+.iw-theme-seance .iw-shopbar .iw-wallet > summary { color: #c4a26f; border-left: 1px solid rgba(196, 162, 111, .5); }
+
+.iw-theme-nav .iw-shopbar .iw-shop-sticker,
+.iw-theme-nav .iw-shopbar .iw-wallet > summary { color: #d9c8a6; border-left: 1px solid rgba(217, 200, 166, .5); }
 .iw-theme-dossier .iw-shopbar { border: 2px solid #c0262d; background: transparent; border-radius: 0; transform: rotate(-2deg); }
 .iw-theme-dossier .iw-shopbar .iw-shop-sticker, .iw-theme-dossier .iw-shopbar .iw-wallet > summary { color: #c0262d; border-left: 2px solid #c0262d; }
 .iw-theme-logbook .iw-shopbar { border: 1px solid rgba(130, 175, 190, .45); background: rgba(38, 56, 66, .55); border-radius: 999px; transform: none; box-shadow: none; }
@@ -9710,8 +10811,23 @@ ol {
 
 .iw-theme-dark .iw-feels .iw-feel[class*="iw-face-"],
 .iw-theme-cyber .iw-feels .iw-feel[class*="iw-face-"],
-.iw-theme-grimoire .iw-feels .iw-feel[class*="iw-face-"],
 .iw-theme-logbook .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
+}
+
+.iw-theme-herbal .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
+}
+
+.iw-theme-arcana .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
+}
+
+.iw-theme-seance .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
+}
+
+.iw-theme-nav .iw-feels .iw-feel[class*="iw-face-"] {
     background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
 }
 
@@ -9764,4 +10880,1950 @@ ol {
 
 .iw-theme-medieval :where(.iw-body, .iw-foot, .iw-toast-card) {
     font-weight: 500;
+}
+
+/* привязанные лорбуки, карточку и описание персоны тоже можно снять галочкой */
+.iw-book-opt.linked {
+    cursor: pointer;
+    opacity: 1;
+}
+
+.iw-book-opt.linked:not(.on) {
+    opacity: .7;
+}
+
+.iw-book-opt.linked:hover:where(:not(.iw-noanim *)) {
+    background: var(--iw-hl-mid, rgba(0, 0, 0, .06));
+}
+
+/* синий скотч на «Отношении» — только в темах со скотчем; в остальных он торчал обрезанным кусочком */
+:is(.iw-theme-sims, .iw-theme-medieval, .iw-theme-cyber, .iw-theme-grid, .iw-theme-china, .iw-theme-logbook, .iw-theme-pixel) .iw-tape-blue {
+    display: none;
+}
+
+/* лавка в плашке: нажатое состояние повторяет форму плашки, без прямоугольной рамки фокуса */
+.iw-panel .iw-shopbar .iw-shop-sticker {
+    border-top-left-radius: inherit;
+    border-bottom-left-radius: inherit;
+    outline: none;
+}
+
+.iw-panel .iw-shopbar .iw-wallet > summary {
+    border-top-right-radius: inherit;
+    border-bottom-right-radius: inherit;
+    outline: none;
+}
+
+.iw-panel .iw-shopbar :is(.iw-shop-sticker, .iw-wallet > summary):focus-visible {
+    background: var(--iw-hl-mid);
+}
+
+.iw-theme-logbook .iw-shopbar .iw-shop-sticker.on {
+    background: rgba(98, 214, 200, .16);
+    color: #62d6c8;
+}
+.iw-panel .iw-shopbar .iw-wallet {
+    border-top-right-radius: inherit;
+    border-bottom-right-radius: inherit;
+}
+
+/* «приобретена» — своей строкой под названием: черта не растягивается и без пустоты справа */
+.iw-trait > .iw-trait-kept {
+    align-self: flex-start;
+    margin-top: 1px;
+}
+
+.iw-theme-cyber .iw-shopbar .iw-shop-sticker {
+    clip-path: none;
+}
+
+.iw-theme-cyber .iw-shopbar .iw-shop-sticker.on {
+    background: rgba(255, 62, 165, .22);
+}
+
+/* ---------- Отношение к тебе: кружок с баллом — в правом углу, текст и подпись не сдвигаются ---------- */
+.iw-panel .iw-att-cell {
+    position: relative;
+    padding-right: 50px;
+}
+
+.iw-panel .iw-att-cell .iw-score {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.iw-panel .iw-att-cell + .iw-att-cell .iw-score {
+    top: 8px;
+}
+
+.iw-panel .iw-imp-row {
+    display: block;
+}
+
+/* ---------- Черты: стрелка «подробнее» не уезжает на новую строку — переносится само название ---------- */
+.iw-panel .iw-trait-det > summary {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+}
+
+.iw-panel .iw-trait-label {
+    min-width: 0;
+}
+
+.iw-panel .iw-trait-chev {
+    margin-top: .2em;
+}
+
+/* ---------- Валюта: значок крупнее цифр, по нажатию — что это за валюта ---------- */
+.iw-panel .iw-wallet > summary {
+    gap: 5px;
+}
+
+.iw-panel .iw-wallet > summary .iw-ico {
+    font-size: 1.55em;
+}
+
+.iw-wallet-info {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: -6px;
+    z-index: 6;
+    width: min(290px, 80vw);
+    padding: 12px 14px;
+    background: var(--iw-note-bg, #fff);
+    color: var(--iw-note-ink, var(--iw-ink));
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 10px;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .25);
+    font-family: var(--iw-body-font);
+    font-size: 13.5px;
+    line-height: 1.45;
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: normal;
+}
+
+.iw-wallet-info p {
+    margin: 6px 0 0;
+}
+
+.iw-wallet-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--iw-title-font);
+    font-size: 18px;
+    line-height: 1.2;
+}
+
+.iw-wallet-title .iw-ico,
+.iw-wallet-now .iw-ico {
+    font-size: 1.6em;
+}
+
+.iw-wallet-now b {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.iw-theme-dark .iw-wallet-info,
+.iw-theme-cyber .iw-wallet-info,
+.iw-theme-logbook .iw-wallet-info {
+    background: #1d1b24;
+    color: #ece6f5;
+    border-color: currentColor;
+}
+
+.iw-theme-herbal .iw-wallet-info {
+    background: #1c2018;
+    color: #ece6f5;
+    border-color: currentColor;
+}
+
+.iw-theme-arcana .iw-wallet-info {
+    background: #141834;
+    color: #ece6f5;
+    border-color: currentColor;
+}
+
+.iw-theme-seance .iw-wallet-info {
+    background: #201c19;
+    color: #ece6f5;
+    border-color: currentColor;
+}
+
+.iw-theme-nav .iw-wallet-info {
+    background: #141c17;
+    color: #ece6f5;
+    border-color: currentColor;
+}
+
+.iw-theme-cyber .iw-wallet-info { background: #0b0d14; color: #e6f7ff; border-color: #ff3ea5; border-radius: 0; }
+.iw-theme-logbook .iw-wallet-info { background: #12202a; color: #dce5e9; border-color: rgba(130, 175, 190, .6); }
+.iw-theme-herbal .iw-wallet-info { background: #1b2116; color: #e8debe; border-color: #d29a3c; }
+
+.iw-theme-arcana .iw-wallet-info { background: #111638; color: #f0e8d2; border-color: #e6c46e; }
+
+.iw-theme-seance .iw-wallet-info { background: #1d1916; color: #eee1c8; border-color: #c4a26f; }
+
+.iw-theme-nav .iw-wallet-info { background: #131b16; color: #efe6d0; border-color: #d9c8a6; }
+.iw-theme-pixel .iw-wallet-info {
+    background: #fff4f6;
+    color: #4a2730;
+    border: 0;
+    border-radius: 0;
+    box-shadow: 0 -3px 0 #4a2730, 0 3px 0 #4a2730, -3px 0 0 #4a2730, 3px 0 0 #4a2730, 6px 7px 0 rgba(74, 39, 48, .25);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    line-height: 1.8;
+}
+.iw-theme-pixel .iw-wallet-title { font-family: 'Press Start 2P', monospace; font-size: 11px; }
+.iw-theme-pixel .iw-panel .iw-wallet > summary .iw-ico,
+.iw-panel.iw-theme-pixel .iw-wallet > summary .iw-ico { font-size: 1.9em; }
+
+/* всплывашка: сколько валюты принесло событие */
+.iw-toast-points {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 2px 9px 2px 7px;
+    border: 1.5px solid currentColor;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.iw-toast-points .iw-ico {
+    font-size: 1.5em;
+}
+
+.iw-toast-points span {
+    font-weight: 400;
+    font-size: .85em;
+    opacity: .85;
+}
+
+.iw-toasts.iw-theme-pixel .iw-toast-points,
+.iw-toasts.iw-theme-cyber .iw-toast-points,
+.iw-toasts.iw-theme-logbook .iw-toast-points,
+.iw-toasts.iw-theme-dossier .iw-toast-points { border-radius: 0; }
+
+/* ---------- Пиксельная тема: ничего не обрезается и не вылезает ---------- */
+/* скругления у ::before / ::after (в :is() псевдоэлементы не работают) */
+.iw-theme-pixel *::before,
+.iw-theme-pixel *::after {
+    border-radius: 0 !important;
+}
+
+/* кружки у «стартовые» / «открыты в игре» — ровные пиксельные квадратики */
+.iw-panel.iw-theme-pixel .iw-group-head::before,
+.iw-theme-pixel .iw-group-head::before {
+    width: 8px;
+    height: 8px;
+    border: 0;
+    background: #b4405c;
+    box-shadow: none;
+}
+
+/* настроение под именем на вкладке — в две строки, без многоточия */
+.iw-theme-pixel .iw-tab-mood {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 8px;
+    line-height: 1.35;
+    letter-spacing: -.04em;
+    overflow-wrap: normal;
+}
+
+/* эмоция: длинное название переносится по словам, сила и крестик остаются справа в первой строке */
+.iw-theme-pixel .iw-feel-top {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.iw-theme-pixel .iw-feel-name {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.iw-theme-pixel .iw-feel-top :is(.iw-feel-power, .iw-del, .iw-feel-face) {
+    flex: none;
+}
+
+.iw-theme-pixel .iw-feel-top .iw-feel-power {
+    margin-left: 0;
+    font-size: 8px;
+}
+
+/* квесты и угрозы: плотнее, шире текст */
+.iw-theme-pixel :is(.iw-want, .iw-fear) {
+    padding-top: 3px;
+    padding-bottom: 5px;
+    gap: 6px;
+}
+
+.iw-theme-pixel :is(.iw-want-text, .iw-fear-text) {
+    font-size: 10.5px;
+    line-height: 1.6;
+}
+
+/* длинная черта в пиксельной теме: стрелка «подробнее» не исчезает */
+.iw-panel .iw-trait-chev {
+    flex: none;
+}
+
+.iw-theme-pixel .iw-trait {
+    max-width: 100%;
+}
+
+/* ---------- Живой листок: пока модель пишет, поверх дневника приклеен листок с этапами ---------- */
+.iw-body.iw-live-on > :not(.iw-live) {
+    filter: blur(2.5px);
+    opacity: .55;
+    pointer-events: none;
+    transition: filter .4s, opacity .4s;
+}
+
+.iw-live {
+    position: sticky;
+    top: 14px;
+    z-index: 20;
+    height: 0;
+    overflow: visible;
+}
+
+.iw-live-card {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(380px, calc(100% - 24px));
+    transform: translateX(-50%) rotate(-1.2deg);
+    padding: 16px 18px 14px;
+    background: var(--iw-note-bg, #fffdf4);
+    color: var(--iw-note-ink, var(--iw-ink));
+    border: var(--iw-block-border, 1.5px solid currentColor);
+    border-radius: var(--iw-block-radius, 6px);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .28);
+    font-family: var(--iw-body-font);
+    animation: iw-live-in .35s ease-out;
+}
+
+@keyframes iw-live-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-8px) rotate(-3deg); }
+    to { opacity: 1; transform: translateX(-50%) rotate(-1.2deg); }
+}
+
+.iw-live-card .iw-tape {
+    top: -10px;
+}
+
+.iw-live-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.iw-live-title {
+    font-family: var(--iw-title-font);
+    font-size: 22px;
+    line-height: 1.1;
+    color: var(--iw-title-color, var(--iw-ink));
+}
+
+.iw-live-time {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--iw-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.iw-live-hide {
+    flex: none;
+}
+
+/* карандашная линия, которая всё время «дописывается» */
+.iw-live-scribble {
+    display: block;
+    width: 100%;
+    height: 12px;
+    margin: 6px 0 8px;
+    overflow: visible;
+}
+
+.iw-live-scribble path {
+    fill: none;
+    stroke: var(--iw-scribble, currentColor);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-dasharray: 260;
+    stroke-dashoffset: 260;
+    animation: iw-live-draw 2.4s ease-in-out infinite;
+}
+
+@keyframes iw-live-draw {
+    0% { stroke-dashoffset: 260; opacity: 1; }
+    70% { stroke-dashoffset: 0; opacity: 1; }
+    100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+.iw-live-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.iw-live-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14.5px;
+    opacity: .45;
+}
+
+.iw-live-step.done {
+    opacity: .75;
+}
+
+.iw-live-step.now {
+    opacity: 1;
+    font-weight: 700;
+}
+
+.iw-live-dot {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-size: 11px;
+}
+
+.iw-live-step.now .iw-live-dot {
+    background: var(--iw-hl-main);
+    animation: iw-live-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes iw-live-pulse {
+    50% { transform: scale(1.25); }
+}
+
+.iw-live-dots {
+    display: inline-flex;
+    gap: 3px;
+    margin-left: 4px;
+}
+
+.iw-live-dots i {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: iw-live-blink 1.2s infinite;
+}
+
+.iw-live-dots i:nth-child(2) { animation-delay: .2s; }
+.iw-live-dots i:nth-child(3) { animation-delay: .4s; }
+
+@keyframes iw-live-blink {
+    0%, 100% { opacity: .2; }
+    40% { opacity: 1; }
+}
+
+.iw-live-chars {
+    margin: 10px 0 0;
+    padding: 8px 0 0;
+    list-style: none;
+    border-top: 1px dashed color-mix(in srgb, currentColor 35%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.iw-live-char {
+    animation: none;
+}
+
+@keyframes iw-live-in-row {
+    from { opacity: 0; transform: translateY(4px); }
+}
+
+.iw-live-parts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+}
+
+.iw-live-part {
+    padding: 0 7px;
+    border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+    border-radius: 999px;
+    font-size: 11.5px;
+    line-height: 1.6;
+}
+
+.iw-live-len {
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .iw-live-scribble path,
+    .iw-live-step.now .iw-live-dot,
+    .iw-live-dots i { animation: none; }
+}
+
+/* в темах — свой вид листка */
+.iw-theme-dark .iw-live-card { background: #26232f; color: #ece6f5; }
+.iw-theme-cyber .iw-live-card { background: #0b0d14; color: #e6f7ff; border: 1px solid #3ef0ff; border-radius: 0; transform: translateX(-50%); box-shadow: 0 0 18px rgba(62, 240, 255, .35); }
+.iw-theme-cyber .iw-live-title { color: #3ef0ff; font-size: 18px; letter-spacing: .08em; }
+.iw-theme-logbook .iw-live-card { background: #12202a; color: #dce5e9; border: 1px solid rgba(98, 214, 200, .6); border-radius: 4px; transform: translateX(-50%); }
+.iw-theme-logbook .iw-live-title { color: #f2a93f; font-size: 18px; letter-spacing: .06em; text-transform: uppercase; }
+.iw-theme-herbal .iw-live-card { background: #1b2116; color: #e8debe; border: 1px solid #d29a3c; border-radius: 14px; transform: translateX(-50%); }
+
+.iw-theme-arcana .iw-live-card { background: #111638; color: #f0e8d2; border: 1px solid #e6c46e; border-radius: 14px; transform: translateX(-50%); }
+
+.iw-theme-seance .iw-live-card { background: #1d1916; color: #eee1c8; border: 1px solid #c4a26f; border-radius: 14px; transform: translateX(-50%); }
+
+.iw-theme-nav .iw-live-card { background: #131b16; color: #efe6d0; border: 1px solid #d9c8a6; border-radius: 14px; transform: translateX(-50%); }
+.iw-theme-herbal .iw-live-title { color: #d29a3c; }
+
+.iw-theme-arcana .iw-live-title { color: #e6c46e; }
+
+.iw-theme-seance .iw-live-title { color: #c4a26f; }
+
+.iw-theme-nav .iw-live-title { color: #d9c8a6; }
+.iw-theme-sims .iw-live-card { border-radius: 18px; border: 3px solid #2f73c0; transform: translateX(-50%); }
+.iw-theme-bimbo .iw-live-card { border: 2px dashed #ff7ab8; border-radius: 18px; background: #fff0f7; }
+.iw-theme-dossier .iw-live-card { border-radius: 0; transform: translateX(-50%) rotate(-2deg); }
+.iw-theme-china .iw-live-card { border-radius: 2px; border-color: #d4a64a; transform: translateX(-50%); }
+.iw-theme-medieval .iw-live-card { border: 3px double #8a5a2b; border-radius: 3px; background: #f6ead0; }
+.iw-theme-pixel .iw-live-card {
+    border: 0;
+    border-radius: 0;
+    transform: translateX(-50%);
+    background: #fff4f6;
+    color: #4a2730;
+    box-shadow: 0 -3px 0 #4a2730, 0 3px 0 #4a2730, -3px 0 0 #4a2730, 3px 0 0 #4a2730, 7px 8px 0 rgba(74, 39, 48, .25);
+    font-family: 'Press Start 2P', monospace;
+}
+.iw-theme-pixel .iw-live-title { font-family: 'Press Start 2P', monospace; font-size: 12px; }
+.iw-theme-pixel .iw-live-step { font-size: 10px; line-height: 1.6; }
+.iw-theme-pixel .iw-live-chars { font-size: 10px; }
+.iw-theme-pixel .iw-live-part { font-size: 8px; }
+.iw-theme-pixel .iw-live-dot { border-radius: 0; }
+.iw-theme-pixel .iw-live-dots i { border-radius: 0; }
+
+/* ---------- Совместимость, как в «Симс»: магнит-сердце … разбитое сердце ---------- */
+.iw-chem {
+    --chem: #8a7f73;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1.5px dashed color-mix(in srgb, var(--chem) 70%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--chem) 12%, transparent);
+}
+
+.iw-chem-amazing { --chem: #e0457b; }
+.iw-chem-good { --chem: #2f9e6b; }
+.iw-chem-neutral { --chem: #8a7f73; }
+.iw-chem-bad { --chem: #d9730d; }
+.iw-chem-awful { --chem: #c0262d; }
+
+.iw-theme-dark .iw-chem-neutral,
+.iw-theme-cyber .iw-chem-neutral,
+.iw-theme-logbook .iw-chem-neutral { --chem: #b8b3c4; }
+
+.iw-theme-herbal .iw-chem-neutral { --chem: #b8b096; }
+
+.iw-theme-arcana .iw-chem-neutral { --chem: #b0b4d6; }
+
+.iw-theme-seance .iw-chem-neutral { --chem: #b0a490; }
+
+.iw-theme-nav .iw-chem-neutral { --chem: #b4aa92; }
+.iw-theme-cyber .iw-chem-amazing { --chem: #ff4fd8; }
+.iw-theme-cyber .iw-chem-good { --chem: #39ff9e; }
+
+.iw-chem-ico {
+    flex: none;
+    display: inline-flex;
+    font-size: 30px;
+    line-height: 0;
+    color: var(--chem);
+}
+
+.iw-chem-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.iw-chem-name {
+    color: var(--chem);
+    font-size: 1.05em;
+}
+
+.iw-chem-why {
+    font-size: .86em;
+    line-height: 1.35;
+    opacity: .85;
+}
+
+.iw-theme-pixel .iw-chem,
+.iw-theme-cyber .iw-chem,
+.iw-theme-dossier .iw-chem,
+.iw-theme-logbook .iw-chem { border-radius: 0; }
+
+/* ---------- Лавка: значки наград ярче и крупнее, в цвете вида награды ---------- */
+.iw-rk-buff { --rk: #179452; --rk-bg: #bff0d3; }
+.iw-rk-event { --rk: #e2690a; --rk-bg: #ffd9a8; }
+.iw-rk-collect { --rk: #7a3ff0; --rk-bg: #e0ceff; }
+
+.iw-panel .iw-reward .iw-rw-ico {
+    width: 40px;
+    height: 40px;
+    font-size: 22px;
+    background: var(--rk-bg);
+    border-color: var(--rk);
+    border-style: solid;
+    color: var(--rk);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--rk) 35%, transparent);
+}
+
+.iw-panel .iw-reward .iw-rw-ico .iw-ico {
+    filter: none;
+}
+
+/* ---------- Что привлекает (как turn-ons / turn-offs в «Симс») ---------- */
+.iw-attr-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+.iw-attr-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.iw-attr-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 4px 2px 10px;
+    border: 1.5px solid var(--attr);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--attr) 14%, transparent);
+    color: color-mix(in srgb, var(--attr) 70%, var(--iw-ink));
+    font-size: .92em;
+    font-weight: 600;
+}
+
+.iw-attr-likes { --attr: #2f9e6b; }
+.iw-attr-dislikes { --attr: #c0392b; }
+.iw-theme-dark .iw-attr-chip,
+.iw-theme-cyber .iw-attr-chip,
+.iw-theme-logbook .iw-attr-chip { color: var(--attr); }
+
+.iw-theme-herbal .iw-attr-chip { color: var(--attr); }
+
+.iw-theme-arcana .iw-attr-chip { color: var(--attr); }
+
+.iw-theme-seance .iw-attr-chip { color: var(--attr); }
+
+.iw-theme-nav .iw-attr-chip { color: var(--attr); }
+.iw-theme-dark .iw-attr-likes,
+.iw-theme-cyber .iw-attr-likes,
+.iw-theme-logbook .iw-attr-likes { --attr: #6fe0a6; }
+
+.iw-theme-herbal .iw-attr-likes { --attr: #6fe0a6; }
+
+.iw-theme-arcana .iw-attr-likes { --attr: #6fe0a6; }
+
+.iw-theme-seance .iw-attr-likes { --attr: #6fe0a6; }
+
+.iw-theme-nav .iw-attr-likes { --attr: #6fe0a6; }
+.iw-theme-dark .iw-attr-dislikes,
+.iw-theme-cyber .iw-attr-dislikes,
+.iw-theme-logbook .iw-attr-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-herbal .iw-attr-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-arcana .iw-attr-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-seance .iw-attr-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-nav .iw-attr-dislikes { --attr: #ff7a6b; }
+
+.iw-attr-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 11px;
+    opacity: .6;
+    cursor: pointer;
+}
+
+.iw-attr-x:hover:where(:not(.iw-noanim *)) { opacity: 1; background: color-mix(in srgb, var(--attr) 20%, transparent); }
+
+.iw-attr-pick {
+    margin-top: 10px;
+}
+
+.iw-attr-pick > summary {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.iw-attr-pick > summary::-webkit-details-marker { display: none; }
+
+.iw-attr-panel {
+    margin-top: 8px;
+    padding: 10px;
+    border: 1.5px dashed color-mix(in srgb, var(--iw-ink) 35%, transparent);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.iw-attr-modes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.iw-attr-cat-name {
+    margin-bottom: 4px;
+    font-size: .78em;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--iw-muted);
+}
+
+.iw-attr-opts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.iw-attr-opt {
+    padding: 2px 9px;
+    border: 1px solid color-mix(in srgb, var(--iw-ink) 30%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: .85em;
+    cursor: pointer;
+}
+
+.iw-attr-opt:hover:where(:not(.iw-noanim *)) { background: var(--iw-hl-mid); }
+.iw-attr-opt.on { background: var(--iw-hl-main); border-color: var(--iw-ink); font-weight: 700; }
+.iw-attr-opt.other { opacity: .45; text-decoration: line-through; }
+
+.iw-attr-own {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.iw-attr-own .iw-attr-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.iw-theme-pixel .iw-attr-chip,
+.iw-theme-pixel .iw-attr-opt,
+.iw-theme-cyber .iw-attr-chip,
+.iw-theme-cyber .iw-attr-opt,
+.iw-theme-dossier .iw-attr-chip,
+.iw-theme-logbook .iw-attr-opt { border-radius: 0; }
+.iw-theme-pixel .iw-attr-chip { font-size: 9px; }
+.iw-theme-pixel .iw-attr-opt { font-size: 8px; line-height: 1.8; }
+
+/* совместимость сейчас: шкала от отторжения до притяжения */
+.iw-chem-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.iw-chem-wrap .iw-chem {
+    margin: 0;
+}
+
+.iw-chem-now {
+    border-style: solid;
+}
+
+.iw-chem-meter {
+    display: inline-flex;
+    gap: 3px;
+    margin: 4px 0 2px;
+}
+
+.iw-chem-cell {
+    width: 18px;
+    height: 7px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--iw-ink) 14%, transparent);
+}
+
+.iw-chem-cell.mid { width: 7px; background: color-mix(in srgb, var(--iw-ink) 35%, transparent); }
+.iw-chem-cell.pos.on { background: #2f9e6b; }
+.iw-chem-cell.neg.on { background: #c0392b; }
+.iw-theme-cyber .iw-chem-cell.pos.on { background: #39ff9e; box-shadow: 0 0 6px #39ff9e; }
+.iw-theme-cyber .iw-chem-cell.neg.on { background: #ff3b3b; box-shadow: 0 0 6px #ff3b3b; }
+.iw-theme-dark .iw-chem-cell,
+.iw-theme-cyber .iw-chem-cell,
+.iw-theme-logbook .iw-chem-cell { background: rgba(255, 255, 255, .14); }
+
+.iw-theme-herbal .iw-chem-cell { background: rgba(255, 255, 255, .14); }
+
+.iw-theme-arcana .iw-chem-cell { background: rgba(255, 255, 255, .14); }
+
+.iw-theme-seance .iw-chem-cell { background: rgba(255, 255, 255, .14); }
+
+.iw-theme-nav .iw-chem-cell { background: rgba(255, 255, 255, .14); }
+.iw-theme-pixel .iw-chem-cell,
+.iw-theme-cyber .iw-chem-cell,
+.iw-theme-logbook .iw-chem-cell { border-radius: 0; }
+
+/* свёрнутый листок — ярлычок в углу, нажми, чтобы вернуть */
+.iw-live-mini {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.iw-live-peek {
+    position: absolute;
+    top: 0;
+    right: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 10px;
+    border: var(--iw-block-border, 1.5px solid currentColor);
+    border-radius: 999px;
+    background: var(--iw-note-bg, #fffdf4);
+    color: var(--iw-note-ink, var(--iw-ink));
+    font: inherit;
+    font-size: 13px;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, .22);
+    cursor: pointer;
+    transform: rotate(1.5deg);
+}
+
+.iw-live-peek:hover:where(:not(.iw-noanim *)) { transform: rotate(0) scale(1.03); }
+.iw-live-peek .iw-ico { font-size: 16px; }
+.iw-theme-dark .iw-live-peek { background: #26232f; color: #ece6f5; }
+.iw-theme-cyber .iw-live-peek { background: #0b0d14; color: #3ef0ff; border: 1px solid #3ef0ff; border-radius: 0; transform: none; }
+.iw-theme-logbook .iw-live-peek { background: #12202a; color: #dce5e9; border: 1px solid rgba(98, 214, 200, .6); border-radius: 4px; transform: none; }
+.iw-theme-herbal .iw-live-peek { background: #1b2116; color: #e8debe; border: 1px solid #d29a3c; }
+
+.iw-theme-arcana .iw-live-peek { background: #111638; color: #f0e8d2; border: 1px solid #e6c46e; }
+
+.iw-theme-seance .iw-live-peek { background: #1d1916; color: #eee1c8; border: 1px solid #c4a26f; }
+
+.iw-theme-nav .iw-live-peek { background: #131b16; color: #efe6d0; border: 1px solid #d9c8a6; }
+.iw-theme-pixel .iw-live-peek { border: 0; border-radius: 0; transform: none; background: #fff4f6; color: #4a2730; box-shadow: 0 -2px 0 #4a2730, 0 2px 0 #4a2730, -2px 0 0 #4a2730, 2px 0 0 #4a2730; font-family: 'Press Start 2P', monospace; font-size: 9px; }
+
+/* ---------- Стоп — просто кнопка, без крутящегося кольца ---------- */
+.iw-act.iw-act-stop .iw-stop-ring::before {
+    content: none;
+    animation: none;
+}
+
+.iw-panel .iw-act.busy.iw-act-stop .iw-ico {
+    font-size: 1em;
+}
+
+/* ---------- Анимации выключены: всё статично ---------- */
+.iw-noanim *,
+.iw-noanim *::before,
+.iw-noanim *::after,
+.iw-noanim.iw-toasts .iw-toast-wrap {
+    animation: none !important;
+    transition: none !important;
+}
+
+.iw-tool.iw-anim.off {
+    opacity: .55;
+}
+.iw-noanim .iw-live-scribble path {
+    stroke-dashoffset: 0;
+}
+
+/* «привлекает / отталкивает» — по разделам */
+.iw-attr-group {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    align-items: start;
+    gap: 6px;
+}
+
+.iw-attr-group-name {
+    padding-top: 4px;
+    font-size: .78em;
+    color: var(--iw-muted);
+}
+
+@media (max-width: 560px) {
+    .iw-attr-group { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+    .iw-attr-group-name { padding-top: 0; }
+}
+
+.iw-theme-pixel .iw-attr-group-name { font-size: 8px; }
+
+/* «Что привлекает» — во всю ширину дневника */
+.iw-grid > .iw-b-attraction {
+    grid-column: 1 / -1;
+}
+
+.iw-attr-own .iw-attr-input {
+    min-width: 200px;
+}
+
+/* «Привлекает» и «Отталкивает» — две карточки рядом (на телефоне друг под другом) */
+.iw-attr-cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+@media (max-width: 560px) {
+    .iw-attr-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+.iw-attr-cols .iw-attr-row {
+    margin: 0;
+    padding: 10px 12px 12px;
+    gap: 8px;
+    border: 1.5px solid color-mix(in srgb, var(--attr) 45%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--attr) 7%, transparent);
+}
+
+.iw-attr-row-likes { --attr: #2f9e6b; }
+.iw-attr-row-dislikes { --attr: #c0392b; }
+.iw-theme-dark .iw-attr-row-likes,
+.iw-theme-cyber .iw-attr-row-likes,
+.iw-theme-logbook .iw-attr-row-likes { --attr: #6fe0a6; }
+
+.iw-theme-herbal .iw-attr-row-likes { --attr: #6fe0a6; }
+
+.iw-theme-arcana .iw-attr-row-likes { --attr: #6fe0a6; }
+
+.iw-theme-seance .iw-attr-row-likes { --attr: #6fe0a6; }
+
+.iw-theme-nav .iw-attr-row-likes { --attr: #6fe0a6; }
+.iw-theme-dark .iw-attr-row-dislikes,
+.iw-theme-cyber .iw-attr-row-dislikes,
+.iw-theme-logbook .iw-attr-row-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-herbal .iw-attr-row-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-arcana .iw-attr-row-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-seance .iw-attr-row-dislikes { --attr: #ff7a6b; }
+
+.iw-theme-nav .iw-attr-row-dislikes { --attr: #ff7a6b; }
+
+.iw-attr-cap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--attr);
+    font-weight: 700;
+    font-size: .9em;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.iw-attr-cap .iw-ico {
+    font-size: 1.1em;
+}
+
+.iw-attr-count {
+    margin-left: auto;
+    font-weight: 400;
+    opacity: .7;
+}
+
+.iw-theme-pixel .iw-attr-cols .iw-attr-row,
+.iw-theme-cyber .iw-attr-cols .iw-attr-row,
+.iw-theme-dossier .iw-attr-cols .iw-attr-row { border-radius: 0; }
+.iw-theme-pixel .iw-attr-cap { font-size: 9px; }
+
+/* первая совместимость и «сейчас» — тоже рядом */
+.iw-b-attraction .iw-chem-wrap {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+@media (max-width: 560px) {
+    .iw-b-attraction .iw-chem-wrap { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ---------- Сворачивание блоков ---------- */
+.iw-block-head .iw-fold {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font-size: 15px;
+    opacity: .55;
+    cursor: pointer;
+}
+
+.iw-block-head > .iw-fold:not(:first-child) {
+    margin-left: 6px;
+}
+
+.iw-block-head .iw-label + .iw-fold,
+.iw-block-head .iw-fold-sum + .iw-fold {
+    margin-left: auto;
+}
+
+.iw-block-head .iw-fold:hover:where(:not(.iw-noanim *)) { opacity: 1; background: var(--iw-hl-mid); }
+.iw-block-head .iw-fold .iw-ico { transition: transform .15s; }
+.iw-collapsed .iw-block-head .iw-fold .iw-ico { transform: rotate(-90deg); }
+
+.iw-block-head [data-iw-fold].iw-label { cursor: pointer; }
+
+.iw-block.iw-collapsed > :not(.iw-block-head):not(.iw-tape) {
+    display: none !important;
+}
+
+.iw-block.iw-collapsed .iw-block-head {
+    margin-bottom: 0;
+    border-bottom: 0;
+}
+
+.iw-fold-sum {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin-left: 8px;
+    font-family: var(--iw-body-font);
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--iw-muted);
+    cursor: pointer;
+}
+
+.iw-theme-pixel .iw-fold-sum { font-size: 9px; }
+
+/* «ещё N» у тегов притяжения */
+.iw-attr-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border: 1px dashed currentColor;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--attr, inherit);
+    font: inherit;
+    font-size: .85em;
+    cursor: pointer;
+}
+
+.iw-attr-more .iw-ico { font-size: 1em; }
+
+/* свёрнутый блок — во всю ширину, чтобы сводка рядом с заголовком помещалась */
+.iw-grid > .iw-block.iw-collapsed {
+    grid-column: 1 / -1;
+}
+
+.iw-block.iw-collapsed .iw-block-head .iw-label {
+    flex: none;
+    max-width: 50%;
+}
+
+.iw-theme-pixel .iw-fold-sum { color: #fff; opacity: .85; }
+.iw-theme-pixel .iw-block-head .iw-fold { color: #fff; opacity: .85; }
+.iw-block.iw-collapsed { padding-bottom: 0; }
+.iw-theme-pixel .iw-block.iw-collapsed { padding-bottom: 0 !important; }
+.iw-theme-pixel .iw-block.iw-collapsed .iw-block-head { margin-bottom: 0 !important; }
+
+/* пометка «дневник героя только для тебя» — внизу, рядом с «забыть» */
+.iw-foot .iw-foot-note {
+    margin: 0 auto 0 0;
+    padding: 0;
+    border: 0;
+    font-size: 12px;
+    gap: 5px;
+    align-items: center;
+    min-width: 0;
+}
+
+.iw-foot .iw-foot-note .iw-ico { flex: none; }
+.iw-foot .iw-status:empty { display: none; }
+
+/* ---------- Сводка свёрнутого блока — в стиле самого блока, ровно по строке заголовка ---------- */
+.iw-block.iw-collapsed .iw-block-head {
+    align-items: center;
+}
+
+.iw-panel .iw-fold-sum {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    align-self: center;
+    margin-left: 10px;
+    padding-top: 1px;
+    font-family: var(--iw-body-font);
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--iw-ink);
+}
+
+.iw-fold-sum .iw-fs-text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* настроение — как в развёрнутом: «Сейчас он» и слово на плашке */
+.iw-panel .iw-fs-mood .iw-mood-lead {
+    flex: none;
+    color: var(--iw-muted);
+    font-size: .95em;
+}
+
+.iw-panel .iw-fs-mood .iw-mood-word {
+    flex: none;
+    font-size: 1.05em;
+}
+
+.iw-fs-wants { --fs: var(--iw-wants); }
+.iw-fs-fears { --fs: var(--iw-fears); }
+.iw-fs-dream { --fs: var(--iw-dream); }
+.iw-fs-traits { --fs: var(--iw-traits); }
+
+.iw-panel :is(.iw-fs-wants, .iw-fs-fears, .iw-fs-dream, .iw-fs-traits) {
+    color: var(--fs);
+    font-weight: 600;
+}
+
+.iw-panel .iw-fs-dream .iw-fs-text {
+    font-style: italic;
+}
+
+/* отношение: маленький кружок с баллом и мысль */
+.iw-panel .iw-fs-impression .iw-score {
+    flex: none;
+    min-width: 26px;
+    height: 26px;
+    font-size: 12px;
+    border-width: 1.5px;
+}
+
+/* притяжение: значок и уровень цветом совместимости */
+.iw-fs-chem {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--chem);
+}
+
+.iw-fs-chem .iw-ico { font-size: 1.3em; }
+.iw-fs-attraction .iw-fs-text { color: var(--iw-muted); font-size: .92em; }
+.iw-fs-persona .iw-fs-text,
+.iw-fs-chronicle .iw-fs-text { color: var(--iw-muted); }
+
+.iw-theme-pixel .iw-panel .iw-fold-sum,
+.iw-panel.iw-theme-pixel .iw-fold-sum { font-size: 9px; color: #fff; opacity: 1; }
+.iw-panel.iw-theme-pixel :is(.iw-fs-wants, .iw-fs-fears, .iw-fs-dream, .iw-fs-traits) { color: #fff; }
+.iw-panel.iw-theme-pixel .iw-fs-mood .iw-mood-lead { color: #ffe3ea; }
+.iw-panel.iw-theme-pixel :is(.iw-fs-persona, .iw-fs-chronicle, .iw-fs-attraction) .iw-fs-text { color: #ffe3ea; }
+
+/* ---------- Свёрнутые блоки: сводка на одной линии с заголовком (по базовой линии текста) ---------- */
+.iw-block.iw-collapsed .iw-block-head {
+    align-items: baseline;
+}
+
+.iw-block.iw-collapsed .iw-block-head > :is(.iw-block-icon, .iw-fold) {
+    align-self: center;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-fold-sum {
+    align-self: baseline;
+    align-items: baseline;
+    padding-top: 0;
+}
+
+/* настроение — тем же шрифтом, что «Сейчас он …» в развёрнутом, чуть мельче */
+.iw-panel .iw-fold-sum.iw-fs-mood.iw-mood-now {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    font-family: var(--iw-title-font);
+    font-size: calc(var(--iw-sub-size, 20px) * .85);
+    font-weight: 700;
+    color: var(--iw-ink);
+}
+
+.iw-panel .iw-fs-mood .iw-mood-lead {
+    color: var(--iw-muted);
+    font-size: .8em;
+}
+
+/* тип личности, хроника, притяжение — шрифтом подзаголовков блока */
+.iw-panel .iw-fold-sum.iw-fs-title {
+    font-family: var(--iw-title-font);
+    font-size: calc(var(--iw-sub-size, 20px) * .8);
+    font-weight: 700;
+}
+
+.iw-panel .iw-fs-title .iw-fs-text { color: var(--iw-ink); }
+.iw-theme-logbook .iw-panel .iw-fold-sum.iw-fs-title,
+.iw-panel.iw-theme-logbook .iw-fold-sum.iw-fs-title,
+.iw-panel.iw-theme-logbook .iw-fold-sum.iw-fs-mood { font-family: 'Oswald', sans-serif; font-weight: 500; }
+.iw-panel.iw-theme-pixel .iw-fold-sum.iw-fs-title,
+.iw-panel.iw-theme-pixel .iw-fold-sum.iw-fs-mood { font-family: 'Press Start 2P', monospace; font-size: 9px; font-weight: 400; color: #fff; }
+.iw-panel.iw-theme-pixel .iw-fs-title .iw-fs-text { color: #fff; }
+.iw-panel.iw-theme-logbook .iw-fold-sum.iw-fs-title,
+.iw-panel.iw-theme-logbook .iw-fold-sum.iw-fs-mood { font-size: 16px; letter-spacing: .03em; }
+
+/* подраздел внутри раздела настроек («Эмоции», «Притяжение») */
+.iw-f-sub {
+    margin: 10px 0 2px;
+    padding-bottom: 3px;
+    border-bottom: 1px dashed color-mix(in srgb, currentColor 30%, transparent);
+    font-weight: 700;
+    font-size: .82em;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+/* ---------- Кошелёк: листок с пояснением поверх всего, цифры ровно по центру значка ---------- */
+.iw-panel .iw-head {
+    position: relative;
+    z-index: 40;
+}
+
+.iw-panel .iw-wallet[open] {
+    z-index: 60;
+}
+
+.iw-panel .iw-wallet-info {
+    z-index: 70;
+}
+
+.iw-panel .iw-wallet > summary {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.iw-panel .iw-wallet > summary b,
+.iw-panel .iw-points b,
+.iw-wallet-now b > span {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.iw-panel .iw-points {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1;
+}
+
+.iw-wallet-now {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.iw-wallet-now b {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    line-height: 1;
+}
+
+.iw-wallet-now .iw-ico,
+.iw-wallet-title .iw-ico {
+    flex: none;
+    display: block;
+}
+
+.iw-wallet-title {
+    line-height: 1;
+}
+
+.iw-wallet-title span {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ---------- Мечта — одним начертанием: продолжение мечты не выделяется курсивом ---------- */
+.iw-panel .iw-dream-title .iw-dream-plus {
+    font: inherit;
+    color: inherit;
+    opacity: 1;
+}
+
+/* ---------- Свёрнутый блок — только заголовок; значок и стрелка ровно по его середине ---------- */
+.iw-panel .iw-block.iw-collapsed .iw-block-head {
+    align-items: center;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-block-head > :is(.iw-block-icon, .iw-fold, .iw-label) {
+    align-self: center;
+}
+
+.iw-panel .iw-block-head > .iw-block-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-block-head .iw-label {
+    max-width: none;
+    flex: 0 1 auto;
+}
+
+/* ---------- Стрелка сворачивания: заметная кнопка-кружок; вверх — свернуть, вниз — развернуть ---------- */
+.iw-panel .iw-block-head .iw-fold {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid color-mix(in srgb, currentColor 45%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    font-size: 16px;
+    opacity: .9;
+    transition: background .15s, border-color .15s, opacity .15s, box-shadow .15s;
+}
+
+.iw-panel .iw-block-head .iw-fold .iw-ico {
+    stroke-width: 2.6;
+    transform: rotate(180deg);
+    transition: transform .2s ease;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-block-head .iw-fold .iw-ico {
+    transform: none;
+}
+
+.iw-panel .iw-block-head .iw-fold:hover:where(:not(.iw-noanim *)),
+.iw-panel .iw-block-head .iw-fold:focus-visible {
+    opacity: 1;
+    border-color: currentColor;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+    outline: none;
+}
+
+.iw-panel.iw-noanim .iw-block-head .iw-fold,
+.iw-panel.iw-noanim .iw-block-head .iw-fold .iw-ico { transition: none; }
+
+/* угловатые темы — угловатая кнопка */
+.iw-panel:is(.iw-theme-cyber, .iw-theme-pixel, .iw-theme-dossier, .iw-theme-grid) .iw-block-head .iw-fold { border-radius: 0; }
+.iw-panel.iw-theme-logbook .iw-block-head .iw-fold { border-radius: 6px; }
+.iw-panel.iw-theme-cyber .iw-block-head .iw-fold { border-color: currentColor; box-shadow: 0 0 6px color-mix(in srgb, currentColor 40%, transparent); }
+.iw-panel.iw-theme-pixel .iw-block-head .iw-fold { border: 2px solid #fff; background: rgba(255, 255, 255, .15); opacity: 1; }
+
+/* ---------- Бимбо: «Магазин» в плашке читается и когда не выбран ---------- */
+.iw-panel.iw-theme-bimbo .iw-shopbar .iw-shop-sticker { color: #d6247f; }
+.iw-panel.iw-theme-bimbo .iw-shopbar .iw-shop-sticker.on { background: linear-gradient(135deg, #d68cff, #ff5aa8); color: #fff; }
+.iw-panel.iw-theme-bimbo .iw-shopbar .iw-wallet > summary { color: #d6247f; }
+
+/* ==========================================================================
+   Травница, Аркан, Сеанс — по мотивам тем «Ведьмин час».
+   Основа у них общая (как у старого гримуара), здесь — свой характер каждой.
+   ========================================================================== */
+
+/* ---------- Травница: сухие травы, янтарь, шалфей ---------- */
+.iw-theme-herbal {
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(160, 130, 60, .2), transparent 70%), radial-gradient(ellipse at 10% 95%, rgba(120, 95, 40, .16), transparent 50%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='none' stroke='%23a9bf6e' stroke-linecap='round'%3E%3Cpath d='M20 150c10-18 22-30 38-38' opacity='.22'/%3E%3Cpath d='M30 136c-6-6-6-12-2-16 5 2 6 9 2 16zM42 124c-7-3-9-9-6-14 6 1 8 7 6 14zM48 116c4-7 10-9 15-6-2 6-8 8-15 6z' fill='%23a9bf6e' stroke='none' opacity='.16'/%3E%3Cpath d='M140 40c-4 12-12 22-24 28' opacity='.2'/%3E%3Cpath d='M134 52c6-3 11-1 13 3-4 3-10 2-13-3zM126 60c-2-6 0-11 5-12 2 5 0 10-5 12z' fill='%23a9bf6e' stroke='none' opacity='.15'/%3E%3C/g%3E%3Cg fill='%23d29a3c'%3E%3Ccircle cx='92' cy='30' r='1' opacity='.35'/%3E%3Ccircle cx='160' cy='120' r='1.1' opacity='.3'/%3E%3Ccircle cx='70' cy='92' r='.8' opacity='.3'/%3E%3C/g%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 100% 100%, 180px 180px;
+    --iw-label-size: 21px;
+    --iw-sub-size: 17px;
+    --iw-text-size: 15px;
+    --iw-block-radius: 10px;
+}
+
+.iw-theme-herbal .iw-title { font-size: 36px; line-height: 1.15; }
+.iw-theme-herbal .iw-titlebox::after { content: '❦'; color: #a9bf6e; text-shadow: 0 0 8px rgba(169, 191, 110, .5); right: -32px; top: 6px; }
+.iw-theme-herbal .iw-label { font-size: var(--iw-label-size); letter-spacing: .01em; }
+.iw-theme-herbal .iw-npc-sticker-title { font-size: 18px; }
+.iw-theme-herbal :is(.iw-mood-word, .iw-dream-title, .iw-imp-label) { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; }
+.iw-theme-herbal .iw-mood-word { font-style: italic; font-size: 1.15em; }
+.iw-theme-herbal .iw-dream-title { font-size: 1.3em; }
+
+/* ---------- Аркан: ночное небо, золото, лунный голубой ---------- */
+.iw-theme-arcana {
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(90, 110, 220, .24), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170' viewBox='0 0 170 170'%3E%3Cg fill='%23f1d27f'%3E%3Ccircle cx='14' cy='20' r='1' opacity='.55'/%3E%3Ccircle cx='72' cy='44' r='.8' opacity='.4'/%3E%3Ccircle cx='136' cy='24' r='1.2' opacity='.5'/%3E%3Ccircle cx='42' cy='116' r='.9' opacity='.45'/%3E%3Ccircle cx='104' cy='138' r='1' opacity='.35'/%3E%3Ccircle cx='158' cy='96' r='.8' opacity='.45'/%3E%3Cpath d='M120 74l1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6z' opacity='.4'/%3E%3Cpath d='M30 64l1 3 3 1-3 1-1 3-1-3-3-1 3-1z' opacity='.35'/%3E%3C/g%3E%3Cpath d='M86 96a10 10 0 1 0 10 13 8 8 0 1 1-10-13z' fill='%23a8b8f2' opacity='.16'/%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 170px 170px;
+    --iw-label-size: 23px;
+    --iw-sub-size: 19px;
+    --iw-body-font: 'Jura', 'Segoe UI', sans-serif;
+    --iw-text-size: 16px;
+    --iw-block-radius: 12px;
+    --iw-frame-radius: 50% 50% 4px 4px / 38% 38% 4px 4px;
+}
+
+.iw-theme-arcana .iw-book { font-weight: 500; }
+.iw-theme-arcana .iw-title { font-family: 'Poiret One', 'Forum', serif; font-size: 42px; letter-spacing: .04em; }
+.iw-theme-arcana .iw-titlebox::after { content: '✦ ☾ ✦'; font-size: 16px; right: -64px; top: 14px; color: #e6c46e; text-shadow: 0 0 10px rgba(242, 207, 124, .6); }
+.iw-theme-arcana .iw-label { font-size: var(--iw-label-size); letter-spacing: .03em; }
+.iw-theme-arcana .iw-npc-sticker-title { font-size: 20px; }
+.iw-theme-arcana :is(.iw-mood-word, .iw-dream-title, .iw-imp-label) { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; }
+.iw-theme-arcana .iw-mood-word { font-style: italic; font-size: 1.2em; }
+.iw-theme-arcana .iw-dream-title { font-size: 1.3em; color: #f1d27f; }
+.iw-theme-arcana .iw-block { outline: 1px solid rgba(201, 164, 92, .28); outline-offset: -6px; }
+.iw-theme-arcana .iw-b-impression { outline: 0; }
+
+/* ---------- Сеанс: свечной воск, старая бумага, приглушённая роза ---------- */
+.iw-theme-seance {
+    --iw-paper: radial-gradient(ellipse at 90% 0%, rgba(196, 162, 111, .12), transparent 45%), radial-gradient(ellipse at 50% 120%, rgba(0, 0, 0, .45), transparent 60%);
+    --iw-paper-size: 100% 100%, 100% 100%;
+    --iw-label-size: 20px;
+    --iw-sub-size: 17px;
+    --iw-body-font: 'Ledger', Georgia, serif;
+    --iw-text-size: 15px;
+    --iw-block-radius: 3px;
+    --iw-block-border: 1px solid rgba(214, 201, 179, .3);
+    --iw-block-shadow: inset 0 0 0 3px rgba(29, 25, 22, .95), inset 0 0 0 4px rgba(214, 201, 179, .16), 0 8px 18px rgba(0, 0, 0, .4);
+    --iw-frame: 0 0 0 3px #e7dcc5, 0 0 0 5px #2a231e, 0 0 0 6px #8a7558, 0 6px 14px rgba(0, 0, 0, .35);
+    --iw-frame-radius: 50%;
+}
+
+.iw-theme-seance .iw-title { font-size: 38px; letter-spacing: .06em; text-shadow: 0 0 16px rgba(196, 162, 111, .3); }
+.iw-theme-seance .iw-titlebox::after { content: '· ❖ ·'; font-size: 15px; right: -54px; top: 16px; color: #c4a26f; text-shadow: none; }
+.iw-theme-seance .iw-label { font-size: var(--iw-label-size); letter-spacing: .05em; }
+.iw-theme-seance .iw-npc-sticker-title { font-size: 17px; }
+.iw-theme-seance :is(.iw-mood-word, .iw-dream-title, .iw-imp-label) { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600; }
+.iw-theme-seance .iw-mood-word { font-style: italic; font-size: 1.2em; }
+.iw-theme-seance .iw-dream-title { font-size: 1.3em; color: #eee1c8; }
+.iw-theme-seance .iw-block-head { border-bottom: 3px double rgba(205, 185, 153, .35); }
+.iw-theme-seance .iw-block.iw-collapsed .iw-block-head { border-bottom: 0; }
+
+@media (max-width: 560px) {
+    .iw-theme-herbal .iw-title { font-size: 28px; }
+    .iw-theme-arcana .iw-title { font-size: 32px; }
+    .iw-theme-seance .iw-title { font-size: 30px; }
+    .iw-theme-arcana .iw-titlebox::after,
+    .iw-theme-seance .iw-titlebox::after { display: none; }
+}
+
+/* ---------- Без анимаций — всё статично: при наведении ничего не подпрыгивает и не качается ---------- */
+.iw-panel.iw-noanim :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini, .iw-persona-tab, .iw-npc.met, .iw-live-peek, .iw-fold),
+.iw-panel.iw-noanim :is(.iw-act, .iw-tool, .iw-back, .iw-btn, .iw-buy, .iw-book-go, .iw-mini, .iw-persona-tab, .iw-npc.met, .iw-live-peek, .iw-fold):hover:where(:not(.iw-noanim *)),
+.iw-panel.iw-noanim .iw-npc.met:hover:where(:not(.iw-noanim *)) .iw-npc-badge,
+.iw-panel.iw-noanim :is(.iw-act, .iw-tool, .iw-btn, .iw-mini, .iw-book-go):hover:where(:not(.iw-noanim *)) .iw-ico {
+    transform: none !important;
+}
+
+/* стрелка сворачивания при этом всё равно показывает, куда раскроется */
+.iw-panel.iw-noanim .iw-block-head .iw-fold .iw-ico { transform: rotate(180deg) !important; }
+.iw-panel.iw-noanim .iw-block.iw-collapsed .iw-block-head .iw-fold .iw-ico { transform: none !important; }
+
+/* ---------- Досье: «Всё сразу» при наведении светлеет, как «Чат» и «Лорбук», текст не пропадает ---------- */
+.iw-panel.iw-theme-dossier :is(.iw-act-all, .iw-book-go):hover:where(:not(.iw-noanim *)):not(:disabled) {
+    background: #fffbe0;
+    color: #262422;
+}
+
+.iw-panel.iw-theme-dossier :is(.iw-act-all, .iw-book-go):hover:where(:not(.iw-noanim *)):not(:disabled) * {
+    color: inherit;
+}
+
+/* ---------- Низ настроек: язык записей, очистка и сброс, подпись ---------- */
+.iw-panel .iw-form-foot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1.5px dashed var(--iw-divider);
+}
+
+.iw-panel .iw-form-foot .iw-lang { margin: 0; }
+.iw-panel .iw-form-foot .iw-lang-cap { opacity: .75; }
+
+.iw-panel .iw-foot-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.iw-panel .iw-sign {
+    font-size: 12.5px;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--iw-muted);
+}
+
+.iw-panel .iw-sign-nick {
+    color: var(--iw-title-color, var(--iw-ink));
+    font-weight: 700;
+    text-decoration: none;
+    border-bottom: 1px dotted currentColor;
+}
+
+.iw-panel .iw-sign-nick:hover:where(:not(.iw-noanim *)) { border-bottom-style: solid; }
+
+/* выбранный язык — сразу видно: залит цветом чернил, со знаком ✓ */
+.iw-panel .iw-form-foot .iw-lang-opt.on {
+    background: var(--iw-ink);
+    color: var(--iw-bg);
+    border-color: var(--iw-ink);
+    font-weight: 700;
+    box-shadow: none;
+}
+
+.iw-panel .iw-form-foot .iw-lang-opt.on::before { content: '✓ '; }
+.iw-panel .iw-form-foot .iw-lang-opt:not(.on) { opacity: .7; }
+
+.iw-panel.iw-theme-dossier .iw-form-foot .iw-lang-opt.on { background: #c0262d; border-color: #c0262d; color: #fff; }
+.iw-panel.iw-theme-cyber .iw-form-foot .iw-lang-opt.on { background: #ff3ea5; border-color: #ff3ea5; color: #0b0d14; }
+.iw-panel.iw-theme-sims .iw-form-foot .iw-lang-opt.on { background: #2f73c0; border-color: #2f73c0; color: #fff; }
+.iw-panel.iw-theme-bimbo .iw-form-foot .iw-lang-opt.on { background: linear-gradient(135deg, #d68cff, #ff5aa8); border-color: #ff5aa8; color: #fff; }
+.iw-panel.iw-theme-china .iw-form-foot .iw-lang-opt.on { background: #d4a64a; border-color: #d4a64a; color: #46181c; }
+.iw-panel.iw-theme-medieval .iw-form-foot .iw-lang-opt.on { background: #a3241a; border-color: #a3241a; color: #f6ead0; }
+.iw-panel.iw-theme-logbook .iw-form-foot .iw-lang-opt.on { background: #f2a93f; border-color: #f2a93f; color: #0c141a; }
+.iw-panel.iw-theme-herbal .iw-form-foot .iw-lang-opt.on { background: #d29a3c; border-color: #d29a3c; color: #1b1407; }
+.iw-panel.iw-theme-arcana .iw-form-foot .iw-lang-opt.on { background: #e6c46e; border-color: #e6c46e; color: #12163a; }
+.iw-panel.iw-theme-seance .iw-form-foot .iw-lang-opt.on { background: #c4a26f; border-color: #c4a26f; color: #140f0b; }
+.iw-panel.iw-theme-pixel .iw-form-foot .iw-lang-opt.on { background: #4a2730; border-color: #4a2730; color: #fff; }
+
+/* ---------- Лорбуки в настройках: тот же список с галочками, кнопка во всю ширину ---------- */
+.iw-panel .iw-books.iw-books-wide {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.iw-panel .iw-books-wide > summary.iw-books-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 38px;
+    padding: 6px 12px;
+    border: 1.5px solid var(--iw-ink);
+    border-radius: 8px;
+    background: var(--iw-block-bg, transparent);
+    color: var(--iw-ink);
+    font: inherit;
+    cursor: pointer;
+    list-style: none;
+}
+
+.iw-panel .iw-books-wide > summary.iw-books-field::-webkit-details-marker { display: none; }
+.iw-panel .iw-books-wide .iw-books-field-text { flex: 1 1 auto; min-width: 0; text-align: left; }
+.iw-panel .iw-books-wide .iw-books-field > .iw-ico:last-child { transition: transform .15s; }
+.iw-panel .iw-books-wide[open] .iw-books-field > .iw-ico:last-child { transform: rotate(180deg); }
+
+.iw-panel .iw-books-wide > .iw-books-menu {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin-top: 6px;
+    transform: none;
+    left: auto;
+    right: auto;
+    top: auto;
+}
+
+.iw-panel:is(.iw-theme-cyber, .iw-theme-pixel, .iw-theme-dossier) .iw-books-wide > summary.iw-books-field { border-radius: 0; }
+.iw-panel.iw-theme-bimbo .iw-books-wide > summary.iw-books-field { border-radius: 999px; border-color: #ff7ab8; }
+.iw-panel .iw-books-wide > summary.iw-books-field { margin: 0; }
+.iw-panel .iw-books-wide[open] .iw-books-field > .iw-ico:first-child { transform: none; }
+.iw-panel .iw-books-wide > .iw-books-menu { width: auto; }
+
+/* травница: имена на вкладках рукописным шрифтом — с запасом по высоте строки, чтобы строки не наезжали */
+.iw-theme-herbal .iw-tab-name { font-size: 17px; line-height: 1.35; }
+
+/* ---------- Подпись внизу дневника ---------- */
+.iw-foot { flex-wrap: wrap; align-items: center; }
+.iw-panel .iw-foot-sign {
+    margin-left: auto;
+    font-size: 11.5px;
+    white-space: nowrap;
+    opacity: .85;
+}
+.iw-panel .iw-foot-sign .iw-sign-nick { font-weight: 600; }
+.iw-panel.iw-theme-pixel .iw-foot-sign { font-size: 8px; }
+
+/* ---------- Язык записей — ровно по центру над кнопками: подпись сверху, RU / EN под ней ---------- */
+.iw-panel .iw-form-foot .iw-lang {
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 6px;
+    width: 100%;
+}
+.iw-panel .iw-form-foot .iw-lang-cap { flex: 0 0 100%; text-align: center; }
+.iw-panel .iw-form-foot .iw-lang-opt { transform: none; min-width: 64px; }
+
+/* ---------- Травница, Аркан, Сеанс: черты — аккуратные карточки, а не «таблетки» ---------- */
+.iw-panel:is(.iw-theme-herbal, .iw-theme-arcana) .iw-trait { border-radius: 12px; }
+.iw-panel.iw-theme-seance .iw-trait { border-radius: 4px; }
+.iw-panel :is(.iw-trait-name, .iw-trait-head button, .iw-trait-det > summary):focus:not(:focus-visible) { outline: none; }
+
+/* поле «своё» в притяжении — в цветах темы, а не белое */
+.iw-panel .iw-attr-own .iw-attr-input {
+    max-width: none;
+    height: 34px;
+    background: var(--iw-note-bg, var(--iw-bg));
+    color: var(--iw-note-ink, var(--iw-ink));
+    border-color: color-mix(in srgb, var(--iw-ink) 55%, transparent);
+}
+.iw-panel .iw-attr-own .iw-attr-input::placeholder { color: var(--iw-muted); opacity: 1; }
+.iw-panel:is(.iw-theme-herbal, .iw-theme-arcana, .iw-theme-seance) .iw-attr-own .iw-attr-input { border-color: var(--iw-label-color); }
+.iw-panel.iw-theme-arcana .iw-attr-own .iw-attr-input { border-radius: 999px; padding: 0 14px; }
+
+/* ---------- Свёрнутый блок раскрывается кликом в любом его месте ---------- */
+.iw-panel .iw-block.iw-collapsed { cursor: pointer; }
+
+/* ---------- Сеанс: подзаголовки ярче — «Врождённое», «Сейчас он», «Первое впечатление» не теряются ---------- */
+.iw-panel.iw-theme-seance :is(.iw-group-head, .iw-group-head > span:first-of-type, .iw-att-cap, .iw-group-cap, .iw-books-cap) {
+    color: #e6c793;
+    opacity: 1;
+    font-weight: 600;
+    letter-spacing: .08em;
+}
+.iw-panel.iw-theme-seance .iw-group-head::before { border-color: #e6c793; background: transparent; }
+.iw-panel.iw-theme-seance :is(.iw-mood-lead, .iw-mood-now > span:first-child) { color: #e6c793; opacity: 1; }
+
+/* приобретённая черта в сеансе: плашка не «таблетка», метка — аккуратно под названием */
+.iw-panel.iw-theme-seance .iw-trait.iw-acquired { border-radius: 4px; }
+.iw-panel.iw-theme-seance .iw-trait > .iw-trait-kept { border-radius: 2px; }
+
+/* ---------- Поле «своё» в притяжении — в манере каждой темы ---------- */
+.iw-panel.iw-theme-cyber .iw-attr-own .iw-attr-input { border-radius: 0; border-color: #3ef0ff; background: #0b0d14; color: #e6f7ff; box-shadow: 0 0 8px rgba(62, 240, 255, .25); font-family: 'JetBrains Mono', monospace; }
+.iw-panel.iw-theme-pixel .iw-attr-own .iw-attr-input { border-radius: 0; border: 2px solid #4a2730; background: #fff4f7; color: #4a2730; }
+.iw-panel.iw-theme-dossier .iw-attr-own .iw-attr-input { border-radius: 0; border: 1px solid #262422; background: #f7f3e8; color: #262422; font-family: 'IBM Plex Mono', monospace; }
+.iw-panel.iw-theme-bimbo .iw-attr-own .iw-attr-input { border-radius: 999px; border: 2px solid #ff7ab8; background: #fff; color: #c2187a; padding: 0 14px; }
+.iw-panel.iw-theme-sims .iw-attr-own .iw-attr-input { border-radius: 12px; border: 2px solid #2f73c0; background: #fff; color: #1d3b66; }
+.iw-panel.iw-theme-medieval .iw-attr-own .iw-attr-input { border-radius: 2px; border: 1px solid #8a5a2b; background: #f6ead0; color: #5a3a1a; font-family: 'Alegreya', serif; }
+.iw-panel.iw-theme-china .iw-attr-own .iw-attr-input { border-radius: 2px; border: 1px solid #d4a64a; background: #3a1216; color: #f0e0be; }
+.iw-panel.iw-theme-logbook .iw-attr-own .iw-attr-input { border-radius: 8px; border: 1px solid rgba(130, 175, 190, .55); background: #0f1a22; color: #dce5e9; }
+.iw-panel.iw-theme-seance .iw-attr-own .iw-attr-input { border-radius: 3px; border-color: rgba(214, 201, 179, .5); background: #1d1916; box-shadow: inset 0 0 0 2px #1d1916, inset 0 0 0 3px rgba(214, 201, 179, .18); }
+.iw-panel.iw-theme-herbal .iw-attr-own .iw-attr-input { border-radius: 10px; background: #1f2619; }
+.iw-panel.iw-theme-arcana .iw-attr-own .iw-attr-input { background: #0b0f2a; box-shadow: inset 0 0 0 3px #0b0f2a, inset 0 0 0 4px rgba(201, 164, 92, .3); }
+.iw-panel :is(.iw-theme-diary, .iw-theme-dark) .iw-attr-own .iw-attr-input { border-radius: 10px 4px 10px 4px; }
+
+/* ---------- Раскрытая черта с описанием — карточка со скруглением, а не «таблетка»: текст не вылезает за рамку ---------- */
+.iw-panel:is(.iw-theme-sims, .iw-theme-bimbo, .iw-theme-logbook) .iw-trait:has(.iw-trait-det[open]) { border-radius: 16px; }
+.iw-panel:is(.iw-theme-herbal, .iw-theme-arcana) .iw-trait:has(.iw-trait-det[open]) { border-radius: 12px; }
+.iw-panel .iw-trait:has(.iw-trait-det[open]) { overflow-wrap: anywhere; }
+
+/* ---------- Свёрнутый блок: заголовок ровно посередине по высоте — сверху и снизу одинаковый отступ ---------- */
+.iw-panel:not(.iw-theme-pixel) .iw-block.iw-collapsed {
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+}
+.iw-panel:not(.iw-theme-pixel) .iw-block.iw-collapsed > .iw-block-head {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* ==========================================================================
+   Китайский свиток — благородный бордовый лак, золото и киноварь
+   ========================================================================== */
+.iw-theme-china {
+    --iw-bg: #2a0c10;
+    --iw-paper: radial-gradient(ellipse 70% 40% at 50% -8%, rgba(212, 166, 74, .16), transparent 70%), radial-gradient(ellipse 60% 40% at 0% 100%, rgba(0, 0, 0, .35), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23d4a64a' stroke-width='1.3' stroke-linecap='round' opacity='.16'%3E%3Cpath d='M18 40c0-8 10-11 15-5 2-9 15-9 17 0 7-3 13 4 9 10H22c-3 0-4-3-4-5z'/%3E%3Cpath d='M28 45c-1 4 3 7 7 6M52 45c2 3 0 7-4 7'/%3E%3Cpath d='M98 118c0-7 9-10 13-4 2-8 13-8 15 0 6-3 11 3 8 9h-33c-2 0-3-3-3-5z'/%3E%3C/g%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 100% 100%, 160px 160px;
+    --iw-ink: #f0e0be;
+    --iw-muted: #c4a88c;
+    --iw-title-color: #e3b65a;
+    --iw-label-color: #e3b65a;
+    --iw-scribble: #e65a46;
+    --iw-fears: #ef6a52;
+    --iw-wants: #8fc9a0;
+    --iw-dream: #f0c96e;
+    --iw-traits: #f0e0be;
+    --iw-hl-good: rgba(143, 201, 160, .18);
+    --iw-hl-bad: rgba(230, 90, 70, .22);
+    --iw-hl-mid: rgba(212, 166, 74, .18);
+    --iw-hl-main: rgba(212, 166, 74, .2);
+    --iw-block-bg: linear-gradient(180deg, #3d1318, #2e0d12);
+    --iw-block-border: 1px solid rgba(212, 166, 74, .3);
+    --iw-block-shadow: 0 8px 18px rgba(0, 0, 0, .35);
+    --iw-divider: rgba(212, 166, 74, .28);
+    --iw-note-bg: #3a1216;
+    --iw-note-ink: #f0e0be;
+    --iw-sticker-bg: #3a1216;
+    --iw-sticker-border: 1px solid rgba(212, 166, 74, .6);
+    --iw-new-bg: #e65a46;
+    --iw-new-ink: #2a0c10;
+    --iw-chip-ink: #f0e0be;
+    --iw-chip-on: rgba(212, 166, 74, .2);
+    --iw-feel-bg: rgba(0, 0, 0, .18);
+    --iw-scroll-thumb: linear-gradient(180deg, #e3b65a, #8a5a1c);
+    --iw-scroll-hover: #f0c96e;
+    --iw-scroll-track: rgba(212, 166, 74, .08);
+    --iw-frame: 0 0 0 2px #2a0c10, 0 0 0 4px #d4a64a, 0 0 0 6px #8c1f1c, 0 0 12px rgba(212, 166, 74, .35);
+}
+
+/* блоки — лаковые шкатулки: золотые планки сверху и снизу, тонкая рамка внутри */
+.iw-theme-china .iw-block {
+    border-top: 2px solid #d4a64a;
+    border-bottom: 2px solid #d4a64a;
+    outline: 1px solid rgba(212, 166, 74, .22);
+    outline-offset: -6px;
+}
+.iw-theme-china .iw-b-impression { border-top-color: #e65a46; border-bottom-color: #e65a46; }
+.iw-theme-china .iw-title { color: #e3b65a; text-shadow: 0 0 14px rgba(212, 166, 74, .3); }
+.iw-theme-china .iw-label { color: var(--iw-label-color); letter-spacing: .03em; }
+/* печати с иероглифами — киноварь с золотым знаком */
+.iw-theme-china .iw-titlebox::after,
+.iw-theme-china .iw-block-icon {
+    background: #b3261e;
+    color: #f0c96e;
+    box-shadow: inset 0 0 0 1.5px rgba(240, 201, 110, .55);
+}
+.iw-theme-china :is(.iw-act-all, .iw-book-go) { color: #2a0c10; }
+.iw-theme-china .iw-npc-sticker { background: #b3261e; color: #f8e6c0; }
+.iw-theme-china .iw-tab { background: #3a1216; }
+.iw-theme-china .iw-dream-title { color: #f0c96e; }
+.iw-panel.iw-theme-china .iw-form-foot .iw-lang-opt.on { background: #d4a64a; border-color: #d4a64a; color: #2a0c10; }
+.iw-panel.iw-theme-china .iw-attr-own .iw-attr-input { border-radius: 2px; border: 1px solid rgba(212, 166, 74, .7); background: #2a0c10; color: #f0e0be; }
+.iw-panel.iw-theme-china .iw-group-head, .iw-panel.iw-theme-china .iw-att-cap { color: #e3b65a; }
+
+/* ==========================================================================
+   Навь — по теме «Ведьмин час · Навь»: тёмный лес, лён и красная вышивка
+   ========================================================================== */
+.iw-theme-nav {
+    --iw-paper: radial-gradient(ellipse 80% 45% at 50% -5%, rgba(179, 38, 30, .16), transparent 70%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23b3261e' stroke-width='1.2' opacity='.18'%3E%3Cpath d='M48 30l10 10-10 10-10-10z'/%3E%3Cpath d='M48 36l4 4-4 4-4-4z' fill='%23b3261e'/%3E%3Cpath d='M0 0l8 8M96 0l-8 8M0 96l8-8M96 96l-8-8' /%3E%3C/g%3E%3C/svg%3E");
+    --iw-paper-size: 100% 100%, 96px 96px;
+    --iw-title-font: 'Ruslan Display', Georgia, serif;
+    --iw-label-size: 21px;
+    --iw-sub-size: 18px;
+    --iw-body-font: 'Andika', 'Segoe UI', sans-serif;
+    --iw-text-size: 15.5px;
+    --iw-block-radius: 3px;
+    --iw-label-color: #e8dcc0;
+    --iw-title-color: #e0574a;
+    --iw-fears: #e0574a;
+}
+.iw-theme-nav .iw-title { font-family: 'Ruslan Display', Georgia, serif; font-size: 38px; color: #e0574a; text-shadow: 0 0 14px rgba(214, 57, 46, .35); }
+.iw-theme-nav .iw-titlebox::after { content: '◇ ◆ ◇'; font-size: 14px; right: -56px; top: 16px; color: #d6392e; text-shadow: none; }
+.iw-theme-nav .iw-label { font-size: var(--iw-label-size); letter-spacing: .02em; }
+.iw-theme-nav .iw-block-head { border-bottom: 1.6px dashed rgba(214, 57, 46, .6); }
+.iw-theme-nav .iw-block.iw-collapsed .iw-block-head { border-bottom: 0; }
+.iw-theme-nav .iw-block { border-radius: 3px; box-shadow: inset 0 0 0 3px rgba(15, 22, 18, .95), inset 0 0 0 4px rgba(214, 57, 46, .28), 0 8px 18px rgba(0, 0, 0, .4); }
+.iw-theme-nav .iw-npc-sticker-title { font-size: 18px; }
+.iw-theme-nav :is(.iw-mood-word, .iw-dream-title, .iw-imp-label) { font-family: 'Kurale', Georgia, serif; font-weight: 400; }
+.iw-theme-nav .iw-mood-word { font-size: 1.15em; }
+.iw-theme-nav .iw-dream-title { font-size: 1.3em; color: #f2aa46; }
+.iw-panel.iw-theme-nav .iw-trait { border-radius: 3px; }
+.iw-panel.iw-theme-nav .iw-form-foot .iw-lang-opt.on { background: #d6392e; border-color: #d6392e; color: #fff4e6; }
+.iw-panel.iw-theme-nav .iw-attr-own .iw-attr-input { border-radius: 3px; border: 1px solid rgba(214, 57, 46, .6); background: #111814; color: #e3d9c2; }
+.iw-panel.iw-theme-nav :is(.iw-group-head, .iw-att-cap) { color: #e8dcc0; }
+@media (max-width: 560px) {
+    .iw-theme-nav .iw-title { font-size: 28px; }
+    .iw-theme-nav .iw-titlebox::after { display: none; }
+}
+
+
+/* Китайский свиток теперь тёмный — те же поправки, что у остальных тёмных тем (эмоции, награды, совместимость, притяжение) */
+.iw-theme-china .iw-tab-name,
+.iw-theme-china .iw-photo-letter { color: #f0e0be; }
+.iw-theme-china .iw-feels .iw-feel[class*="iw-face-"] {
+    --emo-text: var(--face-bg);
+    --emo-line: color-mix(in srgb, var(--face-bg) 45%, transparent);
+    background: color-mix(in srgb, var(--face-bg) 12%, transparent);
+}
+.iw-theme-china .iw-rg-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+.iw-theme-china .iw-rg-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+.iw-theme-china .iw-rg-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
+.iw-theme-china .iw-rk-buff { --rk: #7be0a8; --rk-bg: rgba(123, 224, 168, .14); }
+.iw-theme-china .iw-rk-event { --rk: #ffb867; --rk-bg: rgba(255, 184, 103, .14); }
+.iw-theme-china .iw-rk-collect { --rk: #c7a4ff; --rk-bg: rgba(199, 164, 255, .14); }
+.iw-theme-china .iw-reward .iw-rw-title { color: var(--rk); }
+.iw-theme-china .iw-rw-cat-name { color: #0b0d14; }
+.iw-theme-china .iw-mood-word[class*="iw-face-"] {
+    --mw-ink: var(--face-bg);
+    --mw-alpha: 30%;
+}
+.iw-theme-china .iw-stop {
+    border-color: #ff7a85;
+    color: #ff9aa2;
+    background: rgba(255, 122, 133, .12);
+}
+.iw-theme-china .iw-persona-card {
+    background: color-mix(in srgb, var(--pt) 16%, transparent);
+}
+.iw-theme-china .iw-persona-name {
+    color: color-mix(in srgb, var(--pt) 55%, #fff);
+}
+.iw-theme-china { --iw-gained: #e7a0d6; }
+.iw-theme-china .iw-qopt.on {
+    color: var(--iw-ink);
+}
+.iw-theme-china .iw-persona-tab { color: var(--iw-ink); }
+.iw-theme-china .iw-feels .iw-feel[class*="iw-face-"] {
+    background: linear-gradient(120deg, color-mix(in srgb, var(--face-bg) 13%, transparent), color-mix(in srgb, var(--face-bg2, var(--face-bg)) 13%, transparent));
+}
+.iw-theme-china .iw-wallet-info { background: #3a1216; color: #f0e0be; border-color: #d4a64a; }
+.iw-theme-china .iw-chem-neutral { --chem: #b8b3c4; }
+.iw-theme-china .iw-attr-chip { color: var(--attr); }
+.iw-theme-china .iw-attr-likes { --attr: #6fe0a6; }
+.iw-theme-china .iw-attr-dislikes { --attr: #ff7a6b; }
+.iw-theme-china .iw-chem-cell { background: rgba(255, 255, 255, .14); }
+.iw-theme-china .iw-attr-row-likes { --attr: #6fe0a6; }
+.iw-theme-china .iw-attr-row-dislikes { --attr: #ff7a6b; }
+/* печать — справа от названия, как подпись на свитке */
+.iw-panel.iw-theme-china .iw-titlebox::after { left: auto; top: 2px; right: -6px; margin: 0; }
+
+/* «Подобрать заново» — сверху лавки, сразу под пояснением */
+.iw-panel .iw-shop-top { display: flex; justify-content: flex-start; margin: 8px 0 10px; }
+
+/* кнопка «стоп» у мечты, пока она придумывается заново */
+.iw-panel .iw-dream-tools .iw-mini-stop {
+    color: var(--iw-fears, #c0262d);
+    border-color: currentColor;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.iw-panel .iw-dream-tools .iw-mini-stop:hover:where(:not(.iw-noanim *)) { background: color-mix(in srgb, currentColor 22%, transparent); }
+
+/* ==========================================================================
+   Китайский свиток: цветные плашки — старые свитки на рисовой бумаге,
+   рамка нарисована кистью, цвета — тушь и минеральные краски
+   ========================================================================== */
+.iw-theme-china :is(.iw-feels .iw-feel, .iw-persona-card, .iw-chem, .iw-attr-row) {
+    --scroll-ink: color-mix(in srgb, var(--face-bg, var(--pt, var(--chem, var(--attr, #8c1f1c)))) 48%, #2e1a0e);
+    position: relative;
+    isolation: isolate;
+    border: 0 !important;
+    border-radius: 2px !important;
+    background:
+        radial-gradient(ellipse at 85% 10%, rgba(140, 100, 50, .18), transparent 45%),
+        radial-gradient(ellipse at 8% 92%, rgba(120, 80, 40, .16), transparent 50%),
+        linear-gradient(180deg, #eadbb7, #e0cda4) !important;
+    color: #2a1d14 !important;
+    box-shadow: inset 0 3px 0 rgba(92, 52, 22, .5), inset 0 -3px 0 rgba(92, 52, 22, .5), 0 4px 10px rgba(0, 0, 0, .35) !important;
+}
+
+/* рамка кистью: неровная линия цвета записи */
+.iw-theme-china :is(.iw-feels .iw-feel, .iw-persona-card, .iw-chem, .iw-attr-row)::before {
+    content: '';
+    position: absolute;
+    inset: 5px 4px;
+    z-index: -1;
+    border: 2px solid var(--scroll-ink);
+    border-radius: 3px;
+    opacity: .8;
+    filter: url(#iw-ink);
+    pointer-events: none;
+}
+
+.iw-theme-china :is(.iw-feel-name, .iw-persona-name, .iw-chem-name, .iw-attr-cap) {
+    color: var(--scroll-ink) !important;
+    font-family: 'Prata', Georgia, serif;
+}
+.iw-theme-china :is(.iw-feel-why, .iw-feel-inner, .iw-persona-general, .iw-persona-own, .iw-chem-why, .iw-feel-time, .iw-persona-name small) { color: #3a2a1c !important; }
+.iw-theme-china :is(.iw-feel-cause, .iw-feel .iw-muted, .iw-attr-row .iw-muted, .iw-chem .iw-att-cap) { color: #7a5a3c !important; }
+.iw-theme-china .iw-feel-power {
+    background: transparent !important;
+    border: 1px solid var(--scroll-ink) !important;
+    color: var(--scroll-ink) !important;
+}
+.iw-theme-china .iw-persona-code {
+    background: var(--scroll-ink) !important;
+    color: #f1e4c4 !important;
+    border-radius: 2px !important;
+}
+.iw-theme-china .iw-feel .iw-del,
+.iw-theme-china .iw-attr-row .iw-attr-chip { color: #3a2a1c; }
+.iw-theme-china .iw-attr-row .iw-attr-chip { border-color: var(--scroll-ink) !important; background: rgba(255, 250, 235, .35) !important; color: var(--scroll-ink) !important; }
+.iw-theme-china .iw-chem-cell { background: rgba(92, 52, 22, .15) !important; }
+.iw-theme-china .iw-chem-cell.on { background: var(--scroll-ink) !important; }
+.iw-theme-china .iw-feel-face { filter: sepia(.35) saturate(.85); }
+
+/* ---------- Китай: заголовки блоков крупнее записей внутри ---------- */
+.iw-theme-china { --iw-label-size: 24px; }
+.iw-panel.iw-theme-china .iw-label { font-size: var(--iw-label-size); }
+.iw-panel.iw-theme-china .iw-imp-label { font-size: 17px; font-weight: 600; }
+.iw-panel.iw-theme-china :is(.iw-feel-name, .iw-persona-name, .iw-chem-name) { font-size: 16.5px; }
+.iw-panel.iw-theme-china .iw-dream-title { font-size: 1.1em; }
+.iw-panel.iw-theme-china .iw-att-cap { font-size: 11.5px; }
+.iw-theme-china .iw-feel-meter { background: rgba(92, 52, 22, .18) !important; }
+.iw-theme-china .iw-feel-meter > span { background: var(--scroll-ink) !important; }
+.iw-theme-china .iw-b-attraction .iw-block-icon::after { content: '缘'; }
+
+/* ВРЕМЕННО: меню проверки уведомлений и звуков */
+.iw-panel .iw-test-menu { width: min(300px, 82vw); }
+.iw-panel .iw-test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.iw-panel .iw-test-menu button {
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+}
+.iw-panel .iw-test-menu button:hover { background: var(--iw-hl-main); }
+.iw-panel .iw-test-menu .iw-test-all { width: 100%; font-weight: 700; text-align: center; }
+.iw-panel.iw-theme-pixel .iw-test-menu button { font-size: 9px; border-radius: 0; }
+
+/* средние экраны: слева от открытого дневника всплывашке не хватает места — показываем поверх дневника справа */
+@media (min-width: 761px) and (max-width: 1180px) {
+    #iw_panel:not([hidden]) ~ .iw-toasts { right: 16px; }
 }

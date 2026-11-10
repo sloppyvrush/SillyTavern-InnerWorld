@@ -1,9 +1,9 @@
 // Чистая логика «Внутреннего мира»: состояние, разбор ответа модели, сравнение, тексты.
 // Здесь нет обращений к таверне, поэтому файл можно проверять тестами в node.
 
-export const MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'impression', 'chronicle'];
+export const MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'impression', 'attraction', 'chronicle'];
 // Блоки, которые спрашивают у модели (хроника собирается сама и токенов не тратит).
-export const MODEL_MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'impression'];
+export const MODEL_MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'impression', 'attraction'];
 
 export const MODULE_NAMES = {
     mood: 'Настроение',
@@ -12,12 +12,13 @@ export const MODULE_NAMES = {
     dream: 'Мечта жизни',
     traits: 'Черты',
     impression: 'Отношение к тебе',
+    attraction: 'Что привлекает',
     chronicle: 'Хроника',
 };
 
 export const DEFAULT_SETTINGS = {
     enabled: true,
-    modules: { mood: true, wants: true, fears: true, dream: true, traits: true, impression: true, chronicle: true },
+    modules: { mood: true, wants: true, fears: true, dream: true, traits: true, impression: true, attraction: true, chronicle: true },
     theme: 'diary',
     track: 'scene',          // scene | bot | list
     trackList: '',
@@ -50,6 +51,12 @@ export const DEFAULT_SETTINGS = {
     rosters: {},             // список НПС из лорбука и карточки — по персонажу (аватарке)
     sound: true,             // звуки при событиях
     toastPos: 'top',         // где всплывают уведомления: top | bottom
+    collapsed: {},           // свёрнутые блоки дневника: { mood: true, … }
+    attrPower: 'medium',      // как симпатии и антипатии влияют на чат: max | strong | medium | soft | faint | none
+    attrInfluence: 'medium',  // выводится из attrPower: тон подсказки strong | medium | light | none
+    attrDepth: 4,            // выводится из attrPower: глубина подсказки
+    animations: true,        // анимации в дневнике; выключить — всё статично
+    liveView: true,          // живой листок: как модель пишет дневник (потоком, если подключение умеет)
     volume: 45,              // громкость звуков, 0–100
     points: true,            // очки за желания и мечту + награды
 };
@@ -119,6 +126,34 @@ export function guessFace(word, tone) {
 }
 
 // Очки за события (как в симуляторе жизни).
+// Совместимость, как в «Симс»: насколько персонажи подходят друг другу по чертам и типу личности.
+export const CHEM_LEVELS = ['amazing', 'good', 'neutral', 'bad', 'awful'];
+export const CHEM_SCORE = { amazing: 3, good: 2, neutral: 0, bad: -2, awful: -3 };
+export function chemLevelOf(score) {
+    const v = Number(score) || 0;
+    return v >= 3 ? 'amazing' : v >= 1 ? 'good' : v <= -3 ? 'awful' : v <= -1 ? 'bad' : 'neutral';
+}
+export const CHEM_NOW_NAMES = { 3: 'Сильное притяжение', 2: 'Тянет друг к другу', 1: 'Есть симпатия', 0: 'Ровно', '-1': 'Холодок', '-2': 'Отталкивает', '-3': 'Сильное отторжение' };
+export const CHEM_NAMES = { amazing: 'Родственные души', good: 'Есть контакт', neutral: 'Ровно', bad: 'Не по душе', awful: 'Как кошка с собакой' };
+
+// Что привлекает и что отталкивает (как «turn-ons / turn-offs» в «Симс»): готовые теги по разделам.
+export const ATTRACT_CATALOG = {
+    'Телосложение': ['худощавые', 'стройные', 'спортивные', 'накачанные', 'крепкие', 'с формами', 'пухленькие', 'высокие', 'невысокие', 'широкоплечие', 'изящные'],
+    'Внешность': ['темноволосые', 'светловолосые', 'рыжие', 'седые', 'кудрявые', 'с длинными волосами', 'коротко стриженные', 'лысые', 'голубоглазые', 'кареглазые', 'зеленоглазые', 'выразительные глаза', 'смуглые', 'бледные', 'красивая улыбка', 'красивые руки'],
+    'Приметы': ['с бородой', 'с щетиной', 'с веснушками', 'с родинками', 'с татуировками', 'с пирсингом', 'со шрамами', 'в очках', 'с ямочками на щеках'],
+    'Стиль': ['ухоженные', 'стильно одетые', 'в строгом костюме', 'в коже', 'спортивный стиль', 'небрежный вид', 'яркий макияж', 'без макияжа', 'с украшениями'],
+    'Голос и запах': ['низкий голос', 'бархатный голос', 'хрипотца в голосе', 'звонкий смех', 'приятный запах', 'запах табака', 'запах парфюма'],
+    'Характер': ['харизматичные', 'надёжные', 'уверенные в себе', 'добрые', 'заботливые', 'нежные', 'весёлые', 'остроумные', 'умные', 'честные', 'смелые', 'дерзкие', 'загадочные', 'застенчивые', 'спокойные', 'вспыльчивые', 'амбициозные', 'романтичные', 'независимые', 'властные', 'преданные', 'ревнивые', 'грубые', 'лживые', 'трусливые', 'самовлюблённые'],
+    'Образ жизни': ['активные', 'домоседы', 'авантюристы', 'трудоголики', 'тусовщики', 'хозяйственные', 'опрятные', 'неряшливые', 'при деньгах', 'с опасной работой', 'с тёмным прошлым', 'курящие', 'пьющие', 'верующие'],
+    'Увлечения': ['музыка', 'книги', 'кулинария', 'спорт', 'искусство', 'техника', 'игры', 'путешествия', 'природа', 'животные', 'танцы', 'наука', 'оружие', 'машины'],
+};
+// В какой раздел попадает тег (свои теги — в «Другое»).
+export function attractCategory(tag) {
+    const t = String(tag || '').toLowerCase().trim();
+    for (const [cat, tags] of Object.entries(ATTRACT_CATALOG)) if (tags.includes(t)) return cat;
+    return 'Другое';
+}
+
 export const POINTS = { want_done: 10, fear_gone: 5, dream_step: 25, dream_done: 100 };
 export const REWARD_KINDS = ['buff', 'event', 'collect'];
 export const REWARD_ICONS = ['gift', 'star', 'cake', 'ribbon', 'key', 'flower', 'potion', 'crown', 'note', 'book', 'sun', 'moon', 'heart', 'cup', 'letter', 'feather', 'shield', 'gem'];
@@ -273,12 +308,41 @@ const TRAIT_COOLDOWN = 3; // столько обновлений после из
 const DREAM_COOLDOWN = 6; // мечта меняется редко: не чаще, чем раз в столько обновлений
 export const SHOWN_MOODLETS = 3; // столько эмоций видно сразу, остальные — под «ещё»
 
+// Варианты числовых настроек — одни и те же в настройках и в быстрых кнопках пустого дневника.
+export const CONTEXT_OPTIONS = [2, 4, 6, 8, 10, 15, 20];
+export const CATCHUP_OPTIONS = [6, 8, 10, 12, 15, 20, 30];
+export const BUDGET_CAP_OPTIONS = [4000, 6000, 8000, 12000, 16000];
+export const RESPONSE_LENGTH_OPTIONS = [2000, 3000, 4000, 6000, 8000, 12000, 16000];
+
+// Одна настройка силы влияния притяжения → тон подсказки и её глубина в чате.
+export const ATTR_POWER = {
+    max: ['strong', 1], strong: ['strong', 2], medium: ['medium', 4], soft: ['light', 6], faint: ['light', 10], none: ['none', 4],
+};
+
+export function applyAttrPower(s) {
+    const [inf, depth] = ATTR_POWER[s.attrPower] || ATTR_POWER.medium;
+    s.attrInfluence = inf;
+    s.attrDepth = depth;
+    return s;
+}
+
 export function mergeSettings(saved) {
     const s = Object.assign({}, DEFAULT_SETTINGS, saved || {});
     s.modules = Object.assign({}, DEFAULT_SETTINGS.modules, (saved && saved.modules) || {});
     s.moodTurns = Object.assign({}, DEFAULT_SETTINGS.moodTurns, (saved && saved.moodTurns) || {});
     s.rosters = Object.assign({}, (saved && saved.rosters) || {});
+    s.collapsed = Object.assign({}, (saved && saved.collapsed) || {});
     if (s.theme === 'auto') s.theme = 'diary';
+    // раньше было две настройки притяжения — сводим к одной
+    if (!(saved && saved.attrPower) && saved && (saved.attrInfluence || saved.attrDepth)) {
+        const inf = saved.attrInfluence || 'medium';
+        const d = Number(saved.attrDepth) || 4;
+        s.attrPower = inf === 'none' ? 'none' : inf === 'light' ? (d >= 10 ? 'faint' : 'soft') : inf === 'strong' ? (d <= 1 ? 'max' : 'strong') : 'medium';
+    }
+    if (!ATTR_POWER[s.attrPower]) s.attrPower = 'medium';
+    applyAttrPower(s);
+    if (s.theme === 'grimoire') s.theme = 'herbal'; // гримуар заменён травницей
+    if (s.theme === 'grid') s.theme = 'arcana'; // тетрадь в клетку заменена арканом
     if (Number(s.maxChars) === 4) s.maxChars = 12; // старое значение по умолчанию: с НПС мало
     if (s.source === 'profile') { s.source = 'custom'; s.apiKind = 'profile'; }
     if (!['русском', 'английском'].includes(s.language)) s.language = 'русском';
@@ -422,6 +486,15 @@ export function cleanCharacter(raw, opts = {}) {
             about: str(t && t.about, 320),
         })).filter(t => t.name).slice(0, MAX_TRAITS);
     }
+    if (raw.chem_now && typeof raw.chem_now === 'object' && raw.chem_now.score !== undefined) {
+        c.chemNow = { score: num(raw.chem_now.score, -3, 3, 0), why: str(raw.chem_now.why, 200) };
+    }
+    const tags = v => (Array.isArray(v) ? v : []).map(x => lowerWord(typeof x === 'object' && x ? x.tag || x.name : x, 40)).filter(Boolean).slice(0, 8);
+    if (raw.turn_ons !== undefined) c.likes = tags(raw.turn_ons);
+    if (raw.turn_offs !== undefined) c.dislikes = tags(raw.turn_offs);
+    if (raw.chem && typeof raw.chem === 'object' && CHEM_LEVELS.includes(String(raw.chem.level || '').toLowerCase().trim())) {
+        c.chem = { level: String(raw.chem.level).toLowerCase().trim(), why: str(raw.chem.why, 200) };
+    }
     // модель часто не повторяет label у уже существующего впечатления — принимаем и одни now / now_score
     if (raw.impression && typeof raw.impression === 'object' && (str(raw.impression.label) || str(raw.impression.now) || raw.impression.now_score !== undefined || raw.impression.nowScore !== undefined)) {
         c.impression = {
@@ -430,6 +503,7 @@ export function cleanCharacter(raw, opts = {}) {
             why: str(raw.impression.why, 200),
             now: str(raw.impression.now, 200),
             nowScore: num(raw.impression.now_score ?? raw.impression.nowScore, -3, 3, undefined),
+            known: str(raw.impression.known, 40),
         };
     }
     return c;
@@ -834,6 +908,16 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
         if (fresh.mood) out.mood = fresh.mood;
         if (fresh.face) out.face = fresh.face;
         if (fresh.moodlets || fresh.ended) out.moodlets = mergeMoodlets(old && old.moodlets, fresh.moodlets, fresh.ended);
+        // у общего состояния всегда есть эмоция за ним: «сосредоточен» без сосредоточенности в списке — добавляем её
+        if (fresh.mood && Array.isArray(out.moodlets)) {
+            const face = (fresh.face && fresh.face !== 'neutral') ? fresh.face : guessFace(fresh.mood);
+            const backed = face === 'neutral' || out.moodlets.some(m => (m.face || guessFace(m.emotion, m.tone)) === face);
+            if (!backed) {
+                const word = String(FACE_NAMES[face] || '').split(',')[0].trim();
+                const tone = ['joy', 'excited', 'playful', 'energized', 'inspired', 'pride', 'confident', 'hope', 'grateful', 'calm', 'love', 'flirty', 'desire', 'curious'].includes(face) ? 'good' : (['focus', 'surprise', 'confused'].includes(face) ? 'mid' : 'bad');
+                if (word) out.moodlets = mergeMoodlets(out.moodlets, [{ emotion: word, feel: '', why: '', weight: 'medium', tone, face, left: WEIGHT_TURNS.medium[1] }]);
+            }
+        }
     }
     const rebuild = !old || !!mopts.rebuild;
     if (modules.wants && fresh.wants) {
@@ -870,10 +954,24 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
         out.traits = r.traits;
         if (r.changedAt !== undefined) out.traitChangedAt = r.changedAt;
     }
+    if (modules.impression && fresh.chem && !out.chem) out.chem = fresh.chem;
+    // совместимость сейчас: стартует с первой и дальше живёт по чату
+    if (modules.impression && out.chem && !out.chemNow) out.chemNow = { score: CHEM_SCORE[out.chem.level] ?? 0, why: '' };
+    if (modules.impression && fresh.chemNow && out.chemNow) {
+        const prev = out.chemNow.score;
+        out.chemNow = { score: fresh.chemNow.score, why: fresh.chemNow.why || out.chemNow.why || '' };
+        if (fresh.chemNow.score !== prev) out.chemAt = out.cycle;
+    }
+    // что привлекает — заполняется один раз (или пока пусто); правки игрока модель не трогает
+    if (modules.attraction) {
+        if (!out.attrSet && fresh.likes && fresh.likes.length && !(out.likes && out.likes.length)) out.likes = fresh.likes;
+        if (!out.attrSet && fresh.dislikes && fresh.dislikes.length && !(out.dislikes && out.dislikes.length)) out.dislikes = fresh.dislikes;
+    }
     if (modules.impression) {
         if (old && old.impression) {
             if (fresh.impression) {
                 if (fresh.impression.now) out.impression.now = fresh.impression.now;
+                if (fresh.impression.known && !out.impression.known) out.impression.known = fresh.impression.known;
                 const last = out.attitude && out.attitude.length ? out.attitude[out.attitude.length - 1].s : out.impression.score;
                 const next = fresh.impression.nowScore ?? last;
                 out.impression.nowScore = next;
@@ -955,8 +1053,9 @@ export function carryOwnEdits(base, own, mesId) {
             c.dream = JSON.parse(JSON.stringify(mine.dream));
             if (mine.dreamChangedAt !== undefined) c.dreamChangedAt = mine.dreamChangedAt;
         }
+        if (mine.attrSet) c.attrSet = true;
         // правки игрока руками (удалил, закрепил, перенёс) — переносим блок целиком
-        for (const f of ['wants', 'fears', 'traits', 'moodlets']) {
+        for (const f of ['wants', 'fears', 'traits', 'moodlets', 'likes', 'dislikes']) {
             if (mine.edited && mine.edited[f] === mesId && mine[f]) c[f] = JSON.parse(JSON.stringify(mine[f]));
         }
         for (const w of mine.wants || []) {
@@ -1086,12 +1185,21 @@ export function responseTemplate(modules, manualTurns) {
         c.temper_note = 'как темперамент виден в его поведении';
         c.born = 'ДД.ММ.ГГГГ или ДД.ММ (только при no_born)';
     }
-    if (modules.impression) c.impression = { label: '1–2 слова', score: 1, why: 'почему так', now: 'что думает сейчас', now_score: 1 };
+    if (modules.impression) {
+        c.impression = { label: 'каким показался игрок, 1–3 слова', score: 1, why: 'что подумал при встрече', now: 'что думает сейчас', now_score: 1, known: 'если давно знакомы: кто они друг другу' };
+        c.chem = { level: CHEM_LEVELS.join('|'), why: 'какие черты сходятся или сталкиваются' };
+        c.chem_now = { score: 0, why: 'что сейчас тянет друг к другу или отталкивает' };
+    }
+    if (modules.attraction) {
+        c.turn_ons = ['что привлекает в других'];
+        c.turn_offs = ['что отталкивает'];
+    }
     return JSON.stringify({ characters: [c] });
 }
 
 export function buildSystemPrompt(settings, ctx) {
-    const m = settings.modules;
+    // «что привлекает» берётся из карточки и лорбуков, а не из чата: просим только при «Лорбук» и «Всё сразу»
+    const m = Object.assign({}, settings.modules, { attraction: !!settings.modules.attraction && !!(ctx.fromLore || ctx.kind === 'all' || ctx.kind === 'lore') });
     const lang = settings.language || 'русском';
     const user = ctx.userName || 'игрок';
     let who;
@@ -1124,7 +1232,7 @@ export function buildSystemPrompt(settings, ctx) {
         rules.push(`Известные персонажи этого мира: ${ctx.knownNames.join(', ')}. Если кто-то из них есть в сцене — называй его ровно так. Добавляй персонажа, только если он действительно присутствует или действует в последних сообщениях, а не просто упомянут.`);
     }
     if (m.mood) {
-        rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно). Состояние выводи из ВСЕХ его эмоций (старых, что ещё не прошли, и новых): если преобладает одна сильная — состояние по ней; если несколько примерно равных — одно слово, которое их соединяет (тревога + нежность → «растерян», злость + страх → «загнан в угол», радость + смущение → «смущённо счастлив»). face — лицо именно этого общего состояния.');
+        rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно). Состояние выводи из ВСЕХ его эмоций (старых, что ещё не прошли, и новых): если преобладает одна сильная — состояние по ней; если несколько примерно равных — одно слово, которое их соединяет (тревога + нежность → «растерян», злость + страх → «загнан в угол», радость + смущение → «смущённо счастлив»). face — лицо именно этого общего состояния. Общее состояние всегда опирается на эмоции из moodlets: если состояние называет чувство, которого среди эмоций нет (например, «сосредоточен», а сосредоточенности в списке нет), добавь эту эмоцию в moodlets с причиной.');
         const manual = settings.moodMode === 'manual';
         rules.push('face — какое лицо сейчас у персонажа, выбирай самое точное: joy (радость, веселье), excited (азарт, восторг, воодушевление, предвкушение), playful (озорство, игривость, дурачится), energized (бодрость, прилив сил), inspired (вдохновение, озарение), pride (гордость, торжество), confident (уверенность, смелость, хладнокровие), hope (надежда), grateful (благодарность, тронут), calm (спокоен, облегчение), love (нежность, влюблённость, забота), flirty (кокетство, флирт), desire (страсть, влечение), shy (смущён), sad (грусть, горе, отчаяние), melancholy (тоска, одиночество, ностальгия), hurt (обида, разочарование), guilt (вина, стыд, раскаяние), angry (злость, гнев), irritated (раздражение, досада), envy (зависть, ревность), disgust (отвращение, брезгливость), contempt (презрение, высокомерие), fear (страх, испуг, ужас), anxious (тревога, беспокойство, напряжение), suspicious (подозрение, недоверие, настороженность), uncomfortable (телесный дискомфорт: голод, холод, жара, неудобство), tired (усталость), bored (скука, апатия, опустошённость), focus (сосредоточен, решителен), surprise (удивлён), dazed (оглушён, в ступоре, в тумане, пьян), confused (растерян, озадачен), curious (любопытство, интерес), neutral. У каждой эмоции в moodlets тоже свой face из этого же списка — по самому чувству.');
         rules.push('moodlets — эмоции, которые ВЫЗВАЛИ ИЛИ УСИЛИЛИ последние события, обычно 1–2, не больше 3. Старые эмоции из текущего состояния (moodlets_now) не повторяй и не переименовывай синонимами: они идут своим сроком (left) и угасают сами. emotion — ЧУВСТВО одним-двумя словами, существительное со строчной буквы («облегчение», «нежность», «ревность», «стыд»), никогда не поступок и не описание сцены. feel — как это чувство ощущается внутри у самого персонажа, коротко и по-человечески («внутри теплеет, хочется её защитить», «сжимается в груди»). why — что его вызвало: конкретное событие с точки зрения персонажа, коротко («успел перехватить Эвелин в переулке»). Не путай: поступок персонажа — это причина (why), а не эмоция. weight — сила: light — слабая бытовая (раздражение, скука, смущение, лёгкая досада), medium — заметная (обида, тревога, радость от события), deep — сильная и долгая (горе, потрясение, влюблённость, страх после угрозы жизни). Обычные мелочи — только light, deep — только после серьёзных событий.'
@@ -1138,7 +1246,8 @@ export function buildSystemPrompt(settings, ctx) {
     if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Пиши ptype, ptype_note, temper и temper_note только для персонажей с no_ptype: true и для новых; у остальных эти поля не пиши вовсе — они уже сохранены.');
     if (m.traits) rules.push('born — дата рождения, только если она прямо написана в карточке или лорбуке: "ДД.ММ.ГГГГ" или "ДД.ММ". Если даты нет, но назван знак зодиака — верни zodiac (по-русски, например "Скорпион"). Ничего не выдумывай и не высчитывай из возраста: если ни даты, ни знака нет — верни born: "нет". Пиши эти поля только для персонажей с no_born: true и для новых.');
     if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова. about — 1–2 предложения, почему эта черта есть у персонажа: для основной — что в его прошлом, воспитании, работе или судьбе (по карточке и лорбуку) её выстроило; для приобретённой — как именно событие её породило. Пиши about только для новых черт и для тех, где стоит no_about: true; у остальных не пиши.');
-    if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве: label, score от -3 до 3, why. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3). Каждый разбор честно оцени, сдвинулось ли отношение: помощь, забота, честность, общее переживание, флирт, который зашёл, — повод подняться на 1; грубость, ложь, предательство — опуститься на 1 и больше. Отношения в долгой истории живые: если сближение идёт, отношение должно расти со временем, а не застревать на одном числе. now — переписывай, как только персонаж узнал или понял об игроке что-то новое (характер, привычки, прошлое, поступки), коротко и конкретно.`);
+    if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве — это МНЕНИЕ персонажа, а не описание сцены: label — каким игрок ему показался, 1–3 слова («смелая чудачка», «опасный тип»); why — что персонаж подумал о нём при встрече, его глазами («не полезла к зевакам — уважаю, хоть и дрожит как воробей»), score от -3 до 3. chem — совместимость, как в «Симс»: насколько они подходят друг другу по чертам, типу личности и ценностям; level: amazing (родственные души), good (есть контакт), neutral (ровно), bad (не по душе), awful (как кошка с собакой); why — коротко, какие черты сходятся или сталкиваются. Если по карточке, лорбуку или чату персонаж и игрок уже давно знакомы (родня, друзья, коллеги, пара, супруги, бывшие) — это не первое впечатление: верни impression.known — кто они друг другу, 1–3 слова («супруги», «давние друзья», «бывшие»); label и why — каким персонаж видит игрока с учётом их общей истории; chem — сложившаяся совместимость; chem_now — по их нынешним отношениям. Если они незнакомы — known не пиши. chem — это ПЕРВАЯ (или сложившаяся) совместимость, она не меняется: пиши её только при первом знакомстве и для тех, у кого no_chem: true. chem_now — как совместимость складывается сейчас, по событиям чата: score от -3 (сильное отторжение) до 3 (сильное притяжение), why — коротко, что их сейчас сближает или отталкивает. Меняй score постепенно: на 1 за заметное событие (общий риск, забота, флирт, ссора, обман), больше — только после очень сильного; если ничего не случилось — повтори прежний. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3). Каждый разбор честно оцени, сдвинулось ли отношение: помощь, забота, честность, общее переживание, флирт, который зашёл, — повод подняться на 1; грубость, ложь, предательство — опуститься на 1 и больше. Отношения в долгой истории живые: если сближение идёт, отношение должно расти со временем, а не застревать на одном числе. now — переписывай, как только персонаж узнал или понял об игроке что-то новое (характер, привычки, прошлое, поступки), коротко и конкретно.`);
+    if (m.attraction) rules.push(`turn_ons и turn_offs — что этого персонажа привлекает в других и что отталкивает (как в «Симс»): по 3–8 коротких тегов во множественном числе — телосложение, внешность, приметы, стиль, голос и запах, характер, образ жизни, увлечения («спортивные», «темноволосые», «со шрамами», «низкий голос», «надёжные», «с тёмным прошлым», «грубые»). Бери теги из этого списка, слово в слово: ${Object.entries(ATTRACT_CATALOG).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')}. Своё — только если в списке совсем нет подходящего. Выводи из характера, вкусов и истории персонажа. Пиши их только для персонажей с no_attraction: true и для новых; у остальных не пиши — они уже сохранены, а игрок мог их поправить. Совместимость (chem) с игроком учитывай и по этим тегам: подходит ли ему игрок внешностью и характером.`);
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     rules.push(`Формат ответа: ${responseTemplate(m, settings.moodMode === 'manual')}`);
     return rules.join('\n');
@@ -1195,6 +1304,14 @@ export function compactState(state, modules, onlyKeys) {
             if (!c.born && !c.zodiac && !c.bornChecked) o.no_born = true;
         }
         if (modules.impression && c.impression) o.impression = { label: c.impression.label, score: c.impression.score, now: c.impression.now, now_score: c.impression.nowScore };
+        if (modules.impression && c.impression && !c.chem) o.no_chem = true;
+        if (modules.impression && c.chem) o.chem_now = { score: c.chemNow ? c.chemNow.score : (CHEM_SCORE[c.chem.level] ?? 0) };
+        if (modules.attraction) {
+            if ((c.likes && c.likes.length) || (c.dislikes && c.dislikes.length) || c.attrSet) {
+                o.turn_ons = c.likes || [];
+                o.turn_offs = c.dislikes || [];
+            } else o.no_attraction = true;
+        }
         return o;
     });
     return JSON.stringify({ characters: list });
@@ -1249,6 +1366,31 @@ export function buildInjection(state, modules, userName, influence = 'medium') {
     }
     if (!lines.length) return '';
     return `[Внутренний мир персонажей. Пусть это влияет на их поведение и реплики, но не пересказывай это напрямую.]\n${lines.join('\n')}`;
+}
+
+// Подсказка про притяжение: что привлекает и отталкивает персонажа и как он сейчас относится к игроку по совместимости.
+const ATTR_TONE = {
+    strong: 'Учитывай это заметно: персонаж реагирует на то, что его привлекает или отталкивает, — во взглядах, тоне, решениях и в том, к кому тянется.',
+    medium: 'Пусть это проскальзывает в реакциях персонажа, когда к месту.',
+    light: 'Это лишь лёгкий оттенок — не выпячивай.',
+};
+export function buildAttrInjection(state, userName, level = 'medium') {
+    if (!ATTR_TONE[level] || !state || !state.order) return '';
+    const lines = [];
+    for (const key of state.order) {
+        const c = state.characters[key];
+        if (!c || c.persona || (userName && sameName(c.name, userName))) continue;
+        const bits = [];
+        if (c.likes && c.likes.length) bits.push(`привлекает: ${c.likes.join(', ')}`);
+        if (c.dislikes && c.dislikes.length) bits.push(`отталкивает: ${c.dislikes.join(', ')}`);
+        if (c.chem && CHEM_NAMES[c.chem.level]) {
+            const now = c.chemNow ? c.chemNow.score : (CHEM_SCORE[c.chem.level] ?? 0);
+            bits.push(`совместимость с игроком${userName ? ` (${userName})` : ''} сейчас: ${String(CHEM_NOW_NAMES[now] || '').toLowerCase()}${c.chemNow && c.chemNow.why ? ` — ${c.chemNow.why}` : ''}`);
+        }
+        if (bits.length) lines.push(`${c.name}: ${bits.join('; ')}.`);
+    }
+    if (!lines.length) return '';
+    return `[Притяжение: кого и что персонажи находят привлекательным. ${ATTR_TONE[level]} Не пересказывай это напрямую.]\n${lines.join('\n')}`;
 }
 
 // Пол персонажа для склонений: из лорбука или ответа модели (m/f), иначе догадка
@@ -1457,10 +1599,11 @@ export function buildDreamPrompt(info, c, lang = 'русском') {
         'Мечта — одна большая личная цель, которая следует из характера, прошлого и ценностей персонажа (по карточке и лорбуку) и из того, что с ним случилось в истории. 3–5 этапов. Если персонаж мрачный или сломленный — мечта может быть тёмной; не делай её шаблонно-светлой.',
         `${user} может быть в мечте только если отношения уже по-настоящему близкие (отношение +2 и выше) и было сильное общее событие. Тогда лучше добавь это в plus («…вместе с ней»), а саму мечту оставь личной.`,
         c && c.dream && c.dream.title ? `Прошлая мечта была: «${c.dream.title}». Предложи другую, но правдивую для персонажа.` : '',
+        info.persona ? `Это персонаж игрока — ${info.botName}. Придумай мечту ИМЕННО ЕГО, по его описанию и тому, что с ним было в истории. Это не мечта ${user}: ${user} здесь — другой персонаж.` : '',
         'Формат: {"dream":{"title":"мечта","plus":"","steps":[{"text":"этап","done":false}]}}',
     ].filter(Boolean).join('\n');
     const parts = [];
-    if (info.card) parts.push(`[Карточка: ${info.botName}]\n${info.card}`);
+    if (info.card) parts.push(`[${info.persona ? 'Описание персоны игрока' : 'Карточка'}: ${info.botName}]\n${info.card}`);
     if (info.loreMain && info.loreMain.length) parts.push(`[Лорбук]\n${info.loreMain.join('\n\n')}`);
     if (c) parts.push(`[Персонаж сейчас]\n${JSON.stringify({ name: c.name, mood: c.mood, traits: (c.traits || []).map(t => t.name), wants: (c.wants || []).map(w => w.text), fears: (c.fears || []).map(f => f.text), attitude_to_player: c.impression ? (c.impression.nowScore ?? c.impression.score) : null })}`);
     if (info.messages && info.messages.length) parts.push(`[Последние сообщения]\n${info.messages.join('\n\n')}`);
@@ -1482,7 +1625,9 @@ export function buildRewardsPrompt(info, c, lang = 'русском') {
     const system = [
         'Ты придумываешь «магазин наград» для персонажа ролевой истории, как в симуляторе жизни: игрок тратит очки, которые персонаж заработал за исполненные желания и мечту.',
         `Отвечай ТОЛЬКО JSON, без пояснений. Тексты — на ${lang} языке, коротко и мило.`,
-        'Придумай 8 наград строго под этого персонажа, его характер, мир и историю. Три вида: buff — состояние на несколько ответов (turns 3–10), которое влияет на поведение («в приподнятом настроении», «не мучает бессонница»); event — приятный или значимый случай, который модель вплетёт в ближайший ответ («находит старое письмо матери»); collect — памятная вещица или знак в коллекцию, на поведение не влияет.',
+        'Придумай 8 наград строго под этого персонажа, его характер, мир и историю. Награда — это ВЕЩЬ или СЛУЧАЙ, который игрок покупает и дарит персонажу: зелье, амулет, талисман, письмо, подарок, книга, угощение, билет на событие и т. п. — в духе мира истории' + (info.style ? ` и в стиле «${info.style}»` : '') + '. Никогда не называй награду просто чувством или состоянием («Щемящая нежность», «Надёжный щит» — нельзя): title — понятный предмет или случай из 2–4 слов («Зелье нежности», «Амулет спокойствия», «Письмо от сестры», «Билет: тихий вечер вдвоём»).',
+        'Три вида: buff — предмет, который действует несколько ответов (turns 3–10) и меняет поведение персонажа; event — случай, который рассказчик вплетёт в ближайший ответ; collect — памятная вещица в коллекцию, на поведение не влияет.',
+        'desc — для игрока, просто и конкретно, одной фразой: что изменится в истории («Ещё 5 ответов Роберт мягче и ласковее с тобой», «В следующем ответе Еве приходит письмо от сестры», «Просто милая вещица на память»). Без поэзии и метафор.',
         'effect — для buff и event: что именно передать рассказчику, одной фразой. cost — от 10 до 150, сильнее и редкое — дороже. icon — одно из: ' + REWARD_ICONS.join(', ') + '.',
         'Формат: {"rewards":[{"title":"название","desc":"коротко для игрока","kind":"buff|event|collect","effect":"для рассказчика","turns":5,"cost":40,"icon":"gift"}]}',
     ].join('\n');

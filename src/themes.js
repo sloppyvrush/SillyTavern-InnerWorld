@@ -22,10 +22,6 @@ export const THEMES = {
         name: 'Нейроинтерфейс',
         fonts: 'family=Russo+One&family=JetBrains+Mono:wght@400;500;600;700',
     },
-    grid: {
-        name: 'Тетрадь в клетку',
-        fonts: 'family=Marck+Script&family=Neucha',
-    },
     bimbo: {
         name: 'Бимбо-пикми',
         fonts: 'family=Pacifico&family=Nunito:wght@500;600;700;800',
@@ -34,11 +30,23 @@ export const THEMES = {
         name: 'Китайский свиток',
         fonts: 'family=Prata&family=PT+Serif:ital,wght@0,400;0,700;1,400',
         // кисть только для иероглифов на печатях — грузим лишь эти знаки
-        glyphs: 'family=Ma+Shan+Zheng&text=%E6%83%85%E6%84%BF%E6%83%A7%E6%A2%A6%E6%80%A7%E5%BF%83%E5%8F%B2%E7%A4%BC%E4%B9%A6%E9%AD%82',
+        glyphs: 'family=Ma+Shan+Zheng&text=%E6%83%85%E6%84%BF%E6%83%A7%E6%A2%A6%E6%80%A7%E5%BF%83%E5%8F%B2%E7%A4%BC%E4%B9%A6%E9%AD%82%E7%BC%98',
     },
-    grimoire: {
-        name: 'Ведьмин гримуар',
-        fonts: 'family=Bad+Script&family=Lora:ital,wght@0,400;0,600;1,400',
+    herbal: {
+        name: 'Травница',
+        fonts: 'family=Pacifico&family=Comfortaa:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600',
+    },
+    arcana: {
+        name: 'Аркан',
+        fonts: 'family=Poiret+One&family=Forum&family=Jura:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;1,500;1,600',
+    },
+    nav: {
+        name: 'Навь',
+        fonts: 'family=Ruslan+Display&family=Kurale&family=Andika:ital,wght@0,400;0,700;1,400',
+    },
+    seance: {
+        name: 'Сеанс',
+        fonts: 'family=Spectral+SC:wght@400;500;600&family=Ledger&family=Cormorant+Garamond:ital,wght@0,600;1,500;1,600',
     },
     dossier: {
         name: 'Досье 90-х',
@@ -63,10 +71,12 @@ export const THEME_SWATCHES = {
     sims: ['#eef4fb', '#2f73c0', '#7ed957'],
     medieval: ['#efe0bd', '#5a3a1a', '#a3241a'],
     cyber: ['#0b0d14', '#3ef0ff', '#ff3ea5'],
-    grid: ['#f7f8f2', '#1f3a93', '#c0262d'],
     bimbo: ['#fff0f7', '#ff3d96', '#c44fd1'],
-    china: ['#f6efe0', '#1d1a17', '#c8312b'],
-    grimoire: ['#1b1324', '#e8c77a', '#8fe39b'],
+    china: ['#2a0c10', '#d4a64a', '#e65a46'],
+    herbal: ['#1b2016', '#d29a3c', '#a9bf6e'],
+    arcana: ['#0d1130', '#e6c46e', '#a8b8f2'],
+    seance: ['#1d1916', '#c4a26f', '#d39a8c'],
+    nav: ['#111814', '#d9c8a6', '#d6392e'],
     dossier: ['#d8bf8a', '#2a2a2a', '#c0262d'],
     logbook: ['#0c141a', '#f2a93f', '#62d6c8'],
     pixel: ['#f4b6c4', '#4a2730', '#7ccf5b'],
@@ -74,8 +84,12 @@ export const THEME_SWATCHES = {
 
 export const THEME_IDS = Object.keys(THEMES);
 
-// Значок валюты: в журнале — кредиты, в свитке — монетка с квадратным отверстием, в остальных — монета.
-const CURRENCY_ICONS = { logbook: 'credit', china: 'cashcoin', pixel: 'pxcoin' };
+// Значок валюты — у каждой темы свой: сердечко-монетка, лунная монета, кристалл, дукат с короной, чип,
+// бриллиант, цянь, росток, звёздный знак, свеча, веретено, жетон, кредит, пиксельная монета.
+const CURRENCY_ICONS = {
+    diary: 'cur_heart', dark: 'cur_moon', sims: 'cur_crystal', medieval: 'cur_ducat', cyber: 'cur_chip', bimbo: 'cur_gem',
+    china: 'cashcoin', herbal: 'cur_sprout', arcana: 'cur_sigil', seance: 'cur_candle', nav: 'cur_spindle', dossier: 'cur_token', logbook: 'credit', pixel: 'pxcoin',
+};
 export function currencyIcon(theme) {
     return CURRENCY_ICONS[theme] || 'coin';
 }
@@ -108,6 +122,8 @@ const BASE_LABELS = {
     settings: 'Настройки',
     rewards: 'Награды',
     shop: 'Магазин наград',
+    currency: 'монетки',
+    attraction: 'Что привлекает',
     wallet: 'очки',
     analyze: 'Проанализировать',
     analyzing: 'Записываю',
@@ -115,6 +131,8 @@ const BASE_LABELS = {
 
 const THEME_LABELS = {
     bimbo: {
+        attraction: 'Мой типаж',
+        currency: 'блестяшки',
         chartMark: '♡',
         persona: 'Типаж и вайб ✨',
         title: 'Мой дневничок ♡',
@@ -152,6 +170,8 @@ const THEME_LABELS = {
         analyzing: 'Загрузка',
     },
     medieval: {
+        attraction: 'Что манит',
+        currency: 'золотые',
         chartMark: '⚜',
         persona: 'Склад и нрав',
         title: 'Летопись души',
@@ -177,6 +197,8 @@ const THEME_LABELS = {
         analyzing: 'Летописец пишет',
     },
     cyber: {
+        attraction: 'Триггеры притяжения',
+        currency: 'кредиты',
         chartMark: '◉',
         persona: 'Психотип',
         title: 'NEURO//LINK',
@@ -205,10 +227,14 @@ const THEME_LABELS = {
         analyzing: 'Сканирую',
     },
     dark: {
+        attraction: 'Что притягивает',
+        currency: 'лунные монетки',
         chartMark: '☾',
         analyze: 'Разобрать',
     },
     china: {
+        attraction: 'Что влечёт',
+        currency: 'медные цяни',
         chartMark: '◈',
         persona: 'Стихия души',
         title: 'Книга сердца',
@@ -235,35 +261,129 @@ const THEME_LABELS = {
         analyze: 'Раскрыть свиток',
         analyzing: 'Кисть пишет',
     },
-    grimoire: {
-        chartMark: '✦',
-        persona: 'Натальная суть',
-        title: 'Гримуар',
-        moodTitle: 'Аура',
+    herbal: {
+        attraction: 'Что манит',
+        currency: 'крупицы',
+        chartMark: '❦',
+        persona: 'Природа души',
+        title: 'Травник',
+        moodTitle: 'Настрой',
         moodLead: 'Сейчас {он}',
-        feels: 'Чувства',
-        wants: 'Тайные желания',
-        fears: 'Тёмные страхи',
+        feels: 'Что на душе',
+        wants: 'Чего просит душа',
+        fears: 'Горькие корни',
         dream: 'Заветная мечта',
+        traits: 'Нрав',
+        traitsBase: 'Корни',
+        traitsGained: 'Проросло',
+        attitude: 'Как {он} к тебе',
+        first: 'первая встреча',
+        now: 'сейчас',
+        chronicle: 'Записи травницы',
+        chronicleEmpty: 'Страницы травника пока пусты.',
+        whois: 'Кто это?',
+        whoisTraits: 'из травника',
+        empty: 'Страницы травника пусты. Записи появятся после следующего ответа.',
+        noChat: 'Травник закрыт. Открой чат с персонажем.',
+        settings: 'Рецепты',
+        rewards: 'Гостинцы',
+        shop: 'Травная лавка',
+        analyze: 'Заварить сбор',
+        analyzing: 'Завариваю',
+    },
+    arcana: {
+        attraction: 'Что манит',
+        currency: 'знаки',
+        chartMark: '✦',
+        persona: 'Натальная карта',
+        title: 'Аркан',
+        moodTitle: 'Знак дня',
+        moodLead: 'Сейчас {он}',
+        feels: 'Что выпало',
+        wants: 'Карты желаний',
+        fears: 'Тени расклада',
+        dream: 'Путеводная звезда',
         traits: 'Суть',
         traitsBase: 'Врождённое',
-        traitsGained: 'Проявилось',
-        attitude: 'Нить между вами',
-        first: 'первое гадание',
+        traitsGained: 'Выпало в раскладе',
+        attitude: 'Связь между вами',
+        first: 'первый расклад',
         now: 'сейчас',
-        chronicle: 'Книга теней',
-        chronicleEmpty: 'Страницы пока молчат.',
+        chronicle: 'Летопись раскладов',
+        chronicleEmpty: 'Карты пока молчат.',
         whois: 'Кто это?',
-        whoisTraits: 'из гримуара',
-        empty: 'Страницы пока молчат. Знаки проявятся после следующего ответа.',
-        noChat: 'Гримуар закрыт. Открой чат с персонажем.',
-        settings: 'Обряды',
+        whoisTraits: 'по картам',
+        empty: 'Карты ещё не легли. Расклад появится после следующего ответа.',
+        noChat: 'Колода закрыта. Открой чат с персонажем.',
+        settings: 'Ритуалы',
+        rewards: 'Талисманы',
+        shop: 'Лавка талисманов',
+        analyze: 'Разложить карты',
+        analyzing: 'Тасую колоду',
+    },
+    nav: {
+        attraction: 'Что манит',
+        currency: 'нити',
+        chartMark: '◆',
+        persona: 'Суть',
+        title: 'Навь',
+        moodTitle: 'На душе',
+        moodLead: 'Сейчас {он}',
+        feels: 'Что на душе',
+        wants: 'Заветное',
+        fears: 'Лихо',
+        dream: 'Жар-птица',
+        traits: 'Нрав',
+        traitsBase: 'Врождённое',
+        traitsGained: 'Проявилось',
+        attitude: 'Нить меж вами',
+        first: 'первая встреча',
+        now: 'сейчас',
+        chronicle: 'Сказ',
+        chronicleEmpty: 'Сказ пока не начат.',
+        whois: 'Кто это?',
+        whoisTraits: 'из сказов',
+        empty: 'Нить ещё не спрядена. Сказ появится после следующего ответа.',
+        noChat: 'Тропа закрыта. Открой чат с персонажем.',
+        settings: 'Заговоры',
         rewards: 'Обереги',
-        shop: 'Лавка зелий',
-        analyze: 'Прочесть знаки',
-        analyzing: 'Варю зелье',
+        shop: 'Лавка оберегов',
+        analyze: 'Спросить у Нави',
+        analyzing: 'Пряду нить',
+    },
+    seance: {
+        attraction: 'Что манит',
+        currency: 'свечи',
+        chartMark: '❖',
+        persona: 'Суть души',
+        title: 'Сеанс',
+        moodTitle: 'Аура',
+        moodLead: 'Сейчас {он}',
+        feels: 'Что тревожит дух',
+        wants: 'Шёпот желаний',
+        fears: 'Тени за спиной',
+        dream: 'Заветная мечта',
+        traits: 'Черты',
+        traitsBase: 'Врождённое',
+        traitsGained: 'Проявилось',
+        attitude: 'Связь с тобой',
+        first: 'первое явление',
+        now: 'сейчас',
+        chronicle: 'Протокол сеанса',
+        chronicleEmpty: 'Завеса пока молчит.',
+        whois: 'Кто это?',
+        whoisTraits: 'со слов духов',
+        empty: 'Завеса молчит. Голоса проявятся после следующего ответа.',
+        noChat: 'Стол пуст. Открой чат с персонажем.',
+        settings: 'Ритуал',
+        rewards: 'Подношения',
+        shop: 'Лавка подношений',
+        analyze: 'Начать сеанс',
+        analyzing: 'Спрашиваю духов',
     },
     dossier: {
+        attraction: 'Предпочтения',
+        currency: 'жетоны',
         chartMark: '●',
         persona: 'Психотип',
         title: 'Личное дело',
@@ -292,6 +412,8 @@ const THEME_LABELS = {
         analyzing: 'Печатаю',
     },
     logbook: {
+        attraction: 'Притяжение',
+        currency: 'кредиты снабжения',
         chartMark: '✧',
         persona: 'Психопрофиль',
         title: 'Бортовой журнал',
@@ -320,6 +442,8 @@ const THEME_LABELS = {
         analyzing: 'Приём данных',
     },
     pixel: {
+        attraction: 'Симпатии',
+        currency: 'монеты',
         chartMark: '♥',
         persona: 'Класс персонажа',
         title: 'Дневник игрока',
@@ -346,9 +470,6 @@ const THEME_LABELS = {
         shop: 'Лавка лута',
         analyze: 'Сохранить игру',
         analyzing: 'Сохраняю',
-    },
-    grid: {
-        chartMark: '✓',
     },
 };
 
@@ -384,8 +505,12 @@ export function themeFontsUrl(theme) {
     return `https://fonts.googleapis.com/css2?${t.fonts}&display=swap`;
 }
 
+// Темы, которые заменены новыми: гримуар → травница, тетрадь в клетку → аркан.
+export const RENAMED_THEMES = { grimoire: 'herbal', grid: 'arcana' };
+
 export function validTheme(theme) {
-    return THEMES[theme] ? theme : 'diary';
+    const t = RENAMED_THEMES[theme] || theme;
+    return THEMES[t] ? t : 'diary';
 }
 
 // Значки рисуем сами (SVG), чтобы не зависеть от шрифтов и тем таверны.
@@ -417,6 +542,17 @@ const PATHS = {
     arrowright: '<path d="M5 12h13.5"/><path d="M13 6.5l5.5 5.5-5.5 5.5"/>',
     credit: '<path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="M8.5 10.2h7M8.5 13.8h7"/>',
     cashcoin: '<circle cx="12" cy="12" r="8.5"/><rect x="9.6" y="9.6" width="4.8" height="4.8" rx=".4"/>',
+    cur_heart: '<circle cx="12" cy="12" r="8.5"/><path d="M12 15.8c-2.7-1.8-4-3.2-4-4.8 0-1.1.8-2 1.9-2 .9 0 1.6.5 2.1 1.3.5-.8 1.2-1.3 2.1-1.3 1.1 0 1.9.9 1.9 2 0 1.6-1.3 3-4 4.8z" fill="currentColor" stroke="none"/>',
+    cur_moon: '<circle cx="12" cy="12" r="8.5"/><path d="M13.4 7.4a4.8 4.8 0 1 0 3 8.4 3.9 3.9 0 1 1-3-8.4z" fill="currentColor" stroke="none"/>',
+    cur_crystal: '<path d="M12 2.6l5.2 9.4-5.2 9.4-5.2-9.4z"/><path d="M6.8 12h10.4M12 2.6v18.8" stroke-width="1.2" opacity=".6"/>',
+    cur_ducat: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="6.2" stroke-width="1" opacity=".55"/><path d="M8.5 14.8l-.6-5.2 2.5 2.1 1.6-3.1 1.6 3.1 2.5-2.1-.6 5.2z" fill="currentColor" stroke="none"/>',
+    cur_chip: '<rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/><path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/><rect x="9.6" y="9.6" width="4.8" height="4.8" fill="currentColor" stroke="none"/>',
+    cur_gem: '<path d="M6.6 4.6h10.8l3.4 4.8L12 19.8 3.2 9.4z"/><path d="M3.2 9.4h17.6M9.4 4.6L8 9.4l4 10.4 4-10.4-1.4-4.8" stroke-width="1.3"/>',
+    cur_sprout: '<path d="M12 21v-7.2"/><path d="M12 13.8c0-4 2.7-6.6 6.8-6.8-.2 4.1-2.8 6.8-6.8 6.8z"/><path d="M12 15.6c0-3.3-2.2-5.5-5.7-5.7.2 3.5 2.4 5.7 5.7 5.7z"/><path d="M8.5 21h7"/>',
+    cur_sigil: '<circle cx="12" cy="12" r="8.5"/><path d="M12 5.8l1.4 4.8 4.8 1.4-4.8 1.4-1.4 4.8-1.4-4.8-4.8-1.4 4.8-1.4z" fill="currentColor" stroke="none"/>',
+    cur_candle: '<path d="M8.8 10.6h6.4v9.6H8.8z"/><path d="M12 10.6V8.8M6.5 20.6h11"/><path d="M12 2.6c1.7 2 2.3 3.3 2.3 4.3a2.3 2.3 0 0 1-4.6 0c0-1 .6-2.3 2.3-4.3z" fill="currentColor" stroke="none"/>',
+    cur_spindle: '<path d="M12 2.5v19"/><path d="M12 6.8c3.1 0 4.6 2.5 4.6 5.2S15.1 17.2 12 17.2 7.4 14.7 7.4 12 8.9 6.8 12 6.8z"/><path d="M7.9 10l8.2 3.6M7.9 13.6l8.2-3.6" stroke-width="1.2"/>',
+    cur_token: '<path d="M3.8 7h16.4v3.2a1.8 1.8 0 0 0 0 3.6V17H3.8v-3.2a1.8 1.8 0 0 0 0-3.6z"/><path d="M9.4 7.5v9" stroke-dasharray="1.4 1.7"/><path d="M12.6 10.6h4.2M12.6 13.4h3"/>',
     tobase: '<path d="M12 15V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/><path d="M4.5 14v5.5h15V14"/>',
     stop: '<rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/>',
     crown: '<path d="M4 8l4 3.5L12 5l4 6.5L20 8l-1.6 10H5.6z"/>',
@@ -451,6 +587,14 @@ const PATHS = {
     letter: '<rect x="3.5" y="6" width="17" height="12" rx="1.5"/><path d="M4 7l8 6 8-6"/>',
     shield: '<path d="M12 3.5l7 2.5v5.5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
     gem: '<path d="M7 4.5h10l3.5 5L12 20 3.5 9.5z"/><path d="M3.5 9.5h17M9.5 4.5L8 9.5l4 10.5 4-10.5-1.5-5"/>',
+    // совместимость: магнит-сердце, магнит, ровно, перечёркнутый магнит, разбитое сердце
+    sparkle_off: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M3.5 3.5l17 17" stroke-width="2.2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    chem_amazing: '<path d="M12 21s-8-4.9-8-10.6A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 8 2.4C20 16.1 12 21 12 21z" fill="currentColor" fill-opacity=".85"/><path d="M12 2.2v2.6M5.2 4.4l1.7 1.8M18.8 4.4l-1.7 1.8"/>',
+    chem_good: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/><path d="M8.4 1.6v2M15.6 1.6v2M12 2.4v1.4" stroke-width="1.6"/>',
+    chem_neutral: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/>',
+    chem_bad: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/><path d="M3.5 3.5l17 17" stroke-width="2.4"/>',
+    chem_awful: '<path d="M12 20.5s-7.5-4.6-7.5-10A4 4 0 0 1 12 8a4 4 0 0 1 7.5 2.5c0 5.4-7.5 10-7.5 10z"/><path d="M12.6 8.4l-1.8 3.4 2.6 1.6-1.6 3.6" stroke-width="1.8"/>',
 };
 
 // Лица персонажа по настроению — рисованные смайлики.
@@ -542,6 +686,7 @@ export const BLOCK_ICONS = {
     traits: 'feather',
     persona: 'persona',
     impression: 'eye',
+    attraction: 'chem_good',
     chronicle: 'scroll',
     rewards: 'gift',
 };
@@ -551,7 +696,10 @@ const TOAST_KICKERS = {
     bimbo: { want_done: 'Ура-ура, сбылось! ♡', fear_real: 'Почему тучка плачет? Страх сбылся…', fear_gone: 'Фух, больше не страшно ✨', trait_new: 'Новый вайб, кис', trait_up: 'Вайб усилился, коть', trait_down: 'Вайб слабеет…', trait_gone: 'Вайб ушёл, пока-пока', dream_step: 'Шажочек к мечте ✨', dream_done: 'Мечта сбылась, ааа!! ♡', dream_change: 'Новая мечточка ✨', dream_grow: 'Мечта стала больше ♡', impression: 'Первое впечатление, зай', attitude: 'Ой, отношение поменялось!', reward: 'Обновочка, кис ♡' },
     medieval: { attitude: 'Переменилось отношение', want_done: 'Желание исполнилось', fear_real: 'Сбылся страх', trait_new: 'Новая черта нрава', dream_step: 'Шаг к великой мечте', impression: 'Первое суждение' },
     china: { want_done: 'Желание исполнилось', fear_real: 'Страх обрёл плоть', fear_gone: 'Тревога рассеялась', trait_new: 'Обретена новая черта', dream_step: 'Шаг по пути сердца', dream_done: 'Путь пройден', dream_change: 'Путь изменился', dream_grow: 'Путь стал шире', impression: 'Первая встреча', attitude: 'Сердце переменилось', reward: 'Дар принят' },
-    grimoire: { want_done: 'Желание сбылось', fear_real: 'Тьма настигла: страх сбылся', fear_gone: 'Морок развеялся', trait_new: 'Проявилась новая суть', trait_up: 'Суть окрепла', trait_down: 'Суть слабеет', trait_gone: 'Суть развеялась', dream_step: 'Заклинание крепнет', dream_done: 'Заклинание свершилось', dream_change: 'Знаки изменились', dream_grow: 'Мечта разрослась', impression: 'Первое гадание', attitude: 'Нить натянулась иначе', reward: 'Оберег получен' },
+    herbal: { want_done: 'Желание сбылось', fear_real: 'Горький корень дал всходы: страх сбылся', fear_gone: 'Горечь ушла', trait_new: 'Проросла новая черта', trait_up: 'Черта окрепла', trait_down: 'Черта вянет', trait_gone: 'Черта увяла', dream_step: 'Мечта набирает силу', dream_done: 'Мечта расцвела', dream_change: 'Мечта пустила новые корни', dream_grow: 'Мечта разрослась', impression: 'Первая встреча', attitude: 'Отношение переменилось', reward: 'Гостинец получен' },
+    arcana: { want_done: 'Карта сыграла: желание сбылось', fear_real: 'Выпала тёмная карта: страх сбылся', fear_gone: 'Тень ушла из расклада', trait_new: 'Открылась новая карта', trait_up: 'Карта усилилась', trait_down: 'Карта слабеет', trait_gone: 'Карта ушла из расклада', dream_step: 'Звезда ближе', dream_done: 'Звезда достигнута', dream_change: 'Звезда сменилась', dream_grow: 'Звезда засияла ярче', impression: 'Первый расклад', attitude: 'Связь переменилась', reward: 'Талисман получен' },
+    nav: { want_done: 'Желание сбылось', fear_real: 'Лихо пришло: страх сбылся', fear_gone: 'Лихо отступило', trait_new: 'Проявилась новая черта', trait_up: 'Черта окрепла', trait_down: 'Черта слабеет', trait_gone: 'Черта ушла', dream_step: 'Шаг к Жар-птице', dream_done: 'Жар-птица поймана', dream_change: 'Мечта сменилась', dream_grow: 'Мечта разрослась', impression: 'Первая встреча', attitude: 'Нить натянулась иначе', reward: 'Оберег получен' },
+    seance: { want_done: 'Желание сбылось', fear_real: 'Тень явилась: страх сбылся', fear_gone: 'Тень отступила', trait_new: 'Проявилась новая черта', trait_up: 'Черта окрепла', trait_down: 'Черта слабеет', trait_gone: 'Черта растаяла', dream_step: 'Шаг к заветному', dream_done: 'Заветное свершилось', dream_change: 'Духи сказали иное', dream_grow: 'Мечта стала шире', impression: 'Первое явление', attitude: 'Связь дрогнула', reward: 'Подношение принято' },
     dossier: { want_done: 'Мотив реализован', fear_real: 'ВНИМАНИЕ: уязвимость подтвердилась', fear_gone: 'Угроза снята', trait_new: 'Выявлена новая черта', trait_up: 'Черта усилилась', trait_down: 'Черта ослабла', trait_gone: 'Черта утрачена', dream_step: 'Продвижение к цели', dream_done: 'Цель достигнута', dream_change: 'Цель сменилась', dream_grow: 'Цель расширена', impression: 'Новый фигурант', attitude: 'Отношение изменилось', reward: 'Поощрение выдано' },
     logbook: { want_done: 'Задача выполнена', fear_real: 'ТРЕВОГА: риск сработал', fear_gone: 'Риск миновал', trait_new: 'Профиль обновлён', trait_up: 'Профиль обновлён', trait_down: 'Профиль обновлён', trait_gone: 'Профиль обновлён', dream_step: 'Курс выдержан', dream_done: 'Пункт назначения достигнут', dream_change: 'Курс изменён', dream_grow: 'Курс продлён', impression: 'Первый контакт', attitude: 'Связь изменилась', reward: 'Груз получен' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
@@ -560,9 +708,9 @@ const TOAST_KICKERS = {
 
 // Подпись листика с ошибкой дневника — в голосе темы.
 const ERROR_KICKERS = {
-    diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка', grid: 'Ошибка',
+    diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка',
     bimbo: 'Ой-ой, ошибочка…', medieval: 'Худая весть', cyber: 'ERR // сбой', china: 'Кисть сорвалась',
-    grimoire: 'Заклинание сорвалось', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', pixel: 'GAME OVER? Нет, просто ошибка',
+    herbal: 'Отвар не удался', arcana: 'Карты спутались', seance: 'Связь оборвалась', nav: 'Нить оборвалась', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', pixel: 'GAME OVER? Нет, просто ошибка',
 };
 export function errorKicker(theme) {
     return ERROR_KICKERS[theme] || 'Не получилось';
