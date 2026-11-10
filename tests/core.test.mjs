@@ -5,8 +5,8 @@ import {
 } from '../src/core.js';
 import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
-import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait } from '../src/core.js';
-import { renderNpcList } from '../src/render.js';
+import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait, responseBudget, classifyError, parseBorn, zodiacOf } from '../src/core.js';
+import { renderNpcList, renderErrorToast } from '../src/render.js';
 
 const all = DEFAULT_SETTINGS.modules;
 let passed = 0;
@@ -542,6 +542,57 @@ test('черты: «подробнее» дописывается, приобр�
     assert.ok(html.includes('вырос среди старших братьев'));
     assert.ok(html.includes('iw-acquired') && html.includes('приобретена') && html.includes('чуть не погиб'));
     assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('no_about'));
+});
+
+test('запас: сам по сцене и не выше потолка; вручную — ровно как задано', () => {
+    const s = mergeSettings({});
+    assert.equal(s.budgetMode, 'auto');
+    const small = responseBudget(s, { kind: 'chat', mains: 1 });
+    const big = responseBudget(s, { kind: 'all', mains: 3, npcs: 10, model: 'google/gemini-3.1-pro-preview' });
+    assert.ok(small >= 1500 && small < big);
+    assert.equal(big, 8000);
+    assert.ok(responseBudget(s, { kind: 'chat', mains: 1, model: 'gemini-3.1-pro' }) > small);
+    assert.equal(responseBudget(mergeSettings({ budgetMode: 'fixed', responseLength: 3000 }), { kind: 'all', mains: 5 }), 3000);
+    assert.equal(responseBudget(mergeSettings({ budgetCap: 4000 }), { kind: 'all', mains: 5, npcs: 9 }), 4000);
+});
+
+test('ошибки: понятный вид и подсказка, листик в стиле темы', () => {
+    assert.equal(classifyError(null, { cut: true, budget: 4000 }).kind, 'cut');
+    assert.ok(classifyError(null, { cut: true, budget: 4000 }).text.includes('4000'));
+    assert.equal(classifyError(new Error('В ответе модели нет JSON'), { raw: '' }).kind, 'thinking');
+    assert.equal(classifyError(new Error('HTTP 429: Resource exhausted')).kind, 'rate');
+    assert.equal(classifyError(new Error('401 Unauthorized')).kind, 'auth');
+    assert.equal(classifyError(new Error('This model maximum context length is 65000 tokens')).kind, 'context');
+    assert.equal(classifyError(new Error('Failed to fetch')).kind, 'network');
+    assert.equal(classifyError(new Error('Модель не вернула ни одного персонажа')).kind, 'nochars');
+    const html = renderErrorToast(Object.assign(classifyError(null, { cut: true }), { what: '' }), 'bimbo');
+    assert.ok(html.includes('Ой-ой, ошибочка') && html.includes('Не хватило запаса') && html.includes('iw-toast-hint'));
+});
+
+test('дата рождения и знак зодиака: только если указаны', () => {
+    assert.deepEqual(parseBorn('14.03.1968'), { d: 14, m: 3, y: 1968 });
+    assert.deepEqual(parseBorn('5 мая'), { d: 5, m: 5 });
+    assert.equal(parseBorn('нет'), null);
+    assert.equal(zodiacOf(23, 10), 'scorpio');
+    assert.equal(zodiacOf(19, 1), 'capricorn');
+    let st = applyAnalysis(emptyState(), one({ name: 'Маша', born: '21.03.1990' }), all).state;
+    assert.equal(st.characters['Маша'].zodiac, 'aries');
+    const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Маша', mains: ['Маша'], npcKeys: [] });
+    assert.ok(html.includes('Овен') && html.includes('родилась 21 марта 1990'));
+    st = applyAnalysis(emptyState(), one({ name: 'Олег', born: 'нет' }), all).state;
+    assert.ok(st.characters['Олег'].bornChecked && !st.characters['Олег'].zodiac);
+    st = applyAnalysis(emptyState(), one({ name: 'Олег', zodiac: 'Скорпион' }), all).state;
+    assert.equal(st.characters['Олег'].zodiac, 'scorpio');
+    assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('no_born'));
+});
+
+test('пустой дневник: без фото, с быстрыми настройками запаса', () => {
+    const html = renderPanel({ state: emptyState(), settings: mergeSettings({}), theme: 'logbook', view: 'main:Маша', mains: ['Маша'], npcKeys: [], roster: null, avatarFor: () => 'x.png' });
+    const waiting = html.slice(html.indexOf('iw-waiting'));
+    assert.ok(!waiting.includes('iw-photo'));
+    assert.ok(waiting.includes('у неё на душе') && waiting.includes('«Всё сразу»'));
+    assert.ok(waiting.includes('data-iw-quick="budgetCap:8000" aria-pressed="true"'));
+    assert.ok(waiting.includes('data-iw-quick-open="connect"'));
 });
 
 console.log(`значки: ${passed} проверок прошло`);

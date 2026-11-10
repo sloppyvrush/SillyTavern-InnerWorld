@@ -30,7 +30,9 @@ export const DEFAULT_SETTINGS = {
     apiModel: '',
     apiModels: [],
     contextMessages: 6,
-    responseLength: 1500,
+    budgetMode: 'auto',      // auto — запас считается по сцене, но не выше потолка; fixed — ровно responseLength
+    budgetCap: 8000,
+    responseLength: 4000,
     maxChars: 12,
     language: 'русском',
     inject: true,
@@ -90,6 +92,107 @@ const FEAR_STATUS = ['active', 'realized', 'gone'];
 const TRAIT_KINDS = ['base', 'up', 'new', 'down', 'gone'];
 export const TRAIT_GONE_TURNS = 2; // столько ответов ушедшая черта видна зачёркнутой, чтобы её можно было вернуть
 
+// Запас токенов на ответ. Модель останавливают, когда он кончился, — поэтому обрыв = мало запаса.
+// Платится только то, что модель реально написала (и продумала), запас лишь задаёт предел.
+// «Сам»: считаем по сцене (сколько персонажей, какие блоки, какой разбор) и никогда не выходим за потолок.
+// Повторных запросов дневник сам не делает — токены не утекают незаметно.
+export const THINKING_MODEL = /gemini-(2\.5|3)|think|reason|deepseek-r|-r1\b|\bo[134](-|$)|gpt-5|qwq|kimi-k2|glm-4\.[5-9]|magistral|claude-(opus|sonnet)-4/i;
+export function responseBudget(s, { kind = 'chat', mains = 1, npcs = 0, model = '' } = {}) {
+    if (s.budgetMode === 'fixed') return Math.max(1000, Number(s.responseLength) || 4000);
+    const cap = Math.max(2000, Number(s.budgetCap) || 8000);
+    const on = MODEL_MODULES.filter(m => s.modules && s.modules[m]).length / MODEL_MODULES.length;
+    let need;
+    if (kind === 'roster') need = 3000;
+    else if (kind === 'dream') need = 1000;
+    else if (kind === 'rewards') need = 1600;
+    else if (kind === 'test') need = 300;
+    else {
+        const per = Math.max(1, mains) * 900 + Math.max(0, npcs) * 450;
+        need = 600 + per * Math.max(0.3, on) * (kind === 'chat' ? 1 : 1.6);
+    }
+    if (THINKING_MODEL.test(model || '')) need += kind === 'test' ? 1500 : 2500; // место на размышления
+    return Math.min(cap, Math.max(1500, Math.ceil(need / 100) * 100));
+}
+
+// Ошибки дневника по видам: что случилось и что с этим сделать.
+export function classifyError(err, { raw = '', cut = false, budget = 0 } = {}) {
+    const msg = String((err && (err.message || err.error || err)) || '');
+    const low = msg.toLowerCase();
+    const tok = budget ? ` Сейчас запас: ${budget} токенов.` : '';
+    const more = 'Подними запас в настройках дневника («Подключение» → «Запас на ответ» или его потолок).';
+    if (cut) return { kind: 'cut', title: 'Не хватило запаса', text: 'Модель не успела дописать запись: ответ оборвался на середине. Сохранила то, что успело прийти.' + tok, hint: more + ' Думающие модели тратят запас ещё и на размышления.', settings: true };
+    if (/не заполнено|не выбран|выбери профиль/.test(low)) return { kind: 'settings', title: 'Подключение не настроено', text: msg, hint: 'Открой настройки дневника, раздел «Подключение».', settings: true };
+    if (/\b(401|403)\b|unauthor|forbidden|invalid.*key|api key|ключ/.test(low)) return { kind: 'auth', title: 'Нет доступа к модели', text: 'Модель отказала в доступе: ключ не подошёл или закончился.', hint: 'Проверь ключ или профиль подключения.', settings: true };
+    if (/\b429\b|rate.?limit|quota|too many requests|resource.?exhausted|лимит/.test(low)) return { kind: 'rate', title: 'Модель просит подождать', text: 'Слишком много запросов или закончилась квота.', hint: 'Подожди минуту и попробуй снова.' };
+    if (/context|too long|maximum.*(length|tokens)|token limit|prompt is too long|\b413\b|слишком длин/.test(low)) return { kind: 'context', title: 'Слишком длинный запрос', text: 'Чат, карточка и лорбуки не поместились в модель.', hint: 'Уменьши «Сколько последних сообщений читать» или число персонажей, либо сними лишние лорбуки.', settings: true };
+    if (/safety|blocked|content.?filter|prohibited|recitation|policy|отказ/.test(low)) return { kind: 'safety', title: 'Модель отказалась отвечать', text: 'Сработал фильтр модели.', hint: 'Попробуй ещё раз или выбери для дневника другую модель.' };
+    if (/\b5\d\d\b|overload|unavailable|internal server|bad gateway|timeout|timed out/.test(low)) return { kind: 'server', title: 'Модель сейчас недоступна', text: 'Сервер модели перегружен или не ответил вовремя.', hint: 'Попробуй чуть позже или выбери другую модель.' };
+    if (/failed to fetch|network|networkerror|load failed|econn/.test(low)) return { kind: 'network', title: 'Нет связи с моделью', text: 'Запрос не дошёл до модели.', hint: 'Проверь интернет, прокси или адрес API.', settings: true };
+    const empty = !String(raw || '').trim();
+    if (/пустой ответ|нет json/.test(low) && (empty || /<\/?think/i.test(raw))) return { kind: 'thinking', title: 'Не хватило запаса на ответ', text: 'Модель потратила весь запас на размышления, и до записи дело не дошло.' + tok, hint: more, settings: true };
+    if (/json|испорчен|списка персонажей/.test(low)) return { kind: 'format', title: 'Модель ответила не по форме', text: 'Ответ пришёл, но дневник не смог его прочитать.', hint: 'Попробуй ещё раз. Если повторяется — выбери другую модель для дневника.' };
+    if (/ни одного персонажа/.test(low)) return { kind: 'nochars', title: 'В сцене никого не нашлось', text: 'Модель не вернула ни одного персонажа.', hint: 'Проверь в настройках, кого вести, или нажми «Всё сразу».' };
+    return { kind: 'other', title: 'Что-то пошло не так', text: msg || 'Неизвестная ошибка.', hint: 'Попробуй ещё раз.' };
+}
+
+// Знак зодиака: считается по дню и месяцу рождения (надёжнее, чем просить модель).
+export const ZODIAC = {
+    capricorn: { name: 'Козерог', glyph: '♑', el: 'earth', text: 'Земля: честолюбие, выдержка, долгие планы.' },
+    aquarius: { name: 'Водолей', glyph: '♒', el: 'air', text: 'Воздух: независимость, необычный взгляд, дружба на расстоянии.' },
+    pisces: { name: 'Рыбы', glyph: '♓', el: 'water', text: 'Вода: мечтательность, сострадание, уход в себя.' },
+    aries: { name: 'Овен', glyph: '♈', el: 'fire', text: 'Огонь: напор, азарт, первым бросается в бой.' },
+    taurus: { name: 'Телец', glyph: '♉', el: 'earth', text: 'Земля: упорство, любовь к комфорту, надёжность.' },
+    gemini: { name: 'Близнецы', glyph: '♊', el: 'air', text: 'Воздух: любопытство, живой ум, переменчивость.' },
+    cancer: { name: 'Рак', glyph: '♋', el: 'water', text: 'Вода: чувствительность, забота о своих, долгая память на обиды.' },
+    leo: { name: 'Лев', glyph: '♌', el: 'fire', text: 'Огонь: гордость, щедрость, любит быть в центре.' },
+    virgo: { name: 'Дева', glyph: '♍', el: 'earth', text: 'Земля: внимание к мелочам, порядок, строгость к себе.' },
+    libra: { name: 'Весы', glyph: '♎', el: 'air', text: 'Воздух: дипломатичность, чувство меры, нерешительность.' },
+    scorpio: { name: 'Скорпион', glyph: '♏', el: 'water', text: 'Вода: страсть, скрытность, не прощает предательства.' },
+    sagittarius: { name: 'Стрелец', glyph: '♐', el: 'fire', text: 'Огонь: свобода, прямота, тяга к дальним дорогам.' },
+};
+const ZODIAC_EDGES = [[20, 'capricorn', 'aquarius'], [19, 'aquarius', 'pisces'], [21, 'pisces', 'aries'], [20, 'aries', 'taurus'], [21, 'taurus', 'gemini'], [21, 'gemini', 'cancer'], [23, 'cancer', 'leo'], [23, 'leo', 'virgo'], [23, 'virgo', 'libra'], [23, 'libra', 'scorpio'], [22, 'scorpio', 'sagittarius'], [22, 'sagittarius', 'capricorn']];
+export function zodiacOf(d, m) {
+    const e = ZODIAC_EDGES[m - 1];
+    if (!e || !(d >= 1 && d <= 31)) return '';
+    return d < e[0] ? e[1] : e[2];
+}
+export function cleanZodiac(v) {
+    const x = String(v || '').toLowerCase().trim();
+    if (!x) return '';
+    if (ZODIAC[x]) return x;
+    const hit = Object.entries(ZODIAC).find(([, z]) => z.name.toLowerCase() === x);
+    return hit ? hit[0] : '';
+}
+const MONTHS = ['янв', 'фев', 'мар', 'апр', 'ма', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const MONTHS_EN = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+export const MONTH_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+// Дата рождения из того, как её написала модель: 14.03.1968, 14.03, 1968-03-14, «14 марта 1968», «March 14, 1968».
+export function parseBorn(v) {
+    const t = String(v || '').toLowerCase().trim();
+    if (!t) return null;
+    let d, m, y;
+    let r = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (r) { y = +r[1]; m = +r[2]; d = +r[3]; }
+    if (!r && (r = t.match(/(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/))) { d = +r[1]; m = +r[2]; y = r[3] ? +r[3] : undefined; }
+    if (!r && (r = t.match(/(\d{1,2})\s+([а-яё]+)(?:\s+(\d{3,4}))?/))) {
+        d = +r[1];
+        const w = r[2];
+        m = w.startsWith('ма') ? (w.startsWith('мар') ? 3 : 5) : MONTHS.findIndex(x => w.startsWith(x)) + 1;
+        y = r[3] ? +r[3] : undefined;
+    }
+    if (!r && (r = t.match(/([a-z]+)\s+(\d{1,2})(?:,?\s+(\d{3,4}))?/))) {
+        m = MONTHS_EN.findIndex(x => r[1].startsWith(x)) + 1;
+        d = +r[2];
+        y = r[3] ? +r[3] : undefined;
+    }
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+    if (y !== undefined && y < 100) y = undefined;
+    return y ? { d, m, y } : { d, m };
+}
+export function bornText(b) {
+    return b ? `${b.d} ${MONTH_GEN[b.m - 1]}${b.y ? ' ' + b.y : ''}` : '';
+}
+
 // Тип личности (16 типов, как в тесте 16personalities) и темперамент — из характера по карточке и лорбуку.
 export const PTYPES = {
     INTJ: 'Архитектор', INTP: 'Логик', ENTJ: 'Командир', ENTP: 'Полемист',
@@ -143,6 +246,9 @@ export function mergeSettings(saved) {
     if (!['русском', 'английском'].includes(s.language)) s.language = 'русском';
     if (!Array.isArray(s.apiModels)) s.apiModels = [];
     s.volume = Math.max(0, Math.min(100, Number.isFinite(Number(s.volume)) ? Number(s.volume) : 45));
+    if (!['auto', 'fixed'].includes(s.budgetMode)) s.budgetMode = 'auto';
+    s.budgetCap = Math.max(2000, Math.min(32000, Number(s.budgetCap) || 8000));
+    s.responseLength = Math.max(1000, Math.min(32000, Number(s.responseLength) || 4000));
     delete s.badges;
     delete s.track;
     delete s.trackList;
@@ -214,6 +320,13 @@ export function cleanCharacter(raw, opts = {}) {
     if (tm) c.temper = tm;
     if (raw.ptype_note) c.ptypeNote = str(raw.ptype_note, 260);
     if (raw.temper_note) c.temperNote = str(raw.temper_note, 260);
+    if (raw.born !== undefined && raw.born !== null && raw.born !== '') {
+        const b = parseBorn(raw.born);
+        if (b) c.born = b;
+        else if (/^(нет|none|no|unknown|не указан\S*|-)$/i.test(String(raw.born).trim())) c.bornNone = true;
+    }
+    const z = cleanZodiac(raw.zodiac) || (c.born ? zodiacOf(c.born.d, c.born.m) : '');
+    if (z) c.zodiac = z;
 
     if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
     if (raw.face !== undefined) c.face = oneOf(raw.face, FACES, 'neutral');
@@ -606,6 +719,9 @@ export function mergeCharacter(old, fresh, modules) {
     if (fresh.temper) out.temper = fresh.temper;
     if (fresh.ptypeNote) out.ptypeNote = fresh.ptypeNote;
     if (fresh.temperNote) out.temperNote = fresh.temperNote;
+    if (fresh.born) out.born = fresh.born;
+    if (fresh.zodiac) out.zodiac = fresh.zodiac;
+    if (fresh.bornNone && !out.born && !out.zodiac) out.bornChecked = true;
     if (!out.g) out.g = 'n';
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
 
@@ -852,9 +968,10 @@ export function responseTemplate(modules, manualTurns) {
     if (modules.traits) {
         c.traits = [{ name: 'черта характера', why: 'событие, после которого изменилась', kind: 'base|up|new|down|gone', about: 'почему эта черта у него (только если no_about)' }];
         c.ptype = 'INFP-T';
-        c.ptype_note = 'как этот тип проявляется именно в нём';
+        c.ptype_note = 'как этот тип проявляется именно в нём (только при no_ptype)';
         c.temper = 'choleric|sanguine|phlegmatic|melancholic';
         c.temper_note = 'как темперамент виден в его поведении';
+        c.born = 'ДД.ММ.ГГГГ или ДД.ММ (только при no_born)';
     }
     if (modules.impression) c.impression = { label: '1–2 слова', score: 1, why: 'почему так', now: 'что думает сейчас', now_score: 1 };
     return JSON.stringify({ characters: [c] });
@@ -903,7 +1020,8 @@ export function buildSystemPrompt(settings, ctx) {
     if (m.wants) rules.push('wants — до 3 текущих желаний, конкретных и живых, из характера, сюжета и мечты; не только про игрока. Исполнившееся по событиям помечай status "done", неактуальное — "dropped", вместо них можно добавить новые. Желания с pinned: true игрок закрепил: верни их как есть, не меняй текст и не отменяй — только status "done", когда исполнится.');
     if (m.fears) rules.push('fears — до 3 страхов, из характера, прошлого и сюжета; strength 1–3; level — одно слово. Если то, чего персонаж боялся, ПРОИЗОШЛО в последних сообщениях — обязательно помечай "realized". Преодолённый — "gone".');
     if (m.dream) rules.push(`dream — мечта всей жизни: одна большая личная цель, которая следует из характера и истории персонажа (карточка, прошлое, ценности), с 3–5 этапами. Это глобальное и личное, а не текущая сцена. ${user} может появиться в мечте, ТОЛЬКО если между ними уже по-настоящему близкие отношения (отношение +2 и выше) и было сильное общее событие; незнакомец, знакомый или просто приятель в мечту не попадает. Если мечта уже есть — повторяй её название, plus и этапы дословно, отмечай выполненные этапы (done: true) и ставь change "same". Меняй мечту, только если случилось настоящее потрясение, которое переворачивает жизнь персонажа: change "change" — новая мечта (новые title и steps), change "add" — мечта дополнилась (plus — короткое продолжение, например «…вместе с ней»); в why — какое событие. Мелкие события мечту не трогают.`);
-    if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Если они уже есть — повторяй как есть; меняй, только если карточка и лорбук явно говорят иное или характер заметно изменился.');
+    if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Пиши ptype, ptype_note, temper и temper_note только для персонажей с no_ptype: true и для новых; у остальных эти поля не пиши вовсе — они уже сохранены.');
+    if (m.traits) rules.push('born — дата рождения, только если она прямо написана в карточке или лорбуке: "ДД.ММ.ГГГГ" или "ДД.ММ". Если даты нет, но назван знак зодиака — верни zodiac (по-русски, например "Скорпион"). Ничего не выдумывай и не высчитывай из возраста: если ни даты, ни знака нет — верни born: "нет". Пиши эти поля только для персонажей с no_born: true и для новых.');
     if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова. about — 1–2 предложения, почему эта черта есть у персонажа: для основной — что в его прошлом, воспитании, работе или судьбе (по карточке и лорбуку) её выстроило; для приобретённой — как именно событие её породило. Пиши about только для новых черт и для тех, где стоит no_about: true; у остальных не пиши.');
     if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве: label, score от -3 до 3, why. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3; меняй постепенно, резко — только после серьёзного поступка).`);
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
@@ -948,10 +1066,9 @@ export function compactState(state, modules, onlyKeys) {
         if (modules.dream && c.dream) o.dream = { title: c.dream.title, plus: c.dream.plus || '', steps: c.dream.steps, pinned: !!c.dream.pinned };
         if (modules.traits) {
             o.traits = (c.traits || []).map(t => Object.assign({ name: t.name, kind: t.kind, why: t.why }, t.about ? {} : { no_about: true }));
-            if (c.ptype) o.ptype = c.ptype;
-            if (c.ptypeNote) o.ptype_note = c.ptypeNote;
-            if (c.temper) o.temper = c.temper;
-            if (c.temperNote) o.temper_note = c.temperNote;
+            if (c.ptype && c.temper && c.ptypeNote && c.temperNote) o.ptype = c.ptype;
+            else o.no_ptype = true;
+            if (!c.born && !c.zodiac && !c.bornChecked) o.no_born = true;
         }
         if (modules.impression && c.impression) o.impression = { label: c.impression.label, score: c.impression.score, now: c.impression.now, now_score: c.impression.nowScore };
         return o;

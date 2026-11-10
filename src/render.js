@@ -1,6 +1,6 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS } from './core.js';
-import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, icon, faceIcon, currencyIcon, bimboNicks } from './themes.js';
+import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText } from './core.js';
+import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks } from './themes.js';
 import { npcBadge } from './npc-icons.js';
 
 // Данные для подбора значка НПС: роль из лорбука или от модели, черты, имя, пол.
@@ -388,6 +388,19 @@ function renderPersona(c, L) {
           ${c.temperNote ? `<p class="iw-persona-own">${esc(c.temperNote)}</p>` : ''}
         </div>`);
     }
+    const z = ZODIAC[c.zodiac];
+    if (z || c.born) {
+        const g = genderOf(c.g, c.name, c.who);
+        const born = c.born ? `${gw(g, 'родился', 'родилась', 'день рождения:')} ${esc(bornText(c.born))}` : 'дата рождения не указана';
+        cards.push(`
+        <div class="iw-persona-card iw-zd-${z ? z.el : 'none'}">
+          <div class="iw-persona-top">
+            <span class="iw-persona-code iw-zodiac-glyph">${z ? `${z.glyph}\uFE0E` : icon('zodiac')}</span>
+            <span class="iw-persona-name">${esc(z ? z.name : 'знак не ясен')}<small>${born}</small></span>
+          </div>
+          ${z ? `<p class="iw-persona-general">${esc(z.text)}</p>` : ''}
+        </div>`);
+    }
     return `
     <section class="iw-block iw-b-persona">
       ${blockHead('persona', esc(L.persona || 'Тип личности'))}
@@ -597,15 +610,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0] }, opts));
     } else if (view.startsWith('main:')) {
-        const name = view.slice(5);
-        body = `
-<div class="iw-waiting">
-  ${photoHtml({ name }, avatarFor)}
-  <div class="iw-waiting-text">
-    <div class="iw-npc-title">${esc(name)}</div>
-    <div>Дневник ещё не заполнен. Отправь сообщение — или нажми «Чат» справа сверху: я прочитаю историю и восстановлю настроение, желания, страхи и отношение к тебе. «Лорбук» — разберёт карточку и лорбуки.</div>
-  </div>
-</div>`;
+        body = renderWaiting(view.slice(5), settings, theme, roster);
     } else {
         body = `<div class="iw-empty">${esc(L.empty)}</div>`;
     }
@@ -639,6 +644,92 @@ export function renderToast(ev, theme) {
     <div class="iw-toast-kicker">${esc(kicker)}</div>
     <div class="iw-toast-who">${esc(ev.who)}</div>
     <div class="iw-toast-text">${esc(eventText(ev))}</div>
+  </div>
+  <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
+</div>`;
+}
+
+// Скетчевая стрелка «сюда»: в рисованных темах — от руки, в технических — ломаная линия.
+const TECH_THEMES = ['cyber', 'grid', 'logbook', 'dossier'];
+function sketchArrow(theme, cls = '') {
+    const path = TECH_THEMES.includes(theme)
+        ? '<path d="M4 30h22V8"/><path d="M19 15l7-7 7 7"/>'
+        : '<path d="M4 31c9 1 17-3 20-10s3-11 1-15"/><path d="M18 10c3-2 5-4 7-6 1 3 3 5 5 7"/>';
+    return `<svg class="iw-sketch-arrow ${cls}" viewBox="0 0 38 36" width="38" height="36" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+}
+
+function quickOpt(key, value, label, on) {
+    return `<button type="button" class="iw-qopt${on ? ' on' : ''}" data-iw-quick="${esc(key)}:${esc(value)}" aria-pressed="${on}">${esc(label)}</button>`;
+}
+
+// Пустой дневник: что нажать и быстрые настройки запаса прямо здесь, до первого разбора.
+function renderWaiting(name, s, theme, roster) {
+    const entry = roster && roster.find ? roster.find(name) : null;
+    const g = genderOf(entry && entry.g, name, entry && entry.who);
+    const him = gw(g, 'у него', 'у неё', 'у персонажа');
+    const auto = s.budgetMode !== 'fixed';
+    const caps = [4000, 6000, 8000, 12000, 16000];
+    const fixed = [2000, 3000, 4000, 6000, 8000, 12000];
+    const budgetRow = auto
+        ? caps.map(v => quickOpt('budgetCap', v, String(v), Number(s.budgetCap) === v)).join('')
+        : fixed.map(v => quickOpt('responseLength', v, String(v), Number(s.responseLength) === v)).join('');
+    return `
+<div class="iw-waiting">
+  <div class="iw-waiting-text">
+    <div class="iw-npc-title">${esc(name)}</div>
+    <p>Дневник ещё не заполнен. Отправь сообщение, и я запишу, что ${him} на душе. Или нажми кнопку разбора справа сверху:</p>
+    <ul class="iw-waiting-list">
+      <li><b>«Чат»</b> — прочитаю историю и восстановлю настроение, желания, страхи и отношение к тебе;</li>
+      <li><b>«Лорбук»</b> — разберу карточку и лорбуки: основу характера, мечту, тип личности и НПС;</li>
+      <li><b>«Всё сразу»</b> — сведу и то, и другое в одну картину.</li>
+    </ul>
+  </div>
+  <section class="iw-quick">
+    <div class="iw-quick-head"><span class="iw-label">Перед первым разбором</span><span class="iw-muted">можно настроить прямо здесь</span></div>
+    <div class="iw-quick-step">
+      <span class="iw-quick-num">1</span>
+      <div class="iw-quick-body">
+        <div class="iw-quick-title">Сколько токенов давать модели на ответ</div>
+        <div class="iw-qrow">${quickOpt('budgetMode', 'auto', 'сам, по сцене (советую)', auto)}${quickOpt('budgetMode', 'fixed', 'как я задам', !auto)}</div>
+        <div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">${auto ? 'потолок:' : 'на каждый ответ:'}</span>${budgetRow}</div>
+        <div class="iw-quick-hint">${sketchArrow(theme, 'iw-arrow-side')}<span>${auto ? 'Дневник сам считает, сколько нужно, и никогда не выходит за потолок. Платишь только за то, что модель написала.' : 'Каждый запрос получит ровно столько.'} Думающим моделям (Gemini 3 Pro и похожие) лучше от 6000: часть запаса уходит на размышления.</span></div>
+      </div>
+    </div>
+    <div class="iw-quick-step">
+      <span class="iw-quick-num">2</span>
+      <div class="iw-quick-body">
+        <div class="iw-quick-title">Сколько последних сообщений читать</div>
+        <div class="iw-qrow">${[4, 6, 10, 15].map(v => quickOpt('contextMessages', v, String(v), Number(s.contextMessages) === v)).join('')}</div>
+        <div class="iw-quick-hint"><span>Больше — точнее, но дороже. Обычно хватает 6.</span></div>
+      </div>
+    </div>
+    <div class="iw-quick-step">
+      <span class="iw-quick-num">3</span>
+      <div class="iw-quick-body">
+        <div class="iw-quick-title">Какая модель пишет дневник</div>
+        <div class="iw-qrow">${quickOpt('source', 'main', 'та же, что в чате', s.source !== 'custom')}${quickOpt('source', 'custom', 'отдельная — настроить', s.source === 'custom')}</div>
+      </div>
+    </div>
+    <div class="iw-quick-foot">
+      <button type="button" class="iw-btn" data-iw-quick-open="connect">${icon('gear')}<span>Все настройки подключения</span></button>
+      <span class="iw-quick-go">${sketchArrow(theme, 'iw-arrow-up')}<span>Готово? Жми «Всё сразу» справа сверху</span></span>
+    </div>
+  </section>
+</div>`;
+}
+
+// Ошибка дневника: что случилось и что сделать — листиком в стиле темы.
+export function renderErrorToast(info, theme) {
+    return `
+<div class="iw-toast-card iw-ev-fear_real iw-toast-error iw-err-${esc(info.kind)}" role="alert">
+  <span class="iw-tape" aria-hidden="true"></span>
+  <span class="iw-toast-icon">${icon('alert')}</span>
+  <div class="iw-toast-body">
+    <div class="iw-toast-kicker">${esc(errorKicker(theme))}${info.what ? ` · ${esc(info.what)}` : ''}</div>
+    <div class="iw-toast-who">${esc(info.title)}</div>
+    <div class="iw-toast-text">${esc(info.text)}</div>
+    ${info.hint ? `<div class="iw-toast-hint">${icon('pointer')}<span>${esc(info.hint)}</span></div>` : ''}
+    ${info.settings ? '<div class="iw-toast-link">нажми, чтобы открыть настройки</div>' : ''}
   </div>
   <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
 </div>`;

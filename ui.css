@@ -7730,3 +7730,268 @@ ol {
     text-decoration-thickness: 2px;
     text-decoration-color: color-mix(in srgb, currentColor 70%, #e0414a);
 }
+
+/* ---------- Ошибка дневника: свой листик в стиле темы ---------- */
+.iw-toast-card.iw-toast-error {
+    --iw-ev: #d9473a;
+    cursor: pointer;
+    max-width: 360px;
+}
+
+.iw-toast-error .iw-toast-icon {
+    color: var(--iw-ev);
+}
+
+.iw-toast-error .iw-toast-who {
+    color: var(--iw-ev);
+}
+
+.iw-toast-hint {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px dashed color-mix(in srgb, var(--iw-ev) 45%, transparent);
+    font-size: .88em;
+    font-weight: 600;
+}
+
+.iw-toast-hint .iw-ico {
+    flex: none;
+    margin-top: 2px;
+    color: var(--iw-ev);
+}
+
+.iw-toast-link {
+    margin-top: 5px;
+    font-size: .78em;
+    opacity: .65;
+    text-decoration: underline dotted;
+}
+
+.iw-theme-cyber .iw-toast-error,
+.iw-theme-logbook .iw-toast-error { --iw-ev: #ff6b6b; }
+.iw-theme-dossier .iw-toast-error { --iw-ev: #9a2f22; }
+.iw-theme-bimbo .iw-toast-error { --iw-ev: #e0336f; }
+.iw-theme-china .iw-toast-error { --iw-ev: #b8322a; }
+.iw-theme-grimoire .iw-toast-error { --iw-ev: #e06a5a; }
+
+/* знак зодиака: цвет по стихии */
+.iw-zd-fire { --pt: #d9603a; }
+.iw-zd-earth { --pt: #6f8a3c; }
+.iw-zd-air { --pt: #5b8fc7; }
+.iw-zd-water { --pt: #3a7f9a; }
+.iw-zd-none { --pt: var(--iw-muted); }
+
+.iw-zodiac-glyph {
+    font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0;
+}
+
+.iw-persona-name small {
+    text-transform: none;
+}
+
+/* ---------- Пустой дневник: что нажать и быстрые настройки ---------- */
+.iw-waiting {
+    flex-direction: column;
+    gap: 14px;
+    max-width: 720px;
+}
+
+.iw-waiting p {
+    margin: 0;
+}
+
+.iw-waiting-list {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.iw-quick {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px 16px;
+    border: var(--iw-sticker-border, 2px solid var(--iw-divider));
+    border-radius: var(--iw-block-radius);
+    background: var(--iw-sticker-bg, transparent);
+}
+
+.iw-quick-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+}
+
+.iw-quick-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.iw-quick-num {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--iw-scribble);
+    border-radius: 50% 46% 52% 48%;
+    color: var(--iw-scribble);
+    font-family: var(--iw-title-font);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.iw-quick-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.iw-quick-title {
+    font-weight: 700;
+}
+
+.iw-qrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.iw-qlabel {
+    font-size: .85em;
+    color: var(--iw-muted);
+    margin-right: 2px;
+}
+
+.iw-qopt {
+    padding: 5px 11px;
+    border: 1.5px solid color-mix(in srgb, var(--iw-ink) 35%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--iw-ink);
+    font: inherit;
+    font-size: .88em;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+.iw-qopt:hover {
+    border-color: var(--iw-scribble);
+}
+
+.iw-qopt.on {
+    background: var(--iw-hl-main);
+    border-color: var(--iw-scribble);
+    font-weight: 700;
+}
+
+.iw-quick-hint {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: .86em;
+    color: var(--iw-muted);
+    line-height: 1.35;
+}
+
+.iw-sketch-arrow {
+    flex: none;
+    color: var(--iw-scribble);
+}
+
+.iw-arrow-side {
+    width: 30px;
+    height: 28px;
+    transform: rotate(-80deg) scaleX(-1);
+    margin-top: -4px;
+}
+
+.iw-quick-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--iw-divider);
+}
+
+.iw-quick-go {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 6px;
+    font-family: var(--iw-title-font);
+    font-weight: 700;
+    color: var(--iw-scribble);
+}
+
+.iw-arrow-up {
+    order: 2;
+    transform: translateY(-6px);
+}
+
+/* технические темы: прямые углы */
+.iw-theme-cyber .iw-qopt, .iw-theme-grid .iw-qopt, .iw-theme-logbook .iw-qopt, .iw-theme-dossier .iw-qopt,
+.iw-theme-cyber .iw-quick-num, .iw-theme-grid .iw-quick-num, .iw-theme-logbook .iw-quick-num, .iw-theme-dossier .iw-quick-num {
+    border-radius: 0;
+}
+
+.iw-theme-logbook .iw-quick {
+    border-radius: 0;
+    clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+
+.iw-theme-logbook .iw-quick-num,
+.iw-theme-logbook .iw-quick-go,
+.iw-theme-cyber .iw-quick-go {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.iw-theme-bimbo .iw-qopt.on {
+    background: linear-gradient(135deg, #ff9ccc, #ff5fa8);
+    color: #fff;
+    border-color: #ff5fa8;
+}
+
+.iw-theme-bimbo .iw-quick {
+    border-style: dashed;
+}
+
+.iw-theme-dark .iw-qopt.on,
+.iw-theme-cyber .iw-qopt.on,
+.iw-theme-grimoire .iw-qopt.on,
+.iw-theme-logbook .iw-qopt.on {
+    color: var(--iw-ink);
+}
+
+@media (max-width: 560px) {
+    .iw-quick-foot {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+.iw-theme-logbook .iw-qopt.on {
+    background: rgba(98, 214, 200, .16);
+    border-color: #62d6c8;
+    color: #62d6c8;
+}
+
+.iw-theme-cyber .iw-qopt.on {
+    background: rgba(255, 92, 240, .14);
+    border-color: currentColor;
+}

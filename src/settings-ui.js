@@ -10,7 +10,7 @@ function esc(s) {
 const n = list => list.map(v => [v, String(v)]);
 
 // Поля, которые хранятся числом.
-export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'maxChars', 'injectDepth', 'volume'];
+export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'volume'];
 
 const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 
@@ -52,7 +52,9 @@ export function settingsSchema(ctx = {}) {
                 { type: 'text', key: 'apiKey', input: 'password', label: 'Ключ API', placeholder: 'вставь ключ', show: own },
                 { type: 'model', key: 'apiModel', label: 'Модель', options: models, show: own },
                 { type: 'buttons', show: custom, buttons: [{ id: 'testApi', label: 'Проверить подключение', hint: ctx.apiStatus || '' }] },
-                { type: 'select', key: 'responseLength', label: 'Запас на ответ модели', options: [[1000, 'маленький (1000 токенов)'], [1500, 'обычный (1500)'], [2000, 'побольше (2000)'], [3000, 'большой (3000)'], [4000, 'очень большой (4000)']], hint: 'Если записи обрываются — увеличь.' },
+                { type: 'select', key: 'budgetMode', label: 'Запас на ответ модели', options: [['auto', 'сам, по размеру сцены (советую)'], ['fixed', 'как я задам']], hint: s => (s.budgetMode === 'fixed' ? 'Каждый запрос получает ровно столько. Если ответы обрываются — увеличь.' : 'Дневник считает запас сам: сколько персонажей в сцене, какой разбор, думающая ли модель. Платишь только за то, что модель написала, а запас лишь не даёт ей оборваться. Повторных запросов дневник сам не делает.') },
+                { type: 'select', key: 'budgetCap', label: 'Потолок на один ответ', options: [[4000, '4000 токенов'], [6000, '6000'], [8000, '8000 (обычно)'], [12000, '12000'], [16000, '16000']], show: s => s.budgetMode !== 'fixed', hint: 'Больше этого дневник не попросит ни при каком разборе. Защищает от слишком долгих размышлений модели.' },
+                { type: 'select', key: 'responseLength', label: 'Запас на каждый ответ', options: [[2000, '2000 токенов'], [3000, '3000'], [4000, '4000'], [6000, '6000'], [8000, '8000'], [12000, '12000'], [16000, '16000']], show: s => s.budgetMode === 'fixed', hint: 'Думающие модели (Gemini 3 Pro и похожие) тратят запас ещё и на размышления.' },
             ],
         },
         {

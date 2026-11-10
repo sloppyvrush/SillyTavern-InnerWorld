@@ -345,6 +345,8 @@ const PATHS = {
     book: '<path d="M3 5.5c3-1.4 6-1.4 9 .8 3-2.2 6-2.2 9-.8v13c-3-1.4-6-1.4-9 .8-3-2.2-6-2.2-9-.8z"/><path d="M12 6.3v13"/>',
     rotate: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    alert: '<path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/><path d="M12 17.3v.2"/>',
+    zodiac: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17"/><circle cx="12" cy="12" r="3.2"/>',
     flame: '<path d="M12 21c-3.6 0-6-2.4-6-5.6 0-3.3 2.4-5 3.4-8.4 1.9 1.4 2.6 3.2 2.6 4.6 1-.8 1.6-2 1.7-3.4 2.4 1.9 4.3 4.4 4.3 7.2 0 3.2-2.4 5.6-6 5.6z"/>',
     persona: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.6-5.8 7-5.8s6.2 2 7 5.8"/>',
     smile: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14.2c1.9 2.1 5.1 2.1 7 0"/><path d="M9.2 9.6h.01M14.8 9.6h.01" stroke-width="2.6"/>',
@@ -464,6 +466,16 @@ const TOAST_KICKERS = {
     logbook: { want_done: 'Задача выполнена', fear_real: 'ТРЕВОГА: риск сработал', fear_gone: 'Риск миновал', trait_new: 'Профиль обновлён', trait_up: 'Профиль обновлён', trait_down: 'Профиль обновлён', trait_gone: 'Профиль обновлён', dream_step: 'Курс выдержан', dream_done: 'Пункт назначения достигнут', dream_change: 'Курс изменён', dream_grow: 'Курс продлён', impression: 'Первый контакт', attitude: 'Связь изменилась', reward: 'Груз получен' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
 };
+
+// Подпись листика с ошибкой дневника — в голосе темы.
+const ERROR_KICKERS = {
+    diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка', grid: 'Ошибка',
+    bimbo: 'Ой-ой, ошибочка…', medieval: 'Худая весть', cyber: 'ERR // сбой', china: 'Кисть сорвалась',
+    grimoire: 'Заклинание сорвалось', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ',
+};
+export function errorKicker(theme) {
+    return ERROR_KICKERS[theme] || 'Не получилось';
+}
 
 export function toastKicker(theme, type, fallback) {
     return (TOAST_KICKERS[theme] && TOAST_KICKERS[theme][type]) || fallback;

@@ -4,11 +4,11 @@ import {
     buildSystemPrompt, buildUserPrompt, buildInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
-    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait,
+    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError,
 } from './src/core.js';
 import { playSound, setVolume } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
-import { renderPanel, renderToast, renderFab, esc } from './src/render.js';
+import { renderPanel, renderToast, renderErrorToast, renderFab, esc } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
@@ -263,7 +263,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         }
         if (!sameLore && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
             const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
-            const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2500 }));
+            const raw = await callModel(system, user, withBudget('roster'));
             const fresh = verifyAliases(parseRoster(raw, c.name1), sources.map(x => x.text).join('\n'));
             const old = settings().rosters[key];
             const merged = old && old.at ? mergeRoster(old, fresh) : { main: fresh.main, npc: fresh.npc };
@@ -278,8 +278,9 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     } catch (err) {
         if ((err && err.cancelled) || my !== runId) return;
         console.error('[Внутренний мир]', err);
-        status = 'Не получилось изучить: ' + (err && err.message ? err.message : err);
-        toastr.error(status, 'Внутренний мир');
+        const info = classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) });
+        status = 'Не получилось изучить: ' + info.title;
+        showError(info, { manual: true, what: 'Изучение лорбука' });
         rosterBusy = false;
         busyKind = '';
         renderAll();
@@ -466,7 +467,24 @@ function cancelledError() {
     return e;
 }
 
+// Последний запрос к модели: ответ и запас — чтобы понять, почему не получилось.
+let lastCall = { raw: '', budget: 0 };
+
+// Настройки с запасом на ответ под этот разбор (см. responseBudget): «сам» — по сцене и не выше потолка.
+function withBudget(kind, counts = {}) {
+    const s = settings();
+    return Object.assign({}, s, { responseLength: responseBudget(s, Object.assign({ kind, model: modelName(s) }, counts)) });
+}
+
+function modelName(s) {
+    if (s.source === 'custom' && s.apiKind !== 'profile') return s.apiModel || '';
+    const cc = ctx().chatCompletionSettings || {};
+    const src = cc.chat_completion_source || '';
+    return String(cc[`${src}_model`] || cc.custom_model || cc.model || '');
+}
+
 async function callModel(system, user, s) {
+    lastCall = { raw: '', budget: Number(s.responseLength) || 0 };
     const my = runId;
     if (!abortCtl || abortCtl.signal.aborted) abortCtl = new AbortController();
     const signal = abortCtl.signal;
@@ -478,6 +496,7 @@ async function callModel(system, user, s) {
         throw err;
     }
     if (my !== runId) throw cancelledError();
+    lastCall.raw = typeof res === 'string' ? res : '';
     return res;
 }
 
@@ -498,7 +517,7 @@ function stopAnalysis() {
 
 async function callModelRaw(system, user, s, signal) {
     const c = ctx();
-    const max = Number(s.responseLength) || 1500;
+    const max = Number(s.responseLength) || 4000;
     if (s.source === 'custom') {
         const missing = missingFields(s);
         if (missing.length) throw new Error(`в настройках подключения не заполнено: ${missing.join(', ')}`);
@@ -508,12 +527,12 @@ async function callModelRaw(system, user, s, signal) {
         const res = await c.ConnectionManagerRequestService.sendRequest(
             s.profileId,
             [{ role: 'system', content: system }, { role: 'user', content: user }],
-            Number(s.responseLength) || 1500,
+            Number(s.responseLength) || 4000,
             { stream: false, extractData: true, includePreset: true, includeInstruct: true },
         );
         return typeof res === 'string' ? res : (res && res.content) || '';
     }
-    return await c.generateRaw({ systemPrompt: system, prompt: user, responseLength: Number(s.responseLength) || 1500, trimNames: false });
+    return await c.generateRaw({ systemPrompt: system, prompt: user, responseLength: Number(s.responseLength) || 4000, trimNames: false });
 }
 
 async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat' } = {}) {
@@ -529,6 +548,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     }
     const chatId = c.getCurrentChatId && c.getCurrentChatId();
     const my = runId;
+    let raw = '';
+    let budget = 0;
     busy = true;
     if (manual) busyKind = kind;
     status = fromLore ? 'Дополняю дневник по карточке и лорбуку…' : 'Пишу в дневник…';
@@ -622,8 +643,17 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         const system = buildSystemPrompt(s, info);
         const user = buildUserPrompt(info, base, s.modules, present);
-        const raw = await callModel(system, user, (catchUp || fromLore) ? Object.assign({}, s, { responseLength: Math.max(Number(s.responseLength) || 1500, catchUp ? 4000 : 3000) }) : s);
+        const cast = present || base.order;
+        const castMains = Math.max(1, cast.filter(k => isMain(k, mn)).length);
+        const castNpcs = (s.showNpc === false ? 0 : cast.length - cast.filter(k => isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0);
+        const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
+        budget = ask.responseLength;
+        raw = await callModel(system, user, ask);
         if (chatId && c.getCurrentChatId && ctx().getCurrentChatId() !== chatId) return; // чат сменился
+        if (looksCut(raw)) {
+            console.warn('[Внутренний мир] ответ модели оборвался', String(raw || '').slice(-300));
+            showError(classifyError(null, { cut: true, budget }), { manual });
+        }
         let fresh = parseAnalysis(raw, { manualTurns: s.moodMode === 'manual' ? s.moodTurns : null });
         // имена приводим к тем, что в лорбуке («Волк» → «Константин Волков»)
         for (const f of fresh) {
@@ -660,8 +690,9 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     } catch (err) {
         if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
-        status = 'Не получилось: ' + (err && err.message ? err.message : err);
-        if (manual) toastr.error(status, 'Внутренний мир');
+        const info = classifyError(err, { raw, budget, cut: looksCut(raw) && /JSON|испорчен|персонаж/.test(String(err && err.message)) });
+        status = 'Не получилось: ' + info.title;
+        showError(info, { manual });
     } finally {
         if (my !== runId) return; // этот разбор остановили — флаги уже сброшены
         busy = false;
@@ -710,6 +741,35 @@ function showEvent(ev, delay = 0) {
         if (settings().sound !== false) playSound(ev.type, currentTheme);
         setTimeout(close, 9000);
     }, delay);
+}
+
+// Ошибка дневника — своим листиком в стиле темы и с тревожным звуком, вместо уведомления таверны.
+// При автоматическом разборе одна и та же ошибка не всплывает чаще раза в 2 минуты.
+const lastErrShown = {};
+function showError(info, { manual = false, what = '' } = {}) {
+    const now = Date.now();
+    if (!manual && lastErrShown[info.kind] && now - lastErrShown[info.kind] < 120000) return;
+    lastErrShown[info.kind] = now;
+    const box = toastBox();
+    const wrap = document.createElement('div');
+    wrap.className = 'iw-toast-wrap';
+    wrap.innerHTML = renderErrorToast(Object.assign({}, info, { what }), currentTheme);
+    const close = () => {
+        wrap.classList.add('iw-out');
+        setTimeout(() => wrap.remove(), 350);
+    };
+    wrap.addEventListener('click', e => {
+        if (e.target.closest('.iw-toast-close')) return close();
+        if (info.settings) {
+            sectionOpen.diary.connect = true;
+            view = 'settings';
+        }
+        openPanel();
+        close();
+    });
+    box.appendChild(wrap);
+    if (settings().sound !== false) playSound('fear_real', currentTheme);
+    setTimeout(close, 15000);
 }
 
 async function onMessageReceived(messageId, type) {
@@ -984,6 +1044,8 @@ async function onPanelClick(e) {
         return renderPanelNow();
     }
     if (t.dataset.iwStudy) return studyLore({ mode: 'lore' });
+    if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
+    if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
     if (t.dataset.iwDel) {
         const [kind, idx] = t.dataset.iwDel.split(':');
         const state = currentState();
@@ -1056,6 +1118,12 @@ function missingPersona() {
     });
 }
 
+// Ответ обрезан: JSON не закрыт (кончились токены, часто у думающих моделей).
+function looksCut(raw) {
+    const t = String(raw || '').replace(/```\s*$/, '').trim();
+    return !!t && t.includes('{') && !t.endsWith('}') && !t.endsWith(']');
+}
+
 function nothingNew(what) {
     toastr.info(`Ничего нового: ${what} не менялись с прошлого разбора. Мечту и награды можно придумать заново — кубиком у мечты и в магазине.`, 'Внутренний мир');
 }
@@ -1109,7 +1177,7 @@ async function onDreamAction(action) {
                 info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
             }
             const { system, user } = buildDreamPrompt(info, ch, settings().language);
-            const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 1200 }));
+            const raw = await callModel(system, user, withBudget('dream'));
             const dream = parseDream(raw);
             const st = currentState();
             const c2 = st.characters[key];
@@ -1124,7 +1192,7 @@ async function onDreamAction(action) {
         } catch (err) {
             if (err && err.cancelled) return;
             console.error('[Внутренний мир]', err);
-            toastr.error('Мечта не придумалась: ' + (err && err.message ? err.message : err), 'Внутренний мир');
+            showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) }), { manual: true, what: 'Мечта не придумалась' });
         } finally {
             if (my === runId) {
                 dreamBusy = false;
@@ -1147,7 +1215,7 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
         const info = analysisInfo(4);
         info.loreMain = knowledgeLore(2) || [];
         const { system, user } = buildRewardsPrompt(info, ch, settings().language);
-        const raw = await callModel(system, user, Object.assign({}, settings(), { responseLength: 2000 }));
+        const raw = await callModel(system, user, withBudget('rewards'));
         const rewards = parseRewards(raw);
         if (!rewards.length) throw new Error('модель не вернула наград');
         const st = currentState();
@@ -1157,7 +1225,7 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
     } catch (err) {
         if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
-        if (!quiet) toastr.error('Награды не подобрались: ' + (err && err.message ? err.message : err), 'Внутренний мир');
+        if (!quiet) showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) }), { manual: true, what: 'Награды не подобрались' });
     } finally {
         if (my === runId) {
             shopBusy = false;
@@ -1493,6 +1561,32 @@ function syncSettingsForm() {
     holder.innerHTML = settingsFormHtml('st');
 }
 
+// Быстрые настройки на пустом дневнике: запас на ответ, сколько читать, какая модель.
+const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, source: ['main', 'custom'] };
+function onQuickSetting(spec) {
+    const i = spec.indexOf(':');
+    const key = spec.slice(0, i);
+    const raw = spec.slice(i + 1);
+    if (!(key in QUICK_KEYS)) return;
+    const allowed = QUICK_KEYS[key];
+    if (allowed && !allowed.includes(raw)) return;
+    const value = allowed ? raw : Number(raw);
+    if (!allowed && !(value > 0)) return;
+    const s = settings();
+    s[key] = value;
+    saveSettings();
+    syncSettingsForm();
+    if (key === 'source' && value === 'custom') return openSettingsAt('connect');
+    renderPanelNow();
+}
+
+function openSettingsAt(section) {
+    sectionOpen.diary[section] = true;
+    view = 'settings';
+    openPanel();
+    renderPanelNow();
+}
+
 // Общий обработчик изменений — и для таверны, и для дневника.
 async function onSettingsChanged(el) {
     const s = settings();
@@ -1538,7 +1632,7 @@ async function onSettingsAction(action, el) {
         apiStatus = 'Проверяю…';
         refreshForms();
         try {
-            const text = await callModel('Ответь одним словом.', 'Скажи «работает».', Object.assign({}, s, { responseLength: 50 }));
+            const text = await callModel('Ответь одним словом.', 'Скажи «работает».', withBudget('test'));
             apiStatus = `✓ Работает. Модель ответила: «${String(text).trim().slice(0, 60)}»`;
         } catch (err) {
             apiStatus = '✗ Не работает: ' + (err && err.message ? err.message : err);
