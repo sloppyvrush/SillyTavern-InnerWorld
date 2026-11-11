@@ -15605,3 +15605,9 @@ ol {
 .iw-modal-input {
     font-variant-ligatures: none;
 }
+
+/* свёрнутые плашки в паре — одной высоты, заголовок по центру, без пустоты под короткой */
+.iw-grid > .iw-block.iw-collapsed:not(.iw-solo) {
+    align-self: stretch;
+    justify-content: center;
+}
