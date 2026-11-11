@@ -413,6 +413,33 @@ export function moodletTurns(weight, turns, manual) {
 }
 
 // Приводит одного персонажа из ответа модели к ровному виду.
+// Что игрок знает о незнакомом лично персонаже и откуда: [{ fact, from }]
+export function cleanHeard(list) {
+    const out = [];
+    for (const h of Array.isArray(list) ? list : []) {
+        const fact = str(h && typeof h === 'object' ? (h.fact || h.text) : h, 180);
+        if (!fact) continue;
+        out.push({ fact, from: str(h && typeof h === 'object' ? (h.from || h.source) : '', 60) });
+        if (out.length >= 6) break;
+    }
+    return out;
+}
+
+export function mergeHeard(old, fresh) {
+    const out = (old || []).slice();
+    for (const h of fresh || []) {
+        const k = h.fact.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+        if (out.some(o => o.fact.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '') === k)) continue;
+        out.push(h);
+    }
+    return out.slice(-8);
+}
+
+// Знаком ли НПС с игроком: false — только понаслышке (рассказы, слухи, газеты), у таких нет настроения и прочего
+export function isHearsay(c) {
+    return !!(c && !c.persona && c.met === false);
+}
+
 export function cleanCharacter(raw, opts = {}) {
     if (!raw || typeof raw !== 'object') return null;
     const name = str(raw.name, 60);
@@ -436,6 +463,9 @@ export function cleanCharacter(raw, opts = {}) {
     }
     const z = cleanZodiac(raw.zodiac) || (c.born ? zodiacOf(c.born.d, c.born.m) : '');
     if (z) c.zodiac = z;
+    // знаком ли НПС с игроком лично или игрок знает о нём только понаслышке
+    if (raw.met !== undefined && raw.met !== null && raw.met !== '') c.met = !(raw.met === false || /^(false|нет|no|0)$/i.test(String(raw.met).trim()));
+    if (Array.isArray(raw.heard)) c.heard = cleanHeard(raw.heard);
 
     if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
     if (raw.face !== undefined) c.face = oneOf(raw.face, FACES, 'neutral');
@@ -1027,6 +1057,14 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     if (fresh.bornNone && !out.born && !out.zodiac) out.bornChecked = true;
     if (!out.g) out.g = 'n';
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
+    // раз познакомились лично — это навсегда; поправку игрока (metManual) модель не перебивает
+    if (fresh.met !== undefined && !out.metManual && out.met !== true) out.met = fresh.met;
+    if (fresh.heard && fresh.heard.length) out.heard = mergeHeard(out.heard, fresh.heard);
+    if (out.met === false) {
+        // заочно знакомому ничего «изнутри» не заводим: только кто он и что о нём слышно
+        if (!old || old.met !== false) for (const k of ['mood', 'moodSaid', 'faceSaid', 'face', 'moodlets', 'impression', 'chem', 'chemNow']) delete out[k];
+        return out;
+    }
 
     if (modules.mood) {
         if (fresh.mood) { out.mood = fresh.mood; out.moodSaid = fresh.mood; out.faceSaid = fresh.face || ''; }
@@ -1134,8 +1172,13 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
             ? (Object.keys(next.characters).find(k => next.characters[k].persona || sameName(k, userName)) || userName)
             : (Object.keys(next.characters).find(k => sameName(k, fresh.name) && !next.characters[k].persona) || fresh.name);
         const old = next.characters[key];
-        const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona).length;
-        if (!old && !isPersona && counted >= maxChars) continue;
+        // «знаком ли лично» — только про НПС: у персоны и главного персонажа этого поля нет
+        if (isPersona || (opts.mains && isMain(fresh.name, opts.mains))) delete fresh.met;
+        // знакомые понаслышке в лимит персонажей не входят (их запись короткая), но и их не больше дюжины
+        const heardOnly = fresh.met === false && (!old || old.met !== true);
+        const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona && !isHearsay(next.characters[k])).length;
+        const heardCount = next.order.filter(k => isHearsay(next.characters[k])).length;
+        if (!old && !isPersona && (heardOnly ? heardCount >= 12 : counted >= maxChars)) continue;
         const merged = mergeCharacter(old, fresh, modules, { rebuild: !!opts.rebuild });
         if (isPersona) merged.persona = true;
         const evs = diffCharacter(old, merged, modules);
@@ -1308,7 +1351,7 @@ export function eventText(ev) {
 
 // Шаблон ответа для модели: только включённые блоки, чтобы не тратить токены.
 export function responseTemplate(modules, manualTurns) {
-    const c = { name: 'Имя', g: 'm|f', who: 'кто это (только для нового персонажа)' };
+    const c = { name: 'Имя', g: 'm|f', who: 'кто это (только для нового персонажа)', met: 'true|false (только для НПС: новых и с no_met или met:false)', heard: [{ fact: 'что игрок о нём знает (только при met:false)', from: 'откуда: кто рассказал, газета, слухи' }] };
     if (modules.mood) {
         c.mood = 'встревожен';
         c.face = FACES.join('|');
@@ -1369,8 +1412,11 @@ export function buildSystemPrompt(settings, ctx) {
     } else if (!(ctx.catchUp && ctx.catchUp.length)) {
         rules.push('Сейчас разбор новых сообщений чата. Текущее состояние — основа персонажа (из карточки, лорбука и прошлых событий), она остаётся. Меняй её только соразмерно событию: обычная сцена — только эмоции и отметки «сбылось»; заметное событие — можно обновить желание или страх; настоящее потрясение — мечту или черту характера. Если ничего важного не случилось — лишь дополняй, а не переписывай.');
     }
+    if (settings.showNpc !== false && ctx.trackPersona !== false) {
+        rules.push(`met — только для НПС (не для главного персонажа и не для ${user}): знаком ли этот персонаж с ${user} ЛИЧНО — они встречались, говорили, были в одной сцене или знакомы ещё до истории. Если ${user} знает о нём только понаслышке — ему рассказали (главный персонаж, другие), прочла в газете, письме, слышала слухи, или он вообще живёт только в чужой истории (умершие родные, бывшие, люди из прошлого главного персонажа), — верни met: false. Для met: false пиши ТОЛЬКО name, g, who (кто он и кем приходится главному персонажу) и heard — до 4 коротких фактов, которые ${user} о нём узнала из сообщений, и откуда (from: «рассказал Роберт», «из газеты», «слухи»); повторяй уже записанные факты дословно или не пиши их. Настроение, эмоции, желания, страхи, мечту, черты, impression, chem и всё остальное для met: false НЕ пиши: ${user} не видела этого человека и не может этого знать. Пиши met для новых НПС и для тех, у кого no_met: true или met: false; если персонаж с met: false лично встретился с ${user} в последних сообщениях — верни met: true и заполни всё как обычно.`);
+    }
     if (ctx.acquainted && ctx.acquainted.length) {
-        rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет: who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное). impression — их отношение к ${user}: если они знакомы с ${user}, заполни impression.known (кто они друг другу) и label/why/score по их общей истории; если с ${user} не знакомы — impression не пиши.`);
+        rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет. Если они знакомы с ${user} лично — met: true, who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное); impression.known (кто они друг другу) и label/why/score по их общей истории. Если с ${user} лично не знакомы (знает их только главный персонаж) — met: false, только who и heard (что ${user} о них слышала, если слышала).`);
     }
     if (ctx.catchUp && ctx.catchUp.length) {
         rules.push(`Это первое заполнение дневника для уже идущей истории. Восстанови состояние по всему, что видно в сообщениях и эпизодах из прошлого. Обязательно верни этих персонажей, если они лично появлялись в истории (а не только упоминались в разговоре): ${ctx.catchUp.join(', ')}. impression — каким было первое впечатление об игроке при знакомстве, now и now_score — каким отношение стало к последней сцене. Желания и страхи — актуальные на конец. moodlets — только эмоции, которые ещё должны действовать сейчас.`);
@@ -1418,7 +1464,7 @@ export function buildUserPrompt(ctx, state, modules, onlyKeys) {
     if (ctx.acquainted && ctx.acquainted.length) {
         parts.push(`[Знакомые по предыстории — в сцене их может не быть, но герои знают их давно]\n${ctx.acquainted.join('\n')}`);
     }
-    const current = compactState(state, modules, onlyKeys, { recheckBorn: !!(ctx.fromLore || ctx.kind === 'all' || ctx.kind === 'lore') });
+    const current = compactState(state, modules, onlyKeys, { recheckBorn: !!(ctx.fromLore || ctx.kind === 'all' || ctx.kind === 'lore'), mains: ctx.mainNames || [ctx.botName] });
     const absent = onlyKeys ? (state.order || []).filter(k => !onlyKeys.includes(k)) : [];
     parts.push(`[Текущее состояние]\n${current || 'пока пусто — составь с нуля'}${absent.length ? `\nНет в сцене (не возвращай): ${absent.join(', ')}` : ''}`);
     if (ctx.messages && ctx.messages.length) parts.push(`[Последние сообщения]\n${ctx.messages.join('\n\n')}`);
@@ -1434,6 +1480,13 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
     const list = keys.map(k => {
         const c = state.characters[k];
         const o = { name: c.name, g: genderOf(c.g, c.name, c.who) };
+        const npc = !c.persona && !(opts.mains && isMain(c.name, opts.mains));
+        if (npc && c.met === false) {
+            o.met = false;
+            if (c.heard && c.heard.length) o.heard = c.heard.map(h => h.fact);
+            return o;
+        }
+        if (npc && c.met === undefined) o.no_met = true;
         if (modules.mood) {
             o.mood = c.mood;
             o.moodlets_now = (c.moodlets || []).map(m => ({ emotion: m.emotion, why: m.why, weight: m.weight, left: m.left }));
@@ -1481,6 +1534,7 @@ export function buildInjection(state, modules, userName, influence = 'medium') {
     for (const key of state.order) {
         const c = state.characters[key];
         if (!c || c.persona || (userName && sameName(c.name, userName))) continue; // дневник персоны — только для игрока
+        if (isHearsay(c)) continue; // с игроком лично не знаком — его «изнутри» дневник не ведёт
         const bits = [];
         if (modules.mood && c.mood) {
             const ml = (c.moodlets || []).filter(m => (WEIGHT_RANK[m.weight] || 2) >= minRank)

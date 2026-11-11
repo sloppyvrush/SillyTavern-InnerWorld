@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, purseOf, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
+import { settleMood, purseOf, isHearsay, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
 import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -717,14 +717,26 @@ export function renderCharacter(c, modules, theme, opts = {}) {
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
-export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [] }) {
+export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [], personaName = '', personaG = 'n' }) {
     const used = new Set();
     const cards = [];
+    const heardCards = [];
     for (const key of npcKeys) {
         const c = state.characters[key];
         const entry = roster && roster.find ? roster.find(key) : null;
         if (entry) used.add(entry.name);
         const who = (entry && entry.who) || c.who || '';
+        if (isHearsay(c)) {
+            const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, who);
+            heardCards.push(`
+      <button type="button" class="iw-npc met iw-npc-heard" data-iw-view="npc:${esc(key)}" title="${esc(`${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
+        <span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
+        <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
+        <span class="iw-npc-mood iw-npc-heardmark">понаслышке</span>
+        ${who ? `<span class="iw-npc-who">${ce(who)}</span>` : ''}
+      </button>`);
+            continue;
+        }
         cards.push(`
       <button type="button" class="iw-npc met" data-iw-view="npc:${esc(key)}" title="Открыть: ${esc(c.name)}">
         <span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${faceBadge(c)}</span>
@@ -760,7 +772,9 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
     </div>
     <button type="button" class="iw-study${rosterBusy ? ' busy' : ''}" data-iw-study="1"${rosterBusy ? ' disabled' : ''}>${icon(rosterBusy ? 'rotate' : 'scroll')}<span>${rosterBusy ? 'Изучаю…' : studyLabel}</span></button>
   </div>
-  ${cards.length ? `<div class="iw-npc-grid">${cards.join('')}</div>` : (unknown.length ? '<div class="iw-muted">Пока никто из них не появлялся в сцене.</div>' : '<div class="iw-empty">Пока никого. Нажми «Изучить лорбук и карточку» — и я узнаю, кто живёт в этом мире. В дневнике они появятся, когда придут в сцену.</div>')}
+  ${cards.length && heardCards.length ? `<div class="iw-group">${groupHead(`Знакомы лично${personaName ? ` с ${esc(personaName)}` : ''} · ${cards.length}`, 'встречались в сцене или знакомы до истории')}</div>` : ''}
+  ${cards.length ? `<div class="iw-npc-grid">${cards.join('')}</div>` : (heardCards.length ? '' : unknown.length ? '<div class="iw-muted">Пока никто из них не появлялся в сцене.</div>' : '<div class="iw-empty">Пока никого. Нажми «Изучить лорбук и карточку» — и я узнаю, кто живёт в этом мире. В дневнике они появятся, когда придут в сцену.</div>')}
+  ${heardCards.length ? `<div class="iw-group iw-group-heard">${groupHead(`Знает понаслышке · ${heardCards.length}`, `${personaName ? esc(personaName) : 'твой герой'} с ними лично не ${gw(personaG, 'встречался', 'встречалась', 'встречался')} — только ${gw(personaG, 'слышал', 'слышала', 'слышал')}: из рассказов, слухов, газет`)}<div class="iw-npc-grid">${heardCards.join('')}</div></div>` : ''}
   ${unknown.length ? `<div class="iw-group">${groupHead(`Ещё не встречались · ${unknown.length}`, 'появятся, когда придут в сцену')}<div class="iw-npc-unknowns">${unknownTiles}</div></div>` : ''}
 </div>`;
 }
@@ -825,9 +839,9 @@ export function renderClock(clock) {
         <div class="iw-cal-head">
           ${clockPick('vmonth', clock.monthNames[g.m - 1] || '', monthOpts, 'iw-pick-month')}
           <span class="iw-cal-year">
-            <button type="button" class="iw-cal-ystep" data-iw-clock="year:-1" aria-label="Год назад">‹</button>
+            <button type="button" class="iw-cal-ystep" data-iw-clock="year:-1" aria-label="Год назад">${icon('chevron', 'iw-rot90')}</button>
             <input type="number" class="iw-cal-yin" data-iw-clock-in="vy" value="${g.y}" aria-label="Год">
-            <button type="button" class="iw-cal-ystep" data-iw-clock="year:1" aria-label="Год вперёд">›</button>
+            <button type="button" class="iw-cal-ystep" data-iw-clock="year:1" aria-label="Год вперёд">${icon('chevron', 'iw-rot-90')}</button>
           </span>
           ${cal.era ? `<span class="iw-cal-era">${esc(cal.era)}</span>` : ''}
         </div>
@@ -846,21 +860,25 @@ export function renderClock(clock) {
         }).join('')}</tr>`).join('')}</tbody>
       </table>
       <div class="iw-cal-legend"><span class="iw-lg iw-lg-hol">праздник</span><span class="iw-lg iw-lg-canon">личная дата</span><span class="iw-lg iw-lg-bday">день рождения</span><span class="iw-lg iw-lg-today">сейчас в истории</span></div>
+      <div class="iw-cal-doodles" aria-hidden="true"><i class="iw-dd iw-dd-a"></i><i class="iw-dd iw-dd-b"></i><i class="iw-dd iw-dd-c"></i></div>
     </div>`;
     } else {
         grid = `<div class="iw-cal iw-cal-days">
       <div class="iw-clock-sub">День истории</div>
       <span class="iw-cal-year iw-cal-dayno">
-        <button type="button" class="iw-cal-ystep" data-iw-clock="dday:-1" aria-label="День назад">‹</button>
+        <button type="button" class="iw-cal-ystep" data-iw-clock="dday:-1" aria-label="День назад">${icon('chevron', 'iw-rot90')}</button>
         <input type="number" class="iw-cal-yin" data-iw-clock-in="dd" value="${d.d}" min="1" aria-label="День истории">
-        <button type="button" class="iw-cal-ystep" data-iw-clock="dday:1" aria-label="День вперёд">›</button>
+        <button type="button" class="iw-cal-ystep" data-iw-clock="dday:1" aria-label="День вперёд">${icon('chevron', 'iw-rot-90')}</button>
       </span>
     </div>`;
     }
     const hours = Array.from({ length: 24 }, (_, h) => [h, pad2(h), h === d.h]);
     const mins = Array.from({ length: 12 }, (_, i) => [i * 5, pad2(i * 5), i * 5 === d.mi - (d.mi % 5)]);
     const changed = clock.draftChanged;
-    const events = (clock.upcoming || []).slice(0, 8).map(e => `<li class="iw-clock-ev iw-clock-${e.kind}">${icon(EVENT_ICON[e.kind] || 'gift')}<span><b>${esc(e.dateText)}</b> — ${esc(clockEventText(e))}${e.about ? `<small class="iw-muted"> · ${esc(e.about)}</small>` : ''}</span><em>${esc(clockWhen(e))}</em></li>`).join('');
+    // ближайшие праздники и личные даты: первые четыре видны сразу, остальные — «ещё»
+    const evRow = e => `<li class="iw-clock-ev iw-clock-${e.kind}"><span class="iw-ev-ico">${icon(EVENT_ICON[e.kind] || 'gift')}</span><span class="iw-ev-body"><b>${esc(e.dateText)}</b><span>${esc(clockEventText(e))}</span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em>${esc(clockWhen(e))}</em></li>`;
+    const evAll = clock.upcoming || [];
+    const events = evAll.length ? `<ul class="iw-clock-events">${evAll.slice(0, 4).map(evRow).join('')}</ul>${evAll.length > 4 ? `<details class="iw-clock-evmore"><summary>${icon('chevron')}<span>Ещё ${evAll.length - 4}</span></summary><ul class="iw-clock-events">${evAll.slice(4).map(evRow).join('')}</ul></details>` : ''}` : '<p class="iw-muted iw-clock-noev">В ближайший год ничего не отмечено</p>';
     const hols = (clock.holidays || []).map((h, i) => `<li class="iw-clock-${h.kind}"><span>${esc(h.dateText)} — ${esc(h.kind === 'canon' && h.who ? `${h.who}: ${h.name}` : h.name)}${h.years ? `<small class="iw-muted"> (${esc(h.years)})</small>` : ''}</span><button type="button" class="iw-mini iw-clock-x" data-iw-clock="hol-del:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></li>`).join('');
     return `
 <details class="iw-clock"${clock.open ? ' open' : ''}>
@@ -890,7 +908,8 @@ export function renderClock(clock) {
           ${changed ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="reset">${icon('back')}<span>Как сейчас</span></button>` : ''}
         </div>
         <label class="iw-clock-lock"><input type="checkbox" data-iw-clock="lock"${clock.locked ? ' checked' : ''}> <span>Часы стоят — сами не двигаются</span></label>
-        ${events ? `<div class="iw-clock-sub">Скоро</div><ul class="iw-clock-events">${events}</ul>` : ''}
+        <div class="iw-clock-sub iw-clock-evhead"><span class="iw-doodle-mark" aria-hidden="true"></span>Праздники и личные даты</div>
+        ${events}
       </div>
     </div>
     <details class="iw-clock-cal"${clock.calOpen ? ' open' : ''}>
@@ -949,7 +968,44 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
-        body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly });
+        const pc0 = persona && state.characters[persona.key];
+        body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly, personaName: (persona && persona.name) || '', personaG: genderOf(pc0 && pc0.g, (persona && persona.name) || '', '') });
+    } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)] && isHearsay(state.characters[view.slice(4)])) {
+        const key = view.slice(4);
+        const c = state.characters[key];
+        const entry = roster && roster.find ? roster.find(key) : null;
+        current = key;
+        const LL = themeLabels(theme, genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, (entry && entry.who) || c.who || ''));
+        const who = (entry && entry.who) || c.who || '';
+        const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, who);
+        const pName = (persona && persona.name) || 'твой герой';
+        const pc0 = persona && state.characters[persona.key];
+        const pg = genderOf(pc0 && pc0.g, (persona && persona.name) || '', '');
+        const mainName = (mains[0] && state.characters[mains[0]] && state.characters[mains[0]].name) || mains[0] || '';
+        const aliases = shownAliases(entry);
+        const heard = c.heard || [];
+        body = `
+<button type="button" class="iw-back iw-back-npc" data-iw-view="npc">${icon('back')}<span>все НПС</span></button>
+<section class="iw-dossier iw-dossier-heard">
+  <span class="iw-tape" aria-hidden="true"></span>
+  <div class="iw-dossier-face">${npcBadge(badgeInfo(c, entry), 'iw-badge-lg')}</div>
+  <div class="iw-dossier-main">
+    <div class="iw-npc-title${nameFit(c.name)}">${esc(c.name)}</div>
+    ${aliases.length ? `<div class="iw-npc-aka">ещё зовут: ${esc(aliases.join(', '))}</div>` : ''}
+    <div class="iw-dossier-mood"><span class="iw-heard-chip">${icon('feather')}<span>знает понаслышке</span></span></div>
+  </div>
+  <div class="iw-whois">
+    <span class="iw-whois-tag">${esc(LL.whois)}</span>
+    <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
+    ${entry && entry.rel && mainName ? `<div class="iw-whois-traits"><span class="iw-muted">Связь:</span> ${esc(entry.rel)} · ${esc(mainName)}</div>` : ''}
+  </div>
+</section>
+<div class="iw-grid"><section class="iw-block iw-b-heard">
+  <div class="iw-block-head"><span class="iw-label">Что ${esc(pName)} о ${gw(g, 'нём', 'ней', 'нём')} знает</span></div>
+  ${heard.length ? `<ul class="iw-heard-list">${heard.map(h => `<li><span>${ce(h.fact)}</span>${h.from ? `<small class="iw-muted">${esc(h.from)}</small>` : ''}</li>`).join('')}</ul>` : `<p class="iw-muted">Пока только имя: подробностей ${esc(pName)} не ${gw(pg, 'слышал', 'слышала', 'слышал')}.</p>`}
+  <p class="iw-muted iw-heard-note">${esc(pName)} с ${gw(g, 'ним', 'ней', 'ним')} лично не ${gw(pg, 'встречался', 'встречалась', 'встречался')}, поэтому настроения, желаний и отношения здесь нет. Когда они познакомятся в сцене, дневник заведёт полную запись.</p>
+  <button type="button" class="iw-btn iw-mini-btn" data-iw-met="${esc(key)}:1">${icon('tick')}<span>Они знакомы лично</span></button>
+</section></div>`;
     } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)]) {
         const key = view.slice(4);
         const c = state.characters[key];
@@ -973,6 +1029,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     <span class="iw-whois-tag">${esc(LL.whois)}</span>
     <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
     ${loreTraits.length ? `<div class="iw-whois-traits"><span class="iw-muted">${esc(LL.whoisTraits)}:</span> ${esc(loreTraits.join(', '))}</div>` : ''}
+    ${persona ? `<button type="button" class="iw-heard-toggle" data-iw-met="${esc(key)}:0" title="Если ${esc(persona.name)} и ${esc(c.name)} лично не встречались — дневник оставит только то, что о ${esc(c.name)} слышно">не знакомы лично?</button>` : ''}
   </div>
 </section>
 ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;

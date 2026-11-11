@@ -893,4 +893,34 @@ test('общий кошелёк: монеты за успехи всех, в т�
     assert.equal(purseOf(old), 45);
 });
 
+test('НПС понаслышке: без настроения, только кто он и что о нём слышно', () => {
+    const mains = ['Роберт'];
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'устал', met: false }), all, { mains, persona: true, userName: 'Эвелин' });
+    assert.equal(state.characters['Роберт'].met, undefined);
+    ({ state } = applyAnalysis(state, one({ name: 'Хильда', g: 'f', who: 'дочь Роберта', met: false, mood: 'грустна', moodlets: [{ emotion: 'грусть', weight: 'deep' }], heard: [{ fact: 'умерла в детстве', from: 'рассказал Роберт' }] }), all, { mains, persona: true, userName: 'Эвелин' }));
+    const h = state.characters['Хильда'];
+    assert.equal(h.met, false);
+    assert.equal(h.mood, undefined);
+    assert.equal(h.moodlets, undefined);
+    assert.equal(h.heard[0].from, 'рассказал Роберт');
+    assert.ok(!buildInjection(state, all, 'Эвелин').includes('Хильда'));
+    const cs = JSON.parse(buildUserPrompt({ mainNames: mains, botName: 'Роберт' }, state, all).split('[Текущее состояние]\n')[1].split('\n\n')[0]);
+    const hc = cs.characters.find(x => x.name === 'Хильда');
+    assert.equal(hc.met, false);
+    assert.equal(hc.moodlets_now, undefined);
+    assert.equal(cs.characters.find(x => x.name === 'Роберт').no_met, undefined);
+    // знакомые понаслышке не занимают места живых персонажей
+    for (const n of ['Ромео', 'Элора', 'Кристина', 'Элли']) ({ state } = applyAnalysis(state, one({ name: n, met: false }), all, { mains, maxChars: 2 }));
+    ({ state } = applyAnalysis(state, one({ name: 'Марта', mood: 'весела' }), all, { mains, maxChars: 2 }));
+    assert.ok(state.characters['Марта']);
+    // встретились лично — дальше обычная запись
+    ({ state } = applyAnalysis(state, one({ name: 'Хильда', met: true, mood: 'удивлена' }), all, { mains }));
+    assert.equal(state.characters['Хильда'].met, true);
+    assert.equal(state.characters['Хильда'].mood, 'удивлена');
+    ({ state } = applyAnalysis(state, one({ name: 'Хильда', met: false }), all, { mains }));
+    assert.equal(state.characters['Хильда'].met, true);
+    const html = renderNpcList({ state, npcKeys: ['Ромео', 'Марта'], roster: null, personaName: 'Эвелин', personaG: 'f' });
+    assert.ok(html.includes('Знает понаслышке') && html.includes('Знакомы лично'));
+});
+
 console.log(`значки: ${passed} проверок прошло`);

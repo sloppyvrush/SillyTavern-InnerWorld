@@ -18,7 +18,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.0';
+const VERSION = '0.4.1';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -687,7 +687,7 @@ function clockView() {
     const { cal, t } = now;
     const people = clockPeople(liveState());
     const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
-    const ev = upcoming(cal, t, people, 60).map(e => Object.assign(e, { dateText: `${e.d} ${monthName(cal, e.m, true)}`, inDaysText: `${e.inDays} ${daysWord(e.inDays)}` }));
+    const ev = upcoming(cal, t, people, cal.type === 'custom' ? Math.max(366, cal.months.reduce((x, m) => x + m.days, 0)) : 366).map(e => Object.assign(e, { dateText: `${e.d} ${monthName(cal, e.m, true)}`, inDaysText: e.inDays >= 45 ? fmtSpan(e.inDays * 1440) : `${e.inDays} ${daysWord(e.inDays)}` }));
     const draft = normTime(cal, clockDraft || t);
     let grid = null;
     if (cal.type !== 'days') {
@@ -1252,7 +1252,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0) + (info.acquainted ? info.acquainted.length : 0);
         const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
         budget = ask.responseLength;
-        const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
+        const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
         liveStage('think');
         raw = await callModel(system, user, ask, (text, think) => {
             if (!live) return;
@@ -1289,7 +1289,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
         if (info.clockNow) applySceneTime(messageId, raw);
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         writeRecord(messageId, state);
@@ -1888,6 +1888,20 @@ async function onPanelClick(e) {
         await saveEditedState(state);
         updateInjection();
         toastr.success(ch.born ? `${ch.name}: ${bornText(ch.born)}` : `${ch.name}: дата рождения убрана`, 'Внутренний мир');
+        return renderAll();
+    }
+    if (t.dataset.iwMet) {
+        // игрок сам поправляет: знакомы лично или только понаслышке
+        const i = t.dataset.iwMet.lastIndexOf(':');
+        const key = t.dataset.iwMet.slice(0, i), met = t.dataset.iwMet.slice(i + 1) === '1';
+        const state = currentState();
+        const ch = state.characters[key];
+        if (!ch) return;
+        ch.met = met;
+        ch.metManual = true;
+        await saveEditedState(state);
+        updateInjection();
+        toastr.success(met ? `${ch.name}: знакомы лично — заполнится при следующем разборе` : `${ch.name}: только понаслышке`, 'Внутренний мир');
         return renderAll();
     }
     if (t.dataset.iwDel) {

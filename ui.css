@@ -14291,3 +14291,380 @@ ol {
 .iw-tab-born.iw-born-none {
     opacity: .75;
 }
+
+/* ===================== Календарь: аккуратная шапка месяца, дни недели, список праздников справа ===================== */
+.iw-panel .iw-cal-nav {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.iw-panel .iw-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.iw-panel .iw-cal-nav > .iw-mini {
+    width: 32px;
+    height: 32px;
+    justify-self: center;
+}
+
+/* месяц и год — одинаковые плашки одной высоты */
+.iw-panel .iw-cal-head .iw-pick-sum,
+.iw-panel .iw-cal-year {
+    height: 34px;
+    box-sizing: border-box;
+    border: 1.5px solid color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 55%, transparent);
+    border-radius: 999px;
+    background: var(--iw-block-bg);
+    font-family: var(--iw-title-font, inherit);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-panel .iw-cal-head .iw-pick-sum {
+    padding: 0 12px 0 16px;
+    min-width: 122px;
+    justify-content: center;
+}
+
+.iw-panel .iw-cal-year {
+    padding: 0 2px;
+}
+
+.iw-panel .iw-cal-yin {
+    width: 62px;
+    font-size: 17px;
+    font-family: var(--iw-title-font, inherit);
+    color: inherit;
+}
+
+.iw-panel .iw-cal-ystep {
+    width: 22px;
+    height: 30px;
+    opacity: .7;
+}
+
+.iw-panel .iw-cal-ystep:hover {
+    opacity: 1;
+}
+
+/* дни недели — мелкими капителями, выходные выделены */
+.iw-panel .iw-cal-grid thead th {
+    padding: 0 0 6px;
+    border-bottom: 1.5px dashed color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 35%, transparent);
+    font-family: var(--iw-body-font);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--iw-ink) 65%, transparent);
+}
+
+.iw-panel .iw-cal-grid thead th:nth-child(6),
+.iw-panel .iw-cal-grid thead th:nth-child(7) {
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-panel .iw-cal-grid tbody tr:first-child td {
+    padding-top: 6px;
+}
+
+.iw-panel .iw-cal-grid tbody td:nth-child(6) .iw-cal-day,
+.iw-panel .iw-cal-grid tbody td:nth-child(7) .iw-cal-day {
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-panel .iw-cal-day {
+    font-family: var(--iw-body-font);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* праздники и личные даты — справа, под часами */
+.iw-clock-evhead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.iw-doodle-mark {
+    display: inline-block;
+    width: 22px;
+    height: 18px;
+    background: var(--iw-doodle-color);
+    -webkit-mask: var(--iw-doodle) center / 100% 100% no-repeat;
+    mask: var(--iw-doodle) center / 100% 100% no-repeat;
+    transform: rotate(-8deg);
+}
+
+.iw-panel .iw-clock-events {
+    gap: 8px;
+}
+
+.iw-panel .iw-clock-ev {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px;
+}
+
+.iw-ev-ico {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 26px;
+    color: var(--iw-label-color, var(--iw-ink));
+    font-size: 14px;
+}
+
+/* скетчевый кружок вокруг значка */
+.iw-ev-ico::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--iw-doodle-color);
+    opacity: .55;
+    -webkit-mask: var(--iw-doodle) center / 100% 100% no-repeat;
+    mask: var(--iw-doodle) center / 100% 100% no-repeat;
+}
+
+.iw-clock-canon .iw-ev-ico::before {
+    background: var(--iw-muted);
+}
+
+.iw-clock-birthday .iw-ev-ico {
+    color: #e86a9a;
+}
+
+.iw-ev-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.iw-ev-body > b {
+    font-size: 13px;
+    letter-spacing: .02em;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-ev-body > small {
+    font-size: 12.5px;
+    color: color-mix(in srgb, var(--iw-ink) 65%, transparent);
+}
+
+.iw-panel .iw-clock-ev > em {
+    padding-top: 2px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.iw-clock-evmore > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0 4px 38px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-clock-evmore > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iw-clock-evmore > summary .iw-ico {
+    transition: transform .15s;
+}
+
+.iw-clock-evmore[open] > summary .iw-ico {
+    transform: rotate(180deg);
+}
+
+.iw-clock-noev {
+    margin: 0;
+    font-size: 13px;
+}
+
+.iw-panel.iw-theme-pixel .iw-cal-head .iw-pick-sum,
+.iw-panel.iw-theme-pixel .iw-cal-yin {
+    font-size: 11px;
+}
+
+.iw-clock-chosen.iw-changed::after {
+    content: 'не применено';
+    display: block;
+    width: max-content;
+    margin-top: 2px;
+    padding: 0 8px;
+    border: 1px dashed color-mix(in srgb, var(--iw-muted) 70%, transparent);
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 18px;
+}
+
+.iw-panel .iw-cal-ystep .iw-ico {
+    width: 12px;
+    height: 12px;
+}
+
+/* скетчевые рисовашки под календарём */
+.iw-cal-doodles {
+    position: relative;
+    height: 64px;
+    margin-top: 10px;
+    pointer-events: none;
+}
+
+.iw-dd {
+    position: absolute;
+    display: block;
+    background: var(--iw-doodle-color);
+    opacity: .5;
+    -webkit-mask: var(--iw-dd) center / contain no-repeat;
+    mask: var(--iw-dd) center / contain no-repeat;
+}
+
+/* звёздочка-искорка */
+.iw-dd-a {
+    left: 6%;
+    top: 6px;
+    width: 34px;
+    height: 34px;
+    transform: rotate(-12deg);
+    --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 3c1 9 3 14 16 17-12 2-15 6-16 17-2-11-5-15-17-17 12-2 15-8 17-17z' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M34 4l1 4M33 6h4' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+/* завиток со стрелочкой */
+.iw-dd-b {
+    left: 34%;
+    top: 14px;
+    width: 92px;
+    height: 40px;
+    --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath d='M3 30c10-2 16-10 12-18-3-6-12-2-9 5 4 9 20 12 34 6s20-18 32-16c10 2 9 14 20 14' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M86 15l7 6-8 4' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* луна и точки */
+.iw-dd-c {
+    right: 8%;
+    top: 0;
+    width: 44px;
+    height: 44px;
+    transform: rotate(10deg);
+    --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath d='M26 5C15 6 8 15 10 25s13 15 23 11C24 35 18 27 19 18s4-11 7-13z' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='36' cy='10' r='1.6'/%3E%3Ccircle cx='31' cy='4' r='1.1'/%3E%3Ccircle cx='40' cy='19' r='1.1'/%3E%3C/svg%3E");
+}
+
+@media (max-width: 760px) {
+    .iw-cal-doodles {
+        height: 44px;
+        margin-top: 4px;
+    }
+}
+
+/* ===================== НПС, которых персона знает только понаслышке ===================== */
+.iw-npc.iw-npc-heard {
+    border-style: dashed;
+    opacity: .9;
+}
+
+.iw-npc.iw-npc-heard .iw-npc-face-wrap {
+    filter: grayscale(.55);
+}
+
+.iw-npc-heardmark {
+    font-style: italic;
+    color: var(--iw-muted);
+}
+
+.iw-group-heard {
+    margin-top: 18px;
+}
+
+.iw-heard-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px dashed color-mix(in srgb, var(--iw-muted) 70%, transparent);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--iw-muted);
+}
+
+.iw-heard-chip .iw-ico {
+    width: 13px;
+    height: 13px;
+}
+
+.iw-dossier-heard .iw-dossier-face {
+    filter: grayscale(.5);
+}
+
+.iw-b-heard {
+    grid-column: 1 / -1;
+}
+
+.iw-heard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 8px 0 12px;
+    padding: 0;
+    list-style: none;
+}
+
+.iw-heard-list li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 14px;
+    border-left: 2px dashed color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 40%, transparent);
+    line-height: 1.4;
+}
+
+.iw-heard-list li small {
+    font-size: 12.5px;
+    font-style: italic;
+}
+
+.iw-heard-note {
+    margin: 0 0 10px;
+    font-size: 13px;
+}
+
+.iw-heard-toggle {
+    margin-top: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--iw-muted);
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.iw-heard-toggle:hover {
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-b-heard .iw-btn {
+    width: max-content;
+    max-width: 100%;
+}
