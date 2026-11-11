@@ -1880,7 +1880,6 @@ function onBlockDragStart(e) {
     const grid = block && block.closest('.iw-grid');
     if (!block || !grid) return;
     e.preventDefault();
-    const root = ui();
     const scroller = isPhone() ? panelEl().querySelector('.iw-book') : panelEl().querySelector('.iw-body');
     const d = blockDrag = { kind: grip.dataset.iwDrag, block, grid, x0: e.clientX, y0: e.clientY, s0: scroller ? scroller.scrollTop : 0, target: null, after: false, x: e.clientX, y: e.clientY, raf: 0 };
     block.classList.add('iw-block-dragging');
@@ -1890,15 +1889,30 @@ function onBlockDragStart(e) {
         d.raf = 0;
         const ds = scroller ? scroller.scrollTop - d.s0 : 0;
         block.style.transform = `translate(${d.x - d.x0}px, ${d.y - d.y0 + ds}px)`;
-        // под пальцем — сам перетаскиваемый блок; ищем блок под ним
-        const hits = root.elementsFromPoint ? root.elementsFromPoint(d.x, d.y) : (root.elementFromPoint ? [root.elementFromPoint(d.x, d.y)] : []);
-        const tgt = hits.map(h => h && h.closest && h.closest('.iw-grid > .iw-block')).find(b => b && b !== block && b.parentElement === grid);
+        // цель — блок, на который наехал сам перетаскиваемый блок (больше всего перекрытия),
+        // а если ни на какой не наехал — ближайший к его середине. Палец может быть где угодно на блоке.
+        const me = block.getBoundingClientRect();
+        const cx = me.left + me.width / 2, cy = me.top + me.height / 2;
+        let tgt = null, bestOver = 0, bestDist = Infinity, near = null;
+        for (const b of grid.children) {
+            if (b === block || !b.classList.contains('iw-block')) continue;
+            const r = b.getBoundingClientRect();
+            const ox = Math.max(0, Math.min(me.right, r.right) - Math.max(me.left, r.left));
+            const oy = Math.max(0, Math.min(me.bottom, r.bottom) - Math.max(me.top, r.top));
+            const over = (ox * oy) / Math.max(1, Math.min(me.width * me.height, r.width * r.height));
+            if (over > bestOver) { bestOver = over; tgt = b; }
+            const dist = (cx - (r.left + r.width / 2)) ** 2 + (cy - (r.top + r.height / 2)) ** 2;
+            if (dist < bestDist) { bestDist = dist; near = b; }
+        }
+        if (bestOver < 0.12) tgt = near;
         clearMarks();
         d.target = null;
         if (!tgt || tgt === block) return;
         const r = tgt.getBoundingClientRect();
         const half = r.width < grid.getBoundingClientRect().width * 0.7;
-        d.after = half ? d.x > r.left + r.width / 2 : d.y > r.top + r.height / 2;
+        // как в списках с перетаскиванием: наехал на блок — занимаешь его место (он сдвигается в твою сторону)
+        const kids = [...grid.children];
+        d.after = kids.indexOf(block) < kids.indexOf(tgt);
         d.target = tgt;
         tgt.classList.add(d.after ? 'iw-drop-after' : 'iw-drop-before');
         tgt.classList.toggle('iw-drop-side', half);
@@ -1926,9 +1940,11 @@ function onBlockDragStart(e) {
         const kindOf = el => ((el && el.className || '').match(/iw-b-([a-z]+)/) || [])[1] || '';
         const to = kindOf(d.target);
         if (to && to !== d.kind) {
-            const order = orderOfBlocks(settings().blockOrder).filter(k => k !== d.kind);
+            const order0 = orderOfBlocks(settings().blockOrder);
+            const after = order0.indexOf(d.kind) < order0.indexOf(to);
+            const order = order0.filter(k => k !== d.kind);
             const at = order.indexOf(to);
-            order.splice(d.after ? at + 1 : at, 0, d.kind);
+            order.splice(after ? at + 1 : at, 0, d.kind);
             settings().blockOrder = order;
             saveSettings();
             dragRenderPending = true;
@@ -2355,12 +2371,8 @@ async function onPanelClick(e) {
         if (d.classList.contains('iw-clock')) { clockOpen = false; clockDraft = null; clockMonth = null; }
     }
     // свернуть / развернуть блок: стрелка или заголовок; свёрнутый — кликом в любом его месте
-    const folded = e.target.closest('.iw-block.iw-collapsed');
-    // и по всей строке заголовка, кроме своих кнопок в ней
-    const head = e.target.closest('.iw-block-head');
-    const headFold = head && !e.target.closest('button:not(.iw-fold), a, input, select, textarea, summary, details, label, [data-iw-born], [role="button"], .iw-drag') && head.querySelector('[data-iw-fold]');
-    const fold = e.target.closest('[data-iw-fold]') || headFold
-        || (folded && !e.target.closest('a, input, select, textarea') && folded.querySelector('[data-iw-fold]'));
+    // сворачивается только кнопкой «−/+» (заголовок занят ручкой перетаскивания)
+    const fold = e.target.closest('button[data-iw-fold]');
     if (fold) {
         const s0 = settings();
         const k = fold.dataset.iwFold;
@@ -2425,6 +2437,12 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwTest) return testNotice(t.dataset.iwTest);
+    if (t.dataset.iwOrderReset !== undefined) {
+        settings().blockOrder = null;
+        saveSettings();
+        notice('Блоки вернулись на свои места');
+        return renderAll();
+    }
     if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : '');
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
     if (t.dataset.iwLiveHide !== undefined) {

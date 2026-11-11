@@ -68,7 +68,7 @@ function blockHead(kind, label, extra = '') {
     const folded = !!FOLD.collapsed[kind];
     const grip = FOLD.drag ? `<span class="iw-drag" data-iw-drag="${kind}" title="Перетащить блок" aria-label="Перетащить блок">${icon('grip')}</span>` : '';
     const btn = kind === 'rewards' ? '' : `<button type="button" class="iw-fold" data-iw-fold="${kind}" title="${folded ? 'Развернуть' : 'Свернуть'}" aria-label="${folded ? 'Развернуть' : 'Свернуть'}" aria-expanded="${!folded}">${icon(folded ? 'plus' : 'minus')}</button>`;
-    return `<div class="iw-block-head">${grip}<span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label"${kind === 'rewards' ? '' : ` data-iw-fold="${kind}"`}>${label}</span>${folded ? '' : extra}${btn}</div>`;
+    return `<div class="iw-block-head">${grip}<span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label">${label}</span>${folded ? '' : extra}${btn}</div>`;
 }
 
 function groupHead(label, hint = '') {
@@ -274,7 +274,7 @@ function tabBorn(c, clock, key = '') {
     return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}"${edit} title="Нажми, чтобы поправить. День рождения: ${esc(bornText(c.born))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${MONTH_SHORT[c.born.m - 1]}${age !== null ? ` · ${age}` : ''}</span></span>`;
 }
 
-export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null }) {
+export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null, customOrder = false }) {
     const tabs = mains.map(key => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
@@ -286,6 +286,9 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
              <span class="iw-npc-sticker-count">${npc.met}${npc.known ? ` из ${npc.known}` : ''}</span>
            </button>`
         : '';
+    // блоки переставлены — под НПС маленькая красная кнопка «вернуть как было»
+    const resetBtn = customOrder ? `<button type="button" class="iw-order-reset" data-iw-order-reset title="Вернуть блоки дневника на их обычные места">${icon('undo')}<span>вернуть блоки</span></button>` : '';
+    const npcCol = resetBtn ? `<div class="iw-npc-col">${sticker}${resetBtn}</div>` : sticker;
     // карточка персоны игрока — такая же, как у персонажа (без подписи: и так понятно, чья она)
     let me = '';
     if (persona) {
@@ -296,7 +299,7 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
             : `<span class="iw-photo iw-photo-letter">${esc((pc.name || '?').slice(0, 1).toUpperCase())}</span>`;
         me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет">${persona.key ? tabTint(pc) : ''}<span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(shortName(pc.name))}" title="${esc(pc.name)}">${esc(shortName(pc.name))}</span>${pc.mood ? `<span class="iw-tab-mood">${ce(pc.mood)}</span>` : ''}${persona.key ? tabBorn(pc, clock, persona.key) : ''}</button>`;
     }
-    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div>${noActs ? '' : `<span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind, off, !!persona)}`}</div>`;
+    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${npcCol}${me}</div>${noActs ? '' : `<span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind, off, !!persona)}`}</div>`;
 }
 
 function feelMeter(m, manualTurns) {
@@ -1301,7 +1304,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, busy, false, wallet, shopKey ? { key: shopKey, on: view.startsWith('shop:') } : null, mobile ? analyzeButtons(busyKind, L, books, picked, linked, working || !!busyKind, off, !!persona) : '')}
   ${ROUGH_FILTER}
-  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off, noActs: mobile, clock: clock && clock.t ? clock : null })}
+  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off, noActs: mobile, clock: clock && clock.t ? clock : null, customOrder: Array.isArray(settings.blockOrder) && settings.blockOrder.length > 0 })}
   <div class="iw-body${live && !live.hidden ? ' iw-live-on' : ''}">${live && !live.hidden ? renderLive(live, theme, L) : ''}${live && live.hidden ? livePeek(live) : ''}${renderClock(clock)}${body}</div>
   ${footHtml()}
 </div>`;

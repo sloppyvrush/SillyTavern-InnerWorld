@@ -12534,7 +12534,7 @@ ol {
 .iw-panel.iw-theme-arcana .iw-attr-own .iw-attr-input { border-radius: 999px; padding: 0 14px; }
 
 /* ---------- Свёрнутый блок раскрывается кликом в любом его месте ---------- */
-.iw-panel .iw-block.iw-collapsed { cursor: pointer; }
+.iw-panel .iw-block.iw-collapsed { cursor: default; }
 
 /* ---------- Сеанс: подзаголовки ярче — «Врождённое», «Сейчас он», «Первое впечатление» не теряются ---------- */
 .iw-panel.iw-theme-seance :is(.iw-group-head, .iw-group-head > span:first-of-type, .iw-att-cap, .iw-group-cap, .iw-books-cap) {
@@ -17072,3 +17072,37 @@ ol {
 }
 .iw-grid > .iw-block.iw-drop-side.iw-drop-before { box-shadow: inset 4px 0 0 var(--iw-scribble, var(--iw-ink)) !important; }
 .iw-grid > .iw-block.iw-drop-side.iw-drop-after { box-shadow: inset -4px 0 0 var(--iw-scribble, var(--iw-ink)) !important; }
+
+/* «вернуть блоки» — под стикером НПС, появляется только когда блоки переставлены */
+.iw-npc-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-self: center;
+    gap: 6px;
+    flex: none;
+}
+.iw-npc-col > .iw-npc-sticker { align-self: center; }
+.iw-order-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 2px 8px 3px;
+    border: 1px dashed #d0453a;
+    border-radius: 999px;
+    background: transparent;
+    color: #d0453a;
+    font: inherit;
+    font-family: var(--iw-body-font);
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.iw-order-reset .iw-ico { font-size: 11px; }
+.iw-order-reset:hover { background: rgba(208, 69, 58, .1); }
+@media (max-width: 760px) {
+    .iw-panel .iw-npc-col > .iw-npc-sticker { padding-left: 8px; padding-right: 8px; }
+    .iw-order-reset { font-size: 10.5px; padding: 2px 6px; }
+}
