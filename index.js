@@ -18,7 +18,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.1';
+const VERSION = '0.4.2';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1232,7 +1232,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 if (!e.rel && !e.relUser) continue;
                 if (base.order.some(k => rosterFind(ros, k) === e || namesMatch(k, e.name))) continue;
                 const al = e.aliases || [], tr = e.traits || [];
-                info.acquainted.push(`${e.name}${al.length ? ` (${al.join(', ')})` : ''}: ${e.who || ''}${e.rel ? `; для ${c.name2} — ${e.rel}` : ''}${e.relUser ? `; для ${c.name1} — ${e.relUser}` : ''}${tr.length ? `; черты: ${tr.join(', ')}` : ''}`);
+                info.acquainted.push(`${e.name}${al.length ? ` (${al.join(', ')})` : ''}: ${e.who || ''}${e.rel ? `; для ${c.name2} — ${e.rel}` : ''}${e.relUser ? `; для ${c.name1} — ${e.relUser}` : ''}${e.dead ? '; нет в живых' : ''}${tr.length ? `; черты: ${tr.join(', ')}` : ''}`);
                 if (info.acquainted.length >= 8) break;
             }
         }
@@ -1888,6 +1888,21 @@ async function onPanelClick(e) {
         await saveEditedState(state);
         updateInjection();
         toastr.success(ch.born ? `${ch.name}: ${bornText(ch.born)}` : `${ch.name}: дата рождения убрана`, 'Внутренний мир');
+        return renderAll();
+    }
+    if (t.dataset.iwDead) {
+        // игрок сам отмечает: персонажа нет в живых — или он всё-таки жив
+        const i = t.dataset.iwDead.lastIndexOf(':');
+        const key = t.dataset.iwDead.slice(0, i), dead = t.dataset.iwDead.slice(i + 1) === '1';
+        const state = currentState();
+        const ch = state.characters[key];
+        if (!ch) return;
+        ch.dead = dead;
+        ch.deadManual = true;
+        if (dead) for (const k of ['mood', 'moodSaid', 'faceSaid', 'face', 'moodlets', 'moodCalc', 'moodKey']) delete ch[k];
+        await saveEditedState(state);
+        updateInjection();
+        toastr.success(dead ? `${ch.name}: нет в живых` : `${ch.name}: снова среди живых — заполнится при следующем разборе`, 'Внутренний мир');
         return renderAll();
     }
     if (t.dataset.iwMet) {

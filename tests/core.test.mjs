@@ -923,4 +923,24 @@ test('НПС понаслышке: без настроения, только к�
     assert.ok(html.includes('Знает понаслышке') && html.includes('Знакомы лично'));
 });
 
+test('нет в живых: серая карточка, без настроения, главного и персону не трогаем', () => {
+    const mains = ['Роберт'];
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Сорель', mood: 'весел', moodlets: [{ emotion: 'радость' }] }), all, { mains });
+    ({ state } = applyAnalysis(state, one({ name: 'Сорель', dead: true, heard: [{ fact: 'погиб на войне', from: 'Роберт' }] }), all, { mains }));
+    const c = state.characters['Сорель'];
+    assert.equal(c.dead, true);
+    assert.equal(c.mood, undefined);
+    ({ state } = applyAnalysis(state, one({ name: 'Сорель', mood: 'зол', dead: false }), all, { mains }));
+    assert.equal(state.characters['Сорель'].dead, true);
+    assert.equal(state.characters['Сорель'].mood, undefined);
+    ({ state } = applyAnalysis(state, one({ name: 'Роберт', mood: 'устал', dead: true }), all, { mains }));
+    assert.equal(state.characters['Роберт'].dead, undefined);
+    assert.ok(!buildInjection(state, all, 'Эвелин').includes('Сорель'));
+    const html = renderNpcList({ state, npcKeys: ['Сорель'], roster: null, personaName: 'Эвелин', personaG: 'f' });
+    assert.ok(html.includes('iw-dead') && html.includes('нет в живых'));
+    const roster = parseRoster(JSON.stringify({ main: ['Роберт'], npc: [{ name: 'Хильда', who: 'дочь', dead: true }, { name: 'Марта', dead: 'false' }] }));
+    assert.equal(roster.npc[0].dead, true);
+    assert.equal(roster.npc[1].dead, false);
+});
+
 console.log(`значки: ${passed} проверок прошло`);

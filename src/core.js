@@ -435,9 +435,27 @@ export function mergeHeard(old, fresh) {
     return out.slice(-8);
 }
 
+// true / false / undefined из ответа модели («да», "false", 0…)
+export function flagOf(v) {
+    if (v === undefined || v === null || v === '') return undefined;
+    return !(v === false || /^(false|нет|no|0)$/i.test(String(v).trim()));
+}
+
+// Персонажа нет в живых: своя отметка или из лорбука (пока игрок не поправил вручную)
+export function isDead(c, entry) {
+    if (!c || c.persona) return false;
+    if (c.dead !== undefined) return !!c.dead;
+    return !!(entry && entry.dead);
+}
+
 // Знаком ли НПС с игроком: false — только понаслышке (рассказы, слухи, газеты), у таких нет настроения и прочего
 export function isHearsay(c) {
     return !!(c && !c.persona && c.met === false);
+}
+
+// Запись «только кто это»: знакомый понаслышке или умерший — без настроения, желаний и прочего
+export function isShortRecord(c) {
+    return isHearsay(c) || !!(c && !c.persona && c.dead === true);
 }
 
 export function cleanCharacter(raw, opts = {}) {
@@ -464,7 +482,8 @@ export function cleanCharacter(raw, opts = {}) {
     const z = cleanZodiac(raw.zodiac) || (c.born ? zodiacOf(c.born.d, c.born.m) : '');
     if (z) c.zodiac = z;
     // знаком ли НПС с игроком лично или игрок знает о нём только понаслышке
-    if (raw.met !== undefined && raw.met !== null && raw.met !== '') c.met = !(raw.met === false || /^(false|нет|no|0)$/i.test(String(raw.met).trim()));
+    if (flagOf(raw.met) !== undefined) c.met = flagOf(raw.met);
+    if (flagOf(raw.dead) !== undefined) c.dead = flagOf(raw.dead);
     if (Array.isArray(raw.heard)) c.heard = cleanHeard(raw.heard);
 
     if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
@@ -1060,9 +1079,13 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     // раз познакомились лично — это навсегда; поправку игрока (metManual) модель не перебивает
     if (fresh.met !== undefined && !out.metManual && out.met !== true) out.met = fresh.met;
     if (fresh.heard && fresh.heard.length) out.heard = mergeHeard(out.heard, fresh.heard);
-    if (out.met === false) {
-        // заочно знакомому ничего «изнутри» не заводим: только кто он и что о нём слышно
-        if (!old || old.met !== false) for (const k of ['mood', 'moodSaid', 'faceSaid', 'face', 'moodlets', 'impression', 'chem', 'chemNow']) delete out[k];
+    // смерть модель отмечает один раз; «ожить» персонаж может только по правке игрока
+    if (fresh.dead === true && !out.deadManual) out.dead = true;
+    if (out.met === false || out.dead === true) {
+        // заочно знакомому и умершему ничего «изнутри» не заводим: только кто он и что о нём известно
+        const wasShort = old && (old.met === false || old.dead === true);
+        if (!wasShort) for (const k of ['mood', 'moodSaid', 'faceSaid', 'face', 'moodlets', 'moodCalc', 'moodKey']) delete out[k];
+        if (out.met === false && !wasShort) for (const k of ['impression', 'chem', 'chemNow']) delete out[k];
         return out;
     }
 
@@ -1174,10 +1197,11 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         const old = next.characters[key];
         // «знаком ли лично» — только про НПС: у персоны и главного персонажа этого поля нет
         if (isPersona || (opts.mains && isMain(fresh.name, opts.mains))) delete fresh.met;
+        if (isPersona || (opts.mains && isMain(fresh.name, opts.mains))) delete fresh.dead;
         // знакомые понаслышке в лимит персонажей не входят (их запись короткая), но и их не больше дюжины
-        const heardOnly = fresh.met === false && (!old || old.met !== true);
-        const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona && !isHearsay(next.characters[k])).length;
-        const heardCount = next.order.filter(k => isHearsay(next.characters[k])).length;
+        const heardOnly = (fresh.met === false && (!old || old.met !== true)) || fresh.dead === true;
+        const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona && !isShortRecord(next.characters[k])).length;
+        const heardCount = next.order.filter(k => isShortRecord(next.characters[k])).length;
         if (!old && !isPersona && (heardOnly ? heardCount >= 12 : counted >= maxChars)) continue;
         const merged = mergeCharacter(old, fresh, modules, { rebuild: !!opts.rebuild });
         if (isPersona) merged.persona = true;
@@ -1351,7 +1375,7 @@ export function eventText(ev) {
 
 // Шаблон ответа для модели: только включённые блоки, чтобы не тратить токены.
 export function responseTemplate(modules, manualTurns) {
-    const c = { name: 'Имя', g: 'm|f', who: 'кто это (только для нового персонажа)', met: 'true|false (только для НПС: новых и с no_met или met:false)', heard: [{ fact: 'что игрок о нём знает (только при met:false)', from: 'откуда: кто рассказал, газета, слухи' }] };
+    const c = { name: 'Имя', g: 'm|f', who: 'кто это (только для нового персонажа)', met: 'true|false (только для НПС: новых и с no_met или met:false)', dead: 'true — только если персонажа нет в живых', heard: [{ fact: 'что игрок о нём знает (только при met:false)', from: 'откуда: кто рассказал, газета, слухи' }] };
     if (modules.mood) {
         c.mood = 'встревожен';
         c.face = FACES.join('|');
@@ -1415,6 +1439,7 @@ export function buildSystemPrompt(settings, ctx) {
     if (settings.showNpc !== false && ctx.trackPersona !== false) {
         rules.push(`met — только для НПС (не для главного персонажа и не для ${user}): знаком ли этот персонаж с ${user} ЛИЧНО — они встречались, говорили, были в одной сцене или знакомы ещё до истории. Если ${user} знает о нём только понаслышке — ему рассказали (главный персонаж, другие), прочла в газете, письме, слышала слухи, или он вообще живёт только в чужой истории (умершие родные, бывшие, люди из прошлого главного персонажа), — верни met: false. Для met: false пиши ТОЛЬКО name, g, who (кто он и кем приходится главному персонажу) и heard — до 4 коротких фактов, которые ${user} о нём узнала из сообщений, и откуда (from: «рассказал Роберт», «из газеты», «слухи»); повторяй уже записанные факты дословно или не пиши их. Настроение, эмоции, желания, страхи, мечту, черты, impression, chem и всё остальное для met: false НЕ пиши: ${user} не видела этого человека и не может этого знать. Пиши met для новых НПС и для тех, у кого no_met: true или met: false; если персонаж с met: false лично встретился с ${user} в последних сообщениях — верни met: true и заполни всё как обычно.`);
     }
+    rules.push(`dead — true, если по карточке, лорбуку или сообщениям персонажа нет в живых: умер до начала истории или погиб в сцене (умершие родные, погибшие друзья, убитые). Это не про обморок, сон или ранение — только настоящая смерть. Призрак, дух или нежить, которые сами действуют и говорят в сцене, — не dead, их ведут как живых. Для умерших пиши только name, g, who, dead: true, met и heard (что о нём известно ${user}); настроение, эмоции, желания и всё остальное не пиши. Если у персонажа уже стоит dead: true — повтори это и больше ничего, кроме новых фактов в heard. Персона ${user} не может быть dead.`);
     if (ctx.acquainted && ctx.acquainted.length) {
         rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет. Если они знакомы с ${user} лично — met: true, who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное); impression.known (кто они друг другу) и label/why/score по их общей истории. Если с ${user} лично не знакомы (знает их только главный персонаж) — met: false, только who и heard (что ${user} о них слышала, если слышала).`);
     }
@@ -1481,8 +1506,9 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
         const c = state.characters[k];
         const o = { name: c.name, g: genderOf(c.g, c.name, c.who) };
         const npc = !c.persona && !(opts.mains && isMain(c.name, opts.mains));
-        if (npc && c.met === false) {
-            o.met = false;
+        if (isShortRecord(c)) {
+            if (c.met === false) o.met = false;
+            if (c.dead) o.dead = true;
             if (c.heard && c.heard.length) o.heard = c.heard.map(h => h.fact);
             return o;
         }
@@ -1534,7 +1560,7 @@ export function buildInjection(state, modules, userName, influence = 'medium') {
     for (const key of state.order) {
         const c = state.characters[key];
         if (!c || c.persona || (userName && sameName(c.name, userName))) continue; // дневник персоны — только для игрока
-        if (isHearsay(c)) continue; // с игроком лично не знаком — его «изнутри» дневник не ведёт
+        if (isShortRecord(c)) continue; // незнаком лично или умер — его «изнутри» дневник не ведёт
         const bits = [];
         if (modules.mood && c.mood) {
             const ml = (c.moodlets || []).filter(m => (WEIGHT_RANK[m.weight] || 2) >= minRank)
@@ -1692,6 +1718,7 @@ export function parseRoster(text, userName = '') {
             traits: (Array.isArray(raw.traits) ? raw.traits : []).map(t => lowerWord(t, 30)).filter(Boolean).slice(0, 5),
             rel: lowerWord(raw.knows_main || raw.rel || '', 40),
             relUser: lowerWord(raw.knows_player || raw.relUser || '', 40),
+            dead: flagOf(raw.dead) === true,
         });
         if (npc.length >= 40) break;
     }
@@ -1750,9 +1777,9 @@ export function buildRosterPrompt(sources, userName, lang = 'русском') {
         `main — главный персонаж (или персонажи) карточки, от лица которых пишет бот. Игрока (${userName || 'игрок'}) не включай никуда.`,
         'npc — остальные люди и разумные существа, которые могут появиться в сцене: имя так, как его пишут в тексте; g — пол m/f; who — кто это одной строкой (роль и связь с героями); traits — 2–4 черты характера, если они описаны.',
         'aliases — ТОЛЬКО клички, прозвища и другие имена, которые прямо написаны в карточке или лорбуке. Не придумывай уменьшительные формы и не разбивай имя на части (фамилию отдельно не пиши). Если таких нет — пустой список.',
-        `knows_main — если главный персонаж знаком с этим человеком ещё ДО начала истории (родня, друзья, бывшие, коллеги, враги, соседи — по карточке или лорбуку), кто он главному персонажу, 1–3 слова («бывшая», «друг детства», «сестра»); если не знакомы — пустая строка. knows_player — то же для игрока (${userName || 'игрок'}), по описанию игрока и лорбуку: кто он игроку, если они знакомы до истории, иначе пустая строка.`,
+        `knows_main — если главный персонаж знаком с этим человеком ещё ДО начала истории (родня, друзья, бывшие, коллеги, враги, соседи — по карточке или лорбуку), кто он главному персонажу, 1–3 слова («бывшая», «друг детства», «сестра»); если не знакомы — пустая строка. knows_player — то же для игрока (${userName || 'игрок'}), по описанию игрока и лорбуку: кто он игроку, если они знакомы до истории, иначе пустая строка. dead — true, если по карточке или лорбуку этого человека уже нет в живых (умер, погиб, казнён); иначе не пиши.`,
         'Не включай группы людей без имени («охрана», «соседи»), места, предметы и организации. Не больше 30 персонажей, самые важные — первыми.',
-        'Формат: {"main":["Имя"],"npc":[{"name":"Имя","aliases":["прозвище"],"g":"m","who":"кто это","traits":["черта"],"knows_main":"","knows_player":""}]}',
+        'Формат: {"main":["Имя"],"npc":[{"name":"Имя","aliases":["прозвище"],"g":"m","who":"кто это","traits":["черта"],"knows_main":"","knows_player":"","dead":false}]}',
     ].join('\n');
     const user = sources.map(src => `[${src.title}]\n${src.text}`).join('\n\n') + '\n\nВерни JSON.';
     return { system, user };
@@ -1920,6 +1947,7 @@ export function mergeRoster(old, fresh) {
             if (prev.g === 'n' && e.g) prev.g = e.g;
             if (e.rel) prev.rel = e.rel;
             if (e.relUser) prev.relUser = e.relUser;
+            if (e.dead) prev.dead = true;
         } else if (!out.main.some(m => namesMatch(m, e.name))) {
             out.npc.push(Object.assign({}, e));
         }

@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, purseOf, isHearsay, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
+import { settleMood, purseOf, isHearsay, isDead, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
 import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -726,22 +726,24 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         const entry = roster && roster.find ? roster.find(key) : null;
         if (entry) used.add(entry.name);
         const who = (entry && entry.who) || c.who || '';
+        const dead = isDead(c, entry);
+        const deadMark = dead ? '<span class="iw-dead-mark" aria-hidden="true"></span>' : '';
         if (isHearsay(c)) {
             const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, who);
             heardCards.push(`
-      <button type="button" class="iw-npc met iw-npc-heard" data-iw-view="npc:${esc(key)}" title="${esc(`${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
-        <span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
+      <button type="button" class="iw-npc met iw-npc-heard${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
+        ${deadMark}<span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
         <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
-        <span class="iw-npc-mood iw-npc-heardmark">понаслышке</span>
+        <span class="iw-npc-mood iw-npc-heardmark">${dead ? 'нет в живых' : 'понаслышке'}</span>
         ${who ? `<span class="iw-npc-who">${ce(who)}</span>` : ''}
       </button>`);
             continue;
         }
         cards.push(`
-      <button type="button" class="iw-npc met" data-iw-view="npc:${esc(key)}" title="Открыть: ${esc(c.name)}">
-        <span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${faceBadge(c)}</span>
+      <button type="button" class="iw-npc met${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `Открыть: ${c.name}`)}">
+        ${deadMark}<span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c)}</span>
         <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
-        ${c.mood ? `<span class="iw-npc-mood iw-npc-now">${ce(c.mood)}</span>` : ''}
+        ${dead ? '<span class="iw-npc-mood iw-npc-heardmark">нет в живых</span>' : (c.mood ? `<span class="iw-npc-mood iw-npc-now">${ce(c.mood)}</span>` : '')}
         ${who ? `<span class="iw-npc-who">${ce(who)}</span>` : ''}
       </button>`);
     }
@@ -970,7 +972,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     } else if (view === 'npc' && showNpc) {
         const pc0 = persona && state.characters[persona.key];
         body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly, personaName: (persona && persona.name) || '', personaG: genderOf(pc0 && pc0.g, (persona && persona.name) || '', '') });
-    } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)] && isHearsay(state.characters[view.slice(4)])) {
+    } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)] && (isHearsay(state.characters[view.slice(4)]) || isDead(state.characters[view.slice(4)], roster && roster.find ? roster.find(view.slice(4)) : null))) {
         const key = view.slice(4);
         const c = state.characters[key];
         const entry = roster && roster.find ? roster.find(key) : null;
@@ -984,15 +986,21 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         const mainName = (mains[0] && state.characters[mains[0]] && state.characters[mains[0]].name) || mains[0] || '';
         const aliases = shownAliases(entry);
         const heard = c.heard || [];
+        const dead = isDead(c, entry);
+        const hearsay = isHearsay(c);
+        const why = dead
+            ? `${esc(c.name)} нет в живых, поэтому настроения, желаний и отношения здесь нет — только память о ${gw(g, 'нём', 'ней', 'нём')}.`
+            : `${esc(pName)} с ${gw(g, 'ним', 'ней', 'ним')} лично не ${gw(pg, 'встречался', 'встречалась', 'встречался')}, поэтому настроения, желаний и отношения здесь нет. Когда они познакомятся в сцене, дневник заведёт полную запись.`;
         body = `
 <button type="button" class="iw-back iw-back-npc" data-iw-view="npc">${icon('back')}<span>все НПС</span></button>
-<section class="iw-dossier iw-dossier-heard">
+<section class="iw-dossier iw-dossier-heard${dead ? ' iw-dead' : ''}">
   <span class="iw-tape" aria-hidden="true"></span>
+  ${dead ? '<span class="iw-dead-mark iw-dead-mark-lg" aria-hidden="true"></span>' : ''}
   <div class="iw-dossier-face">${npcBadge(badgeInfo(c, entry), 'iw-badge-lg')}</div>
   <div class="iw-dossier-main">
     <div class="iw-npc-title${nameFit(c.name)}">${esc(c.name)}</div>
     ${aliases.length ? `<div class="iw-npc-aka">ещё зовут: ${esc(aliases.join(', '))}</div>` : ''}
-    <div class="iw-dossier-mood"><span class="iw-heard-chip">${icon('feather')}<span>знает понаслышке</span></span></div>
+    <div class="iw-dossier-mood">${dead ? `<span class="iw-heard-chip iw-dead-chip">${icon('feather')}<span>нет в живых</span></span>` : ''}${hearsay ? `<span class="iw-heard-chip">${icon('feather')}<span>знает понаслышке</span></span>` : ''}</div>
   </div>
   <div class="iw-whois">
     <span class="iw-whois-tag">${esc(LL.whois)}</span>
@@ -1003,8 +1011,11 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
 <div class="iw-grid"><section class="iw-block iw-b-heard">
   <div class="iw-block-head"><span class="iw-label">Что ${esc(pName)} о ${gw(g, 'нём', 'ней', 'нём')} знает</span></div>
   ${heard.length ? `<ul class="iw-heard-list">${heard.map(h => `<li><span>${ce(h.fact)}</span>${h.from ? `<small class="iw-muted">${esc(h.from)}</small>` : ''}</li>`).join('')}</ul>` : `<p class="iw-muted">Пока только имя: подробностей ${esc(pName)} не ${gw(pg, 'слышал', 'слышала', 'слышал')}.</p>`}
-  <p class="iw-muted iw-heard-note">${esc(pName)} с ${gw(g, 'ним', 'ней', 'ним')} лично не ${gw(pg, 'встречался', 'встречалась', 'встречался')}, поэтому настроения, желаний и отношения здесь нет. Когда они познакомятся в сцене, дневник заведёт полную запись.</p>
-  <button type="button" class="iw-btn iw-mini-btn" data-iw-met="${esc(key)}:1">${icon('tick')}<span>Они знакомы лично</span></button>
+  <p class="iw-muted iw-heard-note">${why}</p>
+  <div class="iw-heard-acts">
+    ${hearsay ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-met="${esc(key)}:1">${icon('tick')}<span>Они знакомы лично</span></button>` : ''}
+    ${dead ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-dead="${esc(key)}:0">${icon('back')}<span>${gw(g, 'Он жив', 'Она жива', 'Жив')}</span></button>` : ''}
+  </div>
 </section></div>`;
     } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)]) {
         const key = view.slice(4);
@@ -1029,6 +1040,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     <span class="iw-whois-tag">${esc(LL.whois)}</span>
     <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
     ${loreTraits.length ? `<div class="iw-whois-traits"><span class="iw-muted">${esc(LL.whoisTraits)}:</span> ${esc(loreTraits.join(', '))}</div>` : ''}
+    <button type="button" class="iw-heard-toggle" data-iw-dead="${esc(key)}:1" title="Отметить, что ${esc(c.name)} нет в живых: карточка станет серой, настроение и желания уберутся">нет в живых?</button>
     ${persona ? `<button type="button" class="iw-heard-toggle" data-iw-met="${esc(key)}:0" title="Если ${esc(persona.name)} и ${esc(c.name)} лично не встречались — дневник оставит только то, что о ${esc(c.name)} слышно">не знакомы лично?</button>` : ''}
   </div>
 </section>
