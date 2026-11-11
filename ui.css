@@ -13090,8 +13090,9 @@ ol {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    margin-right: -10px;
-    padding-right: 10px;
+    /* запас со всех сторон: пульсирующий кружок и прыгающие точки не обрезаются краем прокрутки */
+    margin: -8px -10px -4px -8px;
+    padding: 8px 10px 4px 8px;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, currentColor 40%, transparent) transparent;
 }
