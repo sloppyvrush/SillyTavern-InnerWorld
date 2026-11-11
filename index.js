@@ -22,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.8';
+const VERSION = '0.4.9';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1821,8 +1821,16 @@ const TEST_KEEP = [
     { title: 'Засушенная роза', icon: 'flower', desc: 'Подарок в первую ночь.' },
     { title: 'Письмо без подписи', icon: 'letter', desc: 'Почерк кажется знакомым.' },
 ];
+let testAchIdx = 0;
 async function testShowcase(kind) {
-    if (!hasChat()) return toastr.info('Открой чат с персонажем.', 'Внутренний мир');
+    if (!hasChat()) {
+        // без чата — только показать, как выглядит уведомление; на витрину ничего не пишем
+        if (kind === 'ach') {
+            const a = TEST_ACH[testAchIdx++ % TEST_ACH.length];
+            return showEvent({ type: 'achievement', who: 'Витрина', text: a.title, desc: `${a.desc} (проверка: открой чат, и тестовая ачивка встанет на витрину)`, icon: a.icon, tier: a.tier, kind: a.kind });
+        }
+        return showEvent({ type: 'reward', who: 'Витрина', text: 'Открой чат с персонажем — тогда тестовая вещь или очистка сработают в нём.' });
+    }
     const meta = chatMeta();
     if (kind === 'ach') {
         const have = (meta.achList || []).map(x => x.title);
@@ -1841,13 +1849,13 @@ async function testShowcase(kind) {
         const { mains } = splitCast(st);
         if (kind === 'keep') {
             const key = mains[0] || st.order[0];
-            if (!key) return toastr.info('Сначала заполни дневник: нажми «Чат».', 'Внутренний мир');
+            if (!key) return showEvent({ type: 'reward', who: 'Витрина', text: 'Сначала заполни дневник этого чата (кнопка «Чат»), потом положи вещь.' });
             const ch = st.characters[key];
             const owned = (ch.collection || []).map(x => x.title);
             const item = TEST_KEEP.find(x => !owned.includes(x.title)) || TEST_KEEP[0];
             ch.collection = (ch.collection || []).concat([Object.assign({ got: Date.now(), test: true }, item)]);
             await saveEditedState(st);
-            toastr.success(`${ch.name}: «${item.title}» — на витрине`, 'Внутренний мир');
+            showEvent({ type: 'reward', who: ch.name, text: `«${item.title}» — на витрине (тестовая вещь)` });
             return renderAll();
         }
         meta.achList = (meta.achList || []).filter(x => !x.test);
@@ -1855,7 +1863,7 @@ async function testShowcase(kind) {
         ctx().saveMetadataDebounced?.();
         for (const k of st.order) if (st.characters[k] && st.characters[k].collection) st.characters[k].collection = st.characters[k].collection.filter(x => !x.test);
         await saveEditedState(st);
-        toastr.success('Тестовые достижения и вещи стёрты', 'Внутренний мир');
+        showEvent({ type: 'reward', who: 'Витрина', text: 'Тестовые достижения и вещи стёрты' });
         return renderAll();
     }
 }
