@@ -1634,10 +1634,11 @@ function closePanel() {
     raiseLayer(false);
 }
 
-// Открытый дневник — поверх кнопок других расширений (у некоторых слой 10000).
+// Открытый дневник — поверх плавающих кнопок и окошек других расширений (у некоторых слой 10000 и выше).
+// Всплывающие окна таверны (подтверждения) живут в верхнем слое браузера и остаются над дневником.
 function raiseLayer(on) {
     const host = document.getElementById('iw_host');
-    if (host) host.style.zIndex = on ? '10050' : '3050';
+    if (host) host.style.setProperty('z-index', on ? '2147483000' : '3050', 'important');
 }
 
 function togglePanel() {
