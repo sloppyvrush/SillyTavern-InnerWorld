@@ -15414,3 +15414,129 @@ ol {
     width: 100%;
     margin-top: 8px;
 }
+
+/* ===================== Своё окно в стиле темы (вместо всплывашек таверны) ===================== */
+.iw-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483600;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    font-family: var(--iw-body-font, inherit);
+    color: var(--iw-ink);
+}
+
+.iw-modal-back {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 8, 12, .45);
+    backdrop-filter: blur(2px);
+    animation: iw-modal-fade .18s ease-out;
+}
+
+.iw-modal-card {
+    position: relative;
+    width: min(440px, 100%);
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+    padding: 20px 20px 16px;
+    animation: iw-modal-pop .22s ease-out;
+}
+
+.iw-modal-title {
+    margin-bottom: 6px;
+    font-family: var(--iw-title-font, inherit);
+    font-size: 1.4em;
+    line-height: 1.25;
+    padding: .1em .2em .1em 0;
+}
+
+.iw-modal-text {
+    margin: 6px 0;
+    line-height: 1.45;
+}
+
+.iw-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0 4px;
+}
+
+.iw-modal-input {
+    padding: 8px 12px;
+    border: 1.5px solid color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 45%, transparent);
+    border-radius: 10px;
+    background: var(--iw-block-bg);
+    color: var(--iw-ink);
+    font: inherit;
+    font-size: 16px;
+}
+
+.iw-modal-input:focus {
+    outline: 2px solid color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 45%, transparent);
+    outline-offset: 1px;
+}
+
+.iw-modal-btns {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.iw-modal-btn {
+    min-width: 96px;
+    justify-content: center;
+}
+
+.iw-modal-main {
+    border-color: var(--iw-label-color, var(--iw-ink)) !important;
+    font-weight: 700;
+}
+
+.iw-modal-danger {
+    border-color: #c0392b !important;
+    color: #c0392b !important;
+    font-weight: 700;
+}
+
+.iw-theme-pixel .iw-modal-input { border-radius: 0; }
+
+@keyframes iw-modal-fade { from { opacity: 0; } }
+@keyframes iw-modal-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+
+.iw-modal.iw-noanim .iw-modal-back,
+.iw-modal.iw-noanim .iw-modal-card { animation: none; }
+
+.iw-group-ignored {
+    margin-top: 16px;
+    opacity: .9;
+}
+
+.iw-unignore .iw-ico {
+    width: 13px;
+    height: 13px;
+}
+
+/* под карточку окна — бумага темы, чтобы полупрозрачные блоки не просвечивали */
+.iw-modal-paper {
+    position: relative;
+    width: min(440px, 100%);
+    border-radius: 14px;
+    background: var(--iw-bg);
+    background-image: var(--iw-paper, none);
+    box-shadow: 0 20px 50px -12px rgba(0, 0, 0, .55);
+    animation: iw-modal-pop .22s ease-out;
+}
+
+.iw-modal-paper .iw-modal-card {
+    width: 100%;
+    margin: 0;
+    animation: none;
+}
+
+.iw-theme-pixel .iw-modal-paper { border-radius: 0; }
+.iw-modal.iw-noanim .iw-modal-paper { animation: none; }

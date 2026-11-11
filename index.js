@@ -22,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.7';
+const VERSION = '0.4.8';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1612,7 +1612,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel() });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [] });
     writeScroll(el, keepScroll);
 }
 
@@ -1720,6 +1720,51 @@ function closePanel() {
 
 // Открытый дневник — поверх плавающих кнопок и окошек других расширений (у некоторых слой 10000 и выше).
 // Всплывающие окна таверны (подтверждения) живут в верхнем слое браузера и остаются над дневником.
+// Своё окно в стиле темы дневника — вместо всплывашек таверны.
+// buttons: [{ text, value, kind: 'main' | 'danger' | '' }]; input — подпись и значение поля; Esc и клик мимо — отмена (null).
+function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{ text: 'Хорошо', value: true, kind: 'main' }, { text: 'Отмена', value: null }] } = {}) {
+    return new Promise(resolve => {
+        const root = ui();
+        const wrap = document.createElement('div');
+        wrap.className = `iw-modal iw-theme-${currentTheme}${settings().animations === false ? ' iw-noanim' : ''}`;
+        wrap.innerHTML = `
+<div class="iw-modal-back"></div>
+<div class="iw-modal-paper"><div class="iw-modal-card iw-block" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+  <span class="iw-tape" aria-hidden="true"></span>
+  ${title ? `<div class="iw-modal-title iw-label">${esc(title)}</div>` : ''}
+  ${text ? `<p class="iw-modal-text">${esc(text)}</p>` : ''}${html}
+  ${input ? `<label class="iw-modal-field"><span class="iw-muted">${esc(input.label || '')}</span><input type="text" class="iw-modal-input" value="${esc(input.value || '')}" placeholder="${esc(input.placeholder || '')}" autocomplete="off"></label>` : ''}
+  <div class="iw-modal-btns">${buttons.map((b, i) => `<button type="button" class="iw-btn iw-modal-btn${b.kind ? ' iw-modal-' + b.kind : ''}" data-i="${i}">${esc(b.text)}</button>`).join('')}</div>
+</div></div>`;
+        const panelOpen = isOpen();
+        raiseLayer(true);
+        root.appendChild(wrap);
+        const field = wrap.querySelector('.iw-modal-input');
+        const done = v => {
+            document.removeEventListener('keydown', onKey, true);
+            wrap.remove();
+            if (!panelOpen && !isOpen()) raiseLayer(false);
+            resolve(v);
+        };
+        const pick = i => {
+            const b = buttons[i];
+            if (!b) return done(null);
+            done(input ? (b.value === null || b.value === undefined ? null : { value: b.value, input: field ? field.value : '' }) : b.value);
+        };
+        const onKey = ev => {
+            if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); done(null); }
+            if (ev.key === 'Enter' && field && wrap.contains(ev.composedPath()[0])) { ev.preventDefault(); pick(buttons.findIndex(b => b.kind === 'main')); }
+        };
+        document.addEventListener('keydown', onKey, true);
+        wrap.addEventListener('click', ev => {
+            const b = ev.target.closest('.iw-modal-btn');
+            if (b) return pick(Number(b.dataset.i));
+            if (ev.target.classList.contains('iw-modal-back')) done(null);
+        });
+        setTimeout(() => (field || wrap.querySelector('.iw-modal-main') || wrap.querySelector('.iw-modal-btn')).focus(), 30);
+    });
+}
+
 function raiseLayer(on) {
     const host = document.getElementById('iw_host');
     if (host) host.style.setProperty('z-index', on ? '2147483000' : '3050', 'important');
@@ -1761,8 +1806,63 @@ const TEST_SAMPLES = {
     attitude: { from: 1, to: 2, text: 'стал теплее' },
     reward: { text: 'Термос с горячим чаем' },
 };
+// Проверка витрины: тестовые достижения и памятные вещи (помечены test, стираются одной кнопкой)
+const TEST_ACH = [
+    { title: 'Чай, а не яд', desc: 'Выпить чай, который заварил вампир, и остаться в живых.', icon: 'cup', kind: 'funny', tier: 'bronze' },
+    { title: 'Мастер неловких пауз', desc: 'Молчать двадцать секунд после признания.', icon: 'shy', kind: 'funny', tier: 'bronze' },
+    { title: 'Не в этот раз, смерть', desc: 'Вытащить человека из горящего дома.', icon: 'shield', kind: 'feat', tier: 'gold' },
+    { title: 'Кто здесь?', desc: 'Услышать шаги на чердаке пустого дома.', icon: 'ghost', kind: 'dark', tier: 'silver' },
+    { title: 'Под дождём', desc: 'Первый поцелуй у старой часовни.', icon: 'lips', kind: 'romance', tier: 'silver' },
+    { title: 'Плед на двоих', desc: 'Укрыть уснувшего у камина.', icon: 'heart', kind: 'cute', tier: 'bronze' },
+    { title: 'Скелет в шкафу', desc: 'Узнать, что от тебя скрывали с первого дня.', icon: 'key', kind: 'secret', tier: 'silver' },
+];
+const TEST_KEEP = [
+    { title: 'Старый компас', icon: 'key', desc: 'Стрелка почему-то всегда указывает на дом.' },
+    { title: 'Засушенная роза', icon: 'flower', desc: 'Подарок в первую ночь.' },
+    { title: 'Письмо без подписи', icon: 'letter', desc: 'Почерк кажется знакомым.' },
+];
+async function testShowcase(kind) {
+    if (!hasChat()) return toastr.info('Открой чат с персонажем.', 'Внутренний мир');
+    const meta = chatMeta();
+    if (kind === 'ach') {
+        const have = (meta.achList || []).map(x => x.title);
+        const pickA = TEST_ACH.find(a => !have.includes(a.title)) || TEST_ACH[Math.floor(Math.random() * TEST_ACH.length)];
+        const now = clockNow();
+        const { list, added } = addAchievement((meta.achList || []).filter(x => x.title !== pickA.title), Object.assign({}, pickA), { scene: now && now.cal && now.t ? fmtDate(now.cal, now.t) : '' });
+        added.test = true;
+        meta.achList = list;
+        meta.achNew = [...(meta.achNew || []), added.id].slice(-30);
+        ctx().saveMetadataDebounced?.();
+        showEvent({ type: 'achievement', who: 'Витрина', text: added.title, desc: added.desc, icon: added.icon, tier: added.tier, kind: added.kind });
+        return renderAll();
+    }
+    if (kind === 'keep' || kind === 'clearcase') {
+        const st = currentState();
+        const { mains } = splitCast(st);
+        if (kind === 'keep') {
+            const key = mains[0] || st.order[0];
+            if (!key) return toastr.info('Сначала заполни дневник: нажми «Чат».', 'Внутренний мир');
+            const ch = st.characters[key];
+            const owned = (ch.collection || []).map(x => x.title);
+            const item = TEST_KEEP.find(x => !owned.includes(x.title)) || TEST_KEEP[0];
+            ch.collection = (ch.collection || []).concat([Object.assign({ got: Date.now(), test: true }, item)]);
+            await saveEditedState(st);
+            toastr.success(`${ch.name}: «${item.title}» — на витрине`, 'Внутренний мир');
+            return renderAll();
+        }
+        meta.achList = (meta.achList || []).filter(x => !x.test);
+        meta.achNew = (meta.achNew || []).filter(id => meta.achList.some(x => x.id === id));
+        ctx().saveMetadataDebounced?.();
+        for (const k of st.order) if (st.characters[k] && st.characters[k].collection) st.characters[k].collection = st.characters[k].collection.filter(x => !x.test);
+        await saveEditedState(st);
+        toastr.success('Тестовые достижения и вещи стёрты', 'Внутренний мир');
+        return renderAll();
+    }
+}
+
 function testNotice(kind) {
     const who = (currentState().order || []).map(k => currentState().characters[k] && currentState().characters[k].name).find(Boolean) || ctx().name2 || 'Персонаж';
+    if (kind === 'ach' || kind === 'keep' || kind === 'clearcase') return testShowcase(kind);
     if (kind === 'write') return writeSound();
     if (kind === 'error') return showError({ kind: 'test', title: 'Модель не ответила', text: 'Это проверочная ошибка: так выглядит листок, если разбор не удался.' }, { manual: true, what: 'Проверка' });
     if (kind === 'all') {
@@ -1968,7 +2068,8 @@ async function onPanelClick(e) {
         const c0 = ctx();
         const p2 = n => String(n).padStart(2, '0');
         const cur = ch.born ? (ch.born.d && ch.born.m ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : String(ch.born.y || '')) : '';
-        const val = await c0.callGenericPopup(`<b>День рождения или возраст: ${esc(ch.name)}</b><br><small>Дата — 20.08.1969, просто 20.08 или только год рождения — 1969. Или возраст на сегодня по часам сцены — например 27. Дальше возраст растёт сам. Оставь пустым, чтобы убрать.</small>`, c0.POPUP_TYPE.INPUT, cur);
+        const got = await iwDialog({ title: `День рождения: ${ch.name}`, text: 'Дата — 20.08.1969, просто 20.08 или только год рождения — 1969. Или возраст на сегодня по часам сцены — например 27, дальше он будет расти сам. Оставь пустым, чтобы убрать.', input: { label: 'Дата или возраст', value: cur, placeholder: '20.08.1969' }, buttons: [{ text: 'Сохранить', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }] });
+        const val = got ? got.input : null;
         if (val === null || val === undefined || val === false) return;
         const txt = String(val).trim();
         const ageOnly = txt.match(/^(\d{1,3})\s*(год|года|лет|г\.?)?$/i);
@@ -2051,7 +2152,7 @@ async function onPanelClick(e) {
         const ch = state.characters[key];
         if (!ch) return;
         const c0 = ctx();
-        const res = await c0.callGenericPopup(`<b>Убрать ${esc(ch.name)} из НПС?</b><br><small>«Только сейчас» — запись пропадёт, но если ${esc(ch.name)} снова появится в сцене, дневник заведёт её заново.<br>«Навсегда» — дневник больше не будет ни вести, ни показывать этого персонажа в этом чате. Вернуть можно в настройках, раздел «Этот чат».</small>`, c0.POPUP_TYPE.TEXT, '', { okButton: 'Только сейчас', cancelButton: 'Отмена', customButtons: [{ text: 'Навсегда', result: 2, appendAtEnd: true }] });
+        const res = await iwDialog({ title: `Убрать ${ch.name} из НПС?`, html: `<p class="iw-modal-text"><b>Только сейчас</b> — запись пропадёт, но если ${esc(ch.name)} снова появится в сцене, дневник заведёт запись заново.</p><p class="iw-modal-text"><b>Навсегда</b> — дневник больше не будет ни вести, ни показывать этого персонажа в этом чате. Вернуть можно внизу списка НПС или в настройках, раздел «Этот чат».</p>`, buttons: [{ text: 'Только сейчас', value: 1, kind: 'main' }, { text: 'Навсегда', value: 2, kind: 'danger' }, { text: 'Отмена', value: null }] });
         if (res !== 1 && res !== 2) return;
         delete state.characters[key];
         state.order = state.order.filter(k => k !== key);
@@ -2080,7 +2181,7 @@ async function onPanelClick(e) {
         const state = currentState();
         if (!state.characters[key]) return;
         const c0 = ctx();
-        const ok = await c0.callGenericPopup(`Забыть ${esc(state.characters[key].name)}? Всё, что о нём записано в дневнике этого чата, пропадёт.`, c0.POPUP_TYPE.CONFIRM);
+        const ok = await iwDialog({ title: `Забыть ${state.characters[key].name}?`, text: 'Всё, что о нём записано в дневнике этого чата, пропадёт. Если он снова появится в сцене, дневник заведёт запись заново.', buttons: [{ text: 'Забыть', value: true, kind: 'danger' }, { text: 'Отмена', value: null }] });
         if (!ok) return;
         delete state.characters[key];
         state.order = state.order.filter(k => k !== key);
@@ -2810,7 +2911,7 @@ function addSettings() {
 // изученные лорбуки и найденные НПС (rosters) — тоже записи, их оставляем.
 async function resetAllSettings() {
     const c = ctx();
-    const ok = await c.callGenericPopup('Сбросить все настройки «Внутреннего мира» к начальным? Тема, звуки, подключение и ключ API вернутся как были при установке. Записи дневников в чатах останутся.', c.POPUP_TYPE.CONFIRM);
+    const ok = await iwDialog({ title: 'Сбросить все настройки?', text: 'Тема, звуки, подключение и ключ API вернутся как были при установке. Записи дневников в чатах останутся.', buttons: [{ text: 'Сбросить', value: true, kind: 'danger' }, { text: 'Отмена', value: null }] });
     if (!ok) return;
     const old = settings();
     const fresh = mergeSettings({});
@@ -2831,7 +2932,7 @@ async function resetAllSettings() {
 async function resetChat() {
     const c = ctx();
     if (!c.chat || !c.chat.length) return;
-    const ok = await c.callGenericPopup('Точно очистить дневник «Внутреннего мира» в этом чате? Все записи о персонажах пропадут, сообщения чата не пострадают.', c.POPUP_TYPE.CONFIRM);
+    const ok = await iwDialog({ title: 'Очистить дневник этого чата?', text: 'Все записи о персонажах пропадут, сообщения чата не пострадают. Календарь останется.', buttons: [{ text: 'Очистить', value: true, kind: 'danger' }, { text: 'Отмена', value: null }] });
     if (!ok) return;
     for (const m of c.chat) {
         if (m && m.extra) delete m.extra[META_KEY];

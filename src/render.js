@@ -84,6 +84,8 @@ const TEST_MENU = `<details class="iw-vol iw-testmenu">
         <div class="iw-vol-row"><span>Проверка (временно)</span></div>
         <button type="button" class="iw-test-all" data-iw-test="all">▶ Все по очереди</button>
         <div class="iw-test-grid">${TEST_EVENTS.map(([k, n]) => `<button type="button" data-iw-test="${k}">${n}</button>`).join('')}</div>
+        <div class="iw-vol-row"><span>Витрина</span></div>
+        <div class="iw-test-grid"><button type="button" data-iw-test="ach">Достижение</button><button type="button" data-iw-test="keep">Памятная вещь</button><button type="button" data-iw-test="clearcase">Стереть тестовые</button></div>
       </div>
     </details>`;
 
@@ -801,7 +803,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
-export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [], personaName = '', personaG = 'n', clock = null }) {
+export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [], personaName = '', personaG = 'n', clock = null, ignored = [] }) {
     const used = new Set();
     const cards = [];
     const heardCards = [];
@@ -850,7 +852,8 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         <span class="iw-npc-mood">${e.checked ? gw(g, 'только упоминался', 'только упоминалась', 'только упоминание') : 'ждёт разбора'}</span>
       </div>`);
     }
-    const unknown = ((roster && roster.npc) || []).filter(e => !used.has(e.name) && !npcKeys.some(k => roster.find(k) === e));
+    const ign = new Set(ignored.map(n => String(n).toLowerCase()));
+    const unknown = ((roster && roster.npc) || []).filter(e => !used.has(e.name) && !npcKeys.some(k => roster.find(k) === e) && !ign.has(String(e.name).toLowerCase()));
     const unknownTiles = unknown.map(() => `
       <span class="iw-npc-unknown" title="Ещё не было в сцене"><span class="iw-unknown-mark"></span></span>`).join('');
     const known = (roster && roster.npc && roster.npc.length) || 0;
@@ -868,6 +871,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
   ${cards.length ? `<div class="iw-npc-grid">${cards.join('')}</div>` : (heardCards.length ? '' : unknown.length ? '<div class="iw-muted">Пока никто из них не появлялся в сцене.</div>' : '<div class="iw-empty">Пока никого. Нажми «Изучить лорбук и карточку» — и я узнаю, кто живёт в этом мире. В дневнике они появятся, когда придут в сцену.</div>')}
   ${heardCards.length ? `<div class="iw-group iw-group-heard">${groupHead(`Знает понаслышке · ${heardCards.length}`, `${personaName ? esc(personaName) : 'твой герой'} с ними лично не ${gw(personaG, 'встречался', 'встречалась', 'встречался')} — только ${gw(personaG, 'слышал', 'слышала', 'слышал')}: из рассказов, слухов, газет`)}<div class="iw-npc-grid">${heardCards.join('')}</div></div>` : ''}
   ${unknown.length ? `<div class="iw-group">${groupHead(`Ещё не встречались · ${unknown.length}`, 'появятся, когда придут в сцену')}<div class="iw-npc-unknowns">${unknownTiles}</div></div>` : ''}
+  ${ignored.length ? `<div class="iw-group iw-group-ignored">${groupHead(`Забыты навсегда · ${ignored.length}`, 'дневник их не ведёт; стрелочка — вернуть')}<div class="iw-forget-ignored">${ignored.map(n => `<button type="button" class="iw-btn iw-forget-chip iw-unignore" data-iw-unignore="${esc(n)}" title="Вернуть: дневник снова будет замечать ${esc(n)}">${esc(n)} ${icon('undo')}</button>`).join('')}</div></div>` : ''}
 </div>`;
 }
 
@@ -1026,7 +1030,7 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [] }) {
     NEXT_IN = nextIn;
     // showcase: { got, sel, fresh } — витрина этого чата
     CASE_BTN = showcase && !noChat ? { on: view === 'showcase', fresh: showcase.fresh || 0 } : null;
@@ -1067,7 +1071,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
         const pc0 = persona && state.characters[persona.key];
-        body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly, personaName: (persona && persona.name) || '', personaG: genderOf(pc0 && pc0.g, (persona && persona.name) || '', ''), clock });
+        body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly, personaName: (persona && persona.name) || '', personaG: genderOf(pc0 && pc0.g, (persona && persona.name) || '', ''), clock, ignored });
     } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)] && (isHearsay(state.characters[view.slice(4)]) || isDead(state.characters[view.slice(4)], roster && roster.find ? roster.find(view.slice(4)) : null))) {
         const key = view.slice(4);
         const c = state.characters[key];
