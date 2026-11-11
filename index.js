@@ -22,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.6';
+const VERSION = '0.4.7';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1171,7 +1171,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 }
             }
             const userTurns = chat.slice(0, messageId + 1).filter(m => m && m.is_user).length;
-            if (missing.length && userTurns >= 1 && messageId >= 2) catchUp = missing.slice(0, 8);
+            const missingOk = missing.filter(n => !isIgnored(n));
+            if (missingOk.length && userTurns >= 1 && messageId >= 2) catchUp = missingOk.slice(0, 8);
         }
         const msgs = [];
         const catchUpCount = Math.min(40, Math.max(4, Number(s.catchUpMessages) || 12));
@@ -1218,7 +1219,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             kind,
             loreMain: fromLore ? fromLore.map(t => cleanMessageText(t, 6000)).slice(0, 6) : [],
             history,
-            knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name)].slice(0, 40),
+            knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name).filter(n => !isIgnored(n))].slice(0, 40),
+            ignored: ignoredNames(),
             lore: [],
             clockNow: kind !== 'lore' && s.clock !== false ? clockForAnalysis(messageId) : '',
             achTitles: (chatMeta().achList || []).filter(x => x.mes !== messageId).map(x => x.title).slice(-15),
@@ -1245,6 +1247,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             info.acquainted = [];
             for (const e of ros.npc || []) {
                 if (!e.rel && !e.relUser) continue;
+                if (isIgnored(e.name)) continue;
                 if (base.order.some(k => rosterFind(ros, k) === e || namesMatch(k, e.name))) continue;
                 const al = e.aliases || [], tr = e.traits || [];
                 info.acquainted.push(`${e.name}${al.length ? ` (${al.join(', ')})` : ''}: ${e.who || ''}${e.rel ? `; для ${c.name2} — ${e.rel}` : ''}${e.relUser ? `; для ${c.name1} — ${e.relUser}` : ''}${e.dead ? '; нет в живых' : ''}${tr.length ? `; черты: ${tr.join(', ')}` : ''}`);
@@ -1255,6 +1258,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (s.showNpc !== false) {
             for (const e of ros.npc || []) {
                 if (base.order.some(k => rosterFind(ros, k) === e)) continue;
+                if (isIgnored(e.name)) continue;
                 if (!rosterMentioned(e, recentText) && !(catchUp && catchUp.includes(e.name))) continue;
                 info.lore.push(`${e.name}${e.aliases.length ? ` (${e.aliases.join(', ')})` : ''}: ${e.who}${e.traits.length ? `; черты: ${e.traits.join(', ')}` : ''}`);
                 if (info.lore.length >= (catchUp ? 10 : 5)) break;
@@ -1298,6 +1302,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             }
         }
         if (s.showNpc === false) fresh = fresh.filter(x => isMain(x.name, mn));
+        if (ignoredNames().length) fresh = fresh.filter(x => isMain(x.name, mn) || sameName(x.name, c.name1) || !isIgnored(x.name));
         if (s.track === 'bot') fresh = fresh.filter(x => sameName(x.name, c.name2));
         if (s.track === 'list') {
             const allowed = info.trackNames;
@@ -1604,7 +1609,7 @@ function renderPanelNow() {
     el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
     const keepScroll = readScroll(el);
     const hs = showNpc ? historySeen() : { seen: [], pending: [] };
-    const seenOnly = hs.seen
+    const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
     el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel() });
@@ -1642,7 +1647,7 @@ function takeAchievement(raw, messageId) {
     if (!added) return;
     meta.achNew = [...(meta.achNew || []).filter(id => list.some(x => x.id === id)), added.id].slice(-30);
     ctx().saveMetadataDebounced?.();
-    showEvent({ type: 'achievement', who: 'Витрина', text: added.title, desc: added.desc }, 600);
+    showEvent({ type: 'achievement', who: 'Витрина', text: added.title, desc: added.desc, icon: added.icon, tier: added.tier, kind: added.kind }, 600);
 }
 
 function safeClockView() {
@@ -1795,7 +1800,7 @@ async function onPanelClick(e) {
     const calSum = e.target.closest('.iw-clock-cal > summary');
     if (calSum) clockCalOpen = !calSum.parentElement.open;
     // день рождения на карточке — своя кнопка внутри карточки, карточку при этом не открываем
-    const bornTag = e.target.closest('[data-iw-born]');
+    const bornTag = e.target.closest('[data-iw-born], [data-iw-npcx]');
     const t = bornTag && bornTag.tagName !== 'BUTTON' ? bornTag : e.target.closest('button');
     if (bornTag) { e.preventDefault(); e.stopPropagation(); }
     if (!t) return;
@@ -2039,6 +2044,37 @@ async function onPanelClick(e) {
         updateInjection();
         return renderAll();
     }
+    if (t.dataset.iwNpcx) {
+        // убрать НПС: только сейчас (вернётся, когда снова придёт в сцену) или навсегда
+        const key = t.dataset.iwNpcx;
+        const state = currentState();
+        const ch = state.characters[key];
+        if (!ch) return;
+        const c0 = ctx();
+        const res = await c0.callGenericPopup(`<b>Убрать ${esc(ch.name)} из НПС?</b><br><small>«Только сейчас» — запись пропадёт, но если ${esc(ch.name)} снова появится в сцене, дневник заведёт её заново.<br>«Навсегда» — дневник больше не будет ни вести, ни показывать этого персонажа в этом чате. Вернуть можно в настройках, раздел «Этот чат».</small>`, c0.POPUP_TYPE.TEXT, '', { okButton: 'Только сейчас', cancelButton: 'Отмена', customButtons: [{ text: 'Навсегда', result: 2, appendAtEnd: true }] });
+        if (res !== 1 && res !== 2) return;
+        delete state.characters[key];
+        state.order = state.order.filter(k => k !== key);
+        if (res === 2) {
+            const meta = chatMeta();
+            meta.ignored = [...ignoredNames().filter(n => !sameName(n, ch.name)), ch.name];
+        }
+        chatMeta().fp = {};
+        if (view === 'npc:' + key) view = 'npc';
+        await saveEditedState(state);
+        ctx().saveMetadataDebounced?.();
+        updateInjection();
+        toastr.success(res === 2 ? `${ch.name}: забыт навсегда` : `${ch.name}: убран, вернётся, если снова придёт в сцену`, 'Внутренний мир');
+        return renderAll();
+    }
+    if (t.dataset.iwUnignore) {
+        const name = t.dataset.iwUnignore;
+        chatMeta().ignored = ignoredNames().filter(n => !sameName(n, name));
+        ctx().saveMetadataDebounced?.();
+        syncSettingsForm();
+        toastr.success(`${name}: дневник снова будет его замечать`, 'Внутренний мир');
+        return renderAll();
+    }
     if (t.dataset.iwForget) {
         const key = t.dataset.iwForget;
         const state = currentState();
@@ -2055,6 +2091,15 @@ async function onPanelClick(e) {
         updateInjection();
         return renderAll();
     }
+}
+
+// НПС, которых игрок попросил забыть навсегда: дневник их больше не ведёт и не показывает
+function ignoredNames() {
+    const list = chatMeta().ignored;
+    return Array.isArray(list) ? list : [];
+}
+function isIgnored(name) {
+    return ignoredNames().some(n => sameName(n, name) || namesMatch(n, name));
 }
 
 // Ключ персонажа, чья страница открыта.
@@ -2611,6 +2656,8 @@ function settingsFormHtml(variant) {
     if (variant === 'diary' && hasChat()) {
         const st = currentState();
         forgetHtml = (st.order || []).filter(k => st.characters[k]).map(k => `<button type="button" class="iw-btn iw-forget-chip" data-iw-forget="${esc(k)}" title="Забыть ${esc(st.characters[k].name)}">${esc(st.characters[k].name)} <span aria-hidden="true">×</span></button>`).join('');
+        const ign = ignoredNames();
+        if (ign.length) forgetHtml += `<div class="iw-forget-ignored"><span class="iw-muted">Забыты навсегда:</span> ${ign.map(n => `<button type="button" class="iw-btn iw-forget-chip iw-unignore" data-iw-unignore="${esc(n)}" title="Вернуть: дневник снова будет замечать ${esc(n)}">${esc(n)} <span aria-hidden="true">↺</span></button>`).join('')}</div>`;
     }
     return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED });
 }

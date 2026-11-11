@@ -1021,7 +1021,9 @@ test('год рождения без дня, отмена покупки, дос
     assert.ok(r.added);
     r = S.addAchievement(r.list, S.cleanAchievement({ title: 'Спасение', icon: 'nope' }), { mes: 10 });
     assert.equal(r.list.length, 1);
-    assert.equal(r.list[0].icon, 'trophy');
+    assert.equal(r.list[0].icon, 'shield'); // значок подобран по смыслу
+    assert.equal(S.cleanAchievement({ title: 'Мастер неловких пауз', icon: 'shy', kind: 'funny' }).icon, 'shy');
+    assert.equal(S.cleanAchievement({ title: 'Просто так', kind: 'cute' }).icon, 'heart');
     r = S.addAchievement(r.list, S.cleanAchievement({ title: 'спасение!' }), { mes: 12 });
     assert.equal(r.added, null);
     assert.equal(S.cleanAchievement({}), null);

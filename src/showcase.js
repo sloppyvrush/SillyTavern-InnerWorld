@@ -12,21 +12,39 @@ export function collectionOf(state) {
 
 export const TIER_NAMES_RU = TIER_NAMES;
 
-// Значки, из которых модель выбирает картинку для достижения
-export const ACH_ICONS = ['trophy', 'heart', 'star', 'crown', 'shield', 'flame', 'ghost', 'key', 'gem', 'sun', 'moon', 'sparkle', 'gift', 'cake', 'letter', 'cup', 'flower', 'potion', 'users', 'eye', 'lips', 'ribbon', 'feather', 'coin', 'scroll', 'book'];
+// Значки для достижений — со смыслом: модель выбирает тот, что подходит событию
+export const ACH_ICON_MEANING = {
+    trophy: 'победа, триумф', star: 'успех, первый раз', crown: 'власть, лидерство, триумф', heart: 'любовь, нежность',
+    lips: 'поцелуй, флирт', flower: 'ухаживание, цветы', gift: 'подарок, сюрприз', ribbon: 'награда, подарок', cake: 'праздник, день рождения',
+    cup: 'чай, кофе, посиделки', potion: 'алкоголь, зелье, лекарство', shield: 'защита, спасение', flame: 'страсть, драка, ярость, пожар',
+    key: 'тайна, разгадка', lock: 'секрет, заперто', ghost: 'мистика, страх, призраки', eye: 'подглядывание, слежка, разоблачение',
+    letter: 'письмо, записка', scroll: 'документ, договор', book: 'знание, учёба', feather: 'стихи, творчество', note: 'музыка, песня',
+    dice: 'азарт, удача, случай', coin: 'деньги, сделка, взятка', gem: 'сокровище, ценность', sun: 'утро, надежда', moon: 'ночь, бессонница',
+    clock: 'опоздание, время', chat: 'разговор, болтовня', users: 'компания, знакомство', sparkle: 'магия, чудо', alert: 'опасность, тревога',
+    trash: 'провал, всё пошло не так',
+};
+// лица-эмоции — для смешных, милых и неловких достижений
+export const ACH_FACES = ['joy', 'playful', 'shy', 'dazed', 'confused', 'surprise', 'tired', 'angry', 'sad', 'fear', 'love', 'flirty', 'guilt', 'pride', 'suspicious', 'disgust', 'bored', 'hurt'];
+export const ACH_ICONS = [...Object.keys(ACH_ICON_MEANING), ...ACH_FACES];
+export const ACH_KINDS = { story: 'сюжет', feat: 'подвиг', funny: 'забавное', cute: 'милое', romance: 'романтика', dark: 'мрачное', secret: 'тайное' };
+const KIND_ICON = { story: 'star', feat: 'trophy', funny: 'playful', cute: 'heart', romance: 'lips', dark: 'ghost', secret: 'key' };
+// если модель назвала значок не из списка — подбираем по словам
+const WORD_ICON = [[/поцел/, 'lips'], [/любов|влюб|сердц/, 'heart'], [/чай|кофе|чаепит/, 'cup'], [/пьян|вино|выпил|бутыл|зель|алкогол/, 'potion'], [/спас|защит/, 'shield'], [/драк|ярост|пожар|огон/, 'flame'], [/тайн|секрет|разгад/, 'key'], [/призрак|страх|ужас/, 'ghost'], [/письм|записк/, 'letter'], [/подар/, 'gift'], [/цвет/, 'flower'], [/день рожд|праздн/, 'cake'], [/деньг|монет|взятк|сделк/, 'coin'], [/ночь|бессон/, 'moon'], [/опозд/, 'clock'], [/песн|музык/, 'note'], [/неловк|смущ|красне/, 'shy'], [/провал|облом/, 'trash']];
 const clean = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 
-// Достижение из ответа модели: { title, desc, icon, tier } или null
+// Достижение из ответа модели: { title, desc, icon, tier, kind } или null
 export function cleanAchievement(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
     const title = clean(raw.title || raw.name, 48);
     if (!title) return null;
-    return {
-        title,
-        desc: clean(raw.desc || raw.about || raw.why, 180),
-        icon: ACH_ICONS.includes(raw.icon) ? raw.icon : 'trophy',
-        tier: ['bronze', 'silver', 'gold'].includes(raw.tier) ? raw.tier : 'bronze',
-    };
+    const desc = clean(raw.desc || raw.about || raw.why, 180);
+    const kind = Object.keys(ACH_KINDS).includes(raw.kind) ? raw.kind : 'story';
+    let ic = String(raw.icon || '').trim();
+    if (!ACH_ICONS.includes(ic)) {
+        const text = `${title} ${desc}`.toLowerCase();
+        ic = (WORD_ICON.find(([re]) => re.test(text)) || [])[1] || KIND_ICON[kind] || 'trophy';
+    }
+    return { title, desc, icon: ic, tier: ['bronze', 'silver', 'gold'].includes(raw.tier) ? raw.tier : 'bronze', kind };
 }
 
 // Добавить на полку: одно достижение на сообщение (при свайпе заменяется), одинаковые названия не повторяются

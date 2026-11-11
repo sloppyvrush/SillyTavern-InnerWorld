@@ -14903,12 +14903,16 @@ ol {
     min-width: 0;
 }
 
+/* название свёрнутого блока не обрезаем: рукописные шрифты выходят за строку сверху, снизу и справа.
+   Если не помещается в половинку — переносится, а сжимается только краткая сводка рядом */
 .iw-panel .iw-block.iw-collapsed .iw-block-head .iw-label {
     max-width: none;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 0 1 auto;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    padding-right: .15em;
 }
 
 .iw-panel .iw-block.iw-collapsed .iw-fold-sum {
@@ -14916,6 +14920,9 @@ ol {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    /* запас под высокие буквы рукописных шрифтов, чтобы сводку не срезало сверху и снизу */
+    padding-block: .18em .22em;
+    line-height: 1.3;
 }
 
 /* на узком экране — всё в одну колонку, как и было */
@@ -15263,3 +15270,147 @@ ol {
 
 .iw-panel.iw-theme-pixel .iw-case-empty-text { border-radius: 0; }
 .iw-panel.iw-theme-pixel .iw-b-showcase .iw-case-ach .iw-rw-title { text-decoration-style: dotted; }
+
+/* ===================== Достижение получено — уведомление в духе Steam ===================== */
+.iw-toast-card.iw-ach-toast {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px 12px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #1f2a3a, #2c3e57 60%, #1b2433);
+    color: #e6edf5;
+    box-shadow: 0 10px 24px -8px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.iw-ach-toast .iw-tape {
+    display: none;
+}
+
+.iw-ach-toast-ico {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 4px;
+    background: radial-gradient(circle at 35% 30%, #f0c58f, #b8753a 60%, #6f3f1c);
+    color: #2a1608;
+    font-size: 30px;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25), 0 2px 6px rgba(0, 0, 0, .4);
+}
+
+.iw-ach-toast.iw-tier-silver .iw-ach-toast-ico { background: radial-gradient(circle at 35% 30%, #ffffff, #b9c2cc 60%, #5f6b78); color: #1f262e; }
+.iw-ach-toast.iw-tier-gold .iw-ach-toast-ico { background: radial-gradient(circle at 35% 30%, #fff2b3, #e1ae3c 60%, #8a5e0e); color: #3a2604; }
+.iw-ach-toast.iw-tier-gold { box-shadow: 0 0 0 1px rgba(225, 174, 60, .5), 0 10px 24px -8px rgba(0, 0, 0, .6); }
+
+.iw-ach-toast .iw-toast-kicker {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 0 2px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #8fb3d9;
+}
+
+.iw-ach-toast .iw-toast-kicker em {
+    font-style: normal;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #a9bdd2;
+}
+
+.iw-ach-toast-title {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #ffffff;
+}
+
+.iw-ach-toast .iw-toast-text {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #c4d2e1;
+}
+
+.iw-ach-toast .iw-toast-close {
+    align-self: start;
+    color: #a9bdd2;
+}
+
+/* лицо-эмоция в значке достижения */
+.iw-case-ico .iw-ach-face,
+.iw-ach-toast-ico .iw-ach-face {
+    width: 1em;
+    height: 1em;
+}
+
+.iw-ach-kind {
+    padding: 0 7px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.iw-ach-funny { color: #d9822b; }
+.iw-ach-cute { color: #d95b8f; }
+.iw-ach-romance { color: #c94a6a; }
+.iw-ach-dark { color: #7a6a8a; }
+.iw-ach-secret { color: #5a7fb0; }
+.iw-ach-feat { color: #b8892a; }
+.iw-ach-story { color: #6a8a5a; }
+
+/* крестик «убрать из НПС» на карточке */
+.iw-npc-x {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--iw-block-bg) 85%, transparent);
+    color: var(--iw-muted);
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity .15s;
+    cursor: pointer;
+}
+
+.iw-npc:hover .iw-npc-x,
+.iw-npc:focus-within .iw-npc-x,
+.iw-npc-x:focus-visible {
+    opacity: .9;
+}
+
+.iw-npc-x:hover {
+    color: #c0392b;
+    opacity: 1;
+}
+
+/* на телефоне наведения нет — крестик виден всегда, но бледно */
+@media (hover: none) {
+    .iw-npc-x {
+        opacity: .6;
+    }
+}
+
+.iw-panel.iw-theme-pixel .iw-npc-x { border-radius: 0; }
+
+.iw-forget-ignored {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 8px;
+}

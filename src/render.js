@@ -3,7 +3,7 @@ import { settleMood, purseOf, isHearsay, isDead, npcWeight, moodletLeftLabel, WE
 import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
-import { collectionOf, TIER_NAMES_RU } from './showcase.js';
+import { collectionOf, TIER_NAMES_RU, ACH_FACES, ACH_KINDS } from './showcase.js';
 
 // Всё, что стоит отдельной строкой или плашкой, — с заглавной буквы (модель пишет со строчной).
 function cap(v) {
@@ -717,6 +717,10 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
 
 // Витрина — как лавка: список памятных вещей и достижений, значки в скетчевых кружках, звёздочки за достоинство.
 const TIER_STARS = { bronze: 1, silver: 2, gold: 3 };
+// значок достижения: обычный рисунок или лицо-эмоция (для смешных и милых)
+export function achIcon(name) {
+    return ACH_FACES.includes(name) ? faceIcon(name, 'iw-ach-face') : icon(name || 'trophy');
+}
 function renderShowcase({ state, theme, got = [], sel = '' }) {
     const items = collectionOf(state);
     const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
@@ -728,8 +732,8 @@ function renderShowcase({ state, theme, got = [], sel = '' }) {
       </li>`;
     const achRow = a => `
       <li class="iw-reward iw-case-row iw-case-ach iw-tier-${a.tier}${sel === `a:${a.id}` ? ' on' : ''}">
-        <span class="iw-case-ico">${icon(a.icon || 'trophy')}</span>
-        <span class="iw-rw-body"><b class="iw-rw-title">${ce(a.title)}</b>${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-rw-kind">${stars(a.tier)}${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}</span></span>
+        <span class="iw-case-ico">${achIcon(a.icon)}</span>
+        <span class="iw-rw-body"><b class="iw-rw-title">${ce(a.title)}</b>${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-rw-kind">${stars(a.tier)}${a.kind && ACH_KINDS[a.kind] ? `<span class="iw-ach-kind iw-ach-${a.kind}">${esc(ACH_KINDS[a.kind])}</span>` : ''}${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}</span></span>
         <button type="button" class="iw-mini iw-case-x" data-iw-achdel="${esc(a.id)}" title="Убрать с витрины" aria-label="Убрать с витрины">${icon('x')}</button>
       </li>`;
     const doodles = '<div class="iw-cal-doodles iw-case-doodles" aria-hidden="true"><i class="iw-dd iw-dd-a"></i><i class="iw-dd iw-dd-b"></i><i class="iw-dd iw-dd-c"></i></div>';
@@ -817,7 +821,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
             const who = c.who || ''; // только то, что знает персона, а не лорбук
             heardCards.push(`
       <button type="button" class="iw-npc met iw-npc-heard${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
-        ${deadMark}<span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
+        ${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span><span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
         <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
         <span class="iw-npc-mood iw-npc-heardmark">${dead ? 'нет в живых' : 'понаслышке'}</span>
         ${who ? `<span class="iw-npc-who">${ce(who)}</span>` : ''}
@@ -826,7 +830,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         }
         cards.push(`
       <button type="button" class="iw-npc met${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `Открыть: ${c.name}`)}">
-        ${deadMark}<span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c)}</span>
+        ${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span><span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c)}</span>
         <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
         ${!dead && (c.born || c.ageAt) ? tabBorn(c, clock, key) : ''}
         ${dead ? '<span class="iw-npc-mood iw-npc-heardmark">нет в живых</span>' : (c.mood ? `<span class="iw-npc-mood iw-npc-now">${ce(c.mood)}</span>` : '')}
@@ -1227,6 +1231,19 @@ function renderLive(live, theme, L) {
 // Всплывашка в стиле темы.
 export function renderToast(ev, theme) {
     setIconTheme(theme);
+    if (ev.type === 'achievement') {
+        // как в Steam: «Достижение получено», значок слева, название и подпись
+        return `
+<div class="iw-toast-card iw-ev-achievement iw-ach-toast iw-tier-${esc(ev.tier || 'bronze')}" role="status">
+  <span class="iw-ach-toast-ico">${achIcon(ev.icon)}</span>
+  <div class="iw-toast-body">
+    <div class="iw-toast-kicker">${icon('trophy')}<span>Достижение получено</span>${ev.kind && ACH_KINDS[ev.kind] ? `<em>· ${esc(ACH_KINDS[ev.kind])}</em>` : ''}</div>
+    <div class="iw-ach-toast-title">${esc(ev.text)}</div>
+    ${ev.desc ? `<div class="iw-toast-text">${esc(ev.desc)}</div>` : ''}
+  </div>
+  <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
+</div>`;
+    }
     const kicker = toastKicker(theme, ev.type, eventTitle(ev));
     return `
 <div class="iw-toast-card iw-ev-${ev.type}" role="status">
