@@ -8,6 +8,8 @@ import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
 import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait, responseBudget, classifyError, parseBorn, zodiacOf } from '../src/core.js';
 import { renderNpcList, renderErrorToast } from '../src/render.js';
+import { cancelReward } from '../src/core.js';
+import * as S from '../src/showcase.js';
 
 const all = DEFAULT_SETTINGS.modules;
 let passed = 0;
@@ -991,6 +993,38 @@ test('дни недели и порядок НПС', () => {
     const html = renderNpcList({ state, npcKeys: ['Хильда', 'Марта', 'Сорель'], roster: null });
     const at = n => html.indexOf(`>${n}<`);
     assert.ok(at('Сорель') < at('Марта') && at('Марта') < at('Хильда'));
+});
+
+test('год рождения без дня, отмена покупки, достижения из сюжета', () => {
+    assert.deepEqual(parseBorn('1969'), { y: 1969 });
+    assert.deepEqual(parseBorn('1969 г.'), { y: 1969 });
+    const g = C.normCalendar({ type: 'greg' });
+    assert.equal(C.ageNow(g, { y: 1996, m: 10, d: 8 }, { born: { y: 1966 } }), 30);
+    const cu = C.normCalendar({ type: 'custom', months: [{ name: 'А', days: 30 }, { name: 'Б', days: 30 }] });
+    assert.equal(C.ageNow(cu, { y: 92, m: 2, d: 3 }, { born: { y: 62 } }), 30);
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Роберт', born: '14.03' }), all, {});
+    ({ state } = applyAnalysis(state, one({ name: 'Роберт', born: '1690' }), all, {}));
+    assert.deepEqual(state.characters['Роберт'].born, { d: 14, m: 3, y: 1690 });
+    // отмена купленного: убирается и возвращает всё
+    const st = { characters: { r: { name: 'Роберт', shop: [{ id: 'k', kind: 'buff', title: 'Кофе', cost: 30, turns: 3 }, { id: 'e', kind: 'event', title: 'Звонок', cost: 50 }] } }, order: ['r'], purse: 100 };
+    const ch = st.characters.r;
+    assert.equal(buyReward(ch, ch.shop[0], st), null);
+    assert.equal(buyReward(ch, ch.shop[1], st), null);
+    assert.equal(st.purse, 20);
+    assert.equal(cancelReward(ch, 'e', st), 50);
+    assert.equal(st.purse, 70);
+    assert.equal(ch.buffs.length, 1);
+    assert.ok(!buildInjection(st, all, '').includes('Звонок'));
+    // достижения: одно на сообщение, при свайпе заменяется, одинаковые не повторяются
+    const a1 = S.cleanAchievement({ title: 'Первый поцелуй', desc: 'под дождём', icon: 'lips', tier: 'silver' });
+    let r = S.addAchievement([], a1, { mes: 10 });
+    assert.ok(r.added);
+    r = S.addAchievement(r.list, S.cleanAchievement({ title: 'Спасение', icon: 'nope' }), { mes: 10 });
+    assert.equal(r.list.length, 1);
+    assert.equal(r.list[0].icon, 'trophy');
+    r = S.addAchievement(r.list, S.cleanAchievement({ title: 'спасение!' }), { mes: 12 });
+    assert.equal(r.added, null);
+    assert.equal(S.cleanAchievement({}), null);
 });
 
 console.log(`значки: ${passed} проверок прошло`);

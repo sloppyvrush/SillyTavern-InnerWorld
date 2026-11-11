@@ -3,6 +3,7 @@ import { settleMood, purseOf, isHearsay, isDead, npcWeight, moodletLeftLabel, WE
 import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
+import { renderShowcase } from './showcase.js';
 
 // Всё, что стоит отдельной строкой или плашкой, — с заглавной буквы (модель пишет со строчной).
 function cap(v) {
@@ -87,6 +88,7 @@ const TEST_MENU = `<details class="iw-vol iw-testmenu">
     </details>`;
 
 // acts — кнопки разбора: на телефоне они живут в шапке (прилипают сверху вместе с ней), на компьютере — под вкладками.
+let CASE_BTN = null; // { on, fresh } — значок витрины в шапке
 export function renderHeader(settings, theme, busy, inSettings = false, wallet = null, shop = null, acts = '') {
     const L = themeLabels(theme, 'm');
     const sound = settings.sound !== false;
@@ -102,6 +104,7 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
   </div>` : ''}
   <div class="iw-tools">
     ${shop ? `<button type="button" class="iw-tool iw-shop-tool${shop.on ? ' on' : ''}" data-iw-view="shop:${esc(shop.key)}" aria-pressed="${shop.on}" title="${esc(L.shop || 'Магазин наград')}" aria-label="${esc(L.shop || 'Магазин наград')}">${icon('shop')}${badge}</button>` : ''}
+    ${CASE_BTN ? `<button type="button" class="iw-tool iw-case-tool${CASE_BTN.on ? ' on' : ''}" data-iw-view="${CASE_BTN.on ? 'back' : 'showcase'}" aria-pressed="${CASE_BTN.on}" title="Витрина: памятные вещи и достижения" aria-label="Витрина">${icon('trophy')}${CASE_BTN.fresh ? `<b class="iw-case-new" aria-label="новых достижений: ${CASE_BTN.fresh}">${CASE_BTN.fresh}</b>` : ''}</button>` : ''}
     <details class="iw-vol${sound ? '' : ' off'}">
       <summary class="iw-tool" title="Звук и громкость" aria-label="Звук и громкость">${icon(sound ? 'sound' : 'mute')}</summary>
       <div class="iw-vol-menu">
@@ -191,6 +194,7 @@ export function renderBooksField({ books = [], picked = [], linked = [], busy = 
 
 // Сколько ответов осталось до следующего автоматического разбора (при «раз в N ответов»)
 let NEXT_IN = 0;
+let LAST_VIEW = '';
 function nextBadge() {
     if (!(NEXT_IN > 0)) return '';
     const t = `Следующий автоматический разбор — ${NEXT_IN === 1 ? 'после следующего ответа' : `через ${NEXT_IN} ${plural(NEXT_IN, 'ответ', 'ответа', 'ответов')}`}`;
@@ -234,7 +238,7 @@ function tabBorn(c, clock, key = '') {
     const age = clock && clock.cal && clock.t ? ageNow(clock.cal, clock.t, c) : null;
     const edit = key ? ` data-iw-born="${esc(key)}" role="button" tabindex="0"` : '';
     if (!c.born || !c.born.d || !c.born.m) {
-        if (age !== null) return `<span class="iw-tab-born"${edit} title="Возраст на дату сцены. Нажми, чтобы вписать день рождения">${icon('cake')}<span>${age} ${plural(age, 'год', 'года', 'лет')}</span></span>`;
+        if (age !== null) return `<span class="iw-tab-born"${edit} title="Возраст на дату сцены${c.born && c.born.y ? `, год рождения ${c.born.y}` : ''}. Нажми, чтобы вписать день рождения">${icon('cake')}<span>${c.born && c.born.y ? `${c.born.y} · ` : ''}${age} ${plural(age, 'год', 'года', 'лет')}</span></span>`;
         return key ? `<span class="iw-tab-born iw-born-none"${edit} title="День рождения не указан — нажми, чтобы вписать">${icon('cake')}<span>д.р.?</span></span>` : '';
     }
     const today = clock && clock.t && clock.cal && clock.cal.type === 'greg' && clock.t.m === c.born.m && clock.t.d === c.born.d;
@@ -658,12 +662,19 @@ function renderChronicle(c, L) {
     </section>`;
 }
 
-// Что сейчас действует и коллекция.
-function activeRewards(c) {
-    const buffs = (c.buffs || []).map(b => `<li class="iw-buff iw-buff-${b.kind} iw-rk-${b.kind}"><span class="iw-rw-ico">${icon(b.icon || 'gift')}</span><span><b>${ce(b.title)}</b> <span class="iw-muted">${b.kind === 'event' ? 'в следующем ответе' : `ещё ${b.left} ${plural(b.left, 'ответ', 'ответа', 'ответов')}`}</span></span></li>`).join('');
-    const coll = (c.collection || []).map(x => `<span class="iw-coll" title="${esc(x.title)}${x.desc ? ' — ' + esc(x.desc) : ''}">${icon(x.icon || 'gift')}</span>`).join('');
-    return `${buffs ? `<div class="iw-group-cap">сейчас действует</div><ul class="iw-list iw-buffs">${buffs}</ul>` : ''}${coll ? `<div class="iw-group-cap">коллекция</div><div class="iw-colls iw-rk-collect">${coll}</div>` : ''}`;
+// Купленное и ещё действующее — приклеенными листочками с кнопкой «отменить» (монеты вернутся).
+export function buffNotes(c, key) {
+    const list = (c && c.buffs) || [];
+    if (!list.length) return '';
+    return `<div class="iw-notes" role="list">${list.map((b, i) => `
+      <div class="iw-note iw-note-${b.kind === 'event' ? 'event' : 'buff'}" role="listitem" style="--iw-tilt:${(i % 2 ? 1 : -1) * (1 + (i % 3) * 0.6)}deg">
+        <span class="iw-note-pin" aria-hidden="true"></span>
+        <span class="iw-note-ico">${icon(b.icon || (b.kind === 'event' ? 'sparkle' : 'potion'))}</span>
+        <span class="iw-note-body"><b>${ce(b.title)}</b><small>${b.kind === 'event' ? 'случится в следующем ответе' : `действует ещё ${b.left} ${plural(b.left, 'ответ', 'ответа', 'ответов')}`}</small></span>
+        <button type="button" class="iw-note-x" data-iw-unbuy="${esc(key)}:${esc(b.id)}" title="Отменить — монеты вернутся${b.cost ? ` (${b.cost})` : ''}" aria-label="Отменить">${icon('x')}</button>
+      </div>`).join('')}</div>`;
 }
+
 
 // Категории наград: у каждой свой цвет и понятная подпись.
 const REWARD_GROUPS = [
@@ -681,7 +692,10 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
         <span class="iw-rw-body"><b class="iw-rw-title">${ce(r.title)}</b><span class="iw-rw-desc">${ce(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
         <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost ? ' disabled' : ''} title="${pts < r.cost ? 'Не хватает очков' : 'Купить'}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
       </li>`;
-    const shop = c.shop || [];
+    // купленное уходит с полки: действующее висит листочком, памятная вещь — уже на витрине
+    const active = new Set((c.buffs || []).map(b => b.id));
+    const owned = new Set((c.collection || []).map(x => String(x.title || '').toLowerCase()));
+    const shop = (c.shop || []).filter(r => !active.has(r.id) && !(r.kind === 'collect' && owned.has(String(r.title || '').toLowerCase())));
     const groups = REWARD_GROUPS.map(g => {
         const list = shop.filter(r => r.kind === g.kind);
         if (!list.length) return '';
@@ -697,8 +711,8 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
   ${blockHead('rewards', esc(L.shop), `<span class="iw-points" title="${Number(pts || 0).toLocaleString('ru-RU')}">${icon(currencyIcon(theme))}<b>${shortPoints(pts)}</b></span>`)}
   <div class="iw-muted">Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под персонажа: ${esc(c.name)}.</div>
   <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button></div>
-  ${activeRewards(c)}
-  ${groups || '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>'}
+  ${buffNotes(c, key)}
+  ${groups || ((c.shop || []).length ? '<div class="iw-empty">Всё уже куплено. Нажми «Подобрать заново» — появятся новые награды.</div>' : '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>')}
 </section>`;
 }
 
@@ -745,7 +759,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
     const collapsed = FOLD.collapsed;
     FOLD = { collapsed: {} };
-    return `<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
+    return `${opts.key ? buffNotes(c, opts.key) : ''}<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
@@ -974,8 +988,12 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0 }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null }) {
     NEXT_IN = nextIn;
+    // showcase: { got, sel, fresh } — витрина этого чата
+    CASE_BTN = showcase && !noChat ? { on: view === 'showcase', fresh: showcase.fresh || 0 } : null;
+    const caseOpening = view === 'showcase' && LAST_VIEW !== 'showcase';
+    LAST_VIEW = view;
     setIconTheme(theme);
     const L = themeLabels(theme, 'm');
     // дневники, записанные до «настроения как в Симс», пересчитываем при первом показе
@@ -1006,7 +1024,9 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     let personaNote = false;
     // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
     const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
-    if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
+    if (view === 'showcase' && showcase) {
+        body = renderShowcase({ state, theme, got: showcase.got || {}, sel: showcase.sel || '', opening: caseOpening && settings.animations !== false, mobile });
+    } else if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
         const pc0 = persona && state.characters[persona.key];

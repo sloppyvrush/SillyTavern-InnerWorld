@@ -7,11 +7,14 @@ import {
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError,
     extractJson, nameScript, parseBorn, zodiacOf, bornText,
     plural,
+    purseOf,
+    cancelReward,
 } from './src/core.js';
+import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
     normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay,
     upcoming, monthGrid, monthMarks, shiftMonth, monthName, monthCount, monthDays, clockInjection, buildCalendarPrompt, parseCalendarAnswer, sceneTimeFix,
-    parseClockCommand, CALENDAR_TYPES, MONTHS_RU,
+    parseClockCommand, CALENDAR_TYPES, MONTHS_RU, dayIndex,
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
@@ -19,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.4';
+const VERSION = '0.4.5';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -39,7 +42,9 @@ let busyKind = '';         // какая кнопка разбора сейча�
 let dreamBusy = false;
 let shopBusy = false;
 let pending = null;
-let view = '';            // 'main:<имя>' | 'npc' | 'npc:<имя>' | 'settings'
+let view = '';
+let viewBefore = '';      // куда вернуться из витрины
+let caseSel = '';         // что выбрано на полке витрины            // 'main:<имя>' | 'npc' | 'npc:<имя>' | 'settings'
 let lastView = '';
 let rosterBusy = false;
 let status = '';
@@ -1216,6 +1221,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name)].slice(0, 40),
             lore: [],
             clockNow: kind !== 'lore' && s.clock !== false ? clockForAnalysis(messageId) : '',
+            achTitles: (chatMeta().achList || []).filter(x => x.mes !== messageId).map(x => x.title).slice(-15),
         };
         // экономия: в запрос идут только те, кто есть в последнем обмене репликами
         const recent = [];
@@ -1300,6 +1306,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
         if (info.clockNow) applySceneTime(messageId, raw);
+        if (!fromLore) try { takeAchievement(raw, messageId); } catch (e) { console.warn('[Внутренний мир] достижение', e); }
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         writeRecord(messageId, state);
         if (calP) {
@@ -1375,6 +1382,13 @@ function showEvent(ev, delay = 0) {
         };
         wrap.addEventListener('click', e => {
             if (e.target.closest('.iw-toast-close')) return close();
+            if (ev.type === 'achievement') {
+                if (view !== 'showcase') { viewBefore = view; caseSel = ''; }
+                view = 'showcase';
+                seenAchievements();
+                openPanel();
+                return close();
+            }
             const st = currentState();
             const key = st.order.find(k => sameName(k, ev.who));
             const cast = splitCast(st);
@@ -1383,7 +1397,7 @@ function showEvent(ev, delay = 0) {
             close();
         });
         box.appendChild(wrap);
-        if (settings().sound !== false) playSound(ev.type, currentTheme);
+        if (settings().sound !== false) playSound(ev.type === 'achievement' ? 'dream_done' : ev.type, currentTheme);
         setTimeout(close, 9000);
     }, delay);
 }
@@ -1580,7 +1594,7 @@ function renderPanelNow() {
     const showNpc = s.showNpc !== false;
     const personaOn = s.persona !== false && hasChat();
     const persona = personaOn ? { key: personaKey, name: ctx().name1 || 'Ты', avatar: personaAvatarUrl() } : null;
-    const valid = view === 'settings'
+    const valid = view === 'settings' || view === 'showcase'
         || (personaOn && view.startsWith('me:'))
         || (view.startsWith('main:') && mains.includes(view.slice(5)))
         || (view.startsWith('shop:') && !!state.characters[view.slice(5)])
@@ -1593,8 +1607,42 @@ function renderPanelNow() {
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn() });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel() });
     writeScroll(el, keepScroll);
+}
+
+// ---------- Витрина: достижения истории ----------
+// Полученные хранятся в метаданных чата: { id: { at, scene } }. Новые всплывают уведомлением.
+function showcaseModel() {
+    if (!hasChat()) return null;
+    const meta = chatMeta();
+    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length };
+}
+
+function seenAchievements() {
+    const meta = chatMeta();
+    if (meta.achNew && meta.achNew.length) {
+        meta.achNew = [];
+        ctx().saveMetadataDebounced?.();
+    }
+}
+
+// Достижение из ответа модели — на полку витрины и всплывающим листочком
+function takeAchievement(raw, messageId) {
+    if (settings().achievements === false) return;
+    let data = null;
+    try { data = extractJson(raw); } catch { return; }
+    const a = cleanAchievement(data && !Array.isArray(data) ? data.achievement : null);
+    if (!a) return;
+    const meta = chatMeta();
+    const now = clockNow(messageId + 1);
+    const scene = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
+    const { list, added } = addAchievement(meta.achList, a, { mes: messageId, scene });
+    meta.achList = list;
+    if (!added) return;
+    meta.achNew = [...(meta.achNew || []).filter(id => list.some(x => x.id === id)), added.id].slice(-30);
+    ctx().saveMetadataDebounced?.();
+    showEvent({ type: 'achievement', who: 'Витрина', text: added.title, desc: added.desc }, 600);
 }
 
 function safeClockView() {
@@ -1859,6 +1907,18 @@ async function onPanelClick(e) {
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
+    if (t.dataset.iwUnbuy) {
+        const i = t.dataset.iwUnbuy.indexOf(':');
+        const key = t.dataset.iwUnbuy.slice(0, i), id = t.dataset.iwUnbuy.slice(i + 1);
+        const st = currentState();
+        const ch = st.characters[key];
+        const back = cancelReward(ch, id, st);
+        if (back === null) return;
+        await saveEditedState(st);
+        updateInjection();
+        toastr.success(`«${(ch && ch.name) || ''}»: отменено, вернулось ${back} ${plural(back, 'монета', 'монеты', 'монет')}.`, 'Внутренний мир');
+        return renderAll();
+    }
     if (t.dataset.iwMod) {
         const m = t.dataset.iwMod;
         s.modules[m] = !s.modules[m];
@@ -1868,7 +1928,9 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwView) {
-        view = t.dataset.iwView;
+        const next = t.dataset.iwView === 'back' ? (viewBefore || '') : t.dataset.iwView;
+        if (next === 'showcase' && view !== 'showcase') { viewBefore = view; caseSel = ''; seenAchievements(); }
+        view = next;
         writeScroll(panelEl(), { body: 0, book: 0 });
         return renderPanelNow();
     }
@@ -1878,6 +1940,17 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
+    if (t.dataset.iwAchdel) {
+        const meta = chatMeta();
+        meta.achList = (meta.achList || []).filter(x => x.id !== t.dataset.iwAchdel);
+        ctx().saveMetadataDebounced?.();
+        caseSel = '';
+        return renderPanelNow();
+    }
+    if (t.dataset.iwCase) {
+        caseSel = caseSel === t.dataset.iwCase ? '' : t.dataset.iwCase;
+        return renderPanelNow();
+    }
     if (t.dataset.iwClock) {
         e.preventDefault();
         return onClockAction(t.dataset.iwClock);
@@ -1889,8 +1962,8 @@ async function onPanelClick(e) {
         if (!ch) return;
         const c0 = ctx();
         const p2 = n => String(n).padStart(2, '0');
-        const cur = ch.born ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : '';
-        const val = await c0.callGenericPopup(`<b>День рождения или возраст: ${esc(ch.name)}</b><br><small>Дата — 20.08.1969 или просто 20.08. Или возраст на сегодня по часам сцены — например 27. Дальше возраст растёт сам. Оставь пустым, чтобы убрать.</small>`, c0.POPUP_TYPE.INPUT, cur);
+        const cur = ch.born ? (ch.born.d && ch.born.m ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : String(ch.born.y || '')) : '';
+        const val = await c0.callGenericPopup(`<b>День рождения или возраст: ${esc(ch.name)}</b><br><small>Дата — 20.08.1969, просто 20.08 или только год рождения — 1969. Или возраст на сегодня по часам сцены — например 27. Дальше возраст растёт сам. Оставь пустым, чтобы убрать.</small>`, c0.POPUP_TYPE.INPUT, cur);
         if (val === null || val === undefined || val === false) return;
         const txt = String(val).trim();
         const ageOnly = txt.match(/^(\d{1,3})\s*(год|года|лет|г\.?)?$/i);
@@ -1913,9 +1986,9 @@ async function onPanelClick(e) {
             delete ch.ageAt;
         } else {
             const b = parseBorn(txt);
-            if (!b) return toastr.warning('Не поняла дату. Пример: 20.08.1969', 'Внутренний мир');
+            if (!b) return toastr.warning('Не поняла дату. Пример: 20.08.1969, 20.08 или 1969', 'Внутренний мир');
             ch.born = b;
-            ch.zodiac = zodiacOf(b.d, b.m) || ch.zodiac;
+            if (b.d && b.m) ch.zodiac = zodiacOf(b.d, b.m) || ch.zodiac;
         }
         ch.bornManual = true;
         await saveEditedState(state);

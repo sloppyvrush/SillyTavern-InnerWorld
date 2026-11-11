@@ -607,6 +607,8 @@ const PATHS = {
     sparkle_off: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M3.5 3.5l17 17" stroke-width="2.2"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     minus: '<path d="M5 12h14"/>',
+    trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5.5a2.5 2.5 0 0 0 2.6 3.9M16 6h2.5a2.5 2.5 0 0 1-2.6 3.9"/><path d="M12 13v3.5M9 20h6M10 16.5h4V20h-4z"/>',
+    cabinet: '<rect x="4.5" y="3" width="15" height="18" rx="1.5"/><path d="M12 3v18M4.5 9.5h15M4.5 15h15"/><path d="M10.5 12.2v1M13.5 12.2v1"/>',
     chem_amazing: '<path d="M12 21s-8-4.9-8-10.6A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 8 2.4C20 16.1 12 21 12 21z" fill="currentColor" fill-opacity=".85"/><path d="M12 2.2v2.6M5.2 4.4l1.7 1.8M18.8 4.4l-1.7 1.8"/>',
     chem_good: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/><path d="M8.4 1.6v2M15.6 1.6v2M12 2.4v1.4" stroke-width="1.6"/>',
     chem_neutral: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/>',
@@ -678,7 +680,7 @@ export function icon(name, cls = '') {
     return `<svg class="iw-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.star}</svg>`;
 }
 
-export const EVENT_ICONS = {
+export const EVENT_ICONS = { achievement: 'trophy',
     want_done: 'check',
     fear_real: 'ghost',
     fear_gone: 'sun',

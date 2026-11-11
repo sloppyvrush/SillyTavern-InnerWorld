@@ -521,9 +521,10 @@ export function upcoming(cal, t, people = [], days = 60) {
 
 // Возраст на текущую дату (обычный календарь).
 export function ageOn(cal, t, born) {
-    if (!cal || cal.type !== 'greg' || !t || !born || !born.y) return null;
+    if (!cal || cal.type === 'days' || !t || !born || !born.y) return null;
     let a = t.y - born.y;
-    if (t.m < born.m || (t.m === born.m && t.d < born.d)) a -= 1;
+    // известен только год рождения — считаем, что день рождения в этом году уже был
+    if (born.m && born.d && (t.m < born.m || (t.m === born.m && t.d < born.d))) a -= 1;
     return a >= 0 && a < 200 ? a : null;
 }
 
@@ -531,7 +532,7 @@ export function ageOn(cal, t, born) {
 // который был назван в момент ageAt ({ age, y, m, d }), плюс прошедшие с тех пор годы.
 export function ageNow(cal, t, p) {
     if (!cal || !t || !p) return null;
-    if (p.born && p.born.y && cal.type === 'greg') return ageOn(cal, t, p.born);
+    if (p.born && p.born.y && cal.type !== 'days') return ageOn(cal, t, p.born);
     const at = p.ageAt;
     if (!at || !Number.isFinite(at.age)) return null;
     if (cal.type === 'days' || at.d === undefined) return at.age;
