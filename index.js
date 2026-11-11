@@ -22,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.5.1';
+const VERSION = '0.5.2';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1914,7 +1914,7 @@ async function onPanelClick(e) {
     const calSum = e.target.closest('.iw-clock-cal > summary');
     if (calSum) clockCalOpen = !calSum.parentElement.open;
     // день рождения на карточке — своя кнопка внутри карточки, карточку при этом не открываем
-    const bornTag = e.target.closest('[data-iw-born], [data-iw-npcx]');
+    const bornTag = e.target.closest('[data-iw-born], [data-iw-npcx], [data-iw-cheat]');
     const t = bornTag && bornTag.tagName !== 'BUTTON' ? bornTag : e.target.closest('button');
     if (bornTag) { e.preventDefault(); e.stopPropagation(); }
     if (!t) return;
@@ -2478,20 +2478,39 @@ async function toggleWantPin(i) {
     renderAll();
 }
 
-// Чит-коды, как в «Симс»: motherlode — +50 000, kaching и rosebud — +1 000 в общий кошелёк чата
-const CHEATS = { motherlode: 50000, kaching: 1000, rosebud: 1000 };
+// Секрет для тех, кто помнит «Симс»: консоль открывается по нажатию на большую монетку в кошельке.
+// Подсказок нет. motherlode — +50 000, kaching — +1 000. За первый чит — ачивка.
+const CHEATS = { motherlode: 50000, kaching: 1000 };
+const CHEAT_LINES = [
+    'Ctrl + Shift + C. Все мы помним «Симс». Вводи на свой страх и риск: дневник всё видит и всё запомнит.',
+    'Ctrl + Shift + C. Ты ведь знаешь, что вводить. Все мы помним «Симс» — и лестницу в бассейн тоже.',
+    'Ctrl + Shift + C. Консоль для тех, кому надоело копить. Совесть не входит в комплект.',
+];
 async function enterCheat() {
-    if (!hasChat()) return notice('Сначала открой чат с персонажем.');
+    if (!hasChat()) return;
     for (const d of panelEl().querySelectorAll('details.iw-wallet[open]')) d.open = false;
-    const got = await iwDialog({ title: 'Чит-код', text: 'Как в «Симс»: введи код — монеты упадут в общий кошелёк этого чата.', input: { label: 'Код', value: '', placeholder: 'motherlode' }, buttons: [{ text: 'Ввести', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }] });
+    const got = await iwDialog({ title: 'Консоль', text: CHEAT_LINES[Math.floor(Math.random() * CHEAT_LINES.length)], input: { label: '>', value: '', placeholder: '' }, buttons: [{ text: 'Ввести', value: 'ok', kind: 'main' }, { text: 'Закрыть', value: null }] });
     if (!got) return;
-    const code = String(got.input || '').toLowerCase().replace(/[^a-z!;]/g, '').replace(/[!;]+/g, '');
+    const code = String(got.input || '').toLowerCase().replace(/[^a-z]/g, '');
     const add = CHEATS[code];
-    if (!add) return notice(`Код «${String(got.input || '').trim() || '…'}» не сработал. Попробуй motherlode.`, 'Чит-код');
+    if (!add) return notice('Ничего не произошло. Может, опечатка?', 'Консоль');
     const st = currentState();
     st.purse = purseOf(st) + add;
     await saveEditedState(st);
-    showEvent({ type: 'reward', who: 'Чит-код', text: `${code}: +${add.toLocaleString('ru-RU')} — теперь в кошельке ${st.purse.toLocaleString('ru-RU')}`, icon: 'coin' });
+    showEvent({ type: 'reward', who: 'Консоль', text: `+${add.toLocaleString('ru-RU')} — теперь в кошельке ${st.purse.toLocaleString('ru-RU')}`, icon: 'coin' });
+    // первый чит в этом чате — позорная ачивка
+    const meta = chatMeta();
+    if (!meta.cheated) {
+        meta.cheated = true;
+        const now = clockNow();
+        const { list, added } = addAchievement(meta.achList, { title: 'Читер поганый', desc: 'Ввести чит-код и надеяться, что никто не заметит. Мы заметили.', icon: 'guilt', tier: 'bronze', kind: 'funny' }, { scene: now && now.cal && now.t ? fmtDate(now.cal, now.t) : '' });
+        meta.achList = list;
+        if (added) {
+            meta.achNew = [...(meta.achNew || []), added.id].slice(-30);
+            showEvent({ type: 'achievement', who: 'Витрина', text: added.title, desc: added.desc, icon: added.icon, tier: added.tier, kind: added.kind }, 1400);
+        }
+        ctx().saveMetadataDebounced?.();
+    }
     renderAll();
 }
 

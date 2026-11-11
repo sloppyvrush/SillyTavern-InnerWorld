@@ -15584,3 +15584,24 @@ ol {
 .iw-shop-top .iw-cheat {
     opacity: .85;
 }
+
+/* секрет: большая монетка в кошельке (и в лавке) — открывает консоль */
+.iw-cheat-coin {
+    display: inline-flex;
+    cursor: pointer;
+    transition: transform .2s;
+}
+
+.iw-cheat-coin:hover {
+    transform: rotate(-14deg) scale(1.08);
+}
+
+.iw-noanim .iw-cheat-coin:hover {
+    transform: none;
+}
+
+/* консоль: поле ввода моноширинным шрифтом, как в игре */
+.iw-modal-field:has(> span:first-child:only-of-type) .iw-modal-input,
+.iw-modal-input {
+    font-variant-ligatures: none;
+}
