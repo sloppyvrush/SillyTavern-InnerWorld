@@ -15,6 +15,100 @@ export function setVolume(v) {
     if (master) master.gain.value = volume;
 }
 
+// ---------- iPhone и iPad: звук даже в беззвучном режиме ----------
+// Safari по умолчанию считает звуки страницы «фоновыми» (ambient): переключатель «Бесшумно» их глушит.
+// Если сказать браузеру, что это «воспроизведение» (playback), звуки играют как музыка — без оглядки на переключатель.
+// Новые iOS понимают navigator.audioSession; старым включаем тихую бесконечную дорожку <audio> — тогда Safari
+// так же переводит страницу в режим воспроизведения. Минус обоих путей: музыка из другого приложения может встать на паузу.
+const IS_IOS = typeof navigator !== 'undefined'
+    && (/iP(hone|ad|od)/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+let ignoreSilent = true;
+let soundOn = () => true;
+let silentEl = null;
+let unlockBound = false;
+
+export function isIOS() {
+    return IS_IOS;
+}
+
+// on — играть ли в беззвучном режиме; enabled — включены ли звуки вообще (функция, читает настройки).
+export function setSilentMode(on, enabled) {
+    ignoreSilent = on !== false;
+    if (typeof enabled === 'function') soundOn = enabled;
+    if (!IS_IOS) return;
+    applySession();
+    if (!ignoreSilent || !soundOn()) stopSilentLoop();
+    bindUnlock();
+}
+
+function applySession() {
+    try {
+        if (navigator.audioSession) navigator.audioSession.type = ignoreSilent && soundOn() ? 'playback' : 'auto';
+    } catch { /* старый браузер — ничего */ }
+}
+
+// тишина в WAV: 0,5 секунды, 8 кГц, 8 бит — собирается прямо здесь, без файлов
+function silentWav() {
+    const n = 4000;
+    const buf = new Uint8Array(44 + n);
+    const dv = new DataView(buf.buffer);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) buf[o + i] = t.charCodeAt(i); };
+    str(0, 'RIFF'); dv.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true);
+    str(36, 'data'); dv.setUint32(40, n, true);
+    buf.fill(128, 44);
+    let bin = '';
+    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    return 'data:audio/wav;base64,' + btoa(bin);
+}
+
+function startSilentLoop() {
+    if (navigator.audioSession) return; // новый Safari: хватает audioSession
+    if (!silentEl) {
+        silentEl = document.createElement('audio');
+        silentEl.src = silentWav();
+        silentEl.loop = true;
+        silentEl.preload = 'auto';
+        silentEl.setAttribute('playsinline', '');
+        silentEl.setAttribute('x-webkit-airplay', 'deny');
+        silentEl.disableRemotePlayback = true;
+    }
+    if (document.visibilityState === 'hidden') return;
+    const p = silentEl.play();
+    if (p && p.catch) p.catch(() => {});
+}
+
+function stopSilentLoop() {
+    if (silentEl) silentEl.pause();
+}
+
+// Звук на iPhone можно включить только внутри касания — поэтому при первом же касании «будим» всё сразу.
+function unlock() {
+    if (!soundOn()) return;
+    applySession();
+    const ac = ctx();
+    if (ac) {
+        try {
+            const src = ac.createBufferSource();
+            src.buffer = ac.createBuffer(1, 1, 22050);
+            src.connect(ac.destination);
+            src.start(0);
+        } catch { /* ничего */ }
+    }
+    if (ignoreSilent) startSilentLoop();
+}
+
+function bindUnlock() {
+    if (unlockBound || typeof document === 'undefined') return;
+    unlockBound = true;
+    for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) document.addEventListener(ev, unlock, { capture: true, passive: true });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') stopSilentLoop();
+        else if (audio && audio.state !== 'running') audio.resume().catch(() => {});
+    });
+}
+
 function ctx() {
     if (!audio) {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -32,7 +126,7 @@ function ctx() {
         master.connect(comp).connect(audio.destination);
         preloadSamples(audio);
     }
-    if (audio.state === 'suspended') audio.resume().catch(() => {});
+    if (audio.state === 'suspended' || audio.state === 'interrupted') audio.resume().catch(() => {});
     return audio;
 }
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {
+import * as C from '../src/clock.js';
+import { dominantMood, settleMood, purseOf,
     DEFAULT_SETTINGS, mergeSettings, emptyState, parseAnalysis, applyAnalysis, buildInjection, buildAttrInjection, decayState,
     buildSystemPrompt, buildUserPrompt, buildDreamPrompt, cleanMessageText, extractJson, eventText, lowerWord, moodletLeftLabel, mentioned, plural,
 } from '../src/core.js';
@@ -198,7 +199,8 @@ test('подсказка основной модели без мимолётны
         impression: { label: 'Интерес', score: 1, now: 'доверяет' },
     }), all, {});
     const text = buildInjection(state, all, 'Ева');
-    assert.ok(text.includes('Марк: сейчас напряжён; на душе: горе (сильно) — смерть отца; тревога — письмо'));
+    // главное настроение — по самой весомой эмоции, как в «Симс»: сильное горе перевешивает тревогу
+    assert.ok(text.includes('Марк: сейчас подавлен; на душе: горе (сильно) — смерть отца; тревога — письмо'));
     assert.ok(!text.includes('скука'));
     assert.ok(text.includes('отношение к игроку (Ева): +1 из 3 — доверяет'));
     assert.ok(buildInjection(state, all, 'Ева', 'all').includes('скука'));
@@ -443,7 +445,7 @@ test('очки и награды', () => {
     assert.equal(r.state.characters['Роберт'].points, 10);
     const rewards = parseRewards(JSON.stringify({ rewards: [{ title: 'Тёплый плед', kind: 'buff', effect: 'спокоен', turns: 4, cost: 8, icon: 'gift' }, { title: 'Кулон', kind: 'collect', cost: 50 }] }));
     const ch = r.state.characters['Роберт'];
-    assert.equal(buyReward(ch, rewards[1]), 'не хватает очков');
+    assert.equal(buyReward(ch, rewards[1]), 'не хватает монет');
     assert.equal(buyReward(ch, rewards[0]), null);
     assert.equal(ch.points, 2);
     assert.equal(ch.buffs[0].left, 4);
@@ -489,8 +491,45 @@ test('у каждой эмоции своё лицо и цвет', () => {
 test('общее состояние: цвет из эмоций, смешанное — два цвета', () => {
     assert.deepEqual(moodFaces({ mood: 'встревожен', moodlets: [] }), ['anxious']);
     assert.deepEqual(moodFaces({ mood: 'странно', moodlets: [{ emotion: 'горе', weight: 'deep', left: 5 }, { emotion: 'радость', weight: 'light', left: 1 }] }), ['sad']);
-    assert.deepEqual(moodFaces({ mood: 'растерян', face: 'surprise', moodlets: [{ emotion: 'нежность', weight: 'medium', left: 3 }, { emotion: 'тревога', weight: 'medium', left: 2 }] }), ['surprise', 'love']);
+    // равные по очкам настроения разного цвета — смешанное; слово модели лицо не перебивает
+    assert.deepEqual(moodFaces({ mood: 'растерян', face: 'surprise', moodlets: [{ emotion: 'нежность', weight: 'medium', left: 3 }, { emotion: 'тревога', weight: 'medium', left: 2 }] }), ['love', 'anxious']);
     assert.deepEqual(moodFaces({}), []);
+});
+
+test('главное настроение, как в «Симс»: очки, радость-подпитка, сила и «держится при равенстве»', () => {
+    // грусть, тоска и обида складываются в одно настроение и перевешивают одну злость
+    let d = dominantMood([{ emotion: 'грусть', weight: 'medium' }, { emotion: 'тоска', weight: 'light' }, { emotion: 'злость', weight: 'medium' }]);
+    assert.equal(d.key, 'sad');
+    assert.equal(d.score, 3);
+    assert.equal(d.level, 1);
+    // радость подпитывает уверенность (у которой есть своя средняя эмоция) — получается «очень уверен»
+    d = dominantMood([{ emotion: 'радость', weight: 'medium' }, { emotion: 'гордость', weight: 'light' }, { emotion: 'уверенность', weight: 'medium' }, { emotion: 'облегчение', weight: 'light' }]);
+    assert.equal(d.key, 'confident');
+    assert.equal(d.level, 2);
+    // слабая искорка флирта рядом с радостью радость не перебивает
+    d = dominantMood([{ emotion: 'радость', weight: 'medium' }, { emotion: 'кокетство', weight: 'light' }]);
+    assert.equal(d.key, 'happy');
+    // при равенстве держится прошлое настроение
+    const two = [{ emotion: 'злость', weight: 'medium', left: 5 }, { emotion: 'страх', weight: 'medium', left: 1 }];
+    assert.equal(dominantMood(two).key, 'angry');
+    assert.equal(dominantMood(two, 'scared').key, 'scared');
+    // сила: одна сильная — «очень», две сильные — предел
+    assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep' }]).level, 2);
+    assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep' }, { emotion: 'ужас', weight: 'deep' }]).level, 3);
+    // слова: на первой силе — слово модели, если оно про то же настроение; дальше — общие слова, по роду
+    const c = settleMood({ g: 'f', mood: 'насторожена', face: 'suspicious', moodlets: [{ emotion: 'тревога', weight: 'medium', left: 3 }] });
+    assert.equal(c.mood, 'насторожена');
+    c.moodlets.push({ emotion: 'беспокойство', weight: 'deep', left: 6 });
+    settleMood(c);
+    assert.equal(c.mood, 'на взводе');
+    c.moodlets = [{ emotion: 'страх', weight: 'deep', left: 2 }, { emotion: 'паника', weight: 'deep', left: 2 }];
+    settleMood(c);
+    assert.equal(c.mood, 'в ужасе');
+    assert.equal(c.face, 'fear');
+    // эмоции прошли — как в «Симс»: остаётся сказанное моделью или «в порядке»
+    c.moodlets = [];
+    settleMood(c);
+    assert.equal(c.mood, 'насторожена');
 });
 
 test('новые темы на месте: надписи, шрифты, громкость', () => {
@@ -498,10 +537,10 @@ test('новые темы на месте: надписи, шрифты, гро�
         assert.equal(validTheme(th), th);
         assert.ok(themeLabels(th, 'm').analyze);
     }
-    // старые темы переезжают на новые: гримуар → травница, тетрадь в клетку → аркан
+    // гримуар переехал в травницу, а тетрадь в клетку вернулась
     assert.equal(validTheme('grimoire'), 'herbal');
-    assert.equal(validTheme('grid'), 'arcana');
-    assert.equal(mergeSettings({ theme: 'grid' }).theme, 'arcana');
+    assert.equal(validTheme('grid'), 'grid');
+    assert.equal(mergeSettings({ theme: 'grid' }).theme, 'grid');
     assert.equal(mergeSettings({ theme: 'grimoire' }).theme, 'herbal');
     assert.equal(mergeSettings({}).volume, 45);
     assert.equal(mergeSettings({ volume: 300 }).volume, 100);
@@ -787,6 +826,71 @@ test('притяжение и отторжение — одна настройк
 test('мечта персоны придумывается по её описанию, а не по карточке персонажа', () => {
     const { system, user } = buildDreamPrompt({ persona: true, card: 'Ева — журналистка', botName: 'Ева', userName: 'Виктор', messages: [], loreMain: [] }, { name: 'Ева', dream: { title: 'старое' } });
     assert.ok(user.includes('[Описание персоны игрока: Ева]') && system.includes('мечту ИМЕННО ЕГО') && system.includes('Это не мечта Виктор'));
+});
+
+test('часы сцены: отметки, таймскипы, шаг, праздники и дни рождения', () => {
+    const g = C.normCalendar({ type: 'greg' });
+    const t0 = { y: 1996, m: 10, d: 8, h: 2, mi: 50 };
+    assert.equal(C.fmtDate(g, t0), 'вторник, 8 октября 1996');
+    assert.deepEqual(C.findStamp('[HUD: 02:50 | Вторник | 08.10.1996 | Санкт-Петербург]').date, { d: 8, m: 10, y: 1996 });
+    assert.deepEqual(C.findStamp('**02:40, двор на улице Зайцева. 8 октября 1996 года.**\n\nСнег').time, { h: 2, mi: 40 });
+    // время посреди обычного текста — не отметка
+    assert.equal(C.findStamp('Он сказал, что в 10:30 будет встреча, и ушёл.'), null);
+    // таймскип в рассказе — да, в прямой речи — нет
+    assert.deepEqual(C.findSkip('Прошло три дня. Виктор вернулся.'), { add: 4320 });
+    assert.equal(C.findSkip('— Через два дня уеду, — сказал он.'), null);
+    let a = C.advance(g, t0, ['', 'На следующее утро она проснулась.']);
+    assert.equal(C.fmtDate(g, a.t) + ' ' + C.fmtTime(a.t), 'среда, 9 октября 1996 08:00');
+    a = C.advance(g, t0, ['', 'Просто сцена.'], { step: 5 });
+    assert.equal(C.fmtTime(a.t), '02:55');
+    // время без даты «раньше» текущего — значит, уже следующие сутки
+    a = C.advance(g, { y: 1996, m: 10, d: 8, h: 23, mi: 50 }, ['', '**00:20** Тишина']);
+    assert.equal(a.t.d, 9);
+    const ru = C.normCalendar({ type: 'greg', country: 'RU', source: 'model', canon: [{ who: 'Виктор', name: 'годовщина смерти матери', month: 10, day: 20 }] });
+    const ev = C.upcoming(ru, t0, [{ name: 'Ева', born: { d: 12, m: 10, y: 1971 } }], 31);
+    assert.equal(ev[0].kind, 'birthday');
+    assert.equal(ev[0].age, 25);
+    // праздники своего времени: в 1996-м 7 ноября — «День согласия и примирения», а Хэллоуина в России ещё нет
+    assert.ok(ev.some(e => e.name === 'День согласия и примирения' && e.inDays === 30));
+    assert.ok(!ev.some(e => e.name === 'Хэллоуин'));
+    assert.ok(ev.some(e => e.kind === 'canon' && e.who === 'Виктор'));
+    // плавающие даты: православная Пасха
+    assert.deepEqual(C.holidayDate(ru, { rule: 'easter_o' }, 1996), { m: 4, d: 14 });
+    assert.deepEqual(C.holidayDate(ru, { rule: 'easter_o' }, 2026), { m: 4, d: 12 });
+    // свой календарь мира: месяцы разной длины, дни недели по кругу
+    const cu = C.normCalendar({ type: 'custom', era: 'г. Т.Э.', months: [{ name: 'Месяц Урожая', gen: 'Урожайника', days: 30 }, { name: 'Месяц Снега', gen: 'Снежника', days: 28 }], weekdays: ['Солнечник', 'Лунник', 'Звездник'] });
+    const tc = C.addMinutes(cu, { y: 1247, m: 1, d: 29, h: 20, mi: 0 }, 2 * 1440);
+    assert.equal(C.fmtDate(cu, tc, { weekday: false }), '1 Снежника, 1247 г. Т.Э.');
+    assert.deepEqual(C.findStamp('**3 Снежника 1247, 21:15**', cu).date, { d: 3, m: 2, y: 1247 });
+    // поправка от модели дневника: вперёд — да, назад или «через полсуток» по одному времени — нет
+    assert.equal(C.sceneTimeFix(g, t0, { time: '06:30' }).h, 6);
+    assert.equal(C.sceneTimeFix(g, t0, { time: '01:00' }), null);
+    assert.equal(C.sceneTimeFix(g, t0, { time: '07:00', flashback: true }), null);
+    // ручные команды
+    assert.equal(C.parseClockCommand(g, t0, '+2ч').h, 4);
+    assert.equal(C.parseClockCommand(g, t0, '+3д').d, 11);
+    assert.equal(C.parseClockCommand(g, t0, 'вечер').h, 19);
+    // ответ модели про календарь
+    const ans = C.parseCalendarAnswer({ calendar: { type: 'real', holidays: [{ name: 'Хэллоуин', month: 10, day: 31 }] }, now: { date: '1996-10-08', time: '02:50' } });
+    assert.equal(ans.calendar.type, 'greg');
+    assert.deepEqual([ans.now.y, ans.now.m, ans.now.d, ans.now.h], [1996, 10, 8, 2]);
+    assert.ok(C.clockInjection(g, t0, { lastSkip: 4320 }).includes('прошло 3 дня'));
+    // возраст идёт по часам сцены: прошло 10 лет — персонаж на 10 лет старше, чем в карточке
+    assert.equal(C.ageNow(g, { y: 2006, m: 10, d: 8 }, { ageAt: { age: 27, y: 1996, m: 10, d: 8 } }), 37);
+    assert.equal(C.ageNow(g, { y: 1996, m: 10, d: 8 }, { born: { d: 20, m: 8, y: 1969 } }), 27);
+    assert.ok(C.clockInjection(g, { y: 2006, m: 10, d: 8, h: 12, mi: 0 }, { people: [{ name: 'Ева', born: { d: 20, m: 8, y: 1969 } }] }).includes('Ева — 37'));
+});
+
+test('общий кошелёк: монеты за успехи всех, в том числе персоны', () => {
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Марк', wants: [{ text: 'Найти брата' }] }), all, { points: true, mesId: 1 });
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', wants: [{ text: 'Найти брата', status: 'done' }] }), all, { points: true, mesId: 2 }));
+    assert.equal(state.purse, 10);
+    ({ state } = applyAnalysis(state, one({ name: 'Ева', wants: [{ text: 'Выспаться' }] }), all, { points: true, mesId: 3, persona: true, userName: 'Ева' }));
+    ({ state } = applyAnalysis(state, one({ name: 'Ева', wants: [{ text: 'Выспаться', status: 'done' }] }), all, { points: true, mesId: 4, persona: true, userName: 'Ева' }));
+    assert.equal(state.purse, 20);
+    // старые дневники: счета персонажей складываются в один кошелёк
+    const old = { characters: { a: { name: 'А', points: 30 }, b: { name: 'Б', points: 15 } }, order: ['a', 'b'] };
+    assert.equal(purseOf(old), 45);
 });
 
 console.log(`значки: ${passed} проверок прошло`);

@@ -5,8 +5,14 @@ import {
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError,
+    extractJson, nameScript, parseBorn, zodiacOf, bornText,
 } from './src/core.js';
-import { playSound, setVolume } from './src/sound.js';
+import {
+    normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay,
+    upcoming, monthGrid, monthMarks, shiftMonth, monthName, monthCount, monthDays, clockInjection, buildCalendarPrompt, parseCalendarAnswer, sceneTimeFix,
+    parseClockCommand, CALENDAR_TYPES, MONTHS_RU,
+} from './src/clock.js';
+import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
 import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
@@ -21,7 +27,10 @@ const SETTINGS_KEY = 'innerWorld';
 const META_KEY = 'inner_world';
 const PROMPT_KEY = 'inner_world';
 const ATTR_PROMPT_KEY = 'inner_world_attraction';
+const CLOCK_PROMPT_KEY = 'inner_world_clock';
+const CLOCK_KEY = 'inner_world_clock';
 const KEEP_SNAPSHOTS = 12;
+const ROSTER_V = 2;        // 2 — в списке НПС есть знакомства по предыстории (knows_main / knows_player)
 const SKIP_TYPES = ['first_message', 'command', 'extension', 'impersonate', 'quiet'];
 
 let busy = false;
@@ -41,6 +50,14 @@ let attrMode = 'likes';
 let attrOpen = false;
 let attrMore = {};
 let currentTheme = 'diary';
+// Часы сцены: какой месяц открыт в календаре, раскрыт ли листок часов, идёт ли определение календаря.
+let clockMonth = null;
+let clockOpen = false;
+let clockBusy = false;
+let clockSetOpen = false;
+let clockDraft = null;     // выбранные в листке дата и время — применяются только кнопкой «Поставить»
+let clockHolMonth = 0;     // месяц для нового праздника
+let clockCalOpen = false;
 const loadedFonts = new Set();
 
 const ctx = () => SillyTavern.getContext();
@@ -278,7 +295,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         const sameLore = fp.lore === loreFp;
         const last0 = lastBotMessageId();
         const sameChat = last0 < 0 || (!!recordOf((c.chat || [])[last0]) && fp.chat === chatFp(last0));
-        if (sameLore && (mode === 'lore' || sameChat) && !missingPersona()) {
+        if (sameLore && (mode === 'lore' || sameChat) && !missingPersona() && settings().rosters[key] && (settings().rosters[key].v || 0) >= ROSTER_V) {
             rosterBusy = false;
             busyKind = '';
             setLive(null);
@@ -287,7 +304,8 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
             renderAll();
             return;
         }
-        if (!sameLore && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
+        const rosterOld = !settings().rosters[key] || (settings().rosters[key].v || 0) < ROSTER_V;
+        if ((!sameLore || rosterOld) && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
             const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
             liveStage('think');
             const raw = await callModel(system, user, withBudget('roster'), text => {
@@ -299,7 +317,7 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
             const merged = old && old.at ? mergeRoster(old, fresh) : { main: fresh.main, npc: fresh.npc };
             const books = new Set((old && old.books) || []);
             if (book) books.add(book);
-            settings().rosters[key] = { main: merged.main, npc: merged.npc, at: Date.now(), books: [...books] };
+            settings().rosters[key] = { main: merged.main, npc: merged.npc, at: Date.now(), books: [...books], v: ROSTER_V };
             saveSettings();
             rememberKnowledge(sources);
             status = `Знаю персонажей мира: ${merged.npc.length}`;
@@ -442,6 +460,366 @@ async function saveEditedState(state) {
     }
 }
 
+// ---------- Часы и календарь сцены ----------
+// Календарь — один на чат (в данных чата). Время — у каждого ответа своё (как запись дневника у свайпа):
+// перегенерировал ответ — время считается заново от прошлого, вернулся на старый свайп — вернулось и его время.
+
+function clockRecOf(mes) {
+    if (!mes) return null;
+    const sid = typeof mes.swipe_id === 'number' ? mes.swipe_id : 0;
+    const own = mes.extra && mes.extra[CLOCK_KEY];
+    if (own && own.t && (own.sid ?? 0) === sid) return own;
+    const sw = Array.isArray(mes.swipe_info) && mes.swipe_info[sid];
+    const fromSwipe = sw && sw.extra && sw.extra[CLOCK_KEY];
+    if (fromSwipe && fromSwipe.t && (fromSwipe.sid ?? sid) === sid) return fromSwipe;
+    return null;
+}
+
+function calendarOf() {
+    const m = hasChat() ? chatMeta() : null;
+    return m && m.calendar ? m.calendar : null;
+}
+
+// Время до сообщения beforeId (не включая его). Если записей нет — ищем отметку времени в недавних сообщениях.
+function findClock(beforeId) {
+    const chat = ctx().chat || [];
+    const from = Math.min(beforeId ?? chat.length, chat.length) - 1;
+    for (let i = from; i >= 0; i--) {
+        const rec = clockRecOf(chat[i]);
+        if (rec) return { index: i, t: rec.t, rec };
+    }
+    const meta = hasChat() ? chatMeta() : {};
+    if (meta.clockBase) return { index: -1, t: meta.clockBase, rec: null };
+    // часов ещё нет: может, время написано прямо в ответах («[02:50 | 08.10.1996]»)
+    const cal = calendarOf();
+    for (let i = from; i >= Math.max(0, from - 40); i--) {
+        const m = chat[i];
+        if (!m || m.is_system || !m.mes) continue;
+        const st = findStamp(m.mes, cal);
+        if (!st || (!cal && !st.date)) continue;
+        const t = stampToTime(cal || normCalendar({ type: 'greg' }), null, st);
+        if (t) return { index: i, t, rec: null, fromStamp: true, cal: cal || normCalendar({ type: 'greg', source: 'stamp' }) };
+    }
+    return { index: -1, t: null, rec: null };
+}
+
+function writeClock(mesId, rec) {
+    const c = ctx();
+    const mes = c.chat[mesId];
+    if (!mes) return;
+    const sid = typeof mes.swipe_id === 'number' ? mes.swipe_id : 0;
+    const r = Object.assign({ sid, at: Date.now() }, rec);
+    mes.extra = mes.extra || {};
+    mes.extra[CLOCK_KEY] = r;
+    if (Array.isArray(mes.swipe_info) && mes.swipe_info[sid]) {
+        mes.swipe_info[sid].extra = mes.swipe_info[sid].extra || {};
+        mes.swipe_info[sid].extra[CLOCK_KEY] = clone(r);
+    }
+}
+
+function saveChatSoon() {
+    const c = ctx();
+    if (typeof c.saveChatDebounced === 'function') c.saveChatDebounced();
+    else c.saveChat?.();
+}
+
+// Календарь и время «на сейчас» (или до сообщения beforeId).
+function clockNow(beforeId) {
+    if (settings().clock === false || !hasChat()) return null;
+    const h = findClock(beforeId);
+    let cal = calendarOf();
+    if (!cal && h.cal) cal = h.cal;
+    if (!cal) return { cal: null, t: null, h };
+    return { cal, t: h.t ? normTime(cal, h.t) : null, h };
+}
+
+// Свежий ответ бота: сдвигаем часы — по отметке времени в ответе, по таймскипу или на обычный шаг.
+function stepClock(messageId) {
+    const s = settings();
+    if (s.clock === false || !hasChat()) return;
+    const chat = ctx().chat || [];
+    const mes = chat[messageId];
+    if (!mes || mes.is_user || mes.is_system) return;
+    const meta = chatMeta();
+    const prev = findClock(messageId);
+    let cal = meta.calendar || prev.cal || null;
+    const user = [];
+    for (let i = messageId - 1; i >= 0 && i > prev.index; i--) {
+        const m = chat[i];
+        if (!m || m.is_system) continue;
+        if (!m.is_user) break;
+        user.unshift(m.mes || '');
+    }
+    const texts = [...user, mes.mes || ''];
+    // календаря ещё нет, но в ответе есть дата — значит, обычный календарь
+    if (!cal) {
+        const st = findStamp(mes.mes, null);
+        if (!st || !st.date) return;
+        cal = normCalendar({ type: 'greg', source: 'stamp' });
+    }
+    if (!meta.calendar) meta.calendar = cal;
+    const cur = prev.t ? normTime(cal, prev.t) : null;
+    if (meta.clockLocked && cur) {
+        writeClock(messageId, { t: cur, prev: cur, why: 'locked', size: 0 });
+        return;
+    }
+    const res = advance(cal, cur, texts, { step: Number(s.clockStep ?? 5) });
+    if (!res || !res.t) return;
+    writeClock(messageId, { t: res.t, prev: cur, why: res.why, size: cur ? toMinutes(cal, res.t) - toMinutes(cal, cur) : 0 });
+    ctx().saveMetadataDebounced?.();
+}
+
+// Для календаря и возраста: главные персонажи и персона первыми.
+function clockPeople(state) {
+    const list = Object.entries((state && state.characters) || {}).filter(([, c]) => c && (c.born || c.ageAt));
+    const mains = new Set(splitCast(state || emptyState()).mains);
+    list.sort((a, b) => (mains.has(b[0]) || b[1].persona ? 1 : 0) - (mains.has(a[0]) || a[1].persona ? 1 : 0));
+    return list.map(([, c]) => ({ name: c.name, born: c.born, ageAt: c.ageAt }));
+}
+
+// Возраст, названный в карточке, привязываем к дате сцены — дальше он растёт сам.
+function pinAges(state, messageId) {
+    const now = clockNow(messageId + 1);
+    if (!now || !now.cal || !now.t) return;
+    for (const c of Object.values(state.characters || {})) {
+        if (!c || !c.ageSaid || c.ageAt) continue;
+        c.ageAt = Object.assign({ age: c.ageSaid }, now.cal.type === 'days' ? { d: now.t.d } : { y: now.t.y, m: now.t.m, d: now.t.d });
+        delete c.ageSaid;
+    }
+}
+
+function clockPromptText(beforeId) {
+    const s = settings();
+    if (s.clock === false || s.clockInject === false) return '';
+    const now = clockNow(beforeId);
+    if (!now || !now.cal || !now.t) return '';
+    const rec = now.h && now.h.rec;
+    const chat = ctx().chat || [];
+    const lastBot = beforeId === undefined ? lastBotMessageId() : beforeId - 1;
+    const lastSkip = rec && now.h.index >= lastBot - 1 && (rec.why === 'skip' || rec.why === 'stamp' || rec.why === 'manual') ? Math.max(0, rec.size || 0) : 0;
+    return clockInjection(now.cal, now.t, { people: clockPeople(liveState(beforeId)), lastSkip: chat.length ? lastSkip : 0 });
+}
+
+// Для дневника: модель видит часы сцены и может их поправить.
+function clockForAnalysis(messageId) {
+    const now = clockNow(messageId + 1);
+    if (!now || !now.cal || !now.t) return '';
+    return `${fmtDate(now.cal, now.t)}, ${fmtTime(now.t)} — ${partOfDay(now.t.h)}`;
+}
+
+function applySceneTime(messageId, raw) {
+    if (settings().clock === false) return;
+    let data = null;
+    try { data = extractJson(raw); } catch { return; }
+    const st = data && !Array.isArray(data) ? data.scene_time : null;
+    if (!st) return;
+    const meta = chatMeta();
+    if (meta.clockLocked) return;
+    const now = clockNow(messageId + 1);
+    if (!now || !now.cal || !now.t) return;
+    // если в самом ответе есть отметка времени — она главнее
+    const mes = (ctx().chat || [])[messageId];
+    const own = clockRecOf(mes);
+    if (own && own.why === 'stamp') return;
+    const t = sceneTimeFix(now.cal, now.t, st);
+    if (!t) return;
+    const prev = own ? own.prev : now.t;
+    writeClock(messageId, { t, prev, why: 'model', size: prev ? toMinutes(now.cal, t) - toMinutes(now.cal, prev) : 0 });
+}
+
+// Один раз на чат: модель смотрит карточку, лорбук и сообщения и говорит, какой тут календарь и который час.
+async function detectCalendar({ manual = false } = {}) {
+    if (clockBusy || !hasChat() || settings().clock === false) return;
+    const c = ctx();
+    clockBusy = true;
+    renderAll();
+    try {
+        const chat = c.chat || [];
+        const msgs = [];
+        const first = chat.findIndex(m => m && !m.is_system && m.mes);
+        if (first >= 0) msgs.push(`#${first} ${chat[first].name}: ${cleanMessageText(chat[first].mes, 1500)}`);
+        for (let i = chat.length - 1, n = 0; i > first && n < 4; i--) {
+            const m = chat[i];
+            if (!m || m.is_system || !m.mes) continue;
+            msgs.splice(first >= 0 ? 1 : 0, 0, `#${i} ${m.name}: ${cleanMessageText(m.mes, 1200)}`);
+            n++;
+        }
+        let lore = [];
+        try {
+            const src = await collectLoreSources();
+            lore = src.filter(x => /^Лорбук/.test(x.title)).map(x => `[${x.title}]\n${cleanMessageText(x.text, 5000)}`).slice(0, 3);
+        } catch { /* без лорбука */ }
+        const { system, user } = buildCalendarPrompt({ botName: c.name2, userName: c.name1, card: cardText(c), persona: personaText(c), lore, messages: msgs }, settings().language || 'русском');
+        const raw = await callModel(system, user, withBudget('rewards'));
+        const ans = parseCalendarAnswer(extractJson(raw));
+        const meta = chatMeta();
+        const before = findClock();
+        meta.calendar = ans.calendar;
+        // время: если уже идёт по отметкам в ответах обычного календаря — не трогаем, иначе берём то, что сказала модель
+        const keep = before.t && ans.calendar.type === 'greg' && (!before.cal || before.cal.type === 'greg') && !manual;
+        if (!keep && ans.now) {
+            const last = chat.length - 1;
+            if (last >= 0) writeClock(last, { t: ans.now, prev: before.t || null, why: 'detect', size: 0 });
+            else meta.clockBase = ans.now;
+        }
+        clockMonth = null;
+        ctx().saveMetadataDebounced?.();
+        await c.saveChat?.();
+        if (manual) toastr.success(`Календарь: ${CALENDAR_TYPES[ans.calendar.type]}${ans.calendar.name ? ` «${ans.calendar.name}»` : ''}`, 'Внутренний мир');
+    } catch (err) {
+        if (err && err.cancelled) return;
+        console.warn('[Внутренний мир] календарь не определился', err);
+        if (manual) showError(classifyError(err), { manual: true, what: 'календарь' });
+    } finally {
+        clockBusy = false;
+        updateInjection();
+        renderAll();
+    }
+}
+
+// Модель часов для дневника: что показать в полоске и в листке.
+function clockView() {
+    const s = settings();
+    if (s.clock === false || !hasChat()) return null;
+    const now = clockNow();
+    const meta = chatMeta();
+    if (!now || !now.cal || !now.t) return { t: null, busy: clockBusy };
+    const { cal, t } = now;
+    const people = clockPeople(liveState());
+    const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
+    const ev = upcoming(cal, t, people, 60).map(e => Object.assign(e, { dateText: `${e.d} ${monthName(cal, e.m, true)}`, inDaysText: `${e.inDays} ${daysWord(e.inDays)}` }));
+    const draft = normTime(cal, clockDraft || t);
+    let grid = null;
+    if (cal.type !== 'days') {
+        const vm = clockMonth || { y: draft.y, m: draft.m };
+        grid = monthGrid(cal, vm.y, vm.m, monthMarks(cal, vm.y, vm.m, people));
+    }
+    const holDate = h => h.rule
+        ? ({ easter_o: 'Пасха (правосл.)', easter_w: 'Пасха' }[h.rule] ? `${h.offset ? `${h.offset > 0 ? '+' : ''}${h.offset} дн. от Пасхи` : 'по Пасхе'}` : 'плавающая дата')
+        : `${h.d} ${monthName(cal, h.m, true)}`;
+    return {
+        cal, t, draft,
+        draftChanged: toMinutes(cal, draft) !== toMinutes(cal, t),
+        draftDate: fmtDate(cal, draft),
+        draftPart: partOfDay(draft.h),
+        time: fmtTime(t),
+        part: partOfDay(t.h),
+        date: fmtDate(cal, t),
+        today: ev.filter(e => e.inDays === 0),
+        upcoming: ev,
+        grid,
+        locked: !!meta.clockLocked,
+        busy: clockBusy,
+        open: clockOpen,
+        calOpen: clockCalOpen,
+        typeName: CALENDAR_TYPES[cal.type],
+        calName: cal.name || '',
+        country: cal.country || '',
+        why: cal.why || '',
+        monthNames: cal.type === 'custom' ? cal.months.map(x => x.name) : MONTHS_RU,
+        holMonth: clockHolMonth || draft.m || 1,
+        monthsText: cal.type === 'custom' ? cal.months.map(x => `${x.name} (${x.days})`).join(', ') : '',
+        weekdaysText: cal.type === 'custom' && cal.weekdays ? cal.weekdays.join(', ') : '',
+        holidays: (cal.holidays || []).map(h => ({ name: h.name, kind: h.kind === 'canon' ? 'canon' : 'holiday', who: h.who, dateText: holDate(h), years: h.from && h.to ? `${h.from}–${h.to}` : (h.from ? `с ${h.from}` : (h.to ? `до ${h.to}` : '')) })),
+    };
+}
+
+// Поставить время руками: пишется в последний ответ, прошлое время запоминается для «отменить».
+function setClockManual(t, why = 'manual') {
+    const now = clockNow();
+    const cal = (now && now.cal) || normCalendar({ type: 'greg', source: 'user' });
+    const meta = chatMeta();
+    if (!meta.calendar) meta.calendar = cal;
+    const nt = normTime(cal, t);
+    const last = (ctx().chat || []).length - 1;
+    const prev = now && now.t ? now.t : null;
+    if (last >= 0) writeClock(last, { t: nt, prev, why, size: prev ? toMinutes(cal, nt) - toMinutes(cal, prev) : 0 });
+    else meta.clockBase = nt;
+    ctx().saveMetadataDebounced?.();
+    saveChatSoon();
+    updateInjection();
+    renderAll();
+}
+
+function clockInputs() {
+    const el = panelEl();
+    const v = k => { const x = el.querySelector(`[data-iw-clock-in="${k}"]`); return x ? x.value : ''; };
+    return v;
+}
+
+async function onClockAction(spec) {
+    const parts = spec.split(':');
+    const cmd = parts[0];
+    const arg = parts.slice(1).join(':');
+    const meta = chatMeta();
+    const now = clockNow();
+    const cal = now && now.cal;
+    const t = now && now.t;
+    if (cmd === 'detect') return detectCalendar({ manual: true });
+    if (cmd === 'lock') {
+        meta.clockLocked = !meta.clockLocked;
+        ctx().saveMetadataDebounced?.();
+        clockOpen = true;
+        return renderAll();
+    }
+    if (!cal || !t) return;
+    clockOpen = true;
+    const draft = normTime(cal, clockDraft || t);
+    const view = clockMonth || { y: draft.y, m: draft.m };
+    if (cmd === 'month') { clockMonth = shiftMonth(cal, view.y, view.m, Number(arg) || 0); return renderAll(); }
+    if (cmd === 'year') { clockMonth = { y: view.y + (Number(arg) || 0), m: view.m }; return renderAll(); }
+    if (cmd === 'vmonth') { clockMonth = { y: view.y, m: Number(arg) || 1 }; return renderAll(); }
+    if (cmd === 'day') {
+        // выбор дня только отмечает его — время меняется кнопкой «Поставить»
+        const d = Math.min(Number(arg) || 1, monthDays(cal, view.y, view.m));
+        clockDraft = Object.assign({}, draft, { y: view.y, m: view.m, d });
+        return renderAll();
+    }
+    if (cmd === 'dday') { clockDraft = Object.assign({}, draft, { d: Math.max(1, draft.d + (Number(arg) || 0)) }); return renderAll(); }
+    if (cmd === 'h') { clockDraft = Object.assign({}, draft, { h: Number(arg) || 0 }); return renderAll(); }
+    if (cmd === 'mi') { clockDraft = Object.assign({}, draft, { mi: Number(arg) || 0 }); return renderAll(); }
+    if (cmd === 'hm') { clockHolMonth = Number(arg) || 1; return renderAll(); }
+    if (cmd === 'reset') { clockDraft = null; clockMonth = null; return renderAll(); }
+    if (cmd === 'set') {
+        const nt = normTime(cal, draft);
+        clockDraft = null;
+        clockMonth = null;
+        return setClockManual(nt);
+    }
+    if (cmd === 'type') {
+        const type = arg === 'days' ? 'days' : 'greg';
+        meta.calendar = normCalendar({ type, source: 'user' });
+        const nt = type === 'days' ? { d: 1, h: t.h, mi: t.mi } : { y: 2000, m: 1, d: 1, h: t.h, mi: t.mi };
+        clockMonth = null;
+        clockDraft = null;
+        return setClockManual(nt, 'manual');
+    }
+    if (cmd === 'hol-add') {
+        const v = clockInputs();
+        let name = String(v('hname') || '').trim();
+        const d = Number(v('hd'));
+        const m = clockHolMonth || draft.m || 1;
+        if (!name || !d) return toastr.info('Напиши название и число.', 'Внутренний мир');
+        if (d > monthDays(cal, 2000, m)) return toastr.info('В этом месяце нет такого числа.', 'Внутренний мир');
+        // «Виктор: годовщина» — личная дата персонажа
+        const h = { m, d, name };
+        const who = name.match(/^([^:]{2,40}):\s*(.+)$/);
+        if (who) Object.assign(h, { kind: 'canon', who: who[1].trim(), name: who[2].trim() });
+        meta.calendar = Object.assign({}, cal, { holidays: [...(cal.holidays || []), h] });
+        ctx().saveMetadataDebounced?.();
+        updateInjection();
+        return renderAll();
+    }
+    if (cmd === 'hol-del') {
+        const list = (cal.holidays || []).slice();
+        list.splice(Number(arg), 1);
+        meta.calendar = Object.assign({}, cal, { holidays: list });
+        ctx().saveMetadataDebounced?.();
+        updateInjection();
+        return renderAll();
+    }
+}
+
 // ---------- Подсказка основной модели ----------
 
 function updateInjection(beforeId) {
@@ -458,6 +836,12 @@ function updateInjection(beforeId) {
         attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence);
     }
     c.setExtensionPrompt(ATTR_PROMPT_KEY, attr, 1, Number(s.attrDepth) || 4, false, 0);
+    // часы сцены — у самого конца чата, чтобы модель не теряла время суток и дату
+    let clockText = '';
+    if (s.enabled && s.inject && hasChat() && c.chat && c.chat.length) {
+        try { clockText = clockPromptText(beforeId); } catch (e) { console.warn('[Внутренний мир] часы', e); }
+    }
+    c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
 }
 
 // ---------- Анализ ----------
@@ -815,6 +1199,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             history,
             knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name)].slice(0, 40),
             lore: [],
+            clockNow: kind !== 'lore' && s.clock !== false ? clockForAnalysis(messageId) : '',
         };
         // экономия: в запрос идут только те, кто есть в последнем обмене репликами
         const recent = [];
@@ -833,6 +1218,17 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         // персона игрока всегда «в сцене»: это её реплики
         const pk = s.persona !== false ? personaKeyOf(base) : null;
         if (present && pk && !present.includes(pk)) present.push(pk);
+        // знакомые по предыстории (друзья, бывшие, родня главного героя или игрока) — заводим им записи при разборе лорбука
+        if (s.showNpc !== false && (kind !== 'chat' || (catchUp && catchUp.length))) {
+            info.acquainted = [];
+            for (const e of ros.npc || []) {
+                if (!e.rel && !e.relUser) continue;
+                if (base.order.some(k => rosterFind(ros, k) === e || namesMatch(k, e.name))) continue;
+                const al = e.aliases || [], tr = e.traits || [];
+                info.acquainted.push(`${e.name}${al.length ? ` (${al.join(', ')})` : ''}: ${e.who || ''}${e.rel ? `; для ${c.name2} — ${e.rel}` : ''}${e.relUser ? `; для ${c.name1} — ${e.relUser}` : ''}${tr.length ? `; черты: ${tr.join(', ')}` : ''}`);
+                if (info.acquainted.length >= 8) break;
+            }
+        }
         // НПС из лорбука, которые впервые пришли в сцену: даём модели их описание
         if (s.showNpc !== false) {
             for (const e of ros.npc || []) {
@@ -846,7 +1242,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const user = buildUserPrompt(info, base, s.modules, present);
         const cast = present || base.order;
         const castMains = Math.max(1, cast.filter(k => isMain(k, mn)).length) + (s.persona !== false ? 1 : 0);
-        const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0);
+        const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0) + (info.acquainted ? info.acquainted.length : 0);
         const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
         budget = ask.responseLength;
         const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
@@ -873,7 +1269,11 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             const entry = ros.find(f.name);
             if (entry) f.name = entry.name;
             const known = base.order.find(k => namesMatch(k, f.name));
-            if (known) f.name = known;
+            if (known) {
+                // раньше записан латиницей («Lyuba»), а в лорбуке — «Люба Хмурова»: показываем имя из лорбука
+                if (entry && base.characters[known] && base.characters[known].name !== entry.name && nameScript(base.characters[known].name) !== nameScript(entry.name)) base.characters[known].name = entry.name;
+                f.name = known;
+            }
         }
         if (s.showNpc === false) fresh = fresh.filter(x => isMain(x.name, mn));
         if (s.track === 'bot') fresh = fresh.filter(x => sameName(x.name, c.name2));
@@ -883,6 +1283,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
+        if (info.clockNow) applySceneTime(messageId, raw);
+        try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         writeRecord(messageId, state);
         chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
         if (catchUp) {
@@ -918,6 +1320,10 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             const p = pending;
             pending = null;
             if (p.messageId !== messageId || p.manual) analyze(p.messageId, { manual: p.manual });
+        } else if (s.clock !== false && hasChat() && !chatMeta().calendar && !chatMeta().calendarTried) {
+            // первый разбор в чате — заодно узнаём календарь истории (один раз)
+            chatMeta().calendarTried = true;
+            detectCalendar();
         }
     }
 }
@@ -996,6 +1402,13 @@ async function onMessageReceived(messageId, type) {
         renderAll();
         return;
     }
+    try { stepClock(id); } catch (e) { console.warn('[Внутренний мир] часы', e); }
+    updateInjection();
+    // режим «пока бот пишет»: дневник уже разобран в начале генерации — здесь только часы
+    if (s.analyzeWhen === 'parallel') {
+        renderAll();
+        return;
+    }
     const every = Number(s.every) || 0;
     if (every <= 0) {
         renderAll();
@@ -1022,6 +1435,22 @@ function onGenerationStarted(type, _options, dryRun) {
     } else {
         updateInjection();
     }
+    // «Пока бот пишет»: разбираем всё до последней реплики игрока параллельно с ответом бота.
+    // К концу ответа дневник уже обновлён; сам ответ бота попадёт в следующий разбор.
+    const s = settings();
+    if (s.analyzeWhen !== 'parallel' || !s.enabled || !hasChat()) return;
+    if (type && !['normal', 'continue'].includes(type)) return;
+    const chat = ctx().chat || [];
+    const lastId = chat.length - 1;
+    const last = chat[lastId];
+    if (!last || !last.is_user || recordOf(last)) return;
+    const every = Number(s.every) || 0;
+    if (every <= 0) return;
+    const meta = chatMeta();
+    meta.counter = (meta.counter || 0) + 1;
+    ctx().saveMetadataDebounced?.();
+    if (meta.counter % every !== 0) return;
+    setTimeout(() => analyze(lastId), 0);
 }
 
 // ---------- Тема ----------
@@ -1029,6 +1458,7 @@ function onGenerationStarted(type, _options, dryRun) {
 function refreshTheme() {
     currentTheme = validTheme(settings().theme);
     setVolume(settings().volume ?? 45);
+    setSilentMode(true, () => settings().sound !== false);
     loadFonts(currentTheme);
     const fab = document.getElementById('iw_fab');
     if (fab) setFabTheme(fab);
@@ -1127,14 +1557,62 @@ function renderPanelNow() {
         || (showNpc && view.startsWith('npc:') && npcKeys.includes(view.slice(4)));
     if (!valid) view = mains.length ? 'main:' + mains[0] : (showNpc ? 'npc' : '');
     el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
-    const keepScroll = el.querySelector('.iw-body')?.scrollTop || 0;
+    const keepScroll = readScroll(el);
     const hs = showNpc ? historySeen() : { seen: [], pending: [] };
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy });
-    const body = el.querySelector('.iw-body');
-    if (body) body.scrollTop = keepScroll;
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView() });
+    writeScroll(el, keepScroll);
+}
+
+function safeClockView() {
+    try { return clockView(); } catch (e) { console.warn('[Внутренний мир] часы', e); return null; }
+}
+
+// Телефон: кнопки разбора переезжают в шапку. Перерисовываем, когда экран переходит через границу (поворот, окно).
+const PHONE_QUERY = typeof matchMedia === 'function' ? matchMedia('(max-width: 760px)') : null;
+function isPhone() {
+    return !!(PHONE_QUERY && PHONE_QUERY.matches);
+}
+if (PHONE_QUERY) {
+    const onPhoneChange = () => { if (panelEl() && !panelEl().hidden) renderPanelNow(); };
+    if (PHONE_QUERY.addEventListener) PHONE_QUERY.addEventListener('change', onPhoneChange);
+    else if (PHONE_QUERY.addListener) PHONE_QUERY.addListener(onPhoneChange);
+}
+
+// На компьютере листается тело дневника, на телефоне — вся страница дневника целиком: запоминаем обе прокрутки.
+// Живой листок тоже листается: если читатель был внизу списка (или только открыл), держим его на последних строках.
+function readScroll(el) {
+    const lv = el?.querySelector('.iw-live-scroll');
+    return {
+        body: el?.querySelector('.iw-body')?.scrollTop || 0,
+        book: el?.querySelector('.iw-book')?.scrollTop || 0,
+        live: lv ? lv.scrollTop : null,
+        liveEnd: lv ? lv.scrollTop + lv.clientHeight >= lv.scrollHeight - 12 : true,
+    };
+}
+
+function writeScroll(el, keep) {
+    const body = el?.querySelector('.iw-body');
+    const book = el?.querySelector('.iw-book');
+    if (body) body.scrollTop = keep.body;
+    if (book) book.scrollTop = keep.book;
+    fitLiveCard(el);
+    const lv = el?.querySelector('.iw-live-scroll');
+    if (lv) lv.scrollTop = keep.liveEnd !== false || keep.live == null ? lv.scrollHeight : keep.live;
+}
+
+// Листок не выше видимой части дневника: всё, что не влезло, листается внутри него.
+function fitLiveCard(el) {
+    const card = el?.querySelector('.iw-live-card');
+    const body = el?.querySelector('.iw-body');
+    const book = el?.querySelector('.iw-book');
+    if (!card || !body || !book) return;
+    const top = card.getBoundingClientRect().top;
+    const bottom = Math.min(body.getBoundingClientRect().bottom, book.getBoundingClientRect().bottom);
+    const lim = Math.round(bottom - top - 14);
+    if (lim > 160) card.style.maxHeight = lim + 'px';
 }
 
 function renderAll() {
@@ -1212,8 +1690,10 @@ function testNotice(kind) {
 
 async function onPanelClick(e) {
     // всплывающие меню (кошелёк, звук, лорбуки) закрываются, если нажать мимо них
-    for (const d of panelEl().querySelectorAll('details.iw-wallet[open], details.iw-vol[open], details.iw-books[open]')) {
-        if (!d.contains(e.target)) d.open = false;
+    for (const d of panelEl().querySelectorAll('details.iw-wallet[open], details.iw-vol[open], details.iw-books[open], details.iw-clock[open], details.iw-pick[open]')) {
+        if (d.contains(e.target)) continue;
+        d.open = false;
+        if (d.classList.contains('iw-clock')) { clockOpen = false; clockDraft = null; clockMonth = null; }
     }
     // свернуть / развернуть блок: стрелка или заголовок; свёрнутый — кликом в любом его месте
     const folded = e.target.closest('.iw-block.iw-collapsed');
@@ -1229,6 +1709,11 @@ async function onPanelClick(e) {
     }
     const attrSum = e.target.closest('summary.iw-attr-add');
     if (attrSum) attrOpen = !attrSum.parentElement.open;
+    // листок часов и раздел «Календарь» помнят, раскрыты ли они, между перерисовками
+    const clockSum = e.target.closest('summary.iw-clock-bar');
+    if (clockSum) clockOpen = !clockSum.parentElement.open;
+    const calSum = e.target.closest('.iw-clock-cal > summary');
+    if (calSum) clockCalOpen = !calSum.parentElement.open;
     const t = e.target.closest('button');
     if (!t) return;
     const s = settings();
@@ -1349,8 +1834,7 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwView) {
         view = t.dataset.iwView;
-        const body = panelEl().querySelector('.iw-body');
-        if (body) body.scrollTop = 0;
+        writeScroll(panelEl(), { body: 0, book: 0 });
         return renderPanelNow();
     }
     if (t.dataset.iwStudy) {
@@ -1359,6 +1843,35 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
+    if (t.dataset.iwClock) {
+        e.preventDefault();
+        return onClockAction(t.dataset.iwClock);
+    }
+    if (t.dataset.iwBorn) {
+        const key = t.dataset.iwBorn;
+        const state = currentState();
+        const ch = state.characters[key];
+        if (!ch) return;
+        const c0 = ctx();
+        const p2 = n => String(n).padStart(2, '0');
+        const cur = ch.born ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : '';
+        const val = await c0.callGenericPopup(`<b>День рождения: ${esc(ch.name)}</b><br><small>Например 20.08.1969 или просто 20.08. Оставь пустым, чтобы убрать.</small>`, c0.POPUP_TYPE.INPUT, cur);
+        if (val === null || val === undefined || val === false) return;
+        const txt = String(val).trim();
+        if (!txt) {
+            delete ch.born;
+        } else {
+            const b = parseBorn(txt);
+            if (!b) return toastr.warning('Не поняла дату. Пример: 20.08.1969', 'Внутренний мир');
+            ch.born = b;
+            ch.zodiac = zodiacOf(b.d, b.m) || ch.zodiac;
+        }
+        ch.bornManual = true;
+        await saveEditedState(state);
+        updateInjection();
+        toastr.success(ch.born ? `${ch.name}: ${bornText(ch.born)}` : `${ch.name}: дата рождения убрана`, 'Внутренний мир');
+        return renderAll();
+    }
     if (t.dataset.iwDel) {
         const [kind, idx] = t.dataset.iwDel.split(':');
         const state = currentState();
@@ -1375,8 +1888,13 @@ async function onPanelClick(e) {
         const key = t.dataset.iwForget;
         const state = currentState();
         if (!state.characters[key]) return;
+        const c0 = ctx();
+        const ok = await c0.callGenericPopup(`Забыть ${esc(state.characters[key].name)}? Всё, что о нём записано в дневнике этого чата, пропадёт.`, c0.POPUP_TYPE.CONFIRM);
+        if (!ok) return;
         delete state.characters[key];
         state.order = state.order.filter(k => k !== key);
+        // после «забыть» следующий разбор не должен решить, что ничего нового нет
+        chatMeta().fp = {};
         view = '';
         await saveEditedState(state);
         updateInjection();
@@ -1423,8 +1941,11 @@ function chatFp(id) {
 
 // У кого из главных ещё нет типа личности, темперамента или «подробнее» к чертам — такой разбор не считаем пустым.
 function missingPersona() {
-    if (!hasChat() || !settings().modules.traits) return false;
+    if (!hasChat()) return false;
     const st = currentState();
+    // главного героя нет в дневнике (его забыли или дневник очистили) — разбирать есть что
+    if (mainNames().some(n => !st.order.some(k => namesMatch(k, n)))) return true;
+    if (!settings().modules.traits) return false;
     return splitCast(st).mains.some(k => {
         const ch = st.characters[k];
         return ch && (!ch.ptype || !ch.temper || (ch.traits || []).some(t => t.kind !== 'gone' && !t.about));
@@ -1646,7 +2167,7 @@ async function buy(id) {
     const ch = key && st.characters[key];
     if (!ch) return;
     const reward = (ch.shop || []).find(r => r.id === id);
-    const err = buyReward(ch, reward);
+    const err = buyReward(ch, reward, st);
     if (err) return toastr.info(err, 'Внутренний мир');
     await saveEditedState(st);
     updateInjection();
@@ -1678,6 +2199,23 @@ function onPanelInput(e) {
 
 async function onPanelChange(e) {
     const el = e.target;
+    if (el && el.matches && el.matches('[data-iw-clock="lock"]')) return onClockAction('lock');
+    if (el && el.matches && el.matches('[data-iw-clock-in="vy"]')) {
+        const now = clockNow();
+        if (!now || !now.t) return;
+        const draft = clockDraft || now.t;
+        const view = clockMonth || { y: draft.y, m: draft.m };
+        clockMonth = { y: Number(el.value) || view.y, m: view.m };
+        clockOpen = true;
+        return renderAll();
+    }
+    if (el && el.matches && el.matches('[data-iw-clock-in="dd"]')) {
+        const now = clockNow();
+        if (!now || !now.t) return;
+        clockDraft = Object.assign({}, clockDraft || now.t, { d: Math.max(1, Number(el.value) || 1) });
+        clockOpen = true;
+        return renderAll();
+    }
     if (el && el.matches && el.matches('[data-iw-volume]')) {
         settings().volume = Number(el.value) || 0;
         setVolume(settings().volume);
@@ -1687,11 +2225,9 @@ async function onPanelChange(e) {
         return;
     }
     if (el.closest && el.closest('.iw-form')) {
-        const body = panelEl().querySelector('.iw-body');
-        const keep = body ? body.scrollTop : 0;
+        const keep = readScroll(panelEl());
         await onSettingsChanged(el);
-        const body2 = panelEl().querySelector('.iw-body');
-        if (body2) body2.scrollTop = keep;
+        writeScroll(panelEl(), keep);
     }
 }
 
@@ -1916,7 +2452,12 @@ function settingsFormHtml(variant) {
     const booksHtml = variant === 'diary' && hasChat()
         ? renderBooksField({ books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), busy: busy || rosterBusy, hasPersona: s.persona !== false })
         : '';
-    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, version: VERSION, updated: UPDATED });
+    let forgetHtml = '';
+    if (variant === 'diary' && hasChat()) {
+        const st = currentState();
+        forgetHtml = (st.order || []).filter(k => st.characters[k]).map(k => `<button type="button" class="iw-btn iw-forget-chip" data-iw-forget="${esc(k)}" title="Забыть ${esc(st.characters[k].name)}">${esc(st.characters[k].name)} <span aria-hidden="true">×</span></button>`).join('');
+    }
+    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED });
 }
 
 function refreshForms() {
@@ -2088,13 +2629,13 @@ async function resetAllSettings() {
 async function resetChat() {
     const c = ctx();
     if (!c.chat || !c.chat.length) return;
-    const ok = await c.callGenericPopup('Очистить дневник «Внутреннего мира» в этом чате? Сообщения не пострадают.', c.POPUP_TYPE.CONFIRM);
+    const ok = await c.callGenericPopup('Точно очистить дневник «Внутреннего мира» в этом чате? Все записи о персонажах пропадут, сообщения чата не пострадают.', c.POPUP_TYPE.CONFIRM);
     if (!ok) return;
     for (const m of c.chat) {
         if (m && m.extra) delete m.extra[META_KEY];
         for (const sw of (m && m.swipe_info) || []) if (sw && sw.extra) delete sw.extra[META_KEY];
     }
-    c.chatMetadata[META_KEY] = { base: null, counter: 0 };
+    c.chatMetadata[META_KEY] = { base: null, counter: 0, calendar: (c.chatMetadata[META_KEY] || {}).calendar };
     await c.saveChat();
     c.saveMetadataDebounced?.();
     view = '';
@@ -2121,6 +2662,20 @@ function registerCommands() {
             },
             helpString: 'Обновить «Внутренний мир» по последнему ответу.',
         }));
+        const timeCmd = {
+            callback: async (_args, value) => {
+                const now = clockNow();
+                if (!now || !now.cal) { toastr.info('Часы сцены ещё не заведены: открой дневник и поставь время.', 'Внутренний мир'); return ''; }
+                const arg = String(value || '').trim();
+                if (!arg) return now.t ? `${fmtDate(now.cal, now.t)}, ${fmtTime(now.t)}` : '';
+                const nt = parseClockCommand(now.cal, now.t, arg);
+                if (!nt) { toastr.warning('Не поняла время. Примеры: +2ч, +3д, 14:30, 1996-10-08, утро.', 'Внутренний мир'); return ''; }
+                setClockManual(nt);
+                return `${fmtDate(now.cal, nt)}, ${fmtTime(nt)}`;
+            },
+            helpString: 'Часы сцены «Внутреннего мира»: /время +2ч, /время +3д, /время 14:30, /время 1996-10-08, /время утро. Без аргумента — показать время.',
+        };
+        SlashCommandParser.addCommandObject(SlashCommand.fromProps(Object.assign({ name: 'время', aliases: ['iw-time'] }, timeCmd)));
     } catch (e) {
         console.warn('[Внутренний мир] команды не добавлены', e);
     }
@@ -2129,6 +2684,10 @@ function registerCommands() {
 async function onChatChanged() {
     view = '';
     status = '';
+    clockMonth = null;
+    clockOpen = false;
+    clockSetOpen = false;
+    clockDraft = null;
     await loadWorldNames();
     syncSettingsForm();
     refreshTheme();

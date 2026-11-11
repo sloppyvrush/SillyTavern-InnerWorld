@@ -26,6 +26,10 @@ export const THEMES = {
         name: 'Бимбо-пикми',
         fonts: 'family=Pacifico&family=Nunito:wght@500;600;700;800',
     },
+    grid: {
+        name: 'Тетрадь в клетку',
+        fonts: 'family=Marck+Script&family=Neucha',
+    },
     china: {
         name: 'Китайский свиток',
         fonts: 'family=Prata&family=PT+Serif:ital,wght@0,400;0,700;1,400',
@@ -59,8 +63,9 @@ export const THEMES = {
     },
     pixel: {
         name: 'Пиксельная игра',
-        // пиксельный шрифт с кириллицей, как на старых приставках — для всего текста
-        fonts: 'family=Press+Start+2P',
+        // пиксельный шрифт с кириллицей, как на старых приставках — для заголовков, имён и кнопок;
+        // для длинных текстов — узкий пиксельный Pixelify Sans: у Press Start 2P слишком широкие буквы
+        fonts: 'family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600',
     },
 };
 
@@ -75,6 +80,7 @@ export const THEME_SWATCHES = {
     china: ['#2a0c10', '#d4a64a', '#e65a46'],
     herbal: ['#1b2016', '#d29a3c', '#a9bf6e'],
     arcana: ['#0d1130', '#e6c46e', '#a8b8f2'],
+    grid: ['#f7f8f2', '#1f3a93', '#c0262d'],
     seance: ['#1d1916', '#c4a26f', '#d39a8c'],
     nav: ['#111814', '#d9c8a6', '#d6392e'],
     dossier: ['#d8bf8a', '#2a2a2a', '#c0262d'],
@@ -85,10 +91,10 @@ export const THEME_SWATCHES = {
 export const THEME_IDS = Object.keys(THEMES);
 
 // Значок валюты — у каждой темы свой: сердечко-монетка, лунная монета, кристалл, дукат с короной, чип,
-// бриллиант, цянь, росток, звёздный знак, свеча, веретено, жетон, кредит, пиксельная монета.
+// бриллиант, звёздочка из тетради, цянь, росток, звёздный знак, свеча, веретено, жетон, кредит, пиксельная монета.
 const CURRENCY_ICONS = {
     diary: 'cur_heart', dark: 'cur_moon', sims: 'cur_crystal', medieval: 'cur_ducat', cyber: 'cur_chip', bimbo: 'cur_gem',
-    china: 'cashcoin', herbal: 'cur_sprout', arcana: 'cur_sigil', seance: 'cur_candle', nav: 'cur_spindle', dossier: 'cur_token', logbook: 'credit', pixel: 'pxcoin',
+    grid: 'cur_star', china: 'cashcoin', herbal: 'cur_sprout', arcana: 'cur_sigil', seance: 'cur_candle', nav: 'cur_spindle', dossier: 'cur_token', logbook: 'credit', pixel: 'pxcoin',
 };
 export function currencyIcon(theme) {
     return CURRENCY_ICONS[theme] || 'coin';
@@ -130,6 +136,11 @@ const BASE_LABELS = {
 };
 
 const THEME_LABELS = {
+    grid: {
+        chartMark: '✓',
+        currency: 'звёздочки',
+        shop: 'Лавка звёздочек',
+    },
     bimbo: {
         attraction: 'Мой типаж',
         currency: 'блестяшки',
@@ -506,7 +517,7 @@ export function themeFontsUrl(theme) {
 }
 
 // Темы, которые заменены новыми: гримуар → травница, тетрадь в клетку → аркан.
-export const RENAMED_THEMES = { grimoire: 'herbal', grid: 'arcana' };
+export const RENAMED_THEMES = { grimoire: 'herbal' };
 
 export function validTheme(theme) {
     const t = RENAMED_THEMES[theme] || theme;
@@ -515,6 +526,11 @@ export function validTheme(theme) {
 
 // Значки рисуем сами (SVG), чтобы не зависеть от шрифтов и тем таверны.
 const PATHS = {
+    cur_star: '<path d="M12 3.5l2.4 5 5.4.6-4 3.7 1.1 5.4L12 15.6 7.1 18.2l1.1-5.4-4-3.7 5.4-.6z"/><path d="M12 8.5v4.5M9.8 11h4.4" stroke-width="1.4"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
     book: '<path d="M3 5.5c3-1.4 6-1.4 9 .8 3-2.2 6-2.2 9-.8v13c-3-1.4-6-1.4-9 .8-3-2.2-6-2.2-9-.8z"/><path d="M12 6.3v13"/>',
     rotate: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/>',
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -708,7 +724,7 @@ const TOAST_KICKERS = {
 
 // Подпись листика с ошибкой дневника — в голосе темы.
 const ERROR_KICKERS = {
-    diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка',
+    diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка', grid: 'Ошибка — исправить!',
     bimbo: 'Ой-ой, ошибочка…', medieval: 'Худая весть', cyber: 'ERR // сбой', china: 'Кисть сорвалась',
     herbal: 'Отвар не удался', arcana: 'Карты спутались', seance: 'Связь оборвалась', nav: 'Нить оборвалась', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', pixel: 'GAME OVER? Нет, просто ошибка',
 };

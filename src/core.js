@@ -58,6 +58,10 @@ export const DEFAULT_SETTINGS = {
     animations: true,        // анимации в дневнике; выключить — всё статично
     liveView: true,          // живой листок: как модель пишет дневник (потоком, если подключение умеет)
     volume: 45,              // громкость звуков, 0–100
+    analyzeWhen: 'after',    // after — после ответа бота; parallel — пока бот пишет (быстрее, отстаёт на ответ)
+    clock: true,             // часы и календарь сцены
+    clockStep: 5,            // сколько минут проходит за обычный ответ без явного таймскипа
+    clockInject: true,       // подсказывать модели время сцены
     points: true,            // очки за желания и мечту + награды
 };
 
@@ -244,7 +248,7 @@ export function parseBorn(v) {
     let d, m, y;
     let r = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     if (r) { y = +r[1]; m = +r[2]; d = +r[3]; }
-    if (!r && (r = t.match(/(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?/))) { d = +r[1]; m = +r[2]; y = r[3] ? +r[3] : undefined; }
+    if (!r && (r = t.match(/(\d{1,2})\s*[./]\s*(\d{1,2})(?:\s*[./]\s*(\d{2,4}))?/))) { d = +r[1]; m = +r[2]; y = r[3] ? +r[3] : undefined; }
     if (!r && (r = t.match(/(\d{1,2})\s+([а-яё]+)(?:\s+(\d{3,4}))?/))) {
         d = +r[1];
         const w = r[2];
@@ -342,7 +346,6 @@ export function mergeSettings(saved) {
     if (!ATTR_POWER[s.attrPower]) s.attrPower = 'medium';
     applyAttrPower(s);
     if (s.theme === 'grimoire') s.theme = 'herbal'; // гримуар заменён травницей
-    if (s.theme === 'grid') s.theme = 'arcana'; // тетрадь в клетку заменена арканом
     if (Number(s.maxChars) === 4) s.maxChars = 12; // старое значение по умолчанию: с НПС мало
     if (s.source === 'profile') { s.source = 'custom'; s.apiKind = 'profile'; }
     if (!['русском', 'английском'].includes(s.language)) s.language = 'русском';
@@ -426,6 +429,10 @@ export function cleanCharacter(raw, opts = {}) {
         const b = parseBorn(raw.born);
         if (b) c.born = b;
         else if (/^(нет|none|no|unknown|не указан\S*|-)$/i.test(String(raw.born).trim())) c.bornNone = true;
+    }
+    if (raw.age !== undefined && raw.age !== null && raw.age !== '') {
+        const a = parseInt(String(raw.age), 10);
+        if (a > 0 && a < 1000) c.ageSaid = a;
     }
     const z = cleanZodiac(raw.zodiac) || (c.born ? zodiacOf(c.born.d, c.born.m) : '');
     if (z) c.zodiac = z;
@@ -669,6 +676,7 @@ export function decayState(state, elapsed) {
             c.moodlets = c.moodlets
                 .map(m => Object.assign({}, m, { left: (m.left ?? m.turns ?? 1) - n }))
                 .filter(m => m.left > 0);
+            settleMood(c);
         }
         if (Array.isArray(c.buffs)) {
             c.buffs = c.buffs
@@ -686,18 +694,132 @@ export function decayState(state, elapsed) {
 
 const WEIGHT_RANK = { light: 1, medium: 2, deep: 3 };
 
-// Цвет и смайлик общего состояния: лицо от модели, иначе по слову настроения, иначе по самой сильной эмоции.
-// Если две самые сильные эмоции равны по силе и разные по цвету — состояние смешанное, отдаём оба лица.
+// ---------- Главное настроение, как в «Симс» ----------
+// Каждая эмоция в списке — как мудлет: даёт очки своему настроению (слабая +1, средняя +2, сильная +5).
+// Похожие эмоции складываются в одно настроение (грусть, тоска и обида — всё «грусть»).
+// Главное настроение — то, у которого больше всего очков. Радость, как в «Симс», вторична:
+// она подпитывает другие хорошие настроения (уверенность, флирт, бодрость…), если у тех есть своя опора.
+// Сила: 1–4 очка — просто настроение, 5–8 — «очень», 9 и больше — предел. Без эмоций — «в порядке».
+export const MOOD_POINTS = { light: 1, medium: 2, deep: 5 };
+export const MOOD_VERY = 5;
+export const MOOD_EXTREME = 9;
+
+// Настроения: какие лица в них входят, хорошее ли оно, и как звучит на каждой силе (он / она).
+export const MOODS = {
+    happy: { faces: ['joy', 'excited', 'hope', 'grateful'], good: true, name: 'радость', words: [['в хорошем настроении', 'в хорошем настроении'], ['счастлив', 'счастлива'], ['на седьмом небе', 'на седьмом небе']] },
+    confident: { faces: ['confident', 'pride'], good: true, name: 'уверенность', words: [['уверен в себе', 'уверена в себе'], ['полон уверенности', 'полна уверенности'], ['чувствует себя королём', 'чувствует себя королевой']] },
+    energized: { faces: ['energized'], good: true, name: 'бодрость', words: [['бодр', 'бодра'], ['полон сил', 'полна сил'], ['горы готов свернуть', 'горы готова свернуть']] },
+    playful: { faces: ['playful'], good: true, name: 'озорство', words: [['игрив', 'игрива'], ['в озорном настроении', 'в озорном настроении'], ['дурачится вовсю', 'дурачится вовсю']] },
+    inspired: { faces: ['inspired', 'curious'], good: true, name: 'вдохновение', words: [['вдохновлён', 'вдохновлена'], ['полон идей', 'полна идей'], ['охвачен вдохновением', 'охвачена вдохновением']] },
+    focused: { faces: ['focus'], good: true, name: 'сосредоточенность', words: [['сосредоточен', 'сосредоточена'], ['полностью сосредоточен', 'полностью сосредоточена'], ['весь в деле', 'вся в деле']] },
+    calm: { faces: ['calm'], good: true, name: 'спокойствие', words: [['спокоен', 'спокойна'], ['умиротворён', 'умиротворена'], ['безмятежен', 'безмятежна']] },
+    tender: { faces: ['love'], good: true, name: 'нежность', words: [['нежен', 'нежна'], ['полон нежности', 'полна нежности'], ['тает от нежности', 'тает от нежности']] },
+    flirty: { faces: ['flirty', 'desire'], good: true, name: 'влечение', words: [['настроен на флирт', 'настроена на флирт'], ['охвачен влечением', 'охвачена влечением'], ['сгорает от страсти', 'сгорает от страсти']] },
+    embarrassed: { faces: ['shy', 'guilt'], good: false, name: 'смущение', words: [['смущён', 'смущена'], ['пристыжен', 'пристыжена'], ['готов провалиться сквозь землю', 'готова провалиться сквозь землю']] },
+    sad: { faces: ['sad', 'melancholy', 'hurt'], good: false, name: 'грусть', words: [['грустит', 'грустит'], ['подавлен', 'подавлена'], ['убит горем', 'убита горем']] },
+    angry: { faces: ['angry', 'irritated', 'contempt', 'disgust', 'envy'], good: false, name: 'злость', words: [['раздражён', 'раздражена'], ['зол', 'зла'], ['в ярости', 'в ярости']] },
+    tense: { faces: ['anxious', 'suspicious'], good: false, name: 'напряжение', words: [['напряжён', 'напряжена'], ['на взводе', 'на взводе'], ['на грани срыва', 'на грани срыва']] },
+    scared: { faces: ['fear'], good: false, name: 'страх', words: [['встревожен', 'встревожена'], ['напуган', 'напугана'], ['в ужасе', 'в ужасе']] },
+    uncomfortable: { faces: ['uncomfortable', 'tired'], good: false, name: 'дискомфорт', words: [['не в своей тарелке', 'не в своей тарелке'], ['сам не свой', 'сама не своя'], ['на пределе', 'на пределе']] },
+    bored: { faces: ['bored'], good: false, name: 'скука', words: [['скучает', 'скучает'], ['изнывает от скуки', 'изнывает от скуки'], ['ко всему безразличен', 'ко всему безразлична']] },
+    dazed: { faces: ['dazed', 'confused', 'surprise'], good: false, name: 'растерянность', words: [['растерян', 'растеряна'], ['ошеломлён', 'ошеломлена'], ['в полном ступоре', 'в полном ступоре']] },
+};
+const FACE_MOOD = {};
+for (const [k, m] of Object.entries(MOODS)) for (const f of m.faces) FACE_MOOD[f] = k;
+// На первой силе у некоторых лиц своё, более точное слово (обида — не просто грусть).
+const FACE_WORD_1 = {
+    excited: ['в азарте', 'в азарте'], hope: ['полон надежды', 'полна надежды'], grateful: ['благодарен', 'благодарна'],
+    pride: ['гордится собой', 'гордится собой'], curious: ['заинтригован', 'заинтригована'], desire: ['охвачен влечением', 'охвачена влечением'],
+    guilt: ['чувствует вину', 'чувствует вину'], melancholy: ['тоскует', 'тоскует'], hurt: ['обижен', 'обижена'],
+    contempt: ['полон презрения', 'полна презрения'], disgust: ['испытывает отвращение', 'испытывает отвращение'], envy: ['ревнует', 'ревнует'],
+    suspicious: ['насторожен', 'насторожена'], tired: ['устал', 'устала'], surprise: ['удивлён', 'удивлена'], dazed: ['оглушён', 'оглушена'],
+};
+
+export function moodOfFace(face) {
+    return FACE_MOOD[face] || '';
+}
+
+// Считает главное настроение по эмоциям. prev — прошлое главное настроение: при равенстве оно держится (как в «Симс»).
+export function dominantMood(moodlets, prev = '') {
+    const sums = {};
+    for (const m of moodlets || []) {
+        const face = m.face || guessFace(m.emotion, m.tone);
+        const key = FACE_MOOD[face];
+        if (!key) continue;
+        const pts = MOOD_POINTS[m.weight] || MOOD_POINTS.medium;
+        const e = sums[key] || (sums[key] = { key, own: 0, top: null, topPts: 0, left: 0 });
+        e.own += pts;
+        if (pts > e.topPts || (pts === e.topPts && (m.left || 0) > e.left)) { e.top = face; e.topPts = pts; e.left = m.left || 0; }
+    }
+    const list = Object.values(sums);
+    if (!list.length) return null;
+    const happy = sums.happy ? sums.happy.own : 0;
+    for (const e of list) {
+        // радость подпитывает другое хорошее настроение, если у него самого есть хотя бы средняя эмоция
+        e.score = e.own + (e.key !== 'happy' && MOODS[e.key].good && e.own >= MOOD_POINTS.medium ? happy : 0);
+    }
+    list.sort((a, b) => b.score - a.score
+        || (b.key === prev) - (a.key === prev)
+        || (a.key === 'happy') - (b.key === 'happy')
+        || b.topPts - a.topPts
+        || b.left - a.left);
+    const win = list[0];
+    const level = win.score >= MOOD_EXTREME ? 3 : (win.score >= MOOD_VERY ? 2 : 1);
+    return { key: win.key, face: win.top, level, score: win.score, scores: list.map(e => ({ key: e.key, score: e.score, face: e.top })) };
+}
+
+// Слово настроения: на первой силе — слово модели, если оно про то же настроение, иначе точное слово лица;
+// «очень» и предел — общие слова настроения, чтобы сила была видна.
+export function moodWordFor(dom, g, modelWord = '', modelFace = '') {
+    if (!dom) return modelWord || '';
+    const i = g === 'f' ? 1 : 0;
+    if (dom.level === 1) {
+        // о чём слово — сначала по самому слову («насторожен» — это напряжение), а если слово незнакомое — по лицу от модели
+        const wf = guessFace(modelWord);
+        const mf = wf !== 'neutral' ? wf : modelFace;
+        if (modelWord && FACE_MOOD[mf] === dom.key) return modelWord;
+        if (FACE_WORD_1[dom.face]) return FACE_WORD_1[dom.face][i];
+    }
+    return MOODS[dom.key].words[dom.level - 1][i];
+}
+
+// Пересчитать главное настроение персонажа по его эмоциям. Слово и лицо модели сохраняются отдельно (moodSaid, faceSaid).
+export function settleMood(c) {
+    if (!c) return c;
+    // старый дневник, где настроение ещё не считалось: что было записано — это и есть слово модели
+    if (!c.moodCalc) {
+        if (c.moodSaid === undefined && c.mood) c.moodSaid = c.mood;
+        if (c.faceSaid === undefined && c.face) c.faceSaid = c.face;
+        c.moodCalc = true;
+    }
+    const dom = dominantMood(c.moodlets, c.moodKey || '');
+    if (!dom) {
+        // эмоций нет — как в «Симс»: «в порядке», если модель не сказала иного
+        c.mood = c.moodSaid || (Array.isArray(c.moodlets) ? (c.g === 'f' ? 'в порядке' : 'в порядке') : c.mood);
+        c.face = c.faceSaid || 'neutral';
+        delete c.moodKey;
+        delete c.moodLevel;
+        return c;
+    }
+    c.moodKey = dom.key;
+    c.moodLevel = dom.level;
+    c.face = dom.face;
+    c.mood = moodWordFor(dom, c.g, c.moodSaid, c.faceSaid);
+    return c;
+}
+
+// Цвет и смайлик общего состояния — лицо главного настроения.
+// Если второе настроение набрало столько же очков и оно другого цвета — состояние смешанное, отдаём оба лица.
 export function moodFaces(c) {
-    const ranked = (c && c.moodlets ? c.moodlets : [])
-        .map(m => ({ face: m.face || guessFace(m.emotion, m.tone), rank: WEIGHT_RANK[m.weight] || 2, left: m.left || 0 }))
-        .sort((a, b) => b.rank - a.rank || b.left - a.left);
-    let main = c && c.face && c.face !== 'neutral' ? c.face : guessFace(c && c.mood);
-    if (main === 'neutral' && ranked.length) main = ranked[0].face;
-    if (!c || (!c.mood && !c.face && !ranked.length)) return [];
-    const top = ranked.filter(r => r.rank === (ranked[0] && ranked[0].rank));
-    const other = top.map(r => r.face).find(f => f !== main && f !== 'neutral');
-    return other && top.length > 1 ? [main, other] : [main];
+    if (!c) return [];
+    const dom = dominantMood(c.moodlets, c.moodKey || '');
+    if (!dom) {
+        if (!c.mood && !c.face) return [];
+        const f = c.face && c.face !== 'neutral' ? c.face : guessFace(c.mood);
+        return [f];
+    }
+    const second = dom.scores[1];
+    return second && second.score === dom.score && second.face && second.face !== dom.face ? [dom.face, second.face] : [dom.face];
 }
 
 // Новые эмоции добавляются к тем, что ещё не прошли; одинаковые — освежаются, а не дублируются.
@@ -898,24 +1020,28 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     if (fresh.temper) out.temper = fresh.temper;
     if (fresh.ptypeNote) out.ptypeNote = fresh.ptypeNote;
     if (fresh.temperNote) out.temperNote = fresh.temperNote;
-    if (fresh.born) out.born = fresh.born;
+    if (fresh.born && !out.bornManual) out.born = fresh.born;
+    // возраст из карточки запоминаем один раз — дальше он растёт по часам сцены, а не берётся из карточки заново
+    if (fresh.ageSaid && !out.ageAt) out.ageSaid = fresh.ageSaid;
     if (fresh.zodiac) out.zodiac = fresh.zodiac;
     if (fresh.bornNone && !out.born && !out.zodiac) out.bornChecked = true;
     if (!out.g) out.g = 'n';
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
 
     if (modules.mood) {
-        if (fresh.mood) out.mood = fresh.mood;
-        if (fresh.face) out.face = fresh.face;
+        if (fresh.mood) { out.mood = fresh.mood; out.moodSaid = fresh.mood; out.faceSaid = fresh.face || ''; }
+        else if (fresh.face) out.faceSaid = fresh.face;
         if (fresh.moodlets || fresh.ended) out.moodlets = mergeMoodlets(old && old.moodlets, fresh.moodlets, fresh.ended);
-        // у общего состояния всегда есть эмоция за ним: «сосредоточен» без сосредоточенности в списке — добавляем её
+        // Слово модели без эмоции за ним — заводим эту эмоцию. Если в списке уже есть другие эмоции, новая — слабая (+1):
+        // главное настроение считается по всем эмоциям, как в «Симс», и одно слово модели их не перевешивает.
         if (fresh.mood && Array.isArray(out.moodlets)) {
             const face = (fresh.face && fresh.face !== 'neutral') ? fresh.face : guessFace(fresh.mood);
             const backed = face === 'neutral' || out.moodlets.some(m => (m.face || guessFace(m.emotion, m.tone)) === face);
             if (!backed) {
                 const word = String(FACE_NAMES[face] || '').split(',')[0].trim();
                 const tone = ['joy', 'excited', 'playful', 'energized', 'inspired', 'pride', 'confident', 'hope', 'grateful', 'calm', 'love', 'flirty', 'desire', 'curious'].includes(face) ? 'good' : (['focus', 'surprise', 'confused'].includes(face) ? 'mid' : 'bad');
-                if (word) out.moodlets = mergeMoodlets(out.moodlets, [{ emotion: word, feel: '', why: '', weight: 'medium', tone, face, left: WEIGHT_TURNS.medium[1] }]);
+                const w = out.moodlets.length ? 'light' : 'medium';
+                if (word) out.moodlets = mergeMoodlets(out.moodlets, [{ emotion: word, feel: '', why: '', weight: w, tone, face, left: WEIGHT_TURNS[w][1] }]);
             }
         }
     }
@@ -942,6 +1068,7 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
             if (added.some(m => m.tone === 'good')) break;
             out.moodlets = mergeMoodlets(out.moodlets, [{ emotion: 'удовлетворение', feel: '', why: `исполнилось: ${w.text}`, weight: 'medium', tone: 'good', face: 'joy', left: WEIGHT_TURNS.medium[1] }]);
         }
+        settleMood(out);
     }
     if (modules.dream && fresh.dream) {
         const d = mergeDream(old, fresh.dream, out.cycle);
@@ -997,6 +1124,8 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
     const maxChars = opts.maxChars || 4;
     const userName = opts.userName || '';
 
+    if (opts.points) purseOf(next);
+    let purseGot = 0;
     for (const fresh of freshList) {
         // персона игрока ведётся только если это включено; в лимит персонажей она не входит
         const isPersona = !!(userName && sameName(fresh.name, userName));
@@ -1014,6 +1143,7 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         if (opts.points) {
             const got = evs.reduce((sum, e) => sum + (POINTS[e.type] || 0), 0);
             if (got) {
+                purseGot += got;
                 merged.points = (merged.points || 0) + got;
                 // запоминаем, сколько дал этот ответ: при повторном разборе того же ответа очки не удвоятся
                 merged.earned = got;
@@ -1030,6 +1160,12 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         if (!next.order.includes(key)) next.order.push(key);
     }
     next.order = next.order.filter(k => next.characters[k]);
+    if (opts.points && purseGot) {
+        next.purse = purseOf(next) + purseGot;
+        // сколько дал этот ответ: при повторном разборе того же ответа монеты не удвоятся
+        next.purseEarned = purseGot;
+        next.purseAt = opts.mesId ?? null;
+    }
     return { state: next, events };
 }
 
@@ -1038,6 +1174,7 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
 export function carryOwnEdits(base, own, mesId) {
     if (!own || !own.characters) return base;
     const out = JSON.parse(JSON.stringify(base || emptyState()));
+    if (own.purse !== undefined) out.purse = Math.max(0, (own.purse || 0) - (own.purseAt === mesId ? (own.purseEarned || 0) : 0));
     if (!out.characters) out.characters = {};
     if (!Array.isArray(out.order)) out.order = Object.keys(out.characters);
     for (const [key, mine] of Object.entries(own.characters)) {
@@ -1054,6 +1191,12 @@ export function carryOwnEdits(base, own, mesId) {
             if (mine.dreamChangedAt !== undefined) c.dreamChangedAt = mine.dreamChangedAt;
         }
         if (mine.attrSet) c.attrSet = true;
+        // дату рождения вписали руками — она главнее того, что нашла модель
+        if (mine.bornManual) {
+            c.bornManual = true;
+            if (mine.born) c.born = JSON.parse(JSON.stringify(mine.born)); else delete c.born;
+            if (mine.zodiac) c.zodiac = mine.zodiac;
+        }
         // правки игрока руками (удалил, закрепил, перенёс) — переносим блок целиком
         for (const f of ['wants', 'fears', 'traits', 'moodlets', 'likes', 'dislikes']) {
             if (mine.edited && mine.edited[f] === mesId && mine[f]) c[f] = JSON.parse(JSON.stringify(mine[f]));
@@ -1184,6 +1327,7 @@ export function responseTemplate(modules, manualTurns) {
         c.temper = 'choleric|sanguine|phlegmatic|melancholic';
         c.temper_note = 'как темперамент виден в его поведении';
         c.born = 'ДД.ММ.ГГГГ или ДД.ММ (только при no_born)';
+        c.age = 'сколько лет, если в карточке назван только возраст (только при no_born)';
     }
     if (modules.impression) {
         c.impression = { label: 'каким показался игрок, 1–3 слова', score: 1, why: 'что подумал при встрече', now: 'что думает сейчас', now_score: 1, known: 'если давно знакомы: кто они друг другу' };
@@ -1225,6 +1369,9 @@ export function buildSystemPrompt(settings, ctx) {
     } else if (!(ctx.catchUp && ctx.catchUp.length)) {
         rules.push('Сейчас разбор новых сообщений чата. Текущее состояние — основа персонажа (из карточки, лорбука и прошлых событий), она остаётся. Меняй её только соразмерно событию: обычная сцена — только эмоции и отметки «сбылось»; заметное событие — можно обновить желание или страх; настоящее потрясение — мечту или черту характера. Если ничего важного не случилось — лишь дополняй, а не переписывай.');
     }
+    if (ctx.acquainted && ctx.acquainted.length) {
+        rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет: who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное). impression — их отношение к ${user}: если они знакомы с ${user}, заполни impression.known (кто они друг другу) и label/why/score по их общей истории; если с ${user} не знакомы — impression не пиши.`);
+    }
     if (ctx.catchUp && ctx.catchUp.length) {
         rules.push(`Это первое заполнение дневника для уже идущей истории. Восстанови состояние по всему, что видно в сообщениях и эпизодах из прошлого. Обязательно верни этих персонажей, если они лично появлялись в истории (а не только упоминались в разговоре): ${ctx.catchUp.join(', ')}. impression — каким было первое впечатление об игроке при знакомстве, now и now_score — каким отношение стало к последней сцене. Желания и страхи — актуальные на конец. moodlets — только эмоции, которые ещё должны действовать сейчас.`);
     }
@@ -1232,7 +1379,7 @@ export function buildSystemPrompt(settings, ctx) {
         rules.push(`Известные персонажи этого мира: ${ctx.knownNames.join(', ')}. Если кто-то из них есть в сцене — называй его ровно так. Добавляй персонажа, только если он действительно присутствует или действует в последних сообщениях, а не просто упомянут.`);
     }
     if (m.mood) {
-        rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно). Состояние выводи из ВСЕХ его эмоций (старых, что ещё не прошли, и новых): если преобладает одна сильная — состояние по ней; если несколько примерно равных — одно слово, которое их соединяет (тревога + нежность → «растерян», злость + страх → «загнан в угол», радость + смущение → «смущённо счастлив»). face — лицо именно этого общего состояния. Общее состояние всегда опирается на эмоции из moodlets: если состояние называет чувство, которого среди эмоций нет (например, «сосредоточен», а сосредоточенности в списке нет), добавь эту эмоцию в moodlets с причиной.');
+        rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно). Главное состояние дневник считает сам, как в «Симс»: складывает силу всех эмоций (старых, что ещё не прошли, и новых) по похожим чувствам, и побеждает то, у которого сила больше. Поэтому mood называй по самому сильному чувству из всех эмоций, а не по последнему событию и не смесью — слово про другое чувство дневник не возьмёт. face — лицо этого самого сильного чувства. Общее состояние всегда опирается на эмоции из moodlets: если состояние называет чувство, которого среди эмоций нет (например, «сосредоточен», а сосредоточенности в списке нет), добавь эту эмоцию в moodlets с причиной.');
         const manual = settings.moodMode === 'manual';
         rules.push('face — какое лицо сейчас у персонажа, выбирай самое точное: joy (радость, веселье), excited (азарт, восторг, воодушевление, предвкушение), playful (озорство, игривость, дурачится), energized (бодрость, прилив сил), inspired (вдохновение, озарение), pride (гордость, торжество), confident (уверенность, смелость, хладнокровие), hope (надежда), grateful (благодарность, тронут), calm (спокоен, облегчение), love (нежность, влюблённость, забота), flirty (кокетство, флирт), desire (страсть, влечение), shy (смущён), sad (грусть, горе, отчаяние), melancholy (тоска, одиночество, ностальгия), hurt (обида, разочарование), guilt (вина, стыд, раскаяние), angry (злость, гнев), irritated (раздражение, досада), envy (зависть, ревность), disgust (отвращение, брезгливость), contempt (презрение, высокомерие), fear (страх, испуг, ужас), anxious (тревога, беспокойство, напряжение), suspicious (подозрение, недоверие, настороженность), uncomfortable (телесный дискомфорт: голод, холод, жара, неудобство), tired (усталость), bored (скука, апатия, опустошённость), focus (сосредоточен, решителен), surprise (удивлён), dazed (оглушён, в ступоре, в тумане, пьян), confused (растерян, озадачен), curious (любопытство, интерес), neutral. У каждой эмоции в moodlets тоже свой face из этого же списка — по самому чувству.');
         rules.push('moodlets — эмоции, которые ВЫЗВАЛИ ИЛИ УСИЛИЛИ последние события, обычно 1–2, не больше 3. Старые эмоции из текущего состояния (moodlets_now) не повторяй и не переименовывай синонимами: они идут своим сроком (left) и угасают сами. emotion — ЧУВСТВО одним-двумя словами, существительное со строчной буквы («облегчение», «нежность», «ревность», «стыд»), никогда не поступок и не описание сцены. feel — как это чувство ощущается внутри у самого персонажа, коротко и по-человечески («внутри теплеет, хочется её защитить», «сжимается в груди»). why — что его вызвало: конкретное событие с точки зрения персонажа, коротко («успел перехватить Эвелин в переулке»). Не путай: поступок персонажа — это причина (why), а не эмоция. weight — сила: light — слабая бытовая (раздражение, скука, смущение, лёгкая досада), medium — заметная (обида, тревога, радость от события), deep — сильная и долгая (горе, потрясение, влюблённость, страх после угрозы жизни). Обычные мелочи — только light, deep — только после серьёзных событий.'
@@ -1244,10 +1391,11 @@ export function buildSystemPrompt(settings, ctx) {
     if (m.fears) rules.push('fears — до 3 страхов, из характера, прошлого и сюжета; strength 1–3; level — одно слово. Страхи глубокие и держатся долго: повторяй текст уже записанных страхов ДОСЛОВНО и не заменяй их новыми без причины. Если то, чего персонаж боялся, ПРОИЗОШЛО в последних сообщениях — обязательно помечай "realized" и добавь сильную неприятную эмоцию. Преодолённый — "gone". Новый страх — только на место закрытого или если появилась настоящая новая угроза. fears_realized_recently — что недавно сбылось: это ещё влияет на настроение и поведение, учитывай.');
     if (m.dream) rules.push(`dream — мечта всей жизни: одна большая личная цель, которая следует из характера и истории персонажа (карточка, прошлое, ценности), с 3–5 этапами. Это глобальное и личное, а не текущая сцена. ${user} может появиться в мечте, ТОЛЬКО если между ними уже по-настоящему близкие отношения (отношение +2 и выше) и было сильное общее событие; незнакомец, знакомый или просто приятель в мечту не попадает. Если мечта уже есть — повторяй её название, plus и этапы дословно, отмечай выполненные этапы (done: true) и ставь change "same". Меняй мечту, только если случилось настоящее потрясение, которое переворачивает жизнь персонажа: change "change" — новая мечта (новые title и steps), change "add" — мечта дополнилась (plus — короткое продолжение, например «…вместе с ней»); в why — какое событие. Мелкие события мечту не трогают. Мечта у каждого своя: если у одного персонажа (или у персоны игрока) мечта поменялась, это не повод менять мечту другого — у остальных повторяй их мечты дословно с change "same".`);
     if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Пиши ptype, ptype_note, temper и temper_note только для персонажей с no_ptype: true и для новых; у остальных эти поля не пиши вовсе — они уже сохранены.');
-    if (m.traits) rules.push('born — дата рождения, только если она прямо написана в карточке или лорбуке: "ДД.ММ.ГГГГ" или "ДД.ММ". Если даты нет, но назван знак зодиака — верни zodiac (по-русски, например "Скорпион"). Ничего не выдумывай и не высчитывай из возраста: если ни даты, ни знака нет — верни born: "нет". Пиши эти поля только для персонажей с no_born: true и для новых.');
+    if (m.traits) rules.push('born — дата рождения, только если она прямо написана в карточке, лорбуке или (для персоны игрока) в её описании: "ДД.ММ.ГГГГ" или "ДД.ММ". Если даты нет, но назван знак зодиака — верни zodiac (по-русски, например "Скорпион"). Ничего не выдумывай и не высчитывай из возраста: если ни даты, ни знака нет — верни born: "нет". Если названа дата без года, но назван возраст, а в [Часы сцены] есть дата — вычисли год рождения. Если даты нет совсем, но назван возраст — верни age (число лет на начало истории). Пиши эти поля только для персонажей с no_born: true и для новых.');
     if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова. about — 1–2 предложения, почему эта черта есть у персонажа: для основной — что в его прошлом, воспитании, работе или судьбе (по карточке и лорбуку) её выстроило; для приобретённой — как именно событие её породило. Пиши about только для новых черт и для тех, где стоит no_about: true; у остальных не пиши.');
     if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве — это МНЕНИЕ персонажа, а не описание сцены: label — каким игрок ему показался, 1–3 слова («смелая чудачка», «опасный тип»); why — что персонаж подумал о нём при встрече, его глазами («не полезла к зевакам — уважаю, хоть и дрожит как воробей»), score от -3 до 3. chem — совместимость, как в «Симс»: насколько они подходят друг другу по чертам, типу личности и ценностям; level: amazing (родственные души), good (есть контакт), neutral (ровно), bad (не по душе), awful (как кошка с собакой); why — коротко, какие черты сходятся или сталкиваются. Если по карточке, лорбуку или чату персонаж и игрок уже давно знакомы (родня, друзья, коллеги, пара, супруги, бывшие) — это не первое впечатление: верни impression.known — кто они друг другу, 1–3 слова («супруги», «давние друзья», «бывшие»); label и why — каким персонаж видит игрока с учётом их общей истории; chem — сложившаяся совместимость; chem_now — по их нынешним отношениям. Если они незнакомы — known не пиши. chem — это ПЕРВАЯ (или сложившаяся) совместимость, она не меняется: пиши её только при первом знакомстве и для тех, у кого no_chem: true. chem_now — как совместимость складывается сейчас, по событиям чата: score от -3 (сильное отторжение) до 3 (сильное притяжение), why — коротко, что их сейчас сближает или отталкивает. Меняй score постепенно: на 1 за заметное событие (общий риск, забота, флирт, ссора, обман), больше — только после очень сильного; если ничего не случилось — повтори прежний. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3). Каждый разбор честно оцени, сдвинулось ли отношение: помощь, забота, честность, общее переживание, флирт, который зашёл, — повод подняться на 1; грубость, ложь, предательство — опуститься на 1 и больше. Отношения в долгой истории живые: если сближение идёт, отношение должно расти со временем, а не застревать на одном числе. now — переписывай, как только персонаж узнал или понял об игроке что-то новое (характер, привычки, прошлое, поступки), коротко и конкретно.`);
     if (m.attraction) rules.push(`turn_ons и turn_offs — что этого персонажа привлекает в других и что отталкивает (как в «Симс»): по 3–8 коротких тегов во множественном числе — телосложение, внешность, приметы, стиль, голос и запах, характер, образ жизни, увлечения («спортивные», «темноволосые», «со шрамами», «низкий голос», «надёжные», «с тёмным прошлым», «грубые»). Бери теги из этого списка, слово в слово: ${Object.entries(ATTRACT_CATALOG).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')}. Своё — только если в списке совсем нет подходящего. Выводи из характера, вкусов и истории персонажа. Пиши их только для персонажей с no_attraction: true и для новых; у остальных не пиши — они уже сохранены, а игрок мог их поправить. Совместимость (chem) с игроком учитывай и по этим тегам: подходит ли ему игрок внешностью и характером.`);
+    if (ctx.clockNow) rules.push('scene_time — часы сцены: в запросе есть [Часы сцены] — какое время сейчас по дневнику. Верни scene_time на верхнем уровне JSON, рядом с characters, только если по последним сообщениям ясно, что время стало другим (прямо названо, наступило утро, прошёл вечер, долгая поездка): {"time":"ЧЧ:ММ","date":"ГГГГ-ММ-ДД" или null,"flashback":false}. Время не идёт назад. Если сцена — воспоминание о прошлом, верни flashback: true. Если ничего не ясно — не пиши scene_time.');
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     rules.push(`Формат ответа: ${responseTemplate(m, settings.moodMode === 'manual')}`);
     return rules.join('\n');
@@ -1255,6 +1403,7 @@ export function buildSystemPrompt(settings, ctx) {
 
 export function buildUserPrompt(ctx, state, modules, onlyKeys) {
     const parts = [];
+    if (ctx.clockNow) parts.push(`[Часы сцены]\n${ctx.clockNow}`);
     if (ctx.card) parts.push(`[Карточка: ${ctx.botName}]\n${ctx.card}`);
     if (ctx.persona) parts.push(`[Игрок: ${ctx.userName}]\n${ctx.persona}`);
     if (ctx.history && ctx.history.length) {
@@ -1266,7 +1415,10 @@ export function buildUserPrompt(ctx, state, modules, onlyKeys) {
     if (ctx.lore && ctx.lore.length) {
         parts.push(`[Из лорбука: эти персонажи впервые появились в сцене — опирайся на описание, черты бери отсюда]\n${ctx.lore.join('\n')}`);
     }
-    const current = compactState(state, modules, onlyKeys);
+    if (ctx.acquainted && ctx.acquainted.length) {
+        parts.push(`[Знакомые по предыстории — в сцене их может не быть, но герои знают их давно]\n${ctx.acquainted.join('\n')}`);
+    }
+    const current = compactState(state, modules, onlyKeys, { recheckBorn: !!(ctx.fromLore || ctx.kind === 'all' || ctx.kind === 'lore') });
     const absent = onlyKeys ? (state.order || []).filter(k => !onlyKeys.includes(k)) : [];
     parts.push(`[Текущее состояние]\n${current || 'пока пусто — составь с нуля'}${absent.length ? `\nНет в сцене (не возвращай): ${absent.join(', ')}` : ''}`);
     if (ctx.messages && ctx.messages.length) parts.push(`[Последние сообщения]\n${ctx.messages.join('\n\n')}`);
@@ -1275,7 +1427,7 @@ export function buildUserPrompt(ctx, state, modules, onlyKeys) {
     return parts.join('\n\n');
 }
 
-export function compactState(state, modules, onlyKeys) {
+export function compactState(state, modules, onlyKeys, opts = {}) {
     if (!state || !state.order || !state.order.length) return '';
     const keys = onlyKeys ? state.order.filter(k => onlyKeys.includes(k)) : state.order;
     if (!keys.length) return '';
@@ -1301,7 +1453,8 @@ export function compactState(state, modules, onlyKeys) {
             o.traits = (c.traits || []).map(t => Object.assign({ name: t.name, kind: t.kind, why: t.why }, t.about ? {} : { no_about: true }));
             if (c.ptype && c.temper && c.ptypeNote && c.temperNote) o.ptype = c.ptype;
             else o.no_ptype = true;
-            if (!c.born && !c.zodiac && !c.bornChecked) o.no_born = true;
+            // при разборе карточки и лорбука дату рождения спрашиваем заново, даже если раньше не нашли
+            if ((!c.born || (!c.born.y && !c.ageAt)) && !c.bornManual && (!c.bornChecked || opts.recheckBorn)) o.no_born = true;
         }
         if (modules.impression && c.impression) o.impression = { label: c.impression.label, score: c.impression.score, now: c.impression.now, now_score: c.impression.nowScore };
         if (modules.impression && c.impression && !c.chem) o.no_chem = true;
@@ -1483,6 +1636,8 @@ export function parseRoster(text, userName = '') {
             g: oneOf(raw.g, ['m', 'f', 'n'], 'n'),
             who: str(raw.who, 160),
             traits: (Array.isArray(raw.traits) ? raw.traits : []).map(t => lowerWord(t, 30)).filter(Boolean).slice(0, 5),
+            rel: lowerWord(raw.knows_main || raw.rel || '', 40),
+            relUser: lowerWord(raw.knows_player || raw.relUser || '', 40),
         });
         if (npc.length >= 40) break;
     }
@@ -1492,6 +1647,9 @@ export function parseRoster(text, userName = '') {
 // Одно и то же ли имя с учётом падежей и полноты: «Соколов» = «Иван Соколов», но «Ирина Соколова» ≠ «Иван Соколов».
 export function namesMatch(a, b) {
     if (sameName(a, b)) return true;
+    // одно имя латиницей, другое кириллицей («Lyuba» и «Люба Хмурова») — сравниваем по звучанию
+    const sa = nameScript(a), sb = nameScript(b);
+    if (sa && sb && sa !== sb) return namesLookAlike(a, b);
     const wa = normText(a).split(' ').filter(w => w.length >= 3);
     const wb = normText(b).split(' ').filter(w => w.length >= 3);
     if (!wa.length || !wb.length) return false;
@@ -1502,6 +1660,13 @@ export function namesMatch(a, b) {
     }
     const [short, long] = wa.length <= wb.length ? [wa, wb] : [wb, wa];
     return short.every(x => long.some(y => same(x, y)));
+}
+
+// Какими буквами написано имя: 'cyr' | 'lat' | '' (смешанное или без букв).
+export function nameScript(name) {
+    const t = String(name || '');
+    const cyr = /[а-яё]/i.test(t), lat = /[a-z]/i.test(t);
+    return cyr && !lat ? 'cyr' : (lat && !cyr ? 'lat' : '');
 }
 
 export function rosterNames(entry) {
@@ -1531,8 +1696,9 @@ export function buildRosterPrompt(sources, userName, lang = 'русском') {
         `main — главный персонаж (или персонажи) карточки, от лица которых пишет бот. Игрока (${userName || 'игрок'}) не включай никуда.`,
         'npc — остальные люди и разумные существа, которые могут появиться в сцене: имя так, как его пишут в тексте; g — пол m/f; who — кто это одной строкой (роль и связь с героями); traits — 2–4 черты характера, если они описаны.',
         'aliases — ТОЛЬКО клички, прозвища и другие имена, которые прямо написаны в карточке или лорбуке. Не придумывай уменьшительные формы и не разбивай имя на части (фамилию отдельно не пиши). Если таких нет — пустой список.',
+        `knows_main — если главный персонаж знаком с этим человеком ещё ДО начала истории (родня, друзья, бывшие, коллеги, враги, соседи — по карточке или лорбуку), кто он главному персонажу, 1–3 слова («бывшая», «друг детства», «сестра»); если не знакомы — пустая строка. knows_player — то же для игрока (${userName || 'игрок'}), по описанию игрока и лорбуку: кто он игроку, если они знакомы до истории, иначе пустая строка.`,
         'Не включай группы людей без имени («охрана», «соседи»), места, предметы и организации. Не больше 30 персонажей, самые важные — первыми.',
-        'Формат: {"main":["Имя"],"npc":[{"name":"Имя","aliases":["прозвище"],"g":"m","who":"кто это","traits":["черта"]}]}',
+        'Формат: {"main":["Имя"],"npc":[{"name":"Имя","aliases":["прозвище"],"g":"m","who":"кто это","traits":["черта"],"knows_main":"","knows_player":""}]}',
     ].join('\n');
     const user = sources.map(src => `[${src.title}]\n${src.text}`).join('\n\n') + '\n\nВерни JSON.';
     return { system, user };
@@ -1655,11 +1821,23 @@ export function parseRewards(text) {
     })).filter(r => r.title).slice(0, 10);
 }
 
-// Купить награду: списывает очки и применяет. Возвращает текст ошибки или null.
-export function buyReward(c, reward) {
+// Общий кошелёк чата: сюда падают монеты за успехи всех — персонажей, НПС и персоны игрока.
+// Старые дневники, где у каждого был свой счёт, при первом обращении складываются в один.
+export function purseOf(state) {
+    if (!state) return 0;
+    if (state.purse === undefined) {
+        state.purse = Object.values(state.characters || {}).reduce((a, c) => a + (c && !c.persona ? (c.points || 0) : 0), 0);
+    }
+    return Math.max(0, state.purse || 0);
+}
+
+// Купить награду: списывает монеты из общего кошелька и применяет. Возвращает текст ошибки или null.
+export function buyReward(c, reward, state = null) {
     if (!c || !reward) return 'нет такой награды';
-    if ((c.points || 0) < reward.cost) return 'не хватает очков';
-    c.points = (c.points || 0) - reward.cost;
+    const have = state ? purseOf(state) : (c.points || 0);
+    if (have < reward.cost) return 'не хватает монет';
+    if (state) state.purse = have - reward.cost;
+    else c.points = (c.points || 0) - reward.cost;
     if (reward.kind === 'collect') {
         c.collection = (c.collection || []).concat([{ title: reward.title, icon: reward.icon, desc: reward.desc }]).slice(-30);
     } else {
@@ -1686,6 +1864,8 @@ export function mergeRoster(old, fresh) {
             prev.traits = [...new Set([...(prev.traits || []), ...(e.traits || [])])].slice(0, 6);
             prev.aliases = [...new Set([...(prev.aliases || []), ...(e.aliases || [])])].slice(0, 8);
             if (prev.g === 'n' && e.g) prev.g = e.g;
+            if (e.rel) prev.rel = e.rel;
+            if (e.relUser) prev.relUser = e.relUser;
         } else if (!out.main.some(m => namesMatch(m, e.name))) {
             out.npc.push(Object.assign({}, e));
         }

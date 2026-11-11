@@ -9,8 +9,14 @@ function esc(s) {
 
 const n = list => list.map(v => [v, String(v)]);
 
+// Пункты списков пишутся с большой буквы: «Сам, по размеру сцены», «Очень сильно».
+export function cap(t) {
+    const x = String(t ?? '');
+    return x ? x[0].toUpperCase() + x.slice(1) : x;
+}
+
 // Поля, которые хранятся числом.
-export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume'];
+export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume', 'clockStep'];
 
 const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 
@@ -31,10 +37,13 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'showNpc', label: 'Вести и показывать НПС', hint: 'Если выключить — дневник только по главному персонажу.' },
                 { type: 'toggle', key: 'persona', label: 'Вести дневник персоны (твоего героя)', hint: 'Всё то же, что у персонажа: настроение, желания, страхи, мечта, черты, отношение к персонажу. Только для тебя — на ответы бота не влияет. Каждый разбор становится длиннее примерно на 500–800 токенов ответа.' },
                 { type: 'select', key: 'every', label: 'Когда обновлять дневник', options: [[1, 'после каждого ответа бота'], [2, 'раз в 2 ответа'], [3, 'раз в 3 ответа'], [5, 'раз в 5 ответов'], [0, 'только по кнопке «Чат»']] },
+                { type: 'select', key: 'analyzeWhen', label: 'Когда писать дневник', options: [['after', 'после ответа бота — точнее'], ['parallel', 'пока бот пишет ответ — быстрее']], show: s => Number(s.every) > 0, hint: s => (s.analyzeWhen === 'parallel' ? 'Дневник разбирает всё до твоей реплики одновременно с ответом бота — к концу ответа сводка уже готова. Сам ответ бота попадёт в следующий разбор. Если модель дневника та же, что в чате, она будет занята двумя запросами сразу.' : 'Дневник читает готовый ответ бота — записи точнее, но появляются через несколько секунд после ответа. Быстрее всего — отдельная лёгкая модель в «Подключении».') },
                 { type: 'select', key: 'contextMessages', label: 'Сколько последних сообщений читать', options: n(CONTEXT_OPTIONS), hint: 'Больше — точнее, но дороже. Обычно хватает 6.' },
                 { type: 'select', key: 'catchUpMessages', label: 'Старый чат: сколько сообщений прочитать в первый раз', options: n(CATCHUP_OPTIONS), hint: s => `Разовый запрос при первом заполнении: ≈ ${catchUpTokens(s.catchUpMessages).toLocaleString('ru-RU')} токенов.` },
                 { type: 'toggle', key: 'onlyPresent', label: 'Экономия: только те, кто сейчас в сцене', hint: 'Остальные персонажи ждут, пока снова не появятся.' },
                 { type: 'select', key: 'maxChars', label: 'Сколько персонажей держать в дневнике', options: n([4, 6, 8, 12, 16, 20]) },
+                { type: 'toggle', key: 'clock', label: 'Часы и календарь сцены', hint: 'Дата и время истории над дневником: сами понимают таймскипы и строчки вида «[02:50 | 08.10.1996]», календарь подстраивается под сеттинг, есть праздники и дни рождения.' },
+                { type: 'select', key: 'clockStep', label: 'Сколько времени проходит за обычный ответ', options: [[0, 'нисколько — только явные скачки'], [1, '1 минута'], [2, '2 минуты'], [5, '5 минут'], [10, '10 минут'], [15, '15 минут'], [30, '30 минут']], show: s => s.clock !== false, hint: 'Если в ответе нет ни отметки времени, ни «через два дня», часы сдвигаются на столько.' },
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
                 { type: 'toggle', key: 'sound', label: 'Звуки', hint: 'Свой звук на каждое событие, а на кнопки разбора — карандаш по бумаге.' },
                 { type: 'range', key: 'volume', label: 'Громкость звуков', min: 0, max: 100, step: 5, show: s => s.sound },
@@ -71,6 +80,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'turns', label: 'Длительность в ответах', show: s => s.moodMode === 'manual' },
                 { type: 'select', key: 'moodInfluence', label: 'Какие эмоции влияют на чат', options: [['medium', 'средние и сильные'], ['strong', 'только сильные'], ['all', 'все, даже слабые'], ['none', 'никакие — только для дневника']], show: s => s.inject },
                 { type: 'select', key: 'injectDepth', label: 'Насколько настойчиво', options: [[1, 'очень сильно'], [2, 'сильно'], [4, 'обычно'], [6, 'мягко'], [10, 'еле заметно']], show: s => s.inject && s.moodInfluence !== 'none' },
+                { type: 'toggle', key: 'clockInject', label: 'Модель знает время сцены', show: s => s.inject && s.clock !== false, hint: 'Дата, время суток, ближайшие праздники и дни рождения, и сколько прошло после таймскипа.' },
                 { type: 'sub', label: 'Притяжение и отторжение', show: s => s.modules && s.modules.attraction !== false },
                 { type: 'select', key: 'attrPower', label: 'Как симпатии и антипатии влияют на чат', options: [['max', 'очень сильно'], ['strong', 'сильно'], ['medium', 'обычно'], ['soft', 'мягко'], ['faint', 'еле заметно'], ['none', 'не влияют — только для дневника']], show: s => s.inject && s.modules && s.modules.attraction !== false, hint: s => (s.attrPower === 'none' ? 'Что привлекает и отталкивает персонажа видно только в дневнике.' : 'Что привлекает и отталкивает персонажа, и совместимость с тобой: модель учитывает это в реакциях. Чем сильнее, тем ближе к концу чата подсказка и тем настойчивее она звучит.') },
             ],
@@ -80,6 +90,7 @@ export function settingsSchema(ctx = {}) {
             title: 'Этот чат',
             fields: [
                 { type: 'books', label: 'Лорбуки для разбора', options: books, studied: ctx.studied || [], html: ctx.booksHtml || '', hint: 'Кроме лорбука персонажа можно доизучить книгу памяти или лорбук мира — сведения добавятся, а не заменятся.' },
+                { type: 'forget', only: 'diary', label: 'Забыть персонажа', html: ctx.forgetHtml || '', hint: 'Персонаж пропадёт из дневника этого чата. Если он снова появится в сцене, дневник заведёт его заново.' },
             ],
         },
         {
@@ -102,9 +113,9 @@ function hintText(f, s) {
 }
 
 // variant: 'st' — разметка таверны; 'diary' — наши классы под тему дневника.
-export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', version = '', updated = '' } = {}) {
+export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '' } = {}) {
     const st = variant === 'st';
-    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml });
+    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml });
     const sections = schema.map(sec => {
         const fields = sec.fields.filter(f => !f.only || f.only === variant).map(f => {
             const hidden = f.show && !f.show(s) ? ' hidden' : '';
@@ -121,7 +132,7 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
             if (f.type === 'select') {
                 const cur = fieldValue(s, f.key);
                 const list = f.options.some(([v]) => String(v) === cur) || cur === '' ? f.options : [...f.options, [cur, cur]];
-                const opts = list.map(([v, label]) => `<option value="${esc(v)}"${String(v) === cur ? ' selected' : ''}>${esc(label)}</option>`).join('');
+                const opts = list.map(([v, label]) => `<option value="${esc(v)}"${String(v) === cur ? ' selected' : ''}>${esc(cap(label))}</option>`).join('');
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<select class="${st ? 'text_pole' : 'iw-select'}" data-iw-set="${f.key}">${opts}</select></label>${hintHtml}</div>`;
             }
             if (f.type === 'range') {
@@ -162,6 +173,9 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                 const one = (w, label) => `<label class="iw-f-label">${label}<select class="${st ? 'text_pole' : 'iw-select'}" data-iw-turn="${w}">${TURN_OPTIONS.map(([v]) => `<option value="${v}"${Number(s.moodTurns[w]) === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>`;
                 return `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div><div class="iw-f-turns">${one('light', 'слабые')}${one('medium', 'средние')}${one('deep', 'сильные')}</div></div>`;
             }
+            if (f.type === 'forget') {
+                return f.html ? `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div><div class="iw-forget-list">${f.html}</div>${hintHtml}</div>` : '';
+            }
             if (f.type === 'books' && f.html && !st) {
                 // в дневнике — тот же список с галочками, что у кнопки «Лорбук»
                 return `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div>${f.html}${hintHtml}</div>`;
@@ -171,7 +185,7 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                 const opts = f.options.length
                     ? `<select class="${st ? 'text_pole' : 'iw-select'}" data-iw-book="1"><option value="">— лорбуки персонажа и чата —</option>${f.options.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}${f.studied.includes(v) ? ' ✓' : ''}</option>`).join('')}</select>`
                     : '';
-                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}${opts}</label><div class="iw-f-row"><button type="button" class="${st ? 'menu_button' : 'iw-btn'}" data-iw-action="studyBook">изучить</button></div>${done}${hintHtml}</div>`;
+                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}${opts}</label><div class="iw-f-row"><button type="button" class="${st ? 'menu_button' : 'iw-btn'}" data-iw-action="studyBook">Изучить</button></div>${done}${hintHtml}</div>`;
             }
             if (f.type === 'buttons') {
                 return `<div class="iw-f iw-f-buttons"${hidden}>${f.buttons.map(b => `<div class="iw-f-btn"><button type="button" class="${st ? 'menu_button' : 'iw-btn'}${b.danger ? ' iw-danger' : ''}" data-iw-action="${b.id}">${esc(b.label)}</button>${b.hint ? `<small class="iw-f-hint">${esc(b.hint)}</small>` : ''}</div>`).join('')}</div>`;

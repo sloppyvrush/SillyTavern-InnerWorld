@@ -12827,3 +12827,1383 @@ ol {
 @media (min-width: 761px) and (max-width: 1180px) {
     #iw_panel:not([hidden]) ~ .iw-toasts { right: 16px; }
 }
+
+/* круглый значок лавки с цифрой монет — только на телефоне */
+.iw-panel .iw-head .iw-shop-tool {
+    display: none;
+}
+
+/* ===================== Телефон: дневник листается целиком, шапка прилипает сверху =====================
+   Раньше листалось только тело дневника — на телефоне от него оставалось узкое окошко под карточками и подвалом.
+   Теперь листается вся страница дневника, а название и значки (звук, колокольчик, анимации, настройки, крестик)
+   всегда видны сверху и стоят справа от названия, как на компьютере. */
+@media (max-width: 760px) {
+    .iw-panel {
+        padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .iw-panel .iw-book {
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding-top: 0;
+        gap: 10px;
+    }
+
+    .iw-panel .iw-body {
+        flex: none;
+        min-height: auto;
+        overflow: visible;
+    }
+
+    .iw-panel .iw-head {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        grid-template-areas: 'title shop tools' 'acts acts acts';
+        align-items: center;
+        gap: 8px 6px;
+        padding: 10px 0 10px;
+        background-color: var(--iw-bg);
+        box-shadow: -48px 0 0 var(--iw-bg), 48px 0 0 var(--iw-bg), 0 12px 12px -12px rgba(0, 0, 0, .35);
+    }
+
+    .iw-panel .iw-head > .iw-titlebox {
+        grid-area: title;
+        min-width: 0;
+    }
+
+    .iw-panel .iw-head > .iw-tools {
+        grid-area: tools;
+        margin: 0;
+        gap: 3px;
+        flex-wrap: nowrap;
+    }
+
+    /* лавка на телефоне — маленький значок с монетами рядом со значками шапки */
+    .iw-panel .iw-head > .iw-shopbar {
+        grid-area: shop;
+        width: auto;
+        margin: 0;
+        box-sizing: border-box;
+    }
+
+    /* на телефоне длинная плашка лавки прячется: вместо неё — круглый значок среди значков шапки, с цифрой монет */
+    .iw-panel .iw-head > .iw-shopbar:has(.iw-shop-sticker) {
+        display: none;
+    }
+
+    .iw-panel .iw-head .iw-shop-tool {
+        display: flex;
+        position: relative;
+        margin-right: 7px;
+    }
+
+    .iw-panel .iw-head .iw-shop-tool > .iw-shop-badge {
+        display: inline-flex;
+        position: absolute;
+        right: -8px;
+        top: -6px;
+        min-width: 16px;
+        height: 16px;
+        padding: 0 4px;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        font: 700 10px/1 system-ui, sans-serif;
+        letter-spacing: 0;
+        background: var(--iw-ink);
+        color: var(--iw-bg);
+        box-shadow: 0 0 0 1.5px var(--iw-bg);
+        text-transform: none;
+        pointer-events: none;
+    }
+
+    .iw-panel .iw-head .iw-shop-sticker .iw-ico {
+        margin: 0;
+    }
+
+    .iw-panel .iw-head .iw-tool {
+        width: 29px;
+        height: 29px;
+        min-width: 0;
+    }
+
+    .iw-panel .iw-head > .iw-tools {
+        gap: 2px;
+    }
+
+    /* кнопки разбора — второй строкой шапки, на всю ширину; надпись «Проанализировать» не нужна, остаётся только загрузка */
+    .iw-panel .iw-head > .iw-head-acts {
+        grid-area: acts;
+        min-width: 0;
+        padding: 0 3px;
+    }
+
+    .iw-panel .iw-head-acts .iw-acts-wrap {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+
+    .iw-panel .iw-head-acts .iw-acts-cap:not(.busy) {
+        display: none;
+    }
+
+    .iw-panel .iw-head-acts .iw-acts-cap.busy {
+        align-self: center;
+        font-size: .85em;
+    }
+
+    .iw-panel .iw-head-acts .iw-acts {
+        display: flex;
+        width: 100%;
+        gap: 6px;
+    }
+
+    .iw-panel .iw-head-acts .iw-acts > * {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .iw-panel .iw-head-acts .iw-acts > .iw-act-split {
+        flex-grow: 1.3;
+    }
+
+    .iw-panel .iw-head-acts .iw-act {
+        justify-content: center;
+        white-space: nowrap;
+        gap: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
+        font-size: .92em;
+        letter-spacing: 0;
+    }
+
+    .iw-panel .iw-head-acts .iw-act-split > .iw-act {
+        padding-right: 26px;
+    }
+
+    /* список лорбуков из шапки — целиком на экране, а не уезжает за левый край */
+    .iw-panel .iw-head-acts .iw-books-menu {
+        right: -92px;
+        left: auto;
+        width: min(290px, calc(100vw - 48px));
+        max-height: calc(100dvh - 220px);
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
+
+    .iw-panel .iw-head .iw-tool .iw-ico {
+        width: 15px;
+        height: 15px;
+    }
+
+    /* длинное название («Внутренний мир», «Бортовой журнал») переносится на вторую строку, а не выталкивает значки вниз */
+    .iw-panel .iw-head .iw-title {
+        white-space: normal;
+        overflow-wrap: normal;
+        font-size: clamp(18px, 5.6vw, 24px);
+        line-height: 1.02;
+        margin-right: 0;
+    }
+
+    .iw-panel .iw-head .iw-title.iw-title-long {
+        font-size: clamp(14px, 4.3vw, 20px);
+    }
+
+    .iw-panel.iw-theme-pixel .iw-head .iw-title {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .iw-panel .iw-settings-head {
+        margin-top: 2px;
+    }
+
+    /* листок «модель пишет» прилипает под шапкой, а не прячется за ней */
+    .iw-panel .iw-live {
+        top: 120px;
+    }
+
+    .iw-panel .iw-foot {
+        padding-bottom: 6px;
+    }
+
+    /* карточки персонажа, НПС и героя — ровно по центру и помещаются в ширину экрана без прокрутки вбок */
+    .iw-panel .iw-tabrow {
+        justify-content: center;
+    }
+
+    .iw-panel .iw-tabrow .iw-tabs {
+        flex: 1 1 100%;
+        gap: 10px;
+        padding-left: 0;
+        padding-right: 0;
+        justify-content: safe center;
+    }
+
+    .iw-panel .iw-tabs > .iw-npc-sticker {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+}
+
+@media (max-width: 400px) {
+    .iw-panel .iw-tabrow .iw-tabs {
+        gap: 5px;
+    }
+
+    .iw-panel.iw-theme-diary .iw-book,
+    .iw-panel.iw-theme-dark .iw-book {
+        padding-left: 26px;
+    }
+
+    .iw-panel.iw-theme-diary .iw-margin,
+    .iw-panel.iw-theme-dark .iw-margin {
+        left: 18px;
+    }
+}
+
+
+/* ---------- Живой листок листается: когда персонажей и НПС много, список не обрезается ---------- */
+.iw-live-card {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    max-height: calc(100dvh - var(--topBarBlockSize, 50px) - 130px);
+}
+
+.iw-live-card > .iw-live-head,
+.iw-live-card > .iw-live-scribble,
+.iw-live-card > .iw-live-len {
+    flex-shrink: 0;
+}
+
+.iw-live-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin-right: -10px;
+    padding-right: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, currentColor 40%, transparent) transparent;
+}
+
+@media (max-width: 760px) {
+    .iw-live-card {
+        max-height: calc(100dvh - var(--topBarBlockSize, 50px) - 190px);
+    }
+
+    /* на телефоне под листком дневнику хватает высоты, даже если записей пока мало */
+    .iw-panel .iw-body.iw-live-on {
+        min-height: calc(100dvh - var(--topBarBlockSize, 50px) - 150px);
+    }
+}
+
+
+/* ---------- Карточки персонажа и героя окрашены в цвет главного настроения ----------
+   Мягкий градиент поверх фона карточки, но под фотографией и именем; у смешанного настроения — два цвета с разных углов. */
+.iw-panel {
+    --iw-tint-a: 42%;
+    --iw-tint-b: 20%;
+}
+
+.iw-panel.iw-theme-dark,
+.iw-panel.iw-theme-cyber,
+.iw-panel.iw-theme-china,
+.iw-panel.iw-theme-herbal,
+.iw-panel.iw-theme-arcana,
+.iw-panel.iw-theme-nav,
+.iw-panel.iw-theme-seance,
+.iw-panel.iw-theme-logbook {
+    --iw-tint-a: 34%;
+    --iw-tint-b: 14%;
+}
+
+.iw-panel .iw-tabs > .iw-tab {
+    isolation: isolate;
+}
+
+.iw-panel .iw-tab > .iw-tab-tint {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    clip-path: inherit;
+    pointer-events: none;
+    background: linear-gradient(170deg,
+        color-mix(in srgb, var(--face-bg) var(--iw-tint-a), transparent) 0%,
+        color-mix(in srgb, var(--face-bg2) var(--iw-tint-b), transparent) 100%);
+}
+
+.iw-panel .iw-tab-tint > .iw-tab-tint2 {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(340deg,
+        color-mix(in srgb, var(--face-bg) var(--iw-tint-a), transparent) 0%,
+        transparent 65%);
+}
+
+/* выбранная карточка — чуть насыщеннее, чтобы цвет читался и на ней */
+.iw-panel .iw-tab.on > .iw-tab-tint {
+    filter: saturate(1.15);
+}
+
+/* ===================== Часы и календарь сцены ===================== */
+.iw-clock {
+    position: relative;
+    flex-shrink: 0;
+    margin: 0 0 14px;
+    color: var(--iw-ink);
+    font-family: var(--iw-body-font);
+}
+
+.iw-clock-bar,
+.iw-clock-empty {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 7px 12px;
+    border: var(--iw-block-border, 1.5px solid currentColor);
+    border-radius: var(--iw-block-radius, 10px);
+    background: var(--iw-block-bg);
+    cursor: pointer;
+    list-style: none;
+    line-height: 1.25;
+}
+
+.iw-clock-empty {
+    cursor: default;
+}
+
+.iw-clock-bar::-webkit-details-marker {
+    display: none;
+}
+
+.iw-clock-ico {
+    display: inline-flex;
+    font-size: 18px;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-clock-time {
+    font-family: var(--iw-title-font, inherit);
+    font-size: 1.25em;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-clock-part {
+    font-size: .82em;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--iw-muted);
+}
+
+.iw-clock-date {
+    font-size: .95em;
+}
+
+.iw-clock-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 9px;
+    border-radius: 999px;
+    background: var(--iw-hl-mid, rgba(255, 220, 120, .35));
+    font-size: .85em;
+}
+
+.iw-clock-lockmark {
+    display: inline-flex;
+    color: var(--iw-muted);
+}
+
+.iw-clock-chev {
+    display: inline-flex;
+    margin-left: auto;
+    color: var(--iw-muted);
+    transition: transform .2s;
+}
+
+.iw-clock[open] > .iw-clock-bar .iw-clock-chev {
+    transform: rotate(180deg);
+}
+
+.iw-clock-pop {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: 35;
+    max-height: min(560px, 62dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .3);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+    border: var(--iw-block-border, 1.5px solid currentColor);
+    border-radius: var(--iw-block-radius, 10px);
+    background: var(--iw-note-bg, var(--iw-block-bg));
+    color: var(--iw-note-ink, var(--iw-ink));
+    font-size: 14px;
+}
+
+.iw-clock-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.iw-clock .iw-btn.iw-mini-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 11px;
+    font: inherit;
+    font-size: 13px;
+    color: inherit;
+    border-color: currentColor;
+    background: transparent;
+    white-space: nowrap;
+}
+
+.iw-clock .iw-btn.iw-mini-btn:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.iw-clock-empty .iw-btn.iw-mini-btn {
+    margin-left: 0;
+}
+
+.iw-clock .iw-input {
+    width: auto;
+    min-width: 0;
+    height: 32px;
+    padding: 3px 8px;
+    font: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+    color: inherit;
+}
+
+.iw-clock .iw-clock-num {
+    width: 64px;
+}
+
+.iw-clock .iw-clock-year {
+    width: 86px;
+}
+
+.iw-clock-holadd .iw-input[data-iw-clock-in="hname"] {
+    flex: 1 1 160px;
+}
+
+.iw-clock-lock {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.iw-clock-skip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 13px;
+    color: var(--iw-muted);
+}
+
+.iw-clock-sub {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-clock-events,
+.iw-clock-hols {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.iw-clock-ev {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+}
+
+.iw-clock-ev > .iw-ico {
+    flex: none;
+    align-self: center;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-clock-ev > span {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.iw-clock-ev > em {
+    flex: none;
+    font-style: normal;
+    font-size: 12px;
+    color: var(--iw-muted);
+}
+
+.iw-clock-hols > li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.iw-clock .iw-clock-x {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+}
+
+.iw-clock-cal > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    list-style: none;
+}
+
+.iw-clock-cal > summary::-webkit-details-marker {
+    display: none;
+}
+
+.iw-clock-cal[open] {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.iw-clock-cal p {
+    margin: 0;
+    font-size: 13px;
+}
+
+.iw-cal {
+    align-self: flex-start;
+    max-width: 100%;
+}
+
+.iw-cal-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.iw-cal-title {
+    font-family: var(--iw-title-font, inherit);
+    text-transform: capitalize;
+}
+
+.iw-cal .iw-mini {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+}
+
+.iw-rot90 { transform: rotate(90deg); }
+.iw-rot-90 { transform: rotate(-90deg); }
+
+.iw-cal-grid {
+    border-collapse: separate;
+    border-spacing: 3px;
+}
+
+.iw-cal-grid th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--iw-muted);
+    text-transform: lowercase;
+}
+
+.iw-cal-day {
+    position: relative;
+    width: 32px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.iw-cal-day:hover:where(:not(.iw-noanim *)) {
+    border-color: currentColor;
+}
+
+.iw-cal-day > i {
+    position: absolute;
+    left: 50%;
+    bottom: 3px;
+    width: 5px;
+    height: 5px;
+    margin-left: -2.5px;
+    border-radius: 50%;
+    background: var(--iw-label-color, currentColor);
+}
+
+.iw-cal-bday > i {
+    background: #e86a9a;
+}
+
+.iw-cal-today {
+    border-color: currentColor;
+    background: var(--iw-hl-mid, rgba(255, 220, 120, .4));
+    font-weight: 700;
+}
+
+.iw-clock-months {
+    line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+    .iw-clock-bar {
+        padding: 6px 10px;
+        gap: 4px 8px;
+    }
+
+    .iw-clock-date {
+        font-size: .88em;
+    }
+
+    .iw-cal-day {
+        width: 30px;
+        height: 28px;
+    }
+
+    .iw-clock-pop {
+        padding: 10px;
+    }
+}
+
+/* пиксельная тема — без скруглений и мелким пиксельным шрифтом */
+.iw-theme-pixel .iw-clock-bar,
+.iw-theme-pixel .iw-clock-empty,
+.iw-theme-pixel .iw-clock-pop,
+.iw-theme-pixel .iw-cal-day {
+    border-radius: 0;
+}
+
+.iw-theme-pixel .iw-clock-time {
+    font-size: 13px;
+}
+
+.iw-theme-pixel .iw-clock-pop,
+.iw-theme-pixel .iw-clock-date {
+    font-size: 11px;
+}
+
+/* ---------- Выбранная тема и включённые блоки видны в любой теме ----------
+   У тёмных тем кнопки перекрашены общим правилом, и обычная подсветка «.on» терялась. */
+.iw-panel .iw-theme-card.on,
+.iw-panel .iw-mod.on {
+    border-style: solid !important;
+    border-width: 2px !important;
+    border-color: var(--iw-label-color, currentColor) !important;
+    background: color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 24%, var(--iw-bg)) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 30%, transparent) !important;
+    font-weight: 700;
+}
+
+.iw-panel.iw-theme-cyber .iw-theme-card.on,
+.iw-panel.iw-theme-cyber .iw-mod.on {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--iw-label-color, #3ef0ff) 60%, transparent) !important;
+}
+
+
+/* ---------- Подвал дневника: только маленькая подпись с версией справа ---------- */
+.iw-panel .iw-foot.iw-foot-mini {
+    display: flex;
+    justify-content: flex-end;
+    min-height: 0;
+    margin: 0;
+    padding: 2px 4px 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.iw-panel .iw-foot-ver {
+    font-size: 10.5px;
+    letter-spacing: .04em;
+    color: var(--iw-muted);
+    opacity: .75;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.iw-panel .iw-foot-ver:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.iw-theme-pixel .iw-foot-ver {
+    font-size: 8px;
+}
+
+/* ---------- Пиксельная тема: у карточек персонажа и героя всегда есть рамка, имя не вылезает ---------- */
+.iw-panel.iw-theme-pixel .iw-tabs > .iw-tab {
+    padding: 6px 6px 5px;
+    background: rgba(255, 244, 246, .5);
+    outline: 3px solid rgba(74, 39, 48, .55);
+    outline-offset: -3px;
+    box-shadow: 4px 4px 0 0 rgba(74, 39, 48, .18);
+    opacity: 1;
+}
+
+.iw-panel.iw-theme-pixel .iw-tabs > .iw-tab.on {
+    outline-color: #d9667f;
+    background: rgba(255, 244, 246, .7);
+}
+
+.iw-panel.iw-theme-pixel .iw-tab-name {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.iw-panel.iw-theme-pixel .iw-tab-name.iw-name-l { font-size: 13px; }
+.iw-panel.iw-theme-pixel .iw-tab-name.iw-name-xl { font-size: 11px; }
+.iw-panel.iw-theme-pixel .iw-tab-name.iw-name-xxl { font-size: 9px; }
+
+@media (max-width: 760px) {
+    .iw-panel.iw-theme-pixel .iw-tab-name { font-size: 11px; }
+    .iw-panel.iw-theme-pixel .iw-tab-name.iw-name-l { font-size: 10px; }
+    .iw-panel.iw-theme-pixel .iw-tab-name.iw-name-xl,
+    .iw-panel.iw-theme-pixel .iw-tab-name.iw-name-xxl { font-size: 8.5px; }
+}
+
+/* день рождения на карточке */
+.iw-tab-born {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 1px;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--iw-muted);
+    white-space: nowrap;
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: var(--iw-body-font);
+}
+
+.iw-tab-born .iw-ico {
+    font-size: 11px;
+}
+
+.iw-tab-born.iw-born-today {
+    color: var(--iw-label-color, var(--iw-ink));
+    font-weight: 700;
+}
+
+.iw-theme-pixel .iw-tab-born {
+    font-size: 8px;
+    font-family: 'Press Start 2P', monospace;
+}
+
+/* «вписать дату» рождения у знака зодиака */
+.iw-born-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: 4px;
+    padding: 0 6px;
+    border: 1px dashed currentColor;
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: .92em;
+    cursor: pointer;
+    opacity: .8;
+}
+
+.iw-born-edit:hover {
+    opacity: 1;
+}
+
+.iw-forget-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.iw-panel .iw-forget-chip {
+    padding: 4px 10px;
+    font-size: 13px;
+}
+
+/* ===================== Календарь: крупная сетка, свои списки, рисунки у праздников ===================== */
+.iw-clock-pop {
+    gap: 12px;
+}
+
+.iw-clock-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 16px 22px;
+    align-items: start;
+}
+
+.iw-clock-side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.iw-cal {
+    align-self: stretch;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+.iw-cal-nav {
+    margin-bottom: 8px;
+}
+
+.iw-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.iw-cal-year {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+    border-radius: 999px;
+    padding: 0 4px;
+}
+
+.iw-cal-ystep {
+    width: 24px;
+    height: 28px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.iw-cal-yin {
+    width: 64px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    text-align: center;
+    -moz-appearance: textfield;
+}
+
+.iw-cal-yin::-webkit-outer-spin-button,
+.iw-cal-yin::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.iw-cal-era {
+    font-size: 12px;
+    color: var(--iw-muted);
+}
+
+.iw-cal-grid {
+    width: 100%;
+    table-layout: fixed;
+    border-spacing: 4px;
+}
+
+.iw-cal-grid th {
+    padding-bottom: 2px;
+}
+
+.iw-cal-grid td {
+    padding: 0;
+    text-align: center;
+}
+
+.iw-cal-day {
+    position: relative;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / .82;
+    max-height: 46px;
+    font-size: 15px;
+    border-radius: 9px;
+    isolation: isolate;
+}
+
+.iw-cal-day > span {
+    position: relative;
+    z-index: 1;
+}
+
+.iw-cal-sel {
+    border-color: var(--iw-label-color, currentColor) !important;
+    border-width: 2px;
+    border-style: dashed;
+}
+
+.iw-cal-today {
+    background: var(--iw-hl-mid, rgba(255, 220, 120, .4));
+    font-weight: 700;
+}
+
+/* рисунок вокруг праздника — в стиле темы (по умолчанию — карандашный кружок) */
+.iw-panel {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M21 3c9 0 16 5 16 13s-7 15-17 15S3 26 4 16 13 2 24 4' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    --iw-doodle-canon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M6 28c8 2 20 2 28-1' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-dasharray='3 3'/%3E%3C/svg%3E");
+    --iw-doodle-bday: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 10.5S1.5 7.6 1.5 4.6A2.3 2.3 0 0 1 6 3.4a2.3 2.3 0 0 1 4.5 1.2c0 3-4.5 5.9-4.5 5.9z' fill='black'/%3E%3C/svg%3E");
+    --iw-doodle-color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-cal-day.iw-cal-hol::before,
+.iw-cal-day.iw-cal-canon::after {
+    content: '';
+    position: absolute;
+    inset: -2px -3px;
+    z-index: 0;
+    pointer-events: none;
+    background: var(--iw-doodle-color);
+    -webkit-mask: var(--iw-doodle) center / 100% 100% no-repeat;
+    mask: var(--iw-doodle) center / 100% 100% no-repeat;
+}
+
+.iw-cal-day.iw-cal-canon::after {
+    background: var(--iw-muted);
+    -webkit-mask-image: var(--iw-doodle-canon);
+    mask-image: var(--iw-doodle-canon);
+}
+
+.iw-cal-day.iw-cal-bday > span::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: -9px;
+    width: 9px;
+    height: 9px;
+    background: #e86a9a;
+    -webkit-mask: var(--iw-doodle-bday) center / contain no-repeat;
+    mask: var(--iw-doodle-bday) center / contain no-repeat;
+}
+
+.iw-cal-day > i {
+    display: none;
+}
+
+/* свой рисунок у каждой темы */
+.iw-panel.iw-theme-cyber,
+.iw-panel.iw-theme-logbook,
+.iw-panel.iw-theme-dossier {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M3 10V3h7M30 3h7v7M37 24v7h-7M10 31H3v-7' fill='none' stroke='black' stroke-width='2.4'/%3E%3C/svg%3E");
+}
+
+.iw-panel.iw-theme-china {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M5 4.5l30-1 .5 26-30.5 1z' fill='none' stroke='black' stroke-width='2.6' stroke-linejoin='round'/%3E%3Cpath d='M30 26l4 4' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+    --iw-doodle-color: #d24a3a;
+}
+
+.iw-panel.iw-theme-herbal {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M20 31C9 31 4 24 5 15' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M20 31c11 0 16-7 15-16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M5 15c-3-4 0-8 3-9 1 4 0 7-3 9zM35 15c3-4 0-8-3-9-1 4 0 7 3 9zM8 24c-4-1-5-5-4-7 3 1 5 4 4 7zM32 24c4-1 5-5 4-7-3 1-5 4-4 7z' fill='black'/%3E%3C/svg%3E");
+}
+
+.iw-panel.iw-theme-arcana,
+.iw-panel.iw-theme-seance {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cellipse cx='20' cy='17' rx='16' ry='13' fill='none' stroke='black' stroke-width='1.6'/%3E%3Cpath d='M33 2l1.2 3 3 1.2-3 1.2L33 10.4l-1.2-3-3-1.2 3-1.2zM6 25l.8 2 2 .8-2 .8L6 30.6l-.8-2-2-.8 2-.8z' fill='black'/%3E%3C/svg%3E");
+}
+
+.iw-panel.iw-theme-medieval,
+.iw-panel.iw-theme-nav {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M4 28c6 3 26 3 32 0M8 31c2-2 4-2 6 0M26 31c2-2 4-2 6 0M20 2c-2 3 2 4 0 7' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='17' r='14' fill='none' stroke='black' stroke-width='1.2' stroke-dasharray='1 3' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+.iw-panel.iw-theme-bimbo {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M20 31S4 22 4 12a8 8 0 0 1 16-2 8 8 0 0 1 16 2c0 10-16 19-16 19z' fill='none' stroke='black' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --iw-doodle-color: #ff5aa8;
+}
+
+.iw-panel.iw-theme-pixel {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34' shape-rendering='crispEdges'%3E%3Cpath d='M6 2h28v3H6zM6 29h28v3H6zM2 6h3v22H2zM35 6h3v22h-3zM3 4h4v3H3zM33 4h4v3h-4zM3 27h4v3H3zM33 27h4v3h-4z' fill='black'/%3E%3C/svg%3E");
+    --iw-doodle-color: #d9667f;
+}
+
+.iw-panel.iw-theme-grid {
+    --iw-doodle-color: #c0262d;
+}
+
+.iw-panel.iw-theme-sims {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M20 2l4 8 9 1-6.5 6 1.5 9-8-4.5-8 4.5 1.5-9L7 11l9-1z' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --iw-doodle-color: #7ed957;
+}
+
+/* подписи к значкам календаря */
+.iw-cal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 6px;
+    font-size: 11.5px;
+    color: var(--iw-muted);
+}
+
+.iw-lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.iw-lg::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 13px;
+    background: var(--iw-doodle-color);
+    -webkit-mask: var(--iw-doodle) center / 100% 100% no-repeat;
+    mask: var(--iw-doodle) center / 100% 100% no-repeat;
+}
+
+.iw-lg-canon::before {
+    background: var(--iw-muted);
+    -webkit-mask-image: var(--iw-doodle-canon);
+    mask-image: var(--iw-doodle-canon);
+}
+
+.iw-lg-bday::before {
+    width: 10px;
+    height: 10px;
+    background: #e86a9a;
+    -webkit-mask-image: var(--iw-doodle-bday);
+    mask-image: var(--iw-doodle-bday);
+}
+
+.iw-lg-today::before {
+    -webkit-mask: none;
+    mask: none;
+    border-radius: 4px;
+    background: var(--iw-hl-mid, rgba(255, 220, 120, .5));
+    border: 1px solid currentColor;
+}
+
+/* выбранное время */
+.iw-clock-chosen {
+    font-family: var(--iw-title-font, inherit);
+    font-size: 1.12em;
+    line-height: 1.3;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-clock-chosen.iw-changed::after {
+    content: ' — не применено';
+    font-family: var(--iw-body-font);
+    font-size: 12px;
+    color: var(--iw-muted);
+}
+
+.iw-clock-hm {
+    gap: 6px;
+}
+
+.iw-clock-colon {
+    font-size: 1.3em;
+}
+
+.iw-clock-partof {
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.iw-clock .iw-clock-apply:not(:disabled) {
+    border-width: 2px;
+    border-style: solid;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 20%, transparent);
+}
+
+/* свои выпадающие списки: месяц, часы, минуты */
+.iw-pick {
+    position: relative;
+    display: inline-block;
+}
+
+.iw-pick-sum {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 3px 10px 3px 12px;
+    border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    border-radius: 999px;
+    background: var(--iw-block-bg);
+    color: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    text-transform: capitalize;
+}
+
+.iw-pick-sum::-webkit-details-marker {
+    display: none;
+}
+
+.iw-pick-sum .iw-ico {
+    font-size: 13px;
+    opacity: .7;
+    transition: transform .15s;
+}
+
+.iw-pick[open] > .iw-pick-sum .iw-ico {
+    transform: rotate(180deg);
+}
+
+.iw-pick-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+    min-width: 230px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    border: var(--iw-block-border, 1.5px solid currentColor);
+    border-radius: var(--iw-block-radius, 10px);
+    background: var(--iw-note-bg, var(--iw-bg));
+    color: var(--iw-note-ink, var(--iw-ink));
+    box-shadow: 0 12px 26px rgba(0, 0, 0, .3);
+}
+
+.iw-pick-grid .iw-pick-list {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    min-width: 260px;
+}
+
+.iw-pick-mi .iw-pick-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-width: 200px;
+}
+
+.iw-pick-opt {
+    padding: 6px 4px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    text-transform: capitalize;
+}
+
+.iw-pick-opt:hover {
+    border-color: currentColor;
+}
+
+.iw-pick-opt.on {
+    background: color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 24%, transparent);
+    border-color: var(--iw-label-color, currentColor);
+    font-weight: 700;
+}
+
+.iw-clock-cal > summary .iw-ico:last-child {
+    font-size: 12px;
+    opacity: .7;
+}
+
+.iw-clock-hols > li.iw-clock-canon > span::before,
+.iw-clock-ev.iw-clock-canon b::before {
+    content: '';
+}
+
+/* острые углы у «технических» тем и пикселей */
+.iw-theme-cyber :is(.iw-pick-sum, .iw-pick-list, .iw-pick-opt, .iw-cal-year, .iw-cal-day),
+.iw-theme-logbook :is(.iw-pick-sum, .iw-pick-list, .iw-pick-opt, .iw-cal-year, .iw-cal-day),
+.iw-theme-dossier :is(.iw-pick-sum, .iw-pick-list, .iw-pick-opt, .iw-cal-year, .iw-cal-day),
+.iw-theme-pixel :is(.iw-pick-sum, .iw-pick-list, .iw-pick-opt, .iw-cal-year, .iw-cal-day),
+.iw-theme-china :is(.iw-pick-sum, .iw-pick-list, .iw-pick-opt, .iw-cal-year, .iw-cal-day) {
+    border-radius: 2px;
+}
+
+.iw-theme-pixel :is(.iw-pick-sum, .iw-pick-opt, .iw-cal-day, .iw-clock-chosen, .iw-cal-yin) {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+}
+
+.iw-theme-cyber .iw-pick-list,
+.iw-theme-logbook .iw-pick-list {
+    box-shadow: 0 0 14px color-mix(in srgb, var(--iw-label-color, #3ef0ff) 35%, transparent);
+}
+
+@media (max-width: 760px) {
+    .iw-clock-cols {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .iw-cal-day {
+        font-size: 14px;
+        max-height: 40px;
+    }
+
+    .iw-pick-list {
+        min-width: 200px;
+    }
+
+    .iw-pick-grid .iw-pick-list {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        min-width: 180px;
+    }
+}
+
+/* ---------- Компьютер: шапка в одну строку при любой теме — название, лавка посередине, значки справа ----------
+   Раньше при появлении лавки значки переносились вниз и влево. */
+@media (min-width: 761px) {
+    .iw-panel .iw-head {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-areas: 'title shop tools';
+        align-items: center;
+        column-gap: 14px;
+        flex-wrap: nowrap;
+    }
+
+    .iw-panel .iw-head > .iw-titlebox {
+        grid-area: title;
+        min-width: 0;
+    }
+
+    .iw-panel .iw-head > .iw-shopbar {
+        grid-area: shop;
+        justify-self: center;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .iw-panel .iw-head > .iw-tools {
+        grid-area: tools;
+        margin: 0;
+        flex-wrap: nowrap;
+    }
+
+    .iw-panel .iw-head .iw-shopbar .iw-shop-sticker {
+        min-width: 0;
+    }
+
+    .iw-panel .iw-head .iw-shopbar .iw-shop-sticker > span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .iw-panel .iw-head .iw-title {
+        white-space: nowrap;
+    }
+
+    /* длинное название — у лавки остаются значок и монеты, без подписи (подпись — во всплывающей подсказке) */
+    .iw-panel .iw-head:has(.iw-title-long) .iw-shopbar .iw-shop-sticker > span {
+        display: none;
+    }
+}
+
+/* ---------- Пиксельная тема: длинные тексты — узким пиксельным шрифтом ----------
+   Press Start 2P очень широкий: в абзацах появлялись дыры и переносы по одной букве («INFP-» / «T»).
+   Заголовки, имена, кнопки и ярлыки остаются в Press Start 2P, а описания, причины и подсказки — в Pixelify Sans. */
+.iw-panel.iw-theme-pixel {
+    --iw-body-font: 'Pixelify Sans', 'Press Start 2P', monospace;
+    --iw-text-size: 15px;
+}
+
+.iw-panel.iw-theme-pixel .iw-book {
+    line-height: 1.4;
+}
+
+.iw-panel.iw-theme-pixel :is(.iw-muted, .iw-f-hint, .iw-quick-hint, .iw-group-hint, .iw-feel-why, .iw-feel-feel, .iw-trait-why, .iw-trait-left, .iw-tab-mood, .iw-npc-mood, .iw-npc-who, .iw-imp-why, .iw-persona-general, .iw-persona-own, small, .iw-clock-ev, .iw-clock-hols, .iw-cal-legend, .iw-waiting-text, .iw-wallet-info p) {
+    font-family: 'Pixelify Sans', 'Press Start 2P', monospace;
+    font-size: 13.5px;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: manual;
+}
+
+.iw-panel.iw-theme-pixel .iw-tab-mood {
+    font-size: 12.5px;
+}
+
+.iw-panel.iw-theme-pixel .iw-persona-code {
+    white-space: nowrap;
+    min-width: 0;
+    padding: 4px 6px;
+    font-size: 10px;
+}
+
+.iw-panel.iw-theme-pixel .iw-persona-code > i {
+    font-style: normal;
+}
+
+.iw-panel.iw-theme-pixel .iw-persona-name {
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: break-word;
+}
+
+.iw-panel.iw-theme-pixel .iw-persona-name small {
+    display: block;
+    margin-top: 2px;
+}
+
+.iw-panel.iw-theme-pixel .iw-persona-name small {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--iw-muted);
+}

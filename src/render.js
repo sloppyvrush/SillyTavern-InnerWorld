@@ -1,5 +1,6 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
+import { settleMood, purseOf, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
+import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
 
@@ -57,13 +58,13 @@ function renderWallet(wallet, theme = '') {
     const coin = icon(currencyIcon(theme));
     if (!wallet || !wallet.list.length) return '';
     const L = themeLabels(theme, 'm');
-    const cur = wallet.list.find(x => x.key === wallet.current) || wallet.list[0];
+    const cur = { points: wallet.purse ?? ((wallet.list.find(x => x.key === wallet.current) || wallet.list[0]).points) };
     const name = L.currency || 'монетки';
     const Name = name.charAt(0).toUpperCase() + name.slice(1);
     return `<details class="iw-wallet"><summary title="${esc(Name)}: что это">${coin}<b>${shortPoints(cur.points)}</b></summary>
       <div class="iw-wallet-info">
         <div class="iw-wallet-title">${coin}<span>${esc(Name)}</span></div>
-        <p>Валюта дневника. Персонаж получает её, когда что-то сбывается: исполненное желание <b>+10</b>, преодолённый страх <b>+5</b>, шаг к мечте <b>+25</b>, мечта целиком <b>+100</b>.</p>
+        <p>Общий кошелёк этого чата. Монеты падают, когда что-то сбывается у любого — у персонажа, НПС или твоего героя: исполненное желание <b>+10</b>, преодолённый страх <b>+5</b>, шаг к мечте <b>+25</b>, мечта целиком <b>+100</b>.</p>
         <p>Тратится на награды для персонажа: открой «${esc(L.shop || 'Магазин наград')}» рядом, там настроение, события и вещи в коллекцию.</p>
         <p class="iw-wallet-now"><span>Сейчас:</span><b>${coin}<span>${Number(cur.points || 0).toLocaleString('ru-RU')}</span></b></p>
       </div></details>`;
@@ -85,17 +86,22 @@ const TEST_MENU = `<details class="iw-vol iw-testmenu">
       </div>
     </details>`;
 
-export function renderHeader(settings, theme, busy, inSettings = false, wallet = null, shop = null) {
+// acts — кнопки разбора: на телефоне они живут в шапке (прилипают сверху вместе с ней), на компьютере — под вкладками.
+export function renderHeader(settings, theme, busy, inSettings = false, wallet = null, shop = null, acts = '') {
     const L = themeLabels(theme, 'm');
     const sound = settings.sound !== false;
+    // на телефоне кошелёк прячется, а монеты видны цифрой-кружком на значке лавки
+    const purse = shop && wallet ? { points: wallet.purse ?? 0 } : null;
+    const badge = purse ? `<b class="iw-shop-badge" aria-label="${esc(L.currency || 'монетки')}: ${Number(purse.points || 0)}">${shortPoints(purse.points)}</b>` : '';
     return `
 <div class="iw-head">
-  <div class="iw-titlebox"><div class="iw-title">${esc(L.title)}</div>${SCRIBBLE}</div>
+  <div class="iw-titlebox"><div class="iw-title${[...String(L.title || '')].length > 9 ? ' iw-title-long' : ''}">${esc(L.title)}</div>${SCRIBBLE}</div>
   ${shop || (wallet && wallet.list && wallet.list.length) ? `<div class="iw-shopbar">
-    ${shop ? `<button type="button" class="iw-shop-sticker${shop.on ? ' on' : ''}" data-iw-view="shop:${esc(shop.key)}" aria-pressed="${shop.on}">${icon('shop')}<span>${esc(L.shop || 'Магазин наград')}</span></button>` : ''}
+    ${shop ? `<button type="button" class="iw-shop-sticker${shop.on ? ' on' : ''}" data-iw-view="shop:${esc(shop.key)}" aria-pressed="${shop.on}" title="${esc(L.shop || 'Магазин наград')}">${icon('shop')}<span>${esc(L.shop || 'Магазин наград')}</span></button>` : ''}
     ${renderWallet(wallet, theme)}
   </div>` : ''}
   <div class="iw-tools">
+    ${shop ? `<button type="button" class="iw-tool iw-shop-tool${shop.on ? ' on' : ''}" data-iw-view="shop:${esc(shop.key)}" aria-pressed="${shop.on}" title="${esc(L.shop || 'Магазин наград')}" aria-label="${esc(L.shop || 'Магазин наград')}">${icon('shop')}${badge}</button>` : ''}
     <details class="iw-vol${sound ? '' : ' off'}">
       <summary class="iw-tool" title="Звук и громкость" aria-label="Звук и громкость">${icon(sound ? 'sound' : 'mute')}</summary>
       <div class="iw-vol-menu">
@@ -108,7 +114,7 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
     <button type="button" class="iw-tool iw-anim${settings.animations === false ? ' off' : ''}" title="${settings.animations === false ? 'Анимации выключены: нажми, чтобы включить' : 'Выключить анимации'}" aria-label="Анимации" aria-pressed="${settings.animations !== false}">${icon(settings.animations === false ? 'sparkle_off' : 'sparkle')}</button>
     <button type="button" class="iw-tool iw-gear${inSettings ? ' on' : ''}" title="${inSettings ? 'Вернуться к дневнику' : 'Настройки'}" aria-label="Настройки" aria-pressed="${inSettings}">${icon('gear')}</button>
     <button type="button" class="iw-tool iw-close" title="Закрыть" aria-label="Закрыть">${icon('x')}</button>
-  </div>
+  </div>${acts ? `<div class="iw-head-acts">${acts}</div>` : ''}
 </div>`;
 }
 
@@ -118,6 +124,13 @@ function titleFace(c) {
     const [face] = moodFaces(c);
     if (!face) return '';
     return ` <span class="iw-title-face iw-face-${face}" title="${esc(FACE_NAMES[face] || '')}">${faceIcon(face)}</span>`;
+}
+
+// Фон карточки в цвет главного настроения: мягкий градиент под фотографией и именем.
+function tabTint(c) {
+    const [a, b] = moodFaces(c);
+    if (!a || a === 'neutral') return '';
+    return `<span class="iw-tab-tint iw-face-${a}" aria-hidden="true">${b && b !== 'neutral' ? `<span class="iw-tab-tint2 iw-face-${b}"></span>` : ''}</span>`;
 }
 
 function faceBadge(c) {
@@ -206,11 +219,21 @@ function photoHtml(c, avatarFor) {
 }
 
 // Вкладки: главные персонажи-фотографии и наклейка «НПС»; справа — кнопки разбора.
-export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [] }) {
+// День рождения на карточке: «20 авг · 27» (возраст — по часам сцены, если календарь обычный).
+const MONTH_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+function tabBorn(c, clock) {
+    if (!c) return '';
+    const age = clock && clock.cal && clock.t ? ageNow(clock.cal, clock.t, c) : null;
+    if (!c.born || !c.born.d || !c.born.m) return age !== null ? `<span class="iw-tab-born" title="Возраст на дату сцены">${age} ${plural(age, 'год', 'года', 'лет')}</span>` : '';
+    const today = clock && clock.t && clock.cal && clock.cal.type === 'greg' && clock.t.m === c.born.m && clock.t.d === c.born.d;
+    return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}" title="День рождения: ${esc(bornText(c.born))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${MONTH_SHORT[c.born.m - 1]}${age !== null ? ` · ${age}` : ''}</span></span>`;
+}
+
+export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null }) {
     const tabs = mains.map(key => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
-        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}"><span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}</button>`;
+        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}">${tabTint(c)}<span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}${tabBorn(c, clock)}</button>`;
     }).join('');
     const sticker = npc
         ? `<button type="button" class="iw-npc-sticker${view.startsWith('npc') ? ' on' : ''}" data-iw-view="npc" aria-pressed="${view.startsWith('npc')}">
@@ -226,9 +249,9 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
         const photo = persona.avatar
             ? `<span class="iw-photo" style="background-image:url('${esc(persona.avatar)}')"></span>`
             : `<span class="iw-photo iw-photo-letter">${esc((pc.name || '?').slice(0, 1).toUpperCase())}</span>`;
-        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет"><span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${ce(pc.mood)}</span>` : ''}</button>`;
+        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет">${persona.key ? tabTint(pc) : ''}<span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${ce(pc.mood)}</span>` : ''}${persona.key ? tabBorn(pc, clock) : ''}</button>`;
     }
-    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div><span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind, off, !!persona)}</div>`;
+    return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div>${noActs ? '' : `<span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind, off, !!persona)}`}</div>`;
 }
 
 function feelMeter(m, manualTurns) {
@@ -534,7 +557,7 @@ const TEMPER_TEXT = {
 };
 const byGender = (pair, g) => (Array.isArray(pair) ? pair[g === 'f' ? 1 : 0] : pair || '');
 
-function renderPersona(c, L) {
+function renderPersona(c, L, opts = {}) {
     const code = c.ptype ? c.ptype.slice(0, 4) : '';
     const name = PTYPES[code];
     const grp = ptypeGroup(code);
@@ -547,7 +570,7 @@ function renderPersona(c, L) {
         <div class="iw-persona-card iw-pt-${grp}">
           <div class="iw-persona-top">
             <span class="iw-persona-code">${esc(code)}${tail ? `<i>-${esc(tail)}</i>` : ''}</span>
-            <span class="iw-persona-name">${esc(name)}<small>${esc(PTYPE_GROUPS[grp] || '')}${tailPair ? ` · ${esc(tailPair[0])}` : ''}</small></span>
+            <span class="iw-persona-name">${esc(name)}<small>${esc(PTYPE_GROUPS[grp] || '')}</small></span>
           </div>
           <p class="iw-persona-general">${esc(byGender(PTYPE_TEXT[code], g))}${tailPair ? ` ${esc(tailPair[0].charAt(0).toUpperCase() + tailPair[0].slice(1))}: ${esc(tailPair[1])}.` : ''}</p>
           ${c.ptypeNote ? `<p class="iw-persona-own">${esc(c.ptypeNote)}</p>` : ''}
@@ -565,13 +588,15 @@ function renderPersona(c, L) {
         </div>`);
     }
     const z = ZODIAC[c.zodiac];
-    if (z || c.born) {
+    // дату рождения можно вписать или поправить руками — она же попадает в календарь и на карточку
+    const bornBtn = opts.key ? `<button type="button" class="iw-born-edit" data-iw-born="${esc(opts.key)}" title="${c.born ? 'Поправить дату рождения' : 'Вписать дату рождения'}">${icon('feather')}<span>${c.born ? 'поправить' : 'вписать дату'}</span></button>` : '';
+    {
         const born = c.born ? `${gw(g, 'родился', 'родилась', 'день рождения:')} ${esc(bornText(c.born))}` : 'дата рождения не указана';
         cards.push(`
         <div class="iw-persona-card iw-zd-${z ? z.el : 'none'}">
           <div class="iw-persona-top">
             <span class="iw-persona-code iw-zodiac-glyph">${z ? `${z.glyph}\uFE0E` : icon('zodiac')}</span>
-            <span class="iw-persona-name">${esc(z ? z.name : 'знак не ясен')}<small>${born}</small></span>
+            <span class="iw-persona-name">${esc(z ? z.name : 'знак не ясен')}<small>${born} ${bornBtn}</small></span>
           </div>
           ${z ? `<p class="iw-persona-general">${esc(z.text)}</p>` : ''}
         </div>`);
@@ -635,9 +660,9 @@ const REWARD_GROUPS = [
     { kind: 'collect', icon: 'gem', name: 'В коллекцию', hint: 'памятная вещь, остаётся навсегда' },
 ];
 
-export function renderShop(c, theme, key, { shopBusy = false } = {}) {
+export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {}) {
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who));
-    const pts = c.points || 0;
+    const pts = purse ?? (c.points || 0);
     const row = r => `
       <li class="iw-reward iw-rk-${r.kind}${pts < r.cost ? ' locked' : ''}">
         <span class="iw-rw-ico iw-rw-big">${icon(r.icon || 'gift')}</span>
@@ -679,7 +704,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.fears) blocks.push(renderFears(c, L));
     if (modules.dream) blocks.push(renderDream(c, L, opts));
     if (modules.traits) blocks.push(renderTraits(c, L));
-    if (modules.traits) blocks.push(renderPersona(c, L));
+    if (modules.traits) blocks.push(renderPersona(c, L, opts));
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
     const html = blocks.join('').replace(/class="iw-block iw-b-([a-z]+)(?=[" ])/g, (m, k) => (FOLD.collapsed[k] ? `${m} iw-collapsed` : m));
@@ -741,14 +766,156 @@ let SIGN_INFO = { version: '', updated: '' };
 export function setSignInfo(version = '', updated = '') {
     SIGN_INFO = { version, updated };
 }
+// Внизу дневника — только маленькая подпись с версией в правом углу, чтобы подвал не закрывал записи.
+function footHtml() {
+    const { version, updated } = SIGN_INFO;
+    return `<div class="iw-foot iw-foot-mini"><a class="iw-foot-ver" href="https://t.me/sillysloppy" target="_blank" rel="noopener" title="«Внутренний мир»${updated ? ` · обновлено ${esc(updated)}` : ''} · от Слоппи ♥">Внутренний мир${version ? ` v${esc(version)}` : ''}</a></div>`;
+}
+
 function signHtml() {
     const { version, updated } = SIGN_INFO;
     return `<span class="iw-foot-sign">«Внутренний мир»${version ? ` · v${esc(version)}` : ''}${updated ? ` · ${esc(updated)}` : ''} · от <a class="iw-sign-nick" href="https://t.me/sillysloppy" target="_blank" rel="noopener" title="Телеграм-канал: t.me/sillysloppy">Слоппи ♥</a></span>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {} }) {
+// ---------- Часы и календарь сцены ----------
+// clock — готовая модель от дневника: { cal, t, draft, view, time, part, date, today, upcoming, grid, locked, busy, … }
+function clockEventText(e) {
+    if (e.kind === 'birthday') return `${e.name} — день рождения${e.age ? ` (${e.inDays === undefined ? '' : 'исполнится '}${e.age})` : ''}`;
+    if (e.kind === 'canon' && e.who) return `${e.who}: ${e.name}`;
+    return e.name;
+}
+
+function clockWhen(e) {
+    return e.inDays === 0 ? 'сегодня' : (e.inDays === 1 ? 'завтра' : `через ${e.inDaysText}`);
+}
+
+const EVENT_ICON = { birthday: 'cake', canon: 'feather', holiday: 'gift' };
+
+// Свой выпадающий список в стиле темы (вместо системного): key — что меняем, options — [[значение, подпись, выбрано]].
+function clockPick(key, label, options, cls = '') {
+    return `<details class="iw-pick ${cls}"><summary class="iw-pick-sum"><span>${esc(label)}</span>${icon('chevron')}</summary><div class="iw-pick-list">${options.map(([v, t, on]) => `<button type="button" class="iw-pick-opt${on ? ' on' : ''}" data-iw-clock="${key}:${v}">${esc(t)}</button>`).join('')}</div></details>`;
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+
+export function renderClock(clock) {
+    if (!clock) return '';
+    if (!clock.t) {
+        return `<div class="iw-clock iw-clock-empty">
+  <span class="iw-clock-ico">${icon('clock')}</span>
+  <span class="iw-muted">${clock.busy ? 'Определяю календарь и время по истории…' : 'Время сцены пока не понятно.'}</span>
+  ${clock.busy ? '' : `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="detect">${icon('sparkle')}<span>Определить по истории</span></button>`}
+</div>`;
+    }
+    const cal = clock.cal;
+    const d = clock.draft;
+    const today = (clock.today || []).map(e => `<span class="iw-clock-tag iw-clock-${e.kind}">${icon(EVENT_ICON[e.kind] || 'gift')}<span>${esc(clockEventText(e))}</span></span>`).join('');
+    let grid = '';
+    if (clock.grid) {
+        const g = clock.grid;
+        const monthOpts = (clock.monthNames || []).map((n, i) => [i + 1, n, i + 1 === g.m]);
+        grid = `
+    <div class="iw-cal">
+      <div class="iw-cal-nav">
+        <button type="button" class="iw-mini" data-iw-clock="month:-1" aria-label="Прошлый месяц">${icon('chevron', 'iw-rot90')}</button>
+        <div class="iw-cal-head">
+          ${clockPick('vmonth', clock.monthNames[g.m - 1] || '', monthOpts, 'iw-pick-month')}
+          <span class="iw-cal-year">
+            <button type="button" class="iw-cal-ystep" data-iw-clock="year:-1" aria-label="Год назад">‹</button>
+            <input type="number" class="iw-cal-yin" data-iw-clock-in="vy" value="${g.y}" aria-label="Год">
+            <button type="button" class="iw-cal-ystep" data-iw-clock="year:1" aria-label="Год вперёд">›</button>
+          </span>
+          ${cal.era ? `<span class="iw-cal-era">${esc(cal.era)}</span>` : ''}
+        </div>
+        <button type="button" class="iw-mini" data-iw-clock="month:1" aria-label="Следующий месяц">${icon('chevron', 'iw-rot-90')}</button>
+      </div>
+      <table class="iw-cal-grid">
+        ${g.heads.length ? `<thead><tr>${g.heads.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>` : ''}
+        <tbody>${g.weeks.map(w => `<tr>${w.map(c => {
+            if (!c) return '<td></td>';
+            const isToday = g.y === clock.t.y && g.m === clock.t.m && c.d === clock.t.d;
+            const isSel = g.y === d.y && g.m === d.m && c.d === d.d;
+            const kinds = new Set(c.marks.map(x => x.kind));
+            const title = c.marks.map(clockEventText).join(', ');
+            const cls = ['iw-cal-day', isToday ? 'iw-cal-today' : '', isSel ? 'iw-cal-sel' : '', kinds.has('holiday') ? 'iw-cal-hol' : '', kinds.has('birthday') ? 'iw-cal-bday' : '', kinds.has('canon') ? 'iw-cal-canon' : ''].filter(Boolean).join(' ');
+            return `<td><button type="button" class="${cls}" data-iw-clock="day:${c.d}"${title ? ` title="${esc(title)}"` : ''}><span>${c.d}</span></button></td>`;
+        }).join('')}</tr>`).join('')}</tbody>
+      </table>
+      <div class="iw-cal-legend"><span class="iw-lg iw-lg-hol">праздник</span><span class="iw-lg iw-lg-canon">личная дата</span><span class="iw-lg iw-lg-bday">день рождения</span><span class="iw-lg iw-lg-today">сейчас в истории</span></div>
+    </div>`;
+    } else {
+        grid = `<div class="iw-cal iw-cal-days">
+      <div class="iw-clock-sub">День истории</div>
+      <span class="iw-cal-year iw-cal-dayno">
+        <button type="button" class="iw-cal-ystep" data-iw-clock="dday:-1" aria-label="День назад">‹</button>
+        <input type="number" class="iw-cal-yin" data-iw-clock-in="dd" value="${d.d}" min="1" aria-label="День истории">
+        <button type="button" class="iw-cal-ystep" data-iw-clock="dday:1" aria-label="День вперёд">›</button>
+      </span>
+    </div>`;
+    }
+    const hours = Array.from({ length: 24 }, (_, h) => [h, pad2(h), h === d.h]);
+    const mins = Array.from({ length: 12 }, (_, i) => [i * 5, pad2(i * 5), i * 5 === d.mi - (d.mi % 5)]);
+    const changed = clock.draftChanged;
+    const events = (clock.upcoming || []).slice(0, 8).map(e => `<li class="iw-clock-ev iw-clock-${e.kind}">${icon(EVENT_ICON[e.kind] || 'gift')}<span><b>${esc(e.dateText)}</b> — ${esc(clockEventText(e))}${e.about ? `<small class="iw-muted"> · ${esc(e.about)}</small>` : ''}</span><em>${esc(clockWhen(e))}</em></li>`).join('');
+    const hols = (clock.holidays || []).map((h, i) => `<li class="iw-clock-${h.kind}"><span>${esc(h.dateText)} — ${esc(h.kind === 'canon' && h.who ? `${h.who}: ${h.name}` : h.name)}${h.years ? `<small class="iw-muted"> (${esc(h.years)})</small>` : ''}</span><button type="button" class="iw-mini iw-clock-x" data-iw-clock="hol-del:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></li>`).join('');
+    return `
+<details class="iw-clock"${clock.open ? ' open' : ''}>
+  <summary class="iw-clock-bar" title="Часы и календарь сцены">
+    <span class="iw-clock-ico">${icon('clock')}</span>
+    <b class="iw-clock-time">${esc(clock.time)}</b>
+    <span class="iw-clock-part">${esc(clock.part)}</span>
+    <span class="iw-clock-date">${esc(clock.date)}</span>
+    ${today}
+    ${clock.locked ? `<span class="iw-clock-lockmark" title="Часы стоят: сами не двигаются">${icon('lock')}</span>` : ''}
+    <span class="iw-clock-chev">${icon('chevron')}</span>
+  </summary>
+  <div class="iw-clock-pop">
+    <div class="iw-clock-cols">
+      ${grid}
+      <div class="iw-clock-side">
+        <div class="iw-clock-sub">Время в истории</div>
+        <div class="iw-clock-chosen${changed ? ' iw-changed' : ''}">${esc(clock.draftDate)}</div>
+        <div class="iw-clock-row iw-clock-hm">
+          ${clockPick('h', pad2(d.h), hours, 'iw-pick-grid iw-pick-h')}
+          <b class="iw-clock-colon">:</b>
+          ${clockPick('mi', pad2(d.mi), mins, 'iw-pick-grid iw-pick-mi')}
+          <span class="iw-muted iw-clock-partof">${esc(clock.draftPart)}</span>
+        </div>
+        <div class="iw-clock-row">
+          <button type="button" class="iw-btn iw-mini-btn iw-clock-apply" data-iw-clock="set"${changed ? '' : ' disabled'}>${icon('tick')}<span>Поставить</span></button>
+          ${changed ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="reset">${icon('back')}<span>Как сейчас</span></button>` : ''}
+        </div>
+        <label class="iw-clock-lock"><input type="checkbox" data-iw-clock="lock"${clock.locked ? ' checked' : ''}> <span>Часы стоят — сами не двигаются</span></label>
+        ${events ? `<div class="iw-clock-sub">Скоро</div><ul class="iw-clock-events">${events}</ul>` : ''}
+      </div>
+    </div>
+    <details class="iw-clock-cal"${clock.calOpen ? ' open' : ''}>
+      <summary>${icon('calendar')}<span>Календарь: ${esc(clock.typeName)}${clock.calName ? ` «${esc(clock.calName)}»` : ''}${clock.country ? ` · ${esc(clock.country)}` : ''}</span>${icon('chevron')}</summary>
+      ${clock.why ? `<p class="iw-muted">${esc(clock.why)}</p>` : ''}
+      ${clock.monthsText ? `<p class="iw-clock-months"><b>Месяцы:</b> ${esc(clock.monthsText)}</p>` : ''}
+      ${clock.weekdaysText ? `<p class="iw-clock-months"><b>Дни недели:</b> ${esc(clock.weekdaysText)}</p>` : ''}
+      ${cal.type !== 'days' ? `<div class="iw-clock-sub">Праздники и личные даты</div><ul class="iw-clock-hols">${hols || '<li class="iw-muted">пока нет</li>'}</ul>
+      <div class="iw-clock-row iw-clock-holadd">
+        <input type="text" class="iw-input" data-iw-clock-in="hname" placeholder="Название (или «Виктор: годовщина»)" maxlength="70">
+        <input type="number" class="iw-input iw-clock-num" data-iw-clock-in="hd" placeholder="число" min="1" max="99">
+        ${clockPick('hm', clock.monthNames[(clock.holMonth || 1) - 1] || '', (clock.monthNames || []).map((n, i) => [i + 1, n, i + 1 === clock.holMonth]), 'iw-pick-month')}
+        <button type="button" class="iw-btn iw-mini-btn" data-iw-clock="hol-add">${icon('plus')}<span>Добавить</span></button>
+      </div>` : ''}
+      <div class="iw-clock-row">
+        <button type="button" class="iw-btn iw-mini-btn" data-iw-clock="detect"${clock.busy ? ' disabled' : ''}>${icon('sparkle')}<span>${clock.busy ? 'Определяю…' : 'Определить заново по истории'}</span></button>
+        ${cal.type !== 'greg' ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="type:greg">Обычный календарь</button>` : ''}
+        ${cal.type !== 'days' ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="type:days">Просто считать дни</button>` : ''}
+      </div>
+    </details>
+  </div>
+</details>`;
+}
+
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null }) {
     setIconTheme(theme);
     const L = themeLabels(theme, 'm');
+    // дневники, записанные до «настроения как в Симс», пересчитываем при первом показе
+    for (const c of Object.values((state && state.characters) || {})) if (c && !c.moodCalc && Array.isArray(c.moodlets)) settleMood(c);
     if (view === 'settings') {
         return `
 <div class="iw-book">
@@ -756,7 +923,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   ${renderHeader(settings, theme, busy, true)}
   <div class="iw-settings-head"><span class="iw-label">${esc(L.settings)}</span><button type="button" class="iw-back iw-gear">${icon('back')}<span>к дневнику</span></button></div>
   <div class="iw-body">${settingsHtml}</div>
-  <div class="iw-foot"><span class="iw-status">${esc(status || '')}</span></div>
+  ${footHtml()}
 </div>`;
     }
     if (noChat) {
@@ -765,7 +932,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, false)}
   <div class="iw-body"><div class="iw-empty">${esc(L.noChat)}</div></div>
-  <div class="iw-foot"><span class="iw-status"></span>${signHtml()}</div>
+  ${footHtml()}
 </div>`;
     }
     const opts = { manualTurns: settings.moodMode === 'manual' ? settings.moodTurns : null, dreamBusy, points: settings.points !== false, attrMode, attrOpen, attrMore, collapsed: settings.collapsed || {} };
@@ -820,7 +987,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         }
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
-        body = renderShop(state.characters[key], theme, key, { shopBusy });
+        body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null });
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0] }, opts));
@@ -833,18 +1000,17 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] && !state.characters[current].persona ? current : (mains.find(k => state.characters[k]) || null)))
         : null;
     const wallet = settings.points !== false
-        ? { current: shopKey, list: state.order.filter(k => state.characters[k] && !state.characters[k].persona && (mains.includes(k) || (state.characters[k].points || 0) > 0)).map(k => ({ key: k, name: state.characters[k].name, points: state.characters[k].points || 0 })) }
+        ? { current: shopKey, purse: purseOf(state), list: state.order.filter(k => state.characters[k] && !state.characters[k].persona && (mains.includes(k) || (state.characters[k].points || 0) > 0)).map(k => ({ key: k, name: state.characters[k].name, points: state.characters[k].points || 0 })) }
         : null;
-    const forget = current ? `<button type="button" class="iw-forget" data-iw-forget="${esc(current)}">забыть ${esc(state.characters[current].name)}</button>` : '';
     const npcInfo = showNpc ? { met: npcKeys.length, known: (roster && roster.npc && roster.npc.length) || 0 } : null;
     return `
 <div class="iw-book">
   <div class="iw-margin" aria-hidden="true"></div>
-  ${renderHeader(settings, theme, busy, false, wallet, shopKey && !(persona && shopKey === persona.key) ? { key: shopKey, on: view.startsWith('shop:') } : null)}
+  ${renderHeader(settings, theme, busy, false, wallet, shopKey && !(persona && shopKey === persona.key) ? { key: shopKey, on: view.startsWith('shop:') } : null, mobile ? analyzeButtons(busyKind, L, books, picked, linked, working || !!busyKind, off, !!persona) : '')}
   ${ROUGH_FILTER}
-  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off })}
-  <div class="iw-body${live && !live.hidden ? ' iw-live-on' : ''}">${live && !live.hidden ? renderLive(live, theme, L) : ''}${live && live.hidden ? livePeek(live) : ''}${body}</div>
-  <div class="iw-foot"><span class="iw-status">${esc(status || '')}</span>${personaNote ? `<span class="iw-persona-note iw-foot-note">${icon('eye')}<span>Дневник твоего героя только для тебя: на ответы бота он не влияет.</span></span>` : ''}${forget}${signHtml()}</div>
+  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off, noActs: mobile, clock: clock && clock.t ? clock : null })}
+  <div class="iw-body${live && !live.hidden ? ' iw-live-on' : ''}">${live && !live.hidden ? renderLive(live, theme, L) : ''}${live && live.hidden ? livePeek(live) : ''}${renderClock(clock)}${body}</div>
+  ${footHtml()}
 </div>`;
 }
 
@@ -879,8 +1045,10 @@ function renderLive(live, theme, L) {
           <button type="button" class="iw-mini iw-live-hide" data-iw-live-hide title="Свернуть листок: разбор продолжится" aria-label="Свернуть">${icon('x')}</button>
         </div>
         <svg class="iw-live-scribble" viewBox="0 0 220 14" preserveAspectRatio="none" aria-hidden="true"><path ${delay} d="M2 8c14-6 22 5 36 0s22-6 36 0 22 5 36 0 22-6 36 0 22 5 36 0 20-5 34 0"/></svg>
-        <ol class="iw-live-steps">${list}</ol>
-        ${chars ? `<ul class="iw-live-chars">${chars}</ul>` : ''}
+        <div class="iw-live-scroll">
+          <ol class="iw-live-steps">${list}</ol>
+          ${chars ? `<ul class="iw-live-chars">${chars}</ul>` : ''}
+        </div>
         ${live.len ? `<div class="iw-live-len iw-muted">Написано ~${Math.round(live.len / 5)} слов</div>` : ''}
       </div>
     </div>`;
@@ -922,7 +1090,8 @@ function sketchArrow(theme, cls = '') {
 }
 
 function quickOpt(key, value, label, on) {
-    return `<button type="button" class="iw-qopt${on ? ' on' : ''}" data-iw-quick="${esc(key)}:${esc(value)}" aria-pressed="${on}">${esc(label)}</button>`;
+    const l = String(label);
+    return `<button type="button" class="iw-qopt${on ? ' on' : ''}" data-iw-quick="${esc(key)}:${esc(value)}" aria-pressed="${on}">${esc(l ? l[0].toUpperCase() + l.slice(1) : l)}</button>`;
 }
 
 // Пустой дневник: что нажать и быстрые настройки запаса прямо здесь, до первого разбора.
@@ -947,13 +1116,13 @@ function renderWaiting(name, s, theme, roster) {
     </ul>
   </div>
   <section class="iw-quick">
-    <div class="iw-quick-head"><span class="iw-label">Перед первым разбором</span><span class="iw-muted">можно настроить прямо здесь</span></div>
+    <div class="iw-quick-head"><span class="iw-label">Перед первым разбором</span><span class="iw-muted">Можно настроить прямо здесь</span></div>
     <div class="iw-quick-step">
       <span class="iw-quick-num">1</span>
       <div class="iw-quick-body">
         <div class="iw-quick-title">Сколько токенов давать модели на ответ</div>
         <div class="iw-qrow">${quickOpt('budgetMode', 'auto', 'сам, по размеру сцены', auto)}${quickOpt('budgetMode', 'fixed', 'как я задам', !auto)}</div>
-        <div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">${auto ? 'потолок:' : 'на каждый ответ:'}</span>${budgetRow}</div>
+        <div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">${auto ? 'Потолок:' : 'На каждый ответ:'}</span>${budgetRow}</div>
         <div class="iw-quick-hint iw-hint-arrow">${sketchArrow(theme, 'iw-arrow-long')}<span>${auto ? 'Дневник сам считает, сколько нужно, и никогда не выходит за потолок. Платишь только за то, что модель написала.' : 'Каждый запрос получит ровно столько.'} Думающим моделям (Gemini 3 Pro и похожие) лучше от 6000: часть запаса уходит на размышления.</span></div>
       </div>
     </div>
