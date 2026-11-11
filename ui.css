@@ -14775,3 +14775,157 @@ ol {
 .iw-whois .iw-heard-toggle + .iw-heard-toggle {
     margin-left: 12px;
 }
+
+.iw-heard-list li {
+    position: relative;
+    padding-right: 30px;
+}
+
+.iw-heard-x {
+    position: absolute;
+    top: 0;
+    right: 0;
+    opacity: .45;
+}
+
+.iw-heard-list li:hover .iw-heard-x,
+.iw-heard-x:focus-visible {
+    opacity: 1;
+}
+
+/* эра — отдельной строкой под месяцем и годом, ничего не наезжает на стрелки */
+.iw-panel .iw-cal-era-row {
+    margin: -4px 0 10px;
+    text-align: center;
+    font-size: 12.5px;
+    font-style: italic;
+    line-height: 1.3;
+    color: var(--iw-muted);
+}
+
+.iw-panel .iw-cal-head {
+    overflow: hidden;
+}
+
+.iw-panel .iw-cal-head .iw-pick-sum {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.iw-panel .iw-cal-head .iw-pick-sum > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* праздник — компактно: дата и «через сколько» одной строкой, пояснение в одну строку */
+.iw-panel .iw-clock-ev {
+    grid-template-columns: 30px minmax(0, 1fr);
+}
+
+.iw-ev-when {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+}
+
+.iw-ev-when > b {
+    font-size: 13px;
+    color: var(--iw-label-color, var(--iw-ink));
+}
+
+.iw-ev-when > em {
+    font-size: 12px;
+    font-style: normal;
+    color: var(--iw-muted);
+    white-space: nowrap;
+}
+
+.iw-ev-name {
+    overflow-wrap: anywhere;
+}
+
+.iw-ev-body > small {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+}
+
+.iw-clock-evmore[open] .iw-ev-body > small {
+    -webkit-line-clamp: 3;
+}
+
+@media (max-width: 760px) {
+    .iw-panel .iw-cal-nav {
+        grid-template-columns: 30px minmax(0, 1fr) 30px;
+        gap: 4px;
+    }
+
+    .iw-panel .iw-cal-nav > .iw-mini {
+        width: 30px;
+        height: 30px;
+    }
+
+    .iw-panel .iw-cal-head {
+        gap: 5px;
+        padding: 1px;
+    }
+
+    .iw-panel .iw-cal-head .iw-pick-sum {
+        padding: 0 8px 0 10px;
+        font-size: 15px;
+    }
+
+    .iw-panel .iw-cal-yin {
+        width: 46px;
+        font-size: 15px;
+    }
+
+    .iw-panel .iw-cal-ystep {
+        width: 18px;
+    }
+}
+
+/* ===================== Свёрнутые блоки — плашками по две, узкий блок без пары — во всю ширину ===================== */
+.iw-grid > .iw-block.iw-collapsed {
+    grid-column: auto;
+    min-width: 0;
+}
+
+.iw-grid > .iw-block.iw-solo,
+.iw-grid > .iw-block.iw-collapsed.iw-solo {
+    grid-column: 1 / -1;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-block-head {
+    min-width: 0;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-block-head .iw-label {
+    max-width: none;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.iw-panel .iw-block.iw-collapsed .iw-fold-sum {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* на узком экране — всё в одну колонку, как и было */
+@media (max-width: 760px) {
+    .iw-grid > .iw-block.iw-collapsed {
+        grid-column: 1 / -1;
+    }
+}
+
+/* пара узких открытых блоков — одной высоты, чтобы под коротким не было дыры */
+.iw-grid > :is(.iw-b-mood, .iw-b-impression, .iw-b-wants, .iw-b-fears):not(.iw-collapsed):not(.iw-solo) {
+    align-self: stretch;
+}

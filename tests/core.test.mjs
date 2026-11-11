@@ -943,4 +943,41 @@ test('нет в живых: серая карточка, без настроен
     assert.equal(roster.npc[1].dead, false);
 });
 
+test('тайны лорбука и знание персоны о незнакомых', () => {
+    const entries = {
+        1: { key: ['Хильда'], content: 'Хильда — младшая дочь Роберта.' },
+        2: { key: ['Хильда'], keysecondary: ['смерть', 'умерла'], selective: true, selectiveLogic: 0, content: 'Хильду отравила мачеха.' },
+        3: { key: ['Роберт'], comment: 'Тайна Роберта', content: 'Роберт служил палачом.' },
+        4: { key: ['Марта'], keysecondary: ['кухня'], selective: true, selectiveLogic: 2, content: 'Марта — экономка.' },
+    };
+    const closed = loreText(entries, 9000, { chatText: 'Роберт рассказал про Хильду.', names: ['Роберт', 'Эвелин'] });
+    assert.ok(closed.includes('младшая дочь') && closed.includes('экономка'));
+    assert.ok(!closed.includes('отравила'));
+    assert.ok(!closed.includes('палачом')); // имя героя звучит всегда — тайну оно не раскрывает
+    entries[3].key = ['Роберт', 'палач'];
+    assert.ok(loreText(entries, 9000, { chatText: 'Говорят, он был палачом', names: ['Роберт'] }).includes('палачом'));
+    assert.ok(!loreText(entries, 9000, { chatText: 'Привет' }).includes('палачом'));
+    const open = loreText(entries, 9000, { chatText: 'Хильда умерла прошлой зимой' });
+    assert.ok(open.includes('отравила') && open.includes('[ТАЙНА'));
+    // разбор только лорбука: персона ничего не «узнаёт» о незнакомых
+    const mains = ['Роберт'];
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Хильда', met: false, who: 'отравленная дочь', dead: true, heard: [{ fact: 'рисовала углём' }] }), all, { mains, noChat: true });
+    const h = state.characters['Хильда'];
+    assert.equal(h.who, undefined);
+    assert.equal(h.heard, undefined);
+    assert.equal(h.dead, undefined);
+    ({ state } = applyAnalysis(state, one({ name: 'Хильда', met: false, who: 'дочь Роберта', heard: [{ fact: 'умерла в детстве', from: 'рассказал Роберт' }] }), all, { mains }));
+    assert.equal(state.characters['Хильда'].who, 'дочь Роберта');
+    assert.equal(state.characters['Хильда'].heard.length, 1);
+    // убранный вручную факт не возвращается
+    state.characters['Хильда'].heardOff = ['умерла в детстве'];
+    state.characters['Хильда'].heard = [];
+    ({ state } = applyAnalysis(state, one({ name: 'Хильда', met: false, heard: [{ fact: 'Умерла в детстве!', from: 'Роберт' }] }), all, { mains }));
+    assert.equal(state.characters['Хильда'].heard.length, 0);
+    // старые записи понаслышке (до 0.4.3) пересобираются
+    const old = { characters: { x: { name: 'Ромео', met: false, who: 'из лорбука', heard: [{ fact: 'тайна' }] } }, order: ['x'] };
+    ({ state } = applyAnalysis(old, [], all, {}));
+    assert.equal(state.characters.x.who, undefined);
+});
+
 console.log(`значки: ${passed} проверок прошло`);

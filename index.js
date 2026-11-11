@@ -18,7 +18,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.2';
+const VERSION = '0.4.3';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -223,13 +223,20 @@ function excerptAround(text, names, radius = 350) {
 }
 
 // onlyBook — разобрать только одну выбранную книгу (доп. лорбук, книгу памяти).
+// Весь текст чата — чтобы понять, какие тайны из лорбука уже прозвучали
+function chatTextAll() {
+    return (ctx().chat || []).filter(m => m && !m.is_system && m.mes).map(m => m.mes).join('\n');
+}
+
 async function collectLoreSources(onlyBook = '') {
     const c = ctx();
     const out = [];
+    const chatText = chatTextAll();
+    const names = [c.name2, c.name1, ...((roster() && roster().main) || [])].filter(Boolean);
     if (onlyBook) {
         try {
             const data = await c.loadWorldInfo(onlyBook);
-            const text = loreText(data && data.entries, 14000);
+            const text = loreText(data && data.entries, 14000, { chatText, names });
             if (text) out.push({ title: `Лорбук: ${onlyBook}`, text });
         } catch (e) {
             console.warn('[Внутренний мир] лорбук не прочитан', onlyBook, e);
@@ -262,7 +269,7 @@ async function collectLoreSources(onlyBook = '') {
     for (const name of books) {
         try {
             const data = await c.loadWorldInfo(name);
-            const text = loreText(data && data.entries, per);
+            const text = loreText(data && data.entries, per, { chatText, names });
             if (text) out.push({ title: `Лорбук: ${name}`, text });
         } catch (e) {
             console.warn('[Внутренний мир] лорбук не прочитан', name, e);
@@ -1252,7 +1259,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0) + (info.acquainted ? info.acquainted.length : 0);
         const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
         budget = ask.responseLength;
-        const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
+        const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
         liveStage('think');
         raw = await callModel(system, user, ask, (text, think) => {
             if (!live) return;
@@ -1289,7 +1296,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
         if (info.clockNow) applySceneTime(messageId, raw);
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         writeRecord(messageId, state);
@@ -1925,6 +1932,8 @@ async function onPanelClick(e) {
         const key = view.includes(':') ? view.slice(view.indexOf(':') + 1) : null;
         const ch = key && state.characters[key];
         if (!ch || !Array.isArray(ch[kind])) return;
+        // убранный факт «что знает персона» модель больше не вернёт
+        if (kind === 'heard' && ch.heard[Number(idx)]) ch.heardOff = [...(ch.heardOff || []), ch.heard[Number(idx)].fact].slice(-20);
         ch[kind].splice(Number(idx), 1);
         markEdited(ch, kind);
         await saveEditedState(state);

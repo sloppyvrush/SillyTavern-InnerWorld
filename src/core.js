@@ -425,11 +425,14 @@ export function cleanHeard(list) {
     return out;
 }
 
-export function mergeHeard(old, fresh) {
+export function mergeHeard(old, fresh, off = []) {
     const out = (old || []).slice();
+    const norm = t => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+    const offSet = new Set(off.map(norm));
     for (const h of fresh || []) {
-        const k = h.fact.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
-        if (out.some(o => o.fact.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '') === k)) continue;
+        const k = norm(h.fact);
+        if (offSet.has(k)) continue;
+        if (out.some(o => norm(o.fact) === k)) continue;
         out.push(h);
     }
     return out.slice(-8);
@@ -445,7 +448,8 @@ export function flagOf(v) {
 export function isDead(c, entry) {
     if (!c || c.persona) return false;
     if (c.dead !== undefined) return !!c.dead;
-    return !!(entry && entry.dead);
+    // знакомым понаслышке смерть из лорбука не показываем: персона о ней ещё не знает
+    return !!(entry && entry.dead && c.met !== false);
 }
 
 // Знаком ли НПС с игроком: false — только понаслышке (рассказы, слухи, газеты), у таких нет настроения и прочего
@@ -1078,7 +1082,10 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
     // раз познакомились лично — это навсегда; поправку игрока (metManual) модель не перебивает
     if (fresh.met !== undefined && !out.metManual && out.met !== true) out.met = fresh.met;
-    if (fresh.heard && fresh.heard.length) out.heard = mergeHeard(out.heard, fresh.heard);
+    if (fresh.heard && fresh.heard.length) out.heard = mergeHeard(out.heard, fresh.heard, out.heardOff || []);
+    // у знакомого понаслышке «кто это» — то, что знает персона, и оно уточняется по мере рассказов
+    if (out.met === false && fresh.who && !out.whoManual) out.who = fresh.who;
+    if (fresh.heardV) out.heardV = fresh.heardV;
     // смерть модель отмечает один раз; «ожить» персонаж может только по правке игрока
     if (fresh.dead === true && !out.deadManual) out.dead = true;
     if (out.met === false || out.dead === true) {
@@ -1186,6 +1193,16 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
     const userName = opts.userName || '';
 
     if (opts.points) purseOf(next);
+    // 0.4.3: у знакомых понаслышке «кто это», факты и смерть раньше могли попасть из лорбука — собираем заново из чата
+    for (const k of next.order) {
+        const c = next.characters[k];
+        if (c && c.met === false && c.heardV !== 2) {
+            delete c.heard;
+            if (!c.whoManual) delete c.who;
+            if (!c.deadManual) delete c.dead;
+            c.heardV = 2;
+        }
+    }
     let purseGot = 0;
     for (const fresh of freshList) {
         // персона игрока ведётся только если это включено; в лимит персонажей она не входит
@@ -1198,6 +1215,14 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         // «знаком ли лично» — только про НПС: у персоны и главного персонажа этого поля нет
         if (isPersona || (opts.mains && isMain(fresh.name, opts.mains))) delete fresh.met;
         if (isPersona || (opts.mains && isMain(fresh.name, opts.mains))) delete fresh.dead;
+        // без сообщений чата (разбор только лорбука) персона ничего нового о незнакомых не узнаёт
+        const strangerNow = fresh.met === false || (old && old.met === false && fresh.met !== true);
+        if (strangerNow && opts.noChat) {
+            delete fresh.heard;
+            delete fresh.dead;
+            if (!old || old.met === false) delete fresh.who;
+        }
+        if (strangerNow) fresh.heardV = 2;
         // знакомые понаслышке в лимит персонажей не входят (их запись короткая), но и их не больше дюжины
         const heardOnly = (fresh.met === false && (!old || old.met !== true)) || fresh.dead === true;
         const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona && !isShortRecord(next.characters[k])).length;
@@ -1437,11 +1462,11 @@ export function buildSystemPrompt(settings, ctx) {
         rules.push('Сейчас разбор новых сообщений чата. Текущее состояние — основа персонажа (из карточки, лорбука и прошлых событий), она остаётся. Меняй её только соразмерно событию: обычная сцена — только эмоции и отметки «сбылось»; заметное событие — можно обновить желание или страх; настоящее потрясение — мечту или черту характера. Если ничего важного не случилось — лишь дополняй, а не переписывай.');
     }
     if (settings.showNpc !== false && ctx.trackPersona !== false) {
-        rules.push(`met — только для НПС (не для главного персонажа и не для ${user}): знаком ли этот персонаж с ${user} ЛИЧНО — они встречались, говорили, были в одной сцене или знакомы ещё до истории. Если ${user} знает о нём только понаслышке — ему рассказали (главный персонаж, другие), прочла в газете, письме, слышала слухи, или он вообще живёт только в чужой истории (умершие родные, бывшие, люди из прошлого главного персонажа), — верни met: false. Для met: false пиши ТОЛЬКО name, g, who (кто он и кем приходится главному персонажу) и heard — до 4 коротких фактов, которые ${user} о нём узнала из сообщений, и откуда (from: «рассказал Роберт», «из газеты», «слухи»); повторяй уже записанные факты дословно или не пиши их. Настроение, эмоции, желания, страхи, мечту, черты, impression, chem и всё остальное для met: false НЕ пиши: ${user} не видела этого человека и не может этого знать. Пиши met для новых НПС и для тех, у кого no_met: true или met: false; если персонаж с met: false лично встретился с ${user} в последних сообщениях — верни met: true и заполни всё как обычно.`);
+        rules.push(`met — только для НПС (не для главного персонажа и не для ${user}): знаком ли этот персонаж с ${user} ЛИЧНО — они встречались, говорили, были в одной сцене или знакомы ещё до истории. Если ${user} знает о нём только понаслышке — ему рассказали (главный персонаж, другие), прочла в газете, письме, слышала слухи, или он вообще живёт только в чужой истории (умершие родные, бывшие, люди из прошлого главного персонажа), — верни met: false. Для met: false пиши ТОЛЬКО name, g, met, who и heard — и всё это глазами ${user}: только то, что ${user} действительно узнала В СООБЩЕНИЯХ ЧАТА — ей прямо рассказал главный персонаж или другой НПС, она сама прочла (газета, письмо, документ), нашла улику или услышала слух. who — кем этот человек приходится, как это знает ${user} («дочь Роберта»), без подробностей сверх сказанного. heard — до 4 коротких новых фактов, каждый — с from: кто или что в чате это раскрыло («рассказал Роберт», «из газеты», «Марта проговорилась»). Карточка, лорбук и [Знакомые по предыстории] — это знание автора, а не ${user}: оттуда в who и heard НЕ бери ничего, даже если это правда, — например, как человек умер, чем увлекался, какие у него тайны, пока об этом не сказали в сообщениях. Если в сообщениях о нём ничего нового — heard не пиши; уже записанное не повторяй. Настроение, эмоции, желания, страхи, мечту, черты, impression, chem и всё остальное для met: false НЕ пиши: ${user} не видела этого человека и не может этого знать. Пиши met для новых НПС и для тех, у кого no_met: true или met: false; если персонаж с met: false лично встретился с ${user} в последних сообщениях — верни met: true и заполни всё как обычно.`);
     }
-    rules.push(`dead — true, если по карточке, лорбуку или сообщениям персонажа нет в живых: умер до начала истории или погиб в сцене (умершие родные, погибшие друзья, убитые). Это не про обморок, сон или ранение — только настоящая смерть. Призрак, дух или нежить, которые сами действуют и говорят в сцене, — не dead, их ведут как живых. Для умерших пиши только name, g, who, dead: true, met и heard (что о нём известно ${user}); настроение, эмоции, желания и всё остальное не пиши. Если у персонажа уже стоит dead: true — повтори это и больше ничего, кроме новых фактов в heard. Персона ${user} не может быть dead.`);
+    rules.push(`dead — true, если персонажа нет в живых: умер до начала истории или погиб в сцене. Для тех, с кем ${user} лично знакома (met: true), можно опираться на карточку, лорбук и сообщения; для знакомых понаслышке (met: false) — только если о смерти сказали в сообщениях чата (умершие родные, погибшие друзья, убитые). Это не про обморок, сон или ранение — только настоящая смерть. Призрак, дух или нежить, которые сами действуют и говорят в сцене, — не dead, их ведут как живых. Для умерших пиши только name, g, who, dead: true, met и heard (что о нём известно ${user}); настроение, эмоции, желания и всё остальное не пиши. Если у персонажа уже стоит dead: true — повтори это и больше ничего, кроме новых фактов в heard. Персона ${user} не может быть dead.`);
     if (ctx.acquainted && ctx.acquainted.length) {
-        rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет. Если они знакомы с ${user} лично — met: true, who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное); impression.known (кто они друг другу) и label/why/score по их общей истории. Если с ${user} лично не знакомы (знает их только главный персонаж) — met: false, только who и heard (что ${user} о них слышала, если слышала).`);
+        rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет. Если они знакомы с ${user} лично — met: true, who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное); impression.known (кто они друг другу) и label/why/score по их общей истории. Если с ${user} лично не знакомы (знает их только главный персонаж) — met: false и только то, что ${user} узнала о них в сообщениях чата (who, heard); если в чате о них ещё не говорили — who пустой, heard не пиши.`);
     }
     if (ctx.catchUp && ctx.catchUp.length) {
         rules.push(`Это первое заполнение дневника для уже идущей истории. Восстанови состояние по всему, что видно в сообщениях и эпизодах из прошлого. Обязательно верни этих персонажей, если они лично появлялись в истории (а не только упоминались в разговоре): ${ctx.catchUp.join(', ')}. impression — каким было первое впечатление об игроке при знакомстве, now и now_score — каким отношение стало к последней сцене. Желания и страхи — актуальные на конец. moodlets — только эмоции, которые ещё должны действовать сейчас.`);
@@ -1786,16 +1811,52 @@ export function buildRosterPrompt(sources, userName, lang = 'русском') {
 }
 
 // Текст лорбука для разбора: включённые записи, по порядку, в пределах лимита.
-export function loreText(entries, limit = 9000) {
+// Тайна в лорбуке: запись с двумя ключами («и то, и другое») или с пометкой «тайна / секрет / secret» в названии.
+// Такие записи дневник не читает, пока их ключи не прозвучали в чате, — чтобы не раскрыть то, чего персона ещё не знает.
+const SECRET_MARK = /тайн|секрет|secret|скрыт|hidden|spoiler|спойлер|не\s+знает/i;
+
+export function loreIsSecret(e) {
+    if (!e || e.constant) return false;
+    const second = (e.keysecondary || []).filter(k => String(k).trim());
+    const logic = Number(e.selectiveLogic) || 0; // 0 — и любой, 3 — и все; 1 и 2 — «кроме», это не тайна
+    if (e.selective !== false && second.length && (logic === 0 || logic === 3)) return true;
+    return SECRET_MARK.test(String(e.comment || ''));
+}
+
+function keyHit(key, low) {
+    const k = String(key || '').trim();
+    if (!k) return false;
+    const re = k.match(/^\/(.+)\/([a-z]*)$/i);
+    if (re) {
+        try { return new RegExp(re[1], re[2].includes('i') ? re[2] : re[2] + 'i').test(low); } catch { return false; }
+    }
+    return low.includes(k.toLowerCase());
+}
+
+// Раскрыта ли тайна: её ключи (основной и второй, как в таверне) уже встречались в чате
+export function loreSecretOpen(e, chatText, names = []) {
+    const low = String(chatText || '').toLowerCase();
+    if (!low) return false;
+    const second = (e.keysecondary || []).filter(k => String(k).trim());
+    // у тайны без второго ключа имена героев не в счёт: они звучат в каждом сообщении и ничего не раскрывают
+    const keys = (e.key || []).filter(k => second.length || !names.some(n => n && (sameName(String(k), n) || normText(n).split(' ').includes(normText(String(k))))));
+    if (!keys.some(k => keyHit(k, low))) return false;
+    if (!second.length) return true;
+    return Number(e.selectiveLogic) === 3 ? second.every(k => keyHit(k, low)) : second.some(k => keyHit(k, low));
+}
+
+export function loreText(entries, limit = 9000, opts = {}) {
     const list = Object.values(entries || {})
         .filter(e => e && !e.disable && String(e.content || '').trim())
         .sort((a, b) => (b.order ?? 100) - (a.order ?? 100));
     const out = [];
     let used = 0;
     for (const e of list) {
+        const secret = loreIsSecret(e);
+        if (secret && !loreSecretOpen(e, opts.chatText, opts.names || [])) continue; // нераскрытая тайна — не читаем вовсе
         const title = [e.comment, (e.key || []).slice(0, 4).join(', ')].filter(Boolean).join(' — ');
         const body = cleanMessageText(e.content, 900);
-        const piece = `• ${title ? title + ': ' : ''}${body}`;
+        const piece = `• ${secret ? '[ТАЙНА: в чате её уже коснулись, но в записи бери только то, что прямо раскрыто в сообщениях] ' : ''}${title ? title + ': ' : ''}${body}`;
         if (used + piece.length > limit) break;
         out.push(piece);
         used += piece.length;

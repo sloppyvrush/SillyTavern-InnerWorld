@@ -694,6 +694,29 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
 </section>`;
 }
 
+// Раскладка блоков без дыр: открытые узкие блоки (настроение, отношение, желания, страхи) встают парами,
+// а если узкому не хватило пары — он растягивается на всю ширину. Свёрнутые блоки — плашками по две в ряд, внизу.
+const NARROW_BLOCKS = new Set(['mood', 'impression', 'wants', 'fears']);
+export function layoutBlocks(blocks, collapsed = {}) {
+    const items = blocks.filter(Boolean).map(h => ({ h, k: (h.match(/class="iw-block iw-b-([a-z]+)/) || [])[1] || '' }));
+    const open = items.filter(x => !collapsed[x.k]);
+    const shut = items.filter(x => collapsed[x.k]);
+    const mark = (x, cls) => x.h.replace(/class="iw-block iw-b-([a-z]+)(?=[" ])/, m => `${m}${cls}`);
+    const out = [];
+    let run = [];
+    const flush = () => {
+        run.forEach((x, i) => out.push(mark(x, run.length % 2 && i === run.length - 1 ? ' iw-solo' : '')));
+        run = [];
+    };
+    for (const x of open) {
+        if (NARROW_BLOCKS.has(x.k)) run.push(x);
+        else { flush(); out.push(x.h); }
+    }
+    flush();
+    shut.forEach((x, i) => out.push(mark(x, ` iw-collapsed${shut.length % 2 && i === shut.length - 1 ? ' iw-solo' : ''}`)));
+    return out.join('');
+}
+
 export function renderCharacter(c, modules, theme, opts = {}) {
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who), bimboNicks(c.name, !!opts.first));
     if (opts.persona) {
@@ -711,9 +734,9 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.traits) blocks.push(renderPersona(c, L, opts));
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
-    const html = blocks.join('').replace(/class="iw-block iw-b-([a-z]+)(?=[" ])/g, (m, k) => (FOLD.collapsed[k] ? `${m} iw-collapsed` : m));
+    const collapsed = FOLD.collapsed;
     FOLD = { collapsed: {} };
-    return `<div class="iw-grid">${html}</div>`;
+    return `<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
@@ -729,7 +752,8 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         const dead = isDead(c, entry);
         const deadMark = dead ? '<span class="iw-dead-mark" aria-hidden="true"></span>' : '';
         if (isHearsay(c)) {
-            const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, who);
+            const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, c.who || '');
+            const who = c.who || ''; // только то, что знает персона, а не лорбук
             heardCards.push(`
       <button type="button" class="iw-npc met iw-npc-heard${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
         ${deadMark}<span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
@@ -845,10 +869,10 @@ export function renderClock(clock) {
             <input type="number" class="iw-cal-yin" data-iw-clock-in="vy" value="${g.y}" aria-label="Год">
             <button type="button" class="iw-cal-ystep" data-iw-clock="year:1" aria-label="Год вперёд">${icon('chevron', 'iw-rot-90')}</button>
           </span>
-          ${cal.era ? `<span class="iw-cal-era">${esc(cal.era)}</span>` : ''}
         </div>
         <button type="button" class="iw-mini" data-iw-clock="month:1" aria-label="Следующий месяц">${icon('chevron', 'iw-rot-90')}</button>
       </div>
+      ${cal.era ? `<div class="iw-cal-era-row">${esc(cal.era)}</div>` : ''}
       <table class="iw-cal-grid">
         ${g.heads.length ? `<thead><tr>${g.heads.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>` : ''}
         <tbody>${g.weeks.map(w => `<tr>${w.map(c => {
@@ -878,9 +902,9 @@ export function renderClock(clock) {
     const mins = Array.from({ length: 12 }, (_, i) => [i * 5, pad2(i * 5), i * 5 === d.mi - (d.mi % 5)]);
     const changed = clock.draftChanged;
     // ближайшие праздники и личные даты: первые четыре видны сразу, остальные — «ещё»
-    const evRow = e => `<li class="iw-clock-ev iw-clock-${e.kind}"><span class="iw-ev-ico">${icon(EVENT_ICON[e.kind] || 'gift')}</span><span class="iw-ev-body"><b>${esc(e.dateText)}</b><span>${esc(clockEventText(e))}</span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em>${esc(clockWhen(e))}</em></li>`;
+    const evRow = e => `<li class="iw-clock-ev iw-clock-${e.kind}"${e.about ? ` title="${esc(e.about)}"` : ''}><span class="iw-ev-ico">${icon(EVENT_ICON[e.kind] || 'gift')}</span><span class="iw-ev-body"><span class="iw-ev-when"><b>${esc(e.dateText)}</b><em>${esc(clockWhen(e))}</em></span><span class="iw-ev-name">${esc(clockEventText(e))}</span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span></li>`;
     const evAll = clock.upcoming || [];
-    const events = evAll.length ? `<ul class="iw-clock-events">${evAll.slice(0, 4).map(evRow).join('')}</ul>${evAll.length > 4 ? `<details class="iw-clock-evmore"><summary>${icon('chevron')}<span>Ещё ${evAll.length - 4}</span></summary><ul class="iw-clock-events">${evAll.slice(4).map(evRow).join('')}</ul></details>` : ''}` : '<p class="iw-muted iw-clock-noev">В ближайший год ничего не отмечено</p>';
+    const events = evAll.length ? `<ul class="iw-clock-events">${evAll.slice(0, 3).map(evRow).join('')}</ul>${evAll.length > 3 ? `<details class="iw-clock-evmore"><summary>${icon('chevron')}<span>Ещё ${evAll.length - 3}</span></summary><ul class="iw-clock-events">${evAll.slice(3).map(evRow).join('')}</ul></details>` : ''}` : '<p class="iw-muted iw-clock-noev">В ближайший год ничего не отмечено</p>';
     const hols = (clock.holidays || []).map((h, i) => `<li class="iw-clock-${h.kind}"><span>${esc(h.dateText)} — ${esc(h.kind === 'canon' && h.who ? `${h.who}: ${h.name}` : h.name)}${h.years ? `<small class="iw-muted"> (${esc(h.years)})</small>` : ''}</span><button type="button" class="iw-mini iw-clock-x" data-iw-clock="hol-del:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></li>`).join('');
     return `
 <details class="iw-clock"${clock.open ? ' open' : ''}>
@@ -978,7 +1002,9 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         const entry = roster && roster.find ? roster.find(key) : null;
         current = key;
         const LL = themeLabels(theme, genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, (entry && entry.who) || c.who || ''));
-        const who = (entry && entry.who) || c.who || '';
+        const hearsay0 = isHearsay(c);
+        // знакомый понаслышке: «кто это» — только то, что знает персона, без лорбука
+        const who = hearsay0 ? (c.who || '') : ((entry && entry.who) || c.who || '');
         const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, who);
         const pName = (persona && persona.name) || 'твой герой';
         const pc0 = persona && state.characters[persona.key];
@@ -1004,13 +1030,13 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   </div>
   <div class="iw-whois">
     <span class="iw-whois-tag">${esc(LL.whois)}</span>
-    <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
-    ${entry && entry.rel && mainName ? `<div class="iw-whois-traits"><span class="iw-muted">Связь:</span> ${esc(entry.rel)} · ${esc(mainName)}</div>` : ''}
+    <div class="iw-whois-text">${who ? ce(who) : `<span class="iw-muted">${hearsay ? `${esc(pName)} знает только имя` : 'Пока неизвестно'}</span>`}</div>
+    ${!hearsay && entry && entry.rel && mainName ? `<div class="iw-whois-traits"><span class="iw-muted">Связь:</span> ${esc(entry.rel)} · ${esc(mainName)}</div>` : ''}
   </div>
 </section>
 <div class="iw-grid"><section class="iw-block iw-b-heard">
   <div class="iw-block-head"><span class="iw-label">Что ${esc(pName)} о ${gw(g, 'нём', 'ней', 'нём')} знает</span></div>
-  ${heard.length ? `<ul class="iw-heard-list">${heard.map(h => `<li><span>${ce(h.fact)}</span>${h.from ? `<small class="iw-muted">${esc(h.from)}</small>` : ''}</li>`).join('')}</ul>` : `<p class="iw-muted">Пока только имя: подробностей ${esc(pName)} не ${gw(pg, 'слышал', 'слышала', 'слышал')}.</p>`}
+  ${heard.length ? `<ul class="iw-heard-list">${heard.map((h, i) => `<li><span>${ce(h.fact)}</span>${h.from ? `<small class="iw-muted">${esc(h.from)}</small>` : ''}<button type="button" class="iw-mini iw-heard-x" data-iw-del="heard:${i}" title="Убрать: ${esc(pName)} этого не знает" aria-label="Убрать">${icon('x')}</button></li>`).join('')}</ul>` : `<p class="iw-muted">Пока только имя: подробностей ${esc(pName)} не ${gw(pg, 'слышал', 'слышала', 'слышал')}.</p>`}
   <p class="iw-muted iw-heard-note">${why}</p>
   <div class="iw-heard-acts">
     ${hearsay ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-met="${esc(key)}:1">${icon('tick')}<span>Они знакомы лично</span></button>` : ''}
