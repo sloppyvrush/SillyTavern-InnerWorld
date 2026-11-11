@@ -17106,3 +17106,6 @@ ol {
     .iw-panel .iw-npc-col > .iw-npc-sticker { padding-left: 8px; padding-right: 8px; }
     .iw-order-reset { font-size: 10.5px; padding: 2px 6px; }
 }
+
+/* «Аська» и «ВКонтакте»: никаких симсовских кристаллов над аватарками (они только в теме «Как в симуляторе жизни») */
+.iw-panel:is(.iw-theme-icq, .iw-theme-vk) .iw-tab .iw-photo-wrap::before { content: none; display: none; animation: none; }

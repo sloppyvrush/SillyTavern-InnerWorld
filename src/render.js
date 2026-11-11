@@ -802,16 +802,26 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
       <ul class="iw-list iw-rewards">${list.map(row).join('')}</ul>
     </div>`;
     }).join('');
+    // лавку ещё ни разу не подбирали — кнопка «наполнить» на языке темы; уже подбирали — «Подобрать заново»
+    const shopMade = (c.shop || []).length > 0;
+    const firstLabel = SHOP_FIRST[theme] || 'Подобрать награды';
     return `
 <button type="button" class="iw-back" data-iw-view="${own ? 'me' : 'main'}:${esc(key)}">${icon('back')}<span>к дневнику</span></button>
 <section class="iw-block iw-b-shop">
   ${blockHead('rewards', esc(L.shop), `<span class="iw-points" title="${Number(pts || 0).toLocaleString('ru-RU')}"><span class="iw-cheat-coin" data-iw-cheat="1">${icon(currencyIcon(theme))}</span><b>${shortPoints(pts)}</b></span>`)}
   <div class="iw-muted">${own ? `Памятные вещи для ${esc(c.name)}: покупаются за общие монеты чата и встают на витрину.` : `Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под персонажа: ${esc(c.name)}.`}</div>
-  <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button></div>
+  <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${shopMade ? 'Подобрать заново' : esc(firstLabel)}</span></button></div>
   ${buffNotes(c, key)}
-  ${groups || ((c.shop || []).length ? '<div class="iw-empty">Всё уже куплено. Нажми «Подобрать заново» — появятся новые награды.</div>' : '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>')}
+  ${groups || (shopMade ? '<div class="iw-empty">Всё уже куплено. Нажми «Подобрать заново» — появятся новые награды.</div>' : `<div class="iw-empty">Наград пока нет — нажми «${esc(firstLabel)}».</div>`)}
 </section>`;
 }
+
+const SHOP_FIRST = {
+    icq: 'Загрузить смайлы и подарки', vk: 'Найти подарки', sims: 'Заполнить магазин', bimbo: 'Хочу шопинг ♡',
+    medieval: 'Наполнить лавку', china: 'Наполнить лавку', herbal: 'Собрать травы', arcana: 'Разложить талисманы',
+    nav: 'Наполнить лавку', seance: 'Собрать подношения', cyber: 'Загрузить бонусы', dossier: 'Запросить снабжение',
+    logbook: 'Пополнить склад', grid: 'Подобрать награды', diary: 'Подобрать награды', dark: 'Подобрать награды',
+};
 
 // Витрина — как лавка: список памятных вещей и достижений, значки в скетчевых кружках, звёздочки за достоинство.
 const TIER_STARS = { bronze: 1, silver: 2, gold: 3 };

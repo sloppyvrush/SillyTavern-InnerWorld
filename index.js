@@ -1647,6 +1647,17 @@ function notice(text, who = 'Дневник') {
 }
 
 // Смайлики «Аськи» анимируются несколько секунд (касание на телефоне, новое уведомление)
+let smilePlay = null;
+// после перерисовки по касанию: смайлик выбранной вкладки, открытой карточки НПС и её настроения продолжает играть
+function replaySmiles(el) {
+    if (!smilePlay || Date.now() > smilePlay.until) { smilePlay = null; return; }
+    const left = smilePlay.until - Date.now();
+    const v = smilePlay.view;
+    const sel = [`[data-iw-view="${CSS.escape(v)}"]`];
+    if (v.startsWith('npc:') || v.startsWith('main:') || v.startsWith('me:')) sel.push('.iw-dossier-face', '.iw-title-face', '.iw-tab.on', '.iw-tab-persona.on');
+    for (const host of el.querySelectorAll(sel.join(', '))) playSmiles(host, left);
+}
+
 function playSmiles(el, ms = 3500) {
     const list = el.classList && el.classList.contains('iw-smile') ? [el] : [...el.querySelectorAll('.iw-smile')];
     for (const sm of list) {
@@ -1987,6 +1998,7 @@ function renderPanelNow() {
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
     el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false });
     writeScroll(el, keepScroll);
+    replaySmiles(el);
 }
 
 // ---------- Витрина: достижения истории ----------
@@ -3582,10 +3594,17 @@ function init() {
     document.querySelectorAll('#chat .iw-badge').forEach(b => b.remove());
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) closePanel(); });
     // «Аська» на телефоне: наведения нет, поэтому смайлик оживает от касания
+    // (дневник живёт в теневом DOM — настоящий элемент под пальцем берём из composedPath)
     document.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'mouse' || !e.target || !e.target.closest) return;
-        const host = e.target.closest('.iw-smile, .iw-npc, .iw-tab, .iw-feel, .iw-toast-card, .iw-mood-word, .iw-dossier-face, .iw-panel li');
-        if (host) playSmiles(host);
+        if (e.pointerType === 'mouse') return;
+        const t0 = (e.composedPath && e.composedPath()[0]) || e.target;
+        if (!t0 || !t0.closest) return;
+        const host = t0.closest('.iw-smile, .iw-npc, .iw-tab, .iw-npc-sticker, .iw-feel, .iw-toast-card, .iw-mood-word, .iw-dossier-face, .iw-panel li');
+        if (!host) return;
+        playSmiles(host);
+        // нажали на вкладку или карточку НПС — страница сейчас перерисуется: оживим смайлик и на новой
+        const v = host.closest('[data-iw-view]');
+        if (v) smilePlay = { view: v.dataset.iwView, until: Date.now() + 3500 };
     }, { passive: true, capture: true });
     onChatChanged();
 }
