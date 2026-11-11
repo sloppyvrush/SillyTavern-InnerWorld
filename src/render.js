@@ -3,7 +3,7 @@ import { settleMood, purseOf, isHearsay, isDead, npcWeight, moodletLeftLabel, WE
 import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
-import { renderShowcase } from './showcase.js';
+import { collectionOf, TIER_NAMES_RU } from './showcase.js';
 
 // Всё, что стоит отдельной строкой или плашкой, — с заглавной буквы (модель пишет со строчной).
 function cap(v) {
@@ -194,7 +194,6 @@ export function renderBooksField({ books = [], picked = [], linked = [], busy = 
 
 // Сколько ответов осталось до следующего автоматического разбора (при «раз в N ответов»)
 let NEXT_IN = 0;
-let LAST_VIEW = '';
 function nextBadge() {
     if (!(NEXT_IN > 0)) return '';
     const t = `Следующий автоматический разбор — ${NEXT_IN === 1 ? 'после следующего ответа' : `через ${NEXT_IN} ${plural(NEXT_IN, 'ответ', 'ответа', 'ответов')}`}`;
@@ -716,6 +715,41 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
 </section>`;
 }
 
+// Витрина — как лавка: список памятных вещей и достижений, значки в скетчевых кружках, звёздочки за достоинство.
+const TIER_STARS = { bronze: 1, silver: 2, gold: 3 };
+function renderShowcase({ state, theme, got = [], sel = '' }) {
+    const items = collectionOf(state);
+    const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+    const stars = t => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}<em>${esc(TIER_NAMES_RU[t] || '')}</em></span>`;
+    const itemRow = x => `
+      <li class="iw-reward iw-rk-collect iw-case-row">
+        <span class="iw-case-ico">${icon(x.icon || 'gift')}</span>
+        <span class="iw-rw-body"><b class="iw-rw-title">${ce(x.title)}</b>${x.desc ? `<span class="iw-rw-desc">${ce(x.desc)}</span>` : ''}<span class="iw-rw-kind">в коллекции: ${esc(x.owner)}</span></span>
+      </li>`;
+    const achRow = a => `
+      <li class="iw-reward iw-case-row iw-case-ach iw-tier-${a.tier}${sel === `a:${a.id}` ? ' on' : ''}">
+        <span class="iw-case-ico">${icon(a.icon || 'trophy')}</span>
+        <span class="iw-rw-body"><b class="iw-rw-title">${ce(a.title)}</b>${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-rw-kind">${stars(a.tier)}${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}</span></span>
+        <button type="button" class="iw-mini iw-case-x" data-iw-achdel="${esc(a.id)}" title="Убрать с витрины" aria-label="Убрать с витрины">${icon('x')}</button>
+      </li>`;
+    const doodles = '<div class="iw-cal-doodles iw-case-doodles" aria-hidden="true"><i class="iw-dd iw-dd-a"></i><i class="iw-dd iw-dd-b"></i><i class="iw-dd iw-dd-c"></i></div>';
+    return `
+<button type="button" class="iw-back" data-iw-view="back">${icon('back')}<span>к дневнику</span></button>
+<section class="iw-block iw-b-shop iw-b-showcase">
+  ${blockHead('rewards', 'Витрина', `<span class="iw-points iw-case-count" title="Достижений: ${list.length}">${icon('trophy')}<b>${list.length}</b></span>`)}
+  <div class="iw-muted">Памятные вещи из лавки и достижения истории. Достижения появляются сами, когда случается что-то по-настоящему важное.</div>
+  <div class="iw-rw-group iw-rg-ach">
+    <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon('trophy')}Достижения</span><span class="iw-rw-cat-hint">${list.length ? `получено: ${list.length}` : 'появятся по ходу истории'}</span></div>
+    ${list.length ? `<ul class="iw-list iw-rewards">${list.map(achRow).join('')}</ul>` : '<p class="iw-case-empty-text">Пока пусто. Признание, спасение, предательство, большая победа — и здесь появится первая запись.</p>'}
+  </div>
+  <div class="iw-rw-group iw-rg-collect">
+    <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon('gem')}Памятные вещи</span><span class="iw-rw-cat-hint">${items.length ? `${items.length} ${plural(items.length, 'вещь', 'вещи', 'вещей')}` : 'покупаются в лавке «в коллекцию»'}</span></div>
+    ${items.length ? `<ul class="iw-list iw-rewards">${items.map(itemRow).join('')}</ul>` : '<p class="iw-case-empty-text">Пока пусто. Загляни в лавку — там есть вещицы «в коллекцию».</p>'}
+  </div>
+  ${doodles}
+</section>`;
+}
+
 // Раскладка блоков без дыр. Блоки остаются в своей части дневника:
 // узкие (настроение, отношение, желания, страхи) — открытые парами, под ними свёрнутые плашками по две;
 // если узкому не хватило пары, он растягивается на всю ширину. Широкий блок сворачивается полоской на своём месте.
@@ -992,8 +1026,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     NEXT_IN = nextIn;
     // showcase: { got, sel, fresh } — витрина этого чата
     CASE_BTN = showcase && !noChat ? { on: view === 'showcase', fresh: showcase.fresh || 0 } : null;
-    const caseOpening = view === 'showcase' && LAST_VIEW !== 'showcase';
-    LAST_VIEW = view;
+
     setIconTheme(theme);
     const L = themeLabels(theme, 'm');
     // дневники, записанные до «настроения как в Симс», пересчитываем при первом показе
@@ -1025,7 +1058,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
     const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
     if (view === 'showcase' && showcase) {
-        body = renderShowcase({ state, theme, got: showcase.got || {}, sel: showcase.sel || '', opening: caseOpening && settings.animations !== false, mobile });
+        body = renderShowcase({ state, theme, got: showcase.got || [], sel: showcase.sel || '' });
     } else if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
