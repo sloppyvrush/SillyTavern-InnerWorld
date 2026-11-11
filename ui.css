@@ -14208,3 +14208,36 @@ ol {
     font-weight: 400;
     color: var(--iw-muted);
 }
+
+/* ---------- Живой листок: ровный, без поворота — текст и полоса прокрутки чёткие ----------
+   Повёрнутый листок с прокруткой внутри браузер рисует размыто, а полосу — «лесенкой». */
+.iw-panel .iw-live-card {
+    left: 0 !important;
+    right: 0;
+    margin-inline: auto;
+    transform: none !important;
+    animation: iw-live-in-flat .3s ease-out;
+    -webkit-font-smoothing: antialiased;
+}
+
+@keyframes iw-live-in-flat {
+    from { opacity: 0; translate: 0 -8px; }
+    to { opacity: 1; translate: 0 0; }
+}
+
+.iw-panel .iw-live-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.iw-panel .iw-live-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.iw-panel .iw-live-scroll::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, currentColor 35%, transparent);
+    border-radius: 999px;
+}
+
+.iw-panel.iw-theme-pixel .iw-live-scroll::-webkit-scrollbar-thumb {
+    border-radius: 0;
+}
