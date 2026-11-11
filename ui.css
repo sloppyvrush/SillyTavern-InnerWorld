@@ -15569,3 +15569,18 @@ ol {
 }
 
 .iw-theme-pixel .iw-gift-opt { border-radius: 0; }
+
+/* чит-код в кошельке и в лавке */
+.iw-wallet-info .iw-cheat {
+    margin-top: 8px;
+}
+
+.iw-shop-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.iw-shop-top .iw-cheat {
+    opacity: .85;
+}

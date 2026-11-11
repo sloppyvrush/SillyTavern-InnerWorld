@@ -22,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.5.0';
+const VERSION = '0.5.1';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -2025,6 +2025,7 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
+    if (t.dataset.iwCheat) return enterCheat();
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
     if (t.dataset.iwGiftto) { giftTo = t.dataset.iwGiftto; return renderPanelNow(); }
     if (t.dataset.iwUnbuy) {
@@ -2474,6 +2475,23 @@ async function toggleWantPin(i) {
     markEdited(ch, 'wants');
     await saveEditedState(st);
     updateInjection();
+    renderAll();
+}
+
+// Чит-коды, как в «Симс»: motherlode — +50 000, kaching и rosebud — +1 000 в общий кошелёк чата
+const CHEATS = { motherlode: 50000, kaching: 1000, rosebud: 1000 };
+async function enterCheat() {
+    if (!hasChat()) return notice('Сначала открой чат с персонажем.');
+    for (const d of panelEl().querySelectorAll('details.iw-wallet[open]')) d.open = false;
+    const got = await iwDialog({ title: 'Чит-код', text: 'Как в «Симс»: введи код — монеты упадут в общий кошелёк этого чата.', input: { label: 'Код', value: '', placeholder: 'motherlode' }, buttons: [{ text: 'Ввести', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }] });
+    if (!got) return;
+    const code = String(got.input || '').toLowerCase().replace(/[^a-z!;]/g, '').replace(/[!;]+/g, '');
+    const add = CHEATS[code];
+    if (!add) return notice(`Код «${String(got.input || '').trim() || '…'}» не сработал. Попробуй motherlode.`, 'Чит-код');
+    const st = currentState();
+    st.purse = purseOf(st) + add;
+    await saveEditedState(st);
+    showEvent({ type: 'reward', who: 'Чит-код', text: `${code}: +${add.toLocaleString('ru-RU')} — теперь в кошельке ${st.purse.toLocaleString('ru-RU')}`, icon: 'coin' });
     renderAll();
 }
 

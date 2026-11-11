@@ -68,6 +68,7 @@ function renderWallet(wallet, theme = '') {
         <p>Общий кошелёк этого чата. Монеты падают, когда что-то сбывается у любого — у персонажа, НПС или твоего героя: исполненное желание <b>+10</b>, преодолённый страх <b>+5</b>, шаг к мечте <b>+25</b>, мечта целиком <b>+100</b>.</p>
         <p>Тратится на награды для персонажа: открой «${esc(L.shop || 'Магазин наград')}» рядом, там настроение, события и вещи в коллекцию.</p>
         <p class="iw-wallet-now"><span>Сейчас:</span><b>${coin}<span>${Number(cur.points || 0).toLocaleString('ru-RU')}</span></b></p>
+        <button type="button" class="iw-btn iw-mini-btn iw-cheat" data-iw-cheat="1" title="Как в «Симс»: ввести чит-код">${icon('key')}<span>Ввести код</span></button>
       </div></details>`;
 }
 
@@ -716,7 +717,7 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
 <section class="iw-block iw-b-shop">
   ${blockHead('rewards', esc(L.shop), `<span class="iw-points" title="${Number(pts || 0).toLocaleString('ru-RU')}">${icon(currencyIcon(theme))}<b>${shortPoints(pts)}</b></span>`)}
   <div class="iw-muted">Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под персонажа: ${esc(c.name)}.</div>
-  <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button></div>
+  <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button><button type="button" class="iw-btn iw-cheat" data-iw-cheat="1" title="Как в «Симс»: ввести чит-код">${icon('key')}<span>Ввести код</span></button></div>
   ${buffNotes(c, key)}
   ${groups || ((c.shop || []).length ? '<div class="iw-empty">Всё уже куплено. Нажми «Подобрать заново» — появятся новые награды.</div>' : '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>')}
 </section>`;
