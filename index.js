@@ -22,7 +22,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.9';
+const VERSION = '0.5.0';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -44,7 +44,8 @@ let shopBusy = false;
 let pending = null;
 let view = '';
 let viewBefore = '';      // куда вернуться из витрины
-let caseSel = '';         // что выбрано на полке витрины            // 'main:<имя>' | 'npc' | 'npc:<имя>' | 'settings'
+let caseSel = '';         // что выбрано на полке витрины
+let giftTo = 'owner';     // кому покупать памятные вещи в лавке: владельцу лавки или персоне игрока            // 'main:<имя>' | 'npc' | 'npc:<имя>' | 'settings'
 let lastView = '';
 let rosterBusy = false;
 let status = '';
@@ -289,7 +290,7 @@ async function collectLoreSources(onlyBook = '') {
 async function studyLore({ mode = 'lore', book = '' } = {}) {
     const c = ctx();
     const key = rosterKey();
-    if (!key || !hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+    if (!key || !hasChat()) return notice('Сначала открой чат с персонажем.');
     if (rosterBusy || busy) return;
     const my = runId;
     rosterBusy = true;
@@ -679,7 +680,7 @@ async function detectCalendar({ manual = false } = {}) {
         clockMonth = null;
         ctx().saveMetadataDebounced?.();
         await c.saveChat?.();
-        if (manual) toastr.success(`Календарь: ${CALENDAR_TYPES[ans.calendar.type]}${ans.calendar.name ? ` «${ans.calendar.name}»` : ''}`, 'Внутренний мир');
+        if (manual) notice(`Календарь: ${CALENDAR_TYPES[ans.calendar.type]}${ans.calendar.name ? ` «${ans.calendar.name}»` : ''}`);
     } catch (err) {
         if (err && err.cancelled) return;
         console.warn('[Внутренний мир] календарь не определился', err);
@@ -813,8 +814,8 @@ async function onClockAction(spec) {
         let name = String(v('hname') || '').trim();
         const d = Number(v('hd'));
         const m = clockHolMonth || draft.m || 1;
-        if (!name || !d) return toastr.info('Напиши название и число.', 'Внутренний мир');
-        if (d > monthDays(cal, 2000, m)) return toastr.info('В этом месяце нет такого числа.', 'Внутренний мир');
+        if (!name || !d) return notice('Напиши название и число.');
+        if (d > monthDays(cal, 2000, m)) return notice('В этом месяце нет такого числа.');
         // «Виктор: годовщина» — личная дата персонажа
         const h = { m, d, name };
         const who = name.match(/^([^:]{2,40}):\s*(.+)$/);
@@ -1131,7 +1132,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     const s = settings();
     const c = ctx();
     if (!MODEL_MODULES.some(m => s.modules[m])) {
-        if (manual) toastr.info('Все блоки выключены — анализировать нечего.', 'Внутренний мир');
+        if (manual) notice('Все блоки выключены — анализировать нечего.');
         return;
     }
     if (busy) {
@@ -1375,6 +1376,11 @@ function toastBox() {
     return box;
 }
 
+// Короткое сообщение дневника — листочком в стиле темы, а не плашкой таверны (без звука)
+function notice(text, who = 'Дневник') {
+    showEvent({ type: 'note', who, text: String(text || '') });
+}
+
 function showEvent(ev, delay = 0) {
     setTimeout(() => {
         const box = toastBox();
@@ -1612,7 +1618,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [] });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo });
     writeScroll(el, keepScroll);
 }
 
@@ -1958,7 +1964,7 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwSkipBook) {
-        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        if (!hasChat()) return notice('Сначала открой чат с персонажем.');
         const on = toggleOffBook(t.dataset.iwSkipBook);
         t.classList.toggle('on', on);
         t.setAttribute('aria-pressed', String(on));
@@ -1966,7 +1972,7 @@ async function onPanelClick(e) {
         return;
     }
     if (t.dataset.iwPickBook) {
-        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        if (!hasChat()) return notice('Сначала открой чат с персонажем.');
         // галочка ставится на месте, меню не закрывается
         const on = togglePickedBook(t.dataset.iwPickBook);
         t.classList.toggle('on', on);
@@ -1979,7 +1985,7 @@ async function onPanelClick(e) {
         return;
     }
     if (t.dataset.iwAnalyze) {
-        if (!hasChat()) return toastr.info('Сначала открой чат с персонажем.', 'Внутренний мир');
+        if (!hasChat()) return notice('Сначала открой чат с персонажем.');
         const menu = t.closest('details');
         if (menu) menu.open = false;
         const kind = t.dataset.iwAnalyze;
@@ -1991,7 +1997,7 @@ async function onPanelClick(e) {
         if (!busy && s.sound !== false) playSound('write', currentTheme);
         if (kind === 'chat') {
             const id = lastBotMessageId();
-            if (id < 0) return toastr.info('В чате ещё нет ответа персонажа.', 'Внутренний мир');
+            if (id < 0) return notice('В чате ещё нет ответа персонажа.');
             const my = runId;
             await analyze(id, { manual: true, kind: 'chat' });
             if (my === runId) await autoRewards();
@@ -2020,6 +2026,7 @@ async function onPanelClick(e) {
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
+    if (t.dataset.iwGiftto) { giftTo = t.dataset.iwGiftto; return renderPanelNow(); }
     if (t.dataset.iwUnbuy) {
         const i = t.dataset.iwUnbuy.indexOf(':');
         const key = t.dataset.iwUnbuy.slice(0, i), id = t.dataset.iwUnbuy.slice(i + 1);
@@ -2029,7 +2036,7 @@ async function onPanelClick(e) {
         if (back === null) return;
         await saveEditedState(st);
         updateInjection();
-        toastr.success(`«${(ch && ch.name) || ''}»: отменено, вернулось ${back} ${plural(back, 'монета', 'монеты', 'монет')}.`, 'Внутренний мир');
+        notice(`«${(ch && ch.name) || ''}»: отменено, вернулось ${back} ${plural(back, 'монета', 'монеты', 'монет')}.`);
         return renderAll();
     }
     if (t.dataset.iwMod) {
@@ -2084,7 +2091,7 @@ async function onPanelClick(e) {
         if (ageOnly) {
             // возраст вручную: привязываем к дате сцены, дальше он растёт по часам; год рождения из лорбука больше не главный
             const now = clockNow();
-            if (!now || !now.cal || !now.t) return toastr.warning('Сначала нужны часы сцены: открой календарь в дневнике.', 'Внутренний мир');
+            if (!now || !now.cal || !now.t) return notice('Сначала нужны часы сцены: открой календарь в дневнике.');
             const age = Number(ageOnly[1]);
             ch.ageAt = Object.assign({ age }, now.cal.type === 'days' ? { d: now.t.d } : { y: now.t.y, m: now.t.m, d: now.t.d });
             if (ch.born && ch.born.y) { ch.born = Object.assign({}, ch.born); delete ch.born.y; }
@@ -2092,7 +2099,7 @@ async function onPanelClick(e) {
             ch.bornManual = true;
             await saveEditedState(state);
             updateInjection();
-            toastr.success(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')} — дальше по часам сцены`, 'Внутренний мир');
+            notice(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')} — дальше по часам сцены`);
             return renderAll();
         }
         if (!txt) {
@@ -2100,14 +2107,14 @@ async function onPanelClick(e) {
             delete ch.ageAt;
         } else {
             const b = parseBorn(txt);
-            if (!b) return toastr.warning('Не поняла дату. Пример: 20.08.1969, 20.08 или 1969', 'Внутренний мир');
+            if (!b) return notice('Не поняла дату. Пример: 20.08.1969, 20.08 или 1969');
             ch.born = b;
             if (b.d && b.m) ch.zodiac = zodiacOf(b.d, b.m) || ch.zodiac;
         }
         ch.bornManual = true;
         await saveEditedState(state);
         updateInjection();
-        toastr.success(ch.born ? `${ch.name}: ${bornText(ch.born)}` : `${ch.name}: дата рождения убрана`, 'Внутренний мир');
+        notice(ch.born ? `${ch.name}: ${bornText(ch.born)}` : `${ch.name}: дата рождения убрана`);
         return renderAll();
     }
     if (t.dataset.iwDead) {
@@ -2122,7 +2129,7 @@ async function onPanelClick(e) {
         if (dead) for (const k of ['mood', 'moodSaid', 'faceSaid', 'face', 'moodlets', 'moodCalc', 'moodKey']) delete ch[k];
         await saveEditedState(state);
         updateInjection();
-        toastr.success(dead ? `${ch.name}: нет в живых` : `${ch.name}: снова среди живых — заполнится при следующем разборе`, 'Внутренний мир');
+        notice(dead ? `${ch.name}: нет в живых` : `${ch.name}: снова среди живых — заполнится при следующем разборе`);
         return renderAll();
     }
     if (t.dataset.iwMet) {
@@ -2136,7 +2143,7 @@ async function onPanelClick(e) {
         ch.metManual = true;
         await saveEditedState(state);
         updateInjection();
-        toastr.success(met ? `${ch.name}: знакомы лично — заполнится при следующем разборе` : `${ch.name}: только понаслышке`, 'Внутренний мир');
+        notice(met ? `${ch.name}: знакомы лично — заполнится при следующем разборе` : `${ch.name}: только понаслышке`);
         return renderAll();
     }
     if (t.dataset.iwDel) {
@@ -2173,7 +2180,7 @@ async function onPanelClick(e) {
         await saveEditedState(state);
         ctx().saveMetadataDebounced?.();
         updateInjection();
-        toastr.success(res === 2 ? `${ch.name}: забыт навсегда` : `${ch.name}: убран, вернётся, если снова придёт в сцену`, 'Внутренний мир');
+        notice(res === 2 ? `${ch.name}: забыт навсегда` : `${ch.name}: убран, вернётся, если снова придёт в сцену`);
         return renderAll();
     }
     if (t.dataset.iwUnignore) {
@@ -2181,7 +2188,7 @@ async function onPanelClick(e) {
         chatMeta().ignored = ignoredNames().filter(n => !sameName(n, name));
         ctx().saveMetadataDebounced?.();
         syncSettingsForm();
-        toastr.success(`${name}: дневник снова будет его замечать`, 'Внутренний мир');
+        notice(`${name}: дневник снова будет его замечать`);
         return renderAll();
     }
     if (t.dataset.iwForget) {
@@ -2268,7 +2275,7 @@ function looksCut(raw) {
 }
 
 function nothingNew(what) {
-    toastr.info(`Ничего нового: ${what} не менялись с прошлого разбора. Мечту и награды можно придумать заново — кубиком у мечты и в магазине.`, 'Внутренний мир');
+    notice(`Ничего нового: ${what} не менялись с прошлого разбора. Мечту и награды можно придумать заново — кубиком у мечты и в магазине.`);
 }
 
 // Сведения из карточки и лорбуков запоминаются после разбора кнопками «Лорбук» / «Всё сразу».
@@ -2476,12 +2483,14 @@ async function buy(id) {
     const ch = key && st.characters[key];
     if (!ch) return;
     const reward = (ch.shop || []).find(r => r.id === id);
-    const err = buyReward(ch, reward, st);
-    if (err) return toastr.info(err, 'Внутренний мир');
+    // памятную вещь можно подарить и персоне игрока — она ляжет в её коллекцию
+    const pk = splitCast(st).personaKey;
+    const target = reward && reward.kind === 'collect' && giftTo === 'persona' && pk && st.characters[pk] ? st.characters[pk] : ch;
+    const err = buyReward(target, reward, st);
+    if (err) return notice(err);
     await saveEditedState(st);
     updateInjection();
-    if (settings().sound !== false) playSound('reward', currentTheme);
-    if (settings().toasts) showEvent({ type: 'reward', who: ch.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : 'действует'}` });
+    showEvent({ type: 'reward', who: target.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции, загляни на витрину` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : `действует ${reward.turns} ${plural(reward.turns, 'ответ', 'ответа', 'ответов')}`}`, icon: reward.icon });
     renderAll();
 }
 
@@ -2976,11 +2985,11 @@ function registerCommands() {
         const timeCmd = {
             callback: async (_args, value) => {
                 const now = clockNow();
-                if (!now || !now.cal) { toastr.info('Часы сцены ещё не заведены: открой дневник и поставь время.', 'Внутренний мир'); return ''; }
+                if (!now || !now.cal) { notice('Часы сцены ещё не заведены: открой дневник и поставь время.'); return ''; }
                 const arg = String(value || '').trim();
                 if (!arg) return now.t ? `${fmtDate(now.cal, now.t)}, ${fmtTime(now.t)}` : '';
                 const nt = parseClockCommand(now.cal, now.t, arg);
-                if (!nt) { toastr.warning('Не поняла время. Примеры: +2ч, +3д, 14:30, 1996-10-08, утро.', 'Внутренний мир'); return ''; }
+                if (!nt) { notice('Не поняла время. Примеры: +2ч, +3д, 14:30, 1996-10-08, утро.'); return ''; }
                 setClockManual(nt);
                 return `${fmtDate(now.cal, nt)}, ${fmtTime(nt)}`;
             },

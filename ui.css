@@ -15271,78 +15271,53 @@ ol {
 .iw-panel.iw-theme-pixel .iw-case-empty-text { border-radius: 0; }
 .iw-panel.iw-theme-pixel .iw-b-showcase .iw-case-ach .iw-rw-title { text-decoration-style: dotted; }
 
-/* ===================== Достижение получено — уведомление в духе Steam ===================== */
+/* ===================== Достижение получено — в стиле темы, цвет по достоинству ===================== */
+.iw-ach-toast { --ach: #b06a2c; --ach1: #f0c58f; --ach2: #b8753a; --ach3: #6f3f1c; }
+.iw-ach-toast.iw-tier-silver { --ach: #6f7d8c; --ach1: #ffffff; --ach2: #b9c2cc; --ach3: #5f6b78; }
+.iw-ach-toast.iw-tier-gold { --ach: #b8861a; --ach1: #fff2b3; --ach2: #e1ae3c; --ach3: #8a5e0e; }
+
 .iw-toast-card.iw-ach-toast {
-    display: grid;
-    grid-template-columns: 58px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 12px 12px 12px;
-    border: 0;
-    border-radius: 6px;
-    background: linear-gradient(135deg, #1f2a3a, #2c3e57 60%, #1b2433);
-    color: #e6edf5;
-    box-shadow: 0 10px 24px -8px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .08);
+    box-shadow: inset 4px 0 0 var(--ach), 0 8px 18px -8px rgba(0, 0, 0, .35);
 }
 
-.iw-ach-toast .iw-tape {
-    display: none;
-}
-
-.iw-ach-toast-ico {
+.iw-ach-toast .iw-ach-medal {
     display: grid;
     place-items: center;
-    width: 58px;
-    height: 58px;
-    border-radius: 4px;
-    background: radial-gradient(circle at 35% 30%, #f0c58f, #b8753a 60%, #6f3f1c);
-    color: #2a1608;
-    font-size: 30px;
-    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .25), 0 2px 6px rgba(0, 0, 0, .4);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--ach1), var(--ach2) 58%, var(--ach3)) !important;
+    color: color-mix(in srgb, var(--ach3) 80%, #000) !important;
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ach1) 70%, transparent), 0 2px 4px rgba(0, 0, 0, .25);
 }
-
-.iw-ach-toast.iw-tier-silver .iw-ach-toast-ico { background: radial-gradient(circle at 35% 30%, #ffffff, #b9c2cc 60%, #5f6b78); color: #1f262e; }
-.iw-ach-toast.iw-tier-gold .iw-ach-toast-ico { background: radial-gradient(circle at 35% 30%, #fff2b3, #e1ae3c 60%, #8a5e0e); color: #3a2604; }
-.iw-ach-toast.iw-tier-gold { box-shadow: 0 0 0 1px rgba(225, 174, 60, .5), 0 10px 24px -8px rgba(0, 0, 0, .6); }
 
 .iw-ach-toast .iw-toast-kicker {
+    color: var(--ach) !important;
+}
+
+.iw-ach-tierline {
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin: 0 0 2px;
-    font-size: 11.5px;
+    gap: 2px;
+    margin-top: 4px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-    color: #8fb3d9;
+    color: var(--ach);
 }
 
-.iw-ach-toast .iw-toast-kicker em {
-    font-style: normal;
-    font-weight: 600;
-    text-transform: none;
-    letter-spacing: 0;
-    color: #a9bdd2;
+.iw-ach-tierline .iw-ico {
+    width: 12px;
+    height: 12px;
 }
 
-.iw-ach-toast-title {
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 1.25;
-    color: #ffffff;
+.iw-ach-tierline .iw-ico path {
+    fill: currentColor;
+    fill-opacity: .4;
 }
 
-.iw-ach-toast .iw-toast-text {
-    margin-top: 2px;
-    font-size: 13px;
-    line-height: 1.35;
-    color: #c4d2e1;
+.iw-ach-tierline span {
+    margin-left: 4px;
 }
 
-.iw-ach-toast .iw-toast-close {
-    align-self: start;
-    color: #a9bdd2;
-}
+.iw-theme-pixel .iw-ach-toast .iw-ach-medal { border-radius: 0; }
 
 /* лицо-эмоция в значке достижения */
 .iw-case-ico .iw-ach-face,
@@ -15540,3 +15515,57 @@ ol {
 
 .iw-theme-pixel .iw-modal-paper { border-radius: 0; }
 .iw-modal.iw-noanim .iw-modal-paper { animation: none; }
+
+/* витрина: строка достижения окрашена по достоинству — бронза, серебро, золото */
+.iw-b-showcase .iw-case-ach.iw-tier-bronze { --rk: #b06a2c; --rk-bg: #f8e6d4; }
+.iw-b-showcase .iw-case-ach.iw-tier-silver { --rk: #6f7d8c; --rk-bg: #e9edf2; }
+.iw-b-showcase .iw-case-ach.iw-tier-gold { --rk: #b8861a; --rk-bg: #fbedc4; }
+
+:is(.iw-theme-dark, .iw-theme-seance, .iw-theme-nav, .iw-theme-cyber, .iw-theme-logbook, .iw-theme-herbal, .iw-theme-arcana, .iw-theme-china) .iw-b-showcase .iw-case-ach.iw-tier-bronze { --rk: #e0a06a; --rk-bg: rgba(224, 160, 106, .14); }
+:is(.iw-theme-dark, .iw-theme-seance, .iw-theme-nav, .iw-theme-cyber, .iw-theme-logbook, .iw-theme-herbal, .iw-theme-arcana, .iw-theme-china) .iw-b-showcase .iw-case-ach.iw-tier-silver { --rk: #c3ccd6; --rk-bg: rgba(195, 204, 214, .12); }
+:is(.iw-theme-dark, .iw-theme-seance, .iw-theme-nav, .iw-theme-cyber, .iw-theme-logbook, .iw-theme-herbal, .iw-theme-arcana, .iw-theme-china) .iw-b-showcase .iw-case-ach.iw-tier-gold { --rk: #f0c45a; --rk-bg: rgba(240, 196, 90, .14); }
+
+.iw-b-showcase .iw-rewards > li.iw-case-ach {
+    background: var(--rk-bg);
+    box-shadow: inset 4px 0 0 var(--rk);
+}
+
+/* значок достижения — медалька цвета достоинства */
+.iw-b-showcase .iw-case-ach .iw-case-ico::after {
+    inset: 7px;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, #fff 55%, var(--rk)), color-mix(in srgb, var(--rk) 40%, transparent) 70%);
+}
+
+.iw-b-showcase .iw-case-ach .iw-rw-title,
+.iw-b-showcase .iw-case-ach .iw-case-stars {
+    color: var(--rk);
+}
+
+/* лавка: кому купить памятную вещь — владельцу или персоне */
+.iw-gift-to {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 8px;
+    font-size: 13px;
+}
+
+.iw-gift-opt {
+    padding: 3px 12px;
+    border: 1.5px solid color-mix(in srgb, var(--rk, var(--iw-label-color)) 50%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.iw-gift-opt.on {
+    background: var(--rk-bg, transparent);
+    border-color: var(--rk, var(--iw-label-color));
+    color: var(--rk, var(--iw-label-color));
+    font-weight: 700;
+}
+
+.iw-theme-pixel .iw-gift-opt { border-radius: 0; }

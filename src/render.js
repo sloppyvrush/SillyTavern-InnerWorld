@@ -684,7 +684,8 @@ const REWARD_GROUPS = [
     { kind: 'collect', icon: 'gem', name: 'В коллекцию', hint: 'памятная вещь, остаётся навсегда' },
 ];
 
-export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {}) {
+export function renderShop(c, theme, key, { shopBusy = false, purse = null, persona = null, giftTo = 'owner' } = {}) {
+    const forPersona = !!persona && giftTo === 'persona';
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who));
     const pts = purse ?? (c.points || 0);
     const row = r => `
@@ -695,14 +696,18 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
       </li>`;
     // купленное уходит с полки: действующее висит листочком, памятная вещь — уже на витрине
     const active = new Set((c.buffs || []).map(b => b.id));
-    const owned = new Set((c.collection || []).map(x => String(x.title || '').toLowerCase()));
+    // памятная вещь уходит с полки, когда она уже есть у того, кому её сейчас покупают
+    const owned = new Set(((forPersona ? persona.collection : c.collection) || []).map(x => String(x.title || '').toLowerCase()));
     const shop = (c.shop || []).filter(r => !active.has(r.id) && !(r.kind === 'collect' && owned.has(String(r.title || '').toLowerCase())));
     const groups = REWARD_GROUPS.map(g => {
         const list = shop.filter(r => r.kind === g.kind);
         if (!list.length) return '';
+        const gift = g.kind === 'collect' && persona
+            ? `<div class="iw-gift-to" role="group" aria-label="Кому купить"><span class="iw-muted">Кому:</span><button type="button" class="iw-gift-opt${forPersona ? '' : ' on'}" data-iw-giftto="owner" aria-pressed="${!forPersona}">${esc(c.name)}</button><button type="button" class="iw-gift-opt${forPersona ? ' on' : ''}" data-iw-giftto="persona" aria-pressed="${forPersona}">${esc(persona.name)}</button></div>`
+            : '';
         return `
     <div class="iw-rw-group iw-rg-${g.kind}">
-      <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(g.icon)}${g.name}</span><span class="iw-rw-cat-hint">${g.hint}</span></div>
+      <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(g.icon)}${g.name}</span><span class="iw-rw-cat-hint">${g.hint}</span></div>${gift}
       <ul class="iw-list iw-rewards">${list.map(row).join('')}</ul>
     </div>`;
     }).join('');
@@ -1030,7 +1035,7 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [] }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner' }) {
     NEXT_IN = nextIn;
     // showcase: { got, sel, fresh } — витрина этого чата
     CASE_BTN = showcase && !noChat ? { on: view === 'showcase', fresh: showcase.fresh || 0 } : null;
@@ -1163,7 +1168,8 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
         }
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
-        body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null });
+        const pcS = persona && persona.key && state.characters[persona.key];
+        body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null, persona: pcS && persona.key !== key ? { key: persona.key, name: pcS.name, collection: pcS.collection || [] } : null, giftTo });
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0] }, opts));
@@ -1236,14 +1242,17 @@ function renderLive(live, theme, L) {
 export function renderToast(ev, theme) {
     setIconTheme(theme);
     if (ev.type === 'achievement') {
-        // как в Steam: «Достижение получено», значок слева, название и подпись
+        // в стиле темы, а цвет — по достоинству: бронза, серебро, золото
+        const tier = ['bronze', 'silver', 'gold'].includes(ev.tier) ? ev.tier : 'bronze';
         return `
-<div class="iw-toast-card iw-ev-achievement iw-ach-toast iw-tier-${esc(ev.tier || 'bronze')}" role="status">
-  <span class="iw-ach-toast-ico">${achIcon(ev.icon)}</span>
+<div class="iw-toast-card iw-ev-achievement iw-ach-toast iw-tier-${tier}" role="status">
+  <span class="iw-tape" aria-hidden="true"></span>
+  <span class="iw-toast-icon iw-ach-medal">${achIcon(ev.icon)}</span>
   <div class="iw-toast-body">
-    <div class="iw-toast-kicker">${icon('trophy')}<span>Достижение получено</span>${ev.kind && ACH_KINDS[ev.kind] ? `<em>· ${esc(ACH_KINDS[ev.kind])}</em>` : ''}</div>
-    <div class="iw-ach-toast-title">${esc(ev.text)}</div>
+    <div class="iw-toast-kicker">${esc(toastKicker(theme, 'achievement', 'Достижение!'))}</div>
+    <div class="iw-toast-who">${esc(ev.text)}</div>
     ${ev.desc ? `<div class="iw-toast-text">${esc(ev.desc)}</div>` : ''}
+    <div class="iw-ach-tierline">${Array.from({ length: TIER_STARS[tier] }, () => icon('star')).join('')}<span>${esc(TIER_NAMES_RU[tier])}${ev.kind && ACH_KINDS[ev.kind] ? ` · ${esc(ACH_KINDS[ev.kind])}` : ''}</span></div>
   </div>
   <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
 </div>`;
@@ -1252,7 +1261,7 @@ export function renderToast(ev, theme) {
     return `
 <div class="iw-toast-card iw-ev-${ev.type}" role="status">
   <span class="iw-tape" aria-hidden="true"></span>
-  <span class="iw-toast-icon">${icon(EVENT_ICONS[ev.type] || 'star')}</span>
+  <span class="iw-toast-icon">${icon(ev.icon || EVENT_ICONS[ev.type] || 'star')}</span>
   <div class="iw-toast-body">
     <div class="iw-toast-kicker">${esc(kicker)}</div>
     <div class="iw-toast-who">${esc(ev.who)}</div>

@@ -1402,6 +1402,7 @@ export function eventTitle(ev) {
         impression: 'Первое впечатление',
         attitude: 'Отношение изменилось',
         achievement: 'Достижение',
+        note: 'Дневник',
     }[ev.type] || 'Внутренний мир';
 }
 
