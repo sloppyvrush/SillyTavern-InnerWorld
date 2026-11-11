@@ -9,7 +9,7 @@ import {
     plural,
     purseOf,
     cancelReward,
-    loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanRumor,
+    loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanRumor, bornFromText,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -1084,6 +1084,26 @@ function cardDescription(c) {
     }
 }
 
+// Если модель не взяла дату рождения, а в карточке бота или описании персоны она прямо написана
+// («born March 14, 1961», «родился 14 марта 1961») — берём её сами.
+function fillBornFromCards(state) {
+    try {
+        const c = ctx();
+        const fix = (ch, text) => {
+            if (!ch || ch.bornManual || (ch.born && ch.born.d && ch.born.y)) return;
+            const b = bornFromText(text);
+            if (!b) return;
+            if (ch.born && ch.born.d && !b.d) return;
+            ch.born = b;
+            delete ch.bornChecked;
+        };
+        const botKey = Object.keys(state.characters || {}).find(k => !state.characters[k].persona && sameName(k, c.name2));
+        if (botKey) fix(state.characters[botKey], cardDescription(c));
+        const pk = Object.keys(state.characters || {}).find(k => state.characters[k].persona);
+        if (pk) fix(state.characters[pk], (c.powerUserSettings && c.powerUserSettings.persona_description) || '');
+    } catch (e) { console.warn('[Внутренний мир] дата рождения из карточки', e); }
+}
+
 function cardText(c) {
     return cleanMessageText(cardDescription(c), 2500);
 }
@@ -1538,6 +1558,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
+        fillBornFromCards(state);
         // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
         if (npcCap() !== Infinity) try {
             const was = new Set(base.order);

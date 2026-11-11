@@ -265,7 +265,12 @@ export function parseBorn(v) {
         m = w.startsWith('ма') ? (w.startsWith('мар') ? 3 : 5) : MONTHS.findIndex(x => w.startsWith(x)) + 1;
         y = r[3] ? +r[3] : undefined;
     }
-    if (!r && (r = t.match(/([a-z]+)\s+(\d{1,2})(?:,?\s+(\d{3,4}))?/))) {
+    if (!r && (r = t.match(/(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?\s+([a-z]{3,})\.?(?:,?\s+(\d{3,4}))?/)) && MONTHS_EN.some(x => r[2].startsWith(x))) {
+        d = +r[1];
+        m = MONTHS_EN.findIndex(x => r[2].startsWith(x)) + 1;
+        y = r[3] ? +r[3] : undefined;
+    } else if (r && !MONTHS_EN.some(x => (r[2] || '').startsWith(x)) && !/^\d/.test(r[2] || '')) r = null;
+    if (!r && (r = t.match(/([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s+(\d{3,4}))?/))) {
         m = MONTHS_EN.findIndex(x => r[1].startsWith(x)) + 1;
         d = +r[2];
         y = r[3] ? +r[3] : undefined;
@@ -274,6 +279,26 @@ export function parseBorn(v) {
     if (y !== undefined && y < 100) y = undefined;
     return y ? { d, m, y } : { d, m };
 }
+// Дата рождения прямо из текста карточки или персоны — на случай, если модель её пропустила:
+// «born March 14, 1961», «Date of birth: 14.03.1961», «родился 14 марта 1961», «День рождения: 14.03»
+export function bornFromText(text) {
+    const t = String(text || '');
+    const pats = [
+        /\b(?:born|date of birth|birth ?date|birthday|b-day|d\.?o\.?b\.?)\s*(?:on|in|:|-|—|–)?\s*([^\n;()\[\]|]{3,40})/i,
+        /(?:родил(?:ся|ась|ось)|дата рождения|день рождения|д\.\s?р\.)\s*(?:в|:|-|—|–)?\s*([^\n;()\[\]|]{3,40})/i,
+    ];
+    for (const re of pats) {
+        const m = t.match(re);
+        if (!m) continue;
+        const raw = m[1].replace(/^(on|in|the|в)\s+/i, '').replace(/\s+(года|г\.|год)\b.*$/i, '').trim();
+        const b = parseBorn(raw) || parseBorn(raw.split(/[,.](?=\s*[^\d\s])/)[0]);
+        if (b && (b.d || b.y)) return b;
+        const ym = raw.match(/^(\d{4})(?!\d)/);
+        if (ym && +ym[1] >= 100) return { y: +ym[1] };
+    }
+    return null;
+}
+
 export function bornText(b) {
     if (!b) return '';
     if (!b.d || !b.m) return b.y ? `${b.y} г. (день неизвестен)` : '';
