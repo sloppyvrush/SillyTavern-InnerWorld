@@ -606,6 +606,7 @@ const PATHS = {
     // совместимость: магнит-сердце, магнит, ровно, перечёркнутый магнит, разбитое сердце
     sparkle_off: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M3.5 3.5l17 17" stroke-width="2.2"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
     chem_amazing: '<path d="M12 21s-8-4.9-8-10.6A4.3 4.3 0 0 1 12 8a4.3 4.3 0 0 1 8 2.4C20 16.1 12 21 12 21z" fill="currentColor" fill-opacity=".85"/><path d="M12 2.2v2.6M5.2 4.4l1.7 1.8M18.8 4.4l-1.7 1.8"/>',
     chem_good: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/><path d="M8.4 1.6v2M15.6 1.6v2M12 2.4v1.4" stroke-width="1.6"/>',
     chem_neutral: '<path d="M6.5 6v7a5.5 5.5 0 0 0 11 0V6h-3.8v7a1.7 1.7 0 0 1-3.4 0V6z"/><path d="M6.5 9.5h3.8M13.7 9.5h3.8"/>',

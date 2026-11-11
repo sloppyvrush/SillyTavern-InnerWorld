@@ -14929,3 +14929,67 @@ ol {
 .iw-grid > :is(.iw-b-mood, .iw-b-impression, .iw-b-wants, .iw-b-fears):not(.iw-collapsed):not(.iw-solo) {
     align-self: stretch;
 }
+
+/* сворачивание: «+» у свёрнутого блока, «−» у развёрнутого — без поворотов стрелки */
+.iw-panel .iw-block-head .iw-fold .iw-ico,
+.iw-panel .iw-block.iw-collapsed .iw-block-head .iw-fold .iw-ico,
+.iw-panel.iw-noanim .iw-block-head .iw-fold .iw-ico,
+.iw-panel.iw-noanim .iw-block.iw-collapsed .iw-block-head .iw-fold .iw-ico {
+    transform: none !important;
+}
+
+/* сколько ответов до следующего автоматического разбора — значок на кнопке «Чат» */
+.iw-panel .iw-act-chat {
+    position: relative;
+    overflow: visible;
+}
+
+.iw-act-next {
+    position: absolute;
+    top: -9px;
+    right: -6px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 18px;
+    padding: 0 6px 0 4px;
+    border: 1.5px solid var(--iw-label-color, var(--iw-ink));
+    border-radius: 999px;
+    background: var(--iw-block-bg);
+    color: var(--iw-label-color, var(--iw-ink));
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    pointer-events: auto;
+}
+
+.iw-act-next .iw-ico {
+    width: 11px;
+    height: 11px;
+}
+
+.iw-panel.iw-theme-pixel .iw-act-next {
+    border-radius: 0;
+}
+
+/* дни недели — как в обычном календаре: «Пн», «Вт», «Ср» */
+.iw-panel .iw-cal-grid thead th {
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: none;
+}
+
+/* возраст и день рождения у НПС */
+.iw-npc .iw-tab-born {
+    margin-top: 2px;
+}
+
+.iw-dossier-born {
+    margin-top: 4px;
+}
+
+.iw-dossier-born .iw-tab-born {
+    font-size: 13px;
+}

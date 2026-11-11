@@ -6,6 +6,7 @@ import {
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError,
     extractJson, nameScript, parseBorn, zodiacOf, bornText,
+    plural,
 } from './src/core.js';
 import {
     normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay,
@@ -18,7 +19,7 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.4.3';
+const VERSION = '0.4.4';
 const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -578,7 +579,8 @@ function stepClock(messageId) {
 
 // Для календаря и возраста: главные персонажи и персона первыми.
 function clockPeople(state) {
-    const list = Object.entries((state && state.characters) || {}).filter(([, c]) => c && (c.born || c.ageAt));
+    // умерших не считаем: у них нет ни дня рождения в календаре, ни возраста «сейчас»
+    const list = Object.entries((state && state.characters) || {}).filter(([, c]) => c && (c.born || c.ageAt) && c.dead !== true);
     const mains = new Set(splitCast(state || emptyState()).mains);
     list.sort((a, b) => (mains.has(b[0]) || b[1].persona ? 1 : 0) - (mains.has(a[0]) || a[1].persona ? 1 : 0));
     return list.map(([, c]) => ({ name: c.name, born: c.born, ageAt: c.ageAt }));
@@ -1447,6 +1449,14 @@ async function onMessageReceived(messageId, type) {
     await analyze(id);
 }
 
+// Через сколько ответов будет следующий автоматический разбор (0 — не показываем: каждый ответ или только по кнопке)
+function nextAnalysisIn() {
+    const s = settings();
+    const every = Number(s.every) || 0;
+    if (every <= 1 || !s.enabled || !hasChat()) return 0;
+    return every - ((chatMeta().counter || 0) % every);
+}
+
 function onGenerationStarted(type, _options, dryRun) {
     if (dryRun) return;
     // При свайпе и перегенерации прячем то, что было посчитано по заменяемому ответу.
@@ -1583,7 +1593,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView() });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn() });
     writeScroll(el, keepScroll);
 }
 
@@ -1880,11 +1890,27 @@ async function onPanelClick(e) {
         const c0 = ctx();
         const p2 = n => String(n).padStart(2, '0');
         const cur = ch.born ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : '';
-        const val = await c0.callGenericPopup(`<b>День рождения: ${esc(ch.name)}</b><br><small>Например 20.08.1969 или просто 20.08. Оставь пустым, чтобы убрать.</small>`, c0.POPUP_TYPE.INPUT, cur);
+        const val = await c0.callGenericPopup(`<b>День рождения или возраст: ${esc(ch.name)}</b><br><small>Дата — 20.08.1969 или просто 20.08. Или возраст на сегодня по часам сцены — например 27. Дальше возраст растёт сам. Оставь пустым, чтобы убрать.</small>`, c0.POPUP_TYPE.INPUT, cur);
         if (val === null || val === undefined || val === false) return;
         const txt = String(val).trim();
+        const ageOnly = txt.match(/^(\d{1,3})\s*(год|года|лет|г\.?)?$/i);
+        if (ageOnly) {
+            // возраст вручную: привязываем к дате сцены, дальше он растёт по часам; год рождения из лорбука больше не главный
+            const now = clockNow();
+            if (!now || !now.cal || !now.t) return toastr.warning('Сначала нужны часы сцены: открой календарь в дневнике.', 'Внутренний мир');
+            const age = Number(ageOnly[1]);
+            ch.ageAt = Object.assign({ age }, now.cal.type === 'days' ? { d: now.t.d } : { y: now.t.y, m: now.t.m, d: now.t.d });
+            if (ch.born && ch.born.y) { ch.born = Object.assign({}, ch.born); delete ch.born.y; }
+            delete ch.ageSaid;
+            ch.bornManual = true;
+            await saveEditedState(state);
+            updateInjection();
+            toastr.success(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')} — дальше по часам сцены`, 'Внутренний мир');
+            return renderAll();
+        }
         if (!txt) {
             delete ch.born;
+            delete ch.ageAt;
         } else {
             const b = parseBorn(txt);
             if (!b) return toastr.warning('Не поняла дату. Пример: 20.08.1969', 'Внутренний мир');

@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, purseOf, isHearsay, isDead, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
+import { settleMood, purseOf, isHearsay, isDead, npcWeight, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
 import { ageNow } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, faceIcon, currencyIcon, bimboNicks, setIconTheme } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -44,7 +44,7 @@ let FOLD = { collapsed: {} };
 
 function blockHead(kind, label, extra = '') {
     const folded = !!FOLD.collapsed[kind];
-    const btn = kind === 'rewards' ? '' : `<button type="button" class="iw-fold" data-iw-fold="${kind}" title="${folded ? 'Развернуть' : 'Свернуть'}" aria-label="${folded ? 'Развернуть' : 'Свернуть'}" aria-expanded="${!folded}">${icon('chevron')}</button>`;
+    const btn = kind === 'rewards' ? '' : `<button type="button" class="iw-fold" data-iw-fold="${kind}" title="${folded ? 'Развернуть' : 'Свернуть'}" aria-label="${folded ? 'Развернуть' : 'Свернуть'}" aria-expanded="${!folded}">${icon(folded ? 'plus' : 'minus')}</button>`;
     return `<div class="iw-block-head"><span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label"${kind === 'rewards' ? '' : ` data-iw-fold="${kind}"`}>${label}</span>${folded ? '' : extra}${btn}</div>`;
 }
 
@@ -189,13 +189,21 @@ export function renderBooksField({ books = [], picked = [], linked = [], busy = 
     return booksMenu(books, picked, linked, busy, off, hasPersona, true);
 }
 
+// Сколько ответов осталось до следующего автоматического разбора (при «раз в N ответов»)
+let NEXT_IN = 0;
+function nextBadge() {
+    if (!(NEXT_IN > 0)) return '';
+    const t = `Следующий автоматический разбор — ${NEXT_IN === 1 ? 'после следующего ответа' : `через ${NEXT_IN} ${plural(NEXT_IN, 'ответ', 'ответа', 'ответов')}`}`;
+    return `<span class="iw-act-next" title="${t}" aria-label="${t}">${icon('clock')}<b>${NEXT_IN}</b></span>`;
+}
+
 function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked = [], working = false, off = [], hasPersona = false) {
     const btn = (kind, ic, label, title) => {
         // Кнопка, которая сейчас работает, сама становится «Стоп» — на том же месте и того же размера.
         if (busyKind === kind) {
             return `<button type="button" class="iw-act iw-act-${kind} busy iw-act-stop" data-iw-stop title="Остановить разбор" aria-label="Остановить разбор"><span class="iw-stop-ring" aria-hidden="true">${icon('stop')}</span><span>Стоп</span></button>`;
         }
-        return `<button type="button" class="iw-act iw-act-${kind}" data-iw-analyze="${kind}" title="${title}"${working ? ' disabled' : ''}>${icon(ic)}<span>${label}</span></button>`;
+        return `<button type="button" class="iw-act iw-act-${kind}" data-iw-analyze="${kind}" title="${title}"${working ? ' disabled' : ''}>${icon(ic)}<span>${label}</span>${kind === 'chat' && !working ? nextBadge() : ''}</button>`;
     };
     const cap = working
         ? `<span class="iw-loader" aria-hidden="true"><i></i><i></i><i></i><b></b></span><span class="iw-cap-text">${esc(labels.analyzing || 'Записываю')}</span>`
@@ -694,26 +702,27 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null } = {
 </section>`;
 }
 
-// Раскладка блоков без дыр: открытые узкие блоки (настроение, отношение, желания, страхи) встают парами,
-// а если узкому не хватило пары — он растягивается на всю ширину. Свёрнутые блоки — плашками по две в ряд, внизу.
+// Раскладка блоков без дыр. Блоки остаются в своей части дневника:
+// узкие (настроение, отношение, желания, страхи) — открытые парами, под ними свёрнутые плашками по две;
+// если узкому не хватило пары, он растягивается на всю ширину. Широкий блок сворачивается полоской на своём месте.
 const NARROW_BLOCKS = new Set(['mood', 'impression', 'wants', 'fears']);
 export function layoutBlocks(blocks, collapsed = {}) {
     const items = blocks.filter(Boolean).map(h => ({ h, k: (h.match(/class="iw-block iw-b-([a-z]+)/) || [])[1] || '' }));
-    const open = items.filter(x => !collapsed[x.k]);
-    const shut = items.filter(x => collapsed[x.k]);
-    const mark = (x, cls) => x.h.replace(/class="iw-block iw-b-([a-z]+)(?=[" ])/, m => `${m}${cls}`);
+    const mark = (x, cls) => (cls ? x.h.replace(/class="iw-block iw-b-([a-z]+)(?=[" ])/, m => `${m}${cls}`) : x.h);
     const out = [];
     let run = [];
+    const pairs = (list, extra) => list.forEach((x, i) => out.push(mark(x, `${extra}${list.length % 2 && i === list.length - 1 ? ' iw-solo' : ''}`)));
     const flush = () => {
-        run.forEach((x, i) => out.push(mark(x, run.length % 2 && i === run.length - 1 ? ' iw-solo' : '')));
+        pairs(run.filter(x => !collapsed[x.k]), '');
+        pairs(run.filter(x => collapsed[x.k]), ' iw-collapsed');
         run = [];
     };
-    for (const x of open) {
-        if (NARROW_BLOCKS.has(x.k)) run.push(x);
-        else { flush(); out.push(x.h); }
+    for (const x of items) {
+        if (NARROW_BLOCKS.has(x.k)) { run.push(x); continue; }
+        flush();
+        out.push(mark(x, collapsed[x.k] ? ' iw-collapsed iw-solo' : ''));
     }
     flush();
-    shut.forEach((x, i) => out.push(mark(x, ` iw-collapsed${shut.length % 2 && i === shut.length - 1 ? ' iw-solo' : ''}`)));
     return out.join('');
 }
 
@@ -740,11 +749,15 @@ export function renderCharacter(c, modules, theme, opts = {}) {
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
-export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [], personaName = '', personaG = 'n' }) {
+export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [], personaName = '', personaG = 'n', clock = null }) {
     const used = new Set();
     const cards = [];
     const heardCards = [];
-    for (const key of npcKeys) {
+    // сначала важные для сюжета, в конце — эпизодические
+    const entryOf = k => (roster && roster.find ? roster.find(k) : null);
+    const sorted = npcKeys.filter(k => state.characters[k]).map((k, i) => ({ k, i, w: npcWeight(state.characters[k], entryOf(k)) }))
+        .sort((a, b) => b.w - a.w || a.i - b.i).map(x => x.k);
+    for (const key of sorted) {
         const c = state.characters[key];
         const entry = roster && roster.find ? roster.find(key) : null;
         if (entry) used.add(entry.name);
@@ -767,6 +780,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
       <button type="button" class="iw-npc met${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `Открыть: ${c.name}`)}">
         ${deadMark}<span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c)}</span>
         <span class="iw-npc-name${nameFit(c.name)}">${esc(c.name)}</span>
+        ${!dead && (c.born || c.ageAt) ? tabBorn(c, clock, key) : ''}
         ${dead ? '<span class="iw-npc-mood iw-npc-heardmark">нет в живых</span>' : (c.mood ? `<span class="iw-npc-mood iw-npc-now">${ce(c.mood)}</span>` : '')}
         ${who ? `<span class="iw-npc-who">${ce(who)}</span>` : ''}
       </button>`);
@@ -960,7 +974,8 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0 }) {
+    NEXT_IN = nextIn;
     setIconTheme(theme);
     const L = themeLabels(theme, 'm');
     // дневники, записанные до «настроения как в Симс», пересчитываем при первом показе
@@ -995,7 +1010,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
         const pc0 = persona && state.characters[persona.key];
-        body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly, personaName: (persona && persona.name) || '', personaG: genderOf(pc0 && pc0.g, (persona && persona.name) || '', '') });
+        body = renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly, personaName: (persona && persona.name) || '', personaG: genderOf(pc0 && pc0.g, (persona && persona.name) || '', ''), clock });
     } else if (view.startsWith('npc:') && showNpc && state.characters[view.slice(4)] && (isHearsay(state.characters[view.slice(4)]) || isDead(state.characters[view.slice(4)], roster && roster.find ? roster.find(view.slice(4)) : null))) {
         const key = view.slice(4);
         const c = state.characters[key];
@@ -1061,6 +1076,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     <div class="iw-npc-title${nameFit(c.name)}">${esc(c.name)}${titleFace(c)}</div>
     ${aliases.length ? `<div class="iw-npc-aka">ещё зовут: ${esc(aliases.join(', '))}</div>` : ''}
     ${c.mood ? `<div class="iw-dossier-mood">${esc(LL.moodLead)} <span class="iw-hl iw-hl-main">${esc(c.mood)}</span></div>` : ''}
+    <div class="iw-dossier-born">${tabBorn(c, clock, key)}</div>
   </div>
   <div class="iw-whois">
     <span class="iw-whois-tag">${esc(LL.whois)}</span>

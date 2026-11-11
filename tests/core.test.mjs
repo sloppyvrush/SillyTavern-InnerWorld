@@ -980,4 +980,17 @@ test('тайны лорбука и знание персоны о незнако
     assert.equal(state.characters.x.who, undefined);
 });
 
+test('дни недели и порядок НПС', () => {
+    assert.deepEqual(C.weekdayHeads(['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']), ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']);
+    assert.deepEqual(C.weekdayHeads(['Солнцедень', 'Лунник', 'Огнедень']), ['Со', 'Лу', 'Ог']);
+    assert.deepEqual(C.weekdayHeads(['Сорн', 'Солм']), ['Сор', 'Сол']);
+    const mains = ['Роберт'];
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Хильда', role: 'minor', mood: 'спокойна' }), all, { mains });
+    ({ state } = applyAnalysis(state, one({ name: 'Марта', role: 'major', mood: 'весела' }), all, { mains }));
+    ({ state } = applyAnalysis(state, one({ name: 'Сорель', role: 'key', mood: 'зол' }), all, { mains }));
+    const html = renderNpcList({ state, npcKeys: ['Хильда', 'Марта', 'Сорель'], roster: null });
+    const at = n => html.indexOf(`>${n}<`);
+    assert.ok(at('Сорель') < at('Марта') && at('Марта') < at('Хильда'));
+});
+
 console.log(`значки: ${passed} проверок прошло`);

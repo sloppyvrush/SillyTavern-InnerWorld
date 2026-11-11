@@ -438,6 +438,21 @@ export function mergeHeard(old, fresh, off = []) {
     return out.slice(-8);
 }
 
+// Значимость НПС для сюжета: ключевой, заметный, эпизодический
+export const NPC_ROLES = ['key', 'major', 'minor'];
+const ROLE_SCORE = { key: 30, major: 20, minor: 8 };
+
+// Порядок НПС в дневнике: сначала важные для сюжета, потом эпизодические.
+// Значимость — по оценке модели (лорбук и чат), а при равной — кто чаще появлялся и связан с героями.
+export function npcWeight(c, entry) {
+    const role = (c && c.role) || (entry && entry.role) || '';
+    let w = ROLE_SCORE[role] ?? 14;
+    w += Math.min(10, (c && c.cycle) || 0);
+    if (entry && (entry.rel || entry.relUser)) w += 3;
+    if (c && c.impression) w += 2;
+    return w;
+}
+
 // true / false / undefined из ответа модели («да», "false", 0…)
 export function flagOf(v) {
     if (v === undefined || v === null || v === '') return undefined;
@@ -488,6 +503,7 @@ export function cleanCharacter(raw, opts = {}) {
     // знаком ли НПС с игроком лично или игрок знает о нём только понаслышке
     if (flagOf(raw.met) !== undefined) c.met = flagOf(raw.met);
     if (flagOf(raw.dead) !== undefined) c.dead = flagOf(raw.dead);
+    if (NPC_ROLES.includes(raw.role)) c.role = raw.role;
     if (Array.isArray(raw.heard)) c.heard = cleanHeard(raw.heard);
 
     if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
@@ -1086,6 +1102,7 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     // у знакомого понаслышке «кто это» — то, что знает персона, и оно уточняется по мере рассказов
     if (out.met === false && fresh.who && !out.whoManual) out.who = fresh.who;
     if (fresh.heardV) out.heardV = fresh.heardV;
+    if (fresh.role && !out.roleManual) out.role = fresh.role;
     // смерть модель отмечает один раз; «ожить» персонаж может только по правке игрока
     if (fresh.dead === true && !out.deadManual) out.dead = true;
     if (out.met === false || out.dead === true) {
@@ -1400,7 +1417,7 @@ export function eventText(ev) {
 
 // Шаблон ответа для модели: только включённые блоки, чтобы не тратить токены.
 export function responseTemplate(modules, manualTurns) {
-    const c = { name: 'Имя', g: 'm|f', who: 'кто это (только для нового персонажа)', met: 'true|false (только для НПС: новых и с no_met или met:false)', dead: 'true — только если персонажа нет в живых', heard: [{ fact: 'что игрок о нём знает (только при met:false)', from: 'откуда: кто рассказал, газета, слухи' }] };
+    const c = { name: 'Имя', g: 'm|f', who: 'кто это (только для нового персонажа)', met: 'true|false (только для НПС: новых и с no_met или met:false)', dead: 'true — только если персонажа нет в живых', role: 'key|major|minor (только для НПС: новых и с no_role)', heard: [{ fact: 'что игрок о нём знает (только при met:false)', from: 'откуда: кто рассказал, газета, слухи' }] };
     if (modules.mood) {
         c.mood = 'встревожен';
         c.face = FACES.join('|');
@@ -1464,6 +1481,7 @@ export function buildSystemPrompt(settings, ctx) {
     if (settings.showNpc !== false && ctx.trackPersona !== false) {
         rules.push(`met — только для НПС (не для главного персонажа и не для ${user}): знаком ли этот персонаж с ${user} ЛИЧНО — они встречались, говорили, были в одной сцене или знакомы ещё до истории. Если ${user} знает о нём только понаслышке — ему рассказали (главный персонаж, другие), прочла в газете, письме, слышала слухи, или он вообще живёт только в чужой истории (умершие родные, бывшие, люди из прошлого главного персонажа), — верни met: false. Для met: false пиши ТОЛЬКО name, g, met, who и heard — и всё это глазами ${user}: только то, что ${user} действительно узнала В СООБЩЕНИЯХ ЧАТА — ей прямо рассказал главный персонаж или другой НПС, она сама прочла (газета, письмо, документ), нашла улику или услышала слух. who — кем этот человек приходится, как это знает ${user} («дочь Роберта»), без подробностей сверх сказанного. heard — до 4 коротких новых фактов, каждый — с from: кто или что в чате это раскрыло («рассказал Роберт», «из газеты», «Марта проговорилась»). Карточка, лорбук и [Знакомые по предыстории] — это знание автора, а не ${user}: оттуда в who и heard НЕ бери ничего, даже если это правда, — например, как человек умер, чем увлекался, какие у него тайны, пока об этом не сказали в сообщениях. Если в сообщениях о нём ничего нового — heard не пиши; уже записанное не повторяй. Настроение, эмоции, желания, страхи, мечту, черты, impression, chem и всё остальное для met: false НЕ пиши: ${user} не видела этого человека и не может этого знать. Пиши met для новых НПС и для тех, у кого no_met: true или met: false; если персонаж с met: false лично встретился с ${user} в последних сообщениях — верни met: true и заполни всё как обычно.`);
     }
+    if (settings.showNpc !== false) rules.push('role — только для НПС: насколько он важен для сюжета. key — ключевой (без него история не идёт: союзник, противник, любовь, близкая семья), major — заметный (часто рядом, влияет на события), minor — эпизодический (появился разок, фон, упомянут вскользь). Пиши role для новых НПС и для тех, у кого no_role: true. Меняй, только если роль в сюжете по-настоящему выросла или упала.');
     rules.push(`dead — true, если персонажа нет в живых: умер до начала истории или погиб в сцене. Для тех, с кем ${user} лично знакома (met: true), можно опираться на карточку, лорбук и сообщения; для знакомых понаслышке (met: false) — только если о смерти сказали в сообщениях чата (умершие родные, погибшие друзья, убитые). Это не про обморок, сон или ранение — только настоящая смерть. Призрак, дух или нежить, которые сами действуют и говорят в сцене, — не dead, их ведут как живых. Для умерших пиши только name, g, who, dead: true, met и heard (что о нём известно ${user}); настроение, эмоции, желания и всё остальное не пиши. Если у персонажа уже стоит dead: true — повтори это и больше ничего, кроме новых фактов в heard. Персона ${user} не может быть dead.`);
     if (ctx.acquainted && ctx.acquainted.length) {
         rules.push(`Персонажи из [Знакомые по предыстории] знакомы главному персонажу или ${user} ещё до начала истории. Заведи запись и для каждого из них, даже если в сцене их нет. Если они знакомы с ${user} лично — met: true, who, характер (traits), желания, страхи и мечта — по лорбуку; настроение и эмоции не придумывай (moodlets пустые, mood — по характеру, спокойное); impression.known (кто они друг другу) и label/why/score по их общей истории. Если с ${user} лично не знакомы (знает их только главный персонаж) — met: false и только то, что ${user} узнала о них в сообщениях чата (who, heard); если в чате о них ещё не говорили — who пустой, heard не пиши.`);
@@ -1531,6 +1549,7 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
         const c = state.characters[k];
         const o = { name: c.name, g: genderOf(c.g, c.name, c.who) };
         const npc = !c.persona && !(opts.mains && isMain(c.name, opts.mains));
+        if (npc && !c.role) o.no_role = true;
         if (isShortRecord(c)) {
             if (c.met === false) o.met = false;
             if (c.dead) o.dead = true;
@@ -1744,6 +1763,7 @@ export function parseRoster(text, userName = '') {
             rel: lowerWord(raw.knows_main || raw.rel || '', 40),
             relUser: lowerWord(raw.knows_player || raw.relUser || '', 40),
             dead: flagOf(raw.dead) === true,
+            role: oneOf(raw.role, NPC_ROLES, ''),
         });
         if (npc.length >= 40) break;
     }
@@ -1802,9 +1822,9 @@ export function buildRosterPrompt(sources, userName, lang = 'русском') {
         `main — главный персонаж (или персонажи) карточки, от лица которых пишет бот. Игрока (${userName || 'игрок'}) не включай никуда.`,
         'npc — остальные люди и разумные существа, которые могут появиться в сцене: имя так, как его пишут в тексте; g — пол m/f; who — кто это одной строкой (роль и связь с героями); traits — 2–4 черты характера, если они описаны.',
         'aliases — ТОЛЬКО клички, прозвища и другие имена, которые прямо написаны в карточке или лорбуке. Не придумывай уменьшительные формы и не разбивай имя на части (фамилию отдельно не пиши). Если таких нет — пустой список.',
-        `knows_main — если главный персонаж знаком с этим человеком ещё ДО начала истории (родня, друзья, бывшие, коллеги, враги, соседи — по карточке или лорбуку), кто он главному персонажу, 1–3 слова («бывшая», «друг детства», «сестра»); если не знакомы — пустая строка. knows_player — то же для игрока (${userName || 'игрок'}), по описанию игрока и лорбуку: кто он игроку, если они знакомы до истории, иначе пустая строка. dead — true, если по карточке или лорбуку этого человека уже нет в живых (умер, погиб, казнён); иначе не пиши.`,
+        `knows_main — если главный персонаж знаком с этим человеком ещё ДО начала истории (родня, друзья, бывшие, коллеги, враги, соседи — по карточке или лорбуку), кто он главному персонажу, 1–3 слова («бывшая», «друг детства», «сестра»); если не знакомы — пустая строка. knows_player — то же для игрока (${userName || 'игрок'}), по описанию игрока и лорбуку: кто он игроку, если они знакомы до истории, иначе пустая строка. dead — true, если по карточке или лорбуку этого человека уже нет в живых (умер, погиб, казнён); иначе не пиши. role — насколько он важен для сюжета: key — ключевой (без него история не идёт: союзник, враг, любовь, семья главного), major — заметный (часто рядом, влияет на события), minor — эпизодический (упомянут вскользь, фон).`,
         'Не включай группы людей без имени («охрана», «соседи»), места, предметы и организации. Не больше 30 персонажей, самые важные — первыми.',
-        'Формат: {"main":["Имя"],"npc":[{"name":"Имя","aliases":["прозвище"],"g":"m","who":"кто это","traits":["черта"],"knows_main":"","knows_player":"","dead":false}]}',
+        'Формат: {"main":["Имя"],"npc":[{"name":"Имя","aliases":["прозвище"],"g":"m","who":"кто это","traits":["черта"],"knows_main":"","knows_player":"","dead":false,"role":"key|major|minor"}]}',
     ].join('\n');
     const user = sources.map(src => `[${src.title}]\n${src.text}`).join('\n\n') + '\n\nВерни JSON.';
     return { system, user };
@@ -2009,6 +2029,7 @@ export function mergeRoster(old, fresh) {
             if (e.rel) prev.rel = e.rel;
             if (e.relUser) prev.relUser = e.relUser;
             if (e.dead) prev.dead = true;
+            if (e.role) prev.role = e.role;
         } else if (!out.main.some(m => namesMatch(m, e.name))) {
             out.npc.push(Object.assign({}, e));
         }
