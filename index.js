@@ -1132,6 +1132,13 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     if (manual) busyKind = kind;
     status = fromLore ? 'Дополняю дневник по карточке и лорбуку…' : 'Пишу в дневник…';
     setLive({ kind: fromLore ? kind : (catchUp ? 'catchup' : 'chat'), stage: 'prep', t0: (live && live.t0) || Date.now(), chars: [], len: 0, hidden: !!(live && live.hidden) });
+    // календаря у чата ещё нет — узнаём его одновременно с разбором, а не после: листок не закроется, пока всё не встанет
+    let calP = null;
+    if (s.clock !== false && hasChat() && !chatMeta().calendar && !chatMeta().calendarTried && !clockBusy) {
+        chatMeta().calendarTried = true;
+        live.calendar = 'busy';
+        calP = detectCalendar().finally(() => { if (live) { live.calendar = 'done'; renderAll(); } });
+    }
     renderAll();
     try {
         const chat = c.chat;
@@ -1286,6 +1293,13 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (info.clockNow) applySceneTime(messageId, raw);
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         writeRecord(messageId, state);
+        if (calP) {
+            // ждём календарь, чтобы время встало вместе с записями
+            await calP;
+            if (info.clockNow === '' && s.clock !== false) {
+                try { pinAges(state, messageId); writeRecord(messageId, state); } catch { /* без возраста */ }
+            }
+        }
         chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
         if (catchUp) {
             // кого проверили по истории, но в сцене лично не было — не перепроверяем, пока не упомянут снова
@@ -1715,7 +1729,10 @@ async function onPanelClick(e) {
     if (clockSum) clockOpen = !clockSum.parentElement.open;
     const calSum = e.target.closest('.iw-clock-cal > summary');
     if (calSum) clockCalOpen = !calSum.parentElement.open;
-    const t = e.target.closest('button');
+    // день рождения на карточке — своя кнопка внутри карточки, карточку при этом не открываем
+    const bornTag = e.target.closest('[data-iw-born]');
+    const t = bornTag && bornTag.tagName !== 'BUTTON' ? bornTag : e.target.closest('button');
+    if (bornTag) { e.preventDefault(); e.stopPropagation(); }
     if (!t) return;
     const s = settings();
     if (t.classList.contains('iw-close')) return closePanel();

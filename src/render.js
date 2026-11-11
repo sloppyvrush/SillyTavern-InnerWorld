@@ -221,19 +221,23 @@ function photoHtml(c, avatarFor) {
 // Вкладки: главные персонажи-фотографии и наклейка «НПС»; справа — кнопки разбора.
 // День рождения на карточке: «20 авг · 27» (возраст — по часам сцены, если календарь обычный).
 const MONTH_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-function tabBorn(c, clock) {
+function tabBorn(c, clock, key = '') {
     if (!c) return '';
     const age = clock && clock.cal && clock.t ? ageNow(clock.cal, clock.t, c) : null;
-    if (!c.born || !c.born.d || !c.born.m) return age !== null ? `<span class="iw-tab-born" title="Возраст на дату сцены">${age} ${plural(age, 'год', 'года', 'лет')}</span>` : '';
+    const edit = key ? ` data-iw-born="${esc(key)}" role="button" tabindex="0"` : '';
+    if (!c.born || !c.born.d || !c.born.m) {
+        if (age !== null) return `<span class="iw-tab-born"${edit} title="Возраст на дату сцены. Нажми, чтобы вписать день рождения">${icon('cake')}<span>${age} ${plural(age, 'год', 'года', 'лет')}</span></span>`;
+        return key ? `<span class="iw-tab-born iw-born-none"${edit} title="День рождения не указан — нажми, чтобы вписать">${icon('cake')}<span>д.р.?</span></span>` : '';
+    }
     const today = clock && clock.t && clock.cal && clock.cal.type === 'greg' && clock.t.m === c.born.m && clock.t.d === c.born.d;
-    return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}" title="День рождения: ${esc(bornText(c.born))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${MONTH_SHORT[c.born.m - 1]}${age !== null ? ` · ${age}` : ''}</span></span>`;
+    return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}"${edit} title="Нажми, чтобы поправить. День рождения: ${esc(bornText(c.born))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${MONTH_SHORT[c.born.m - 1]}${age !== null ? ` · ${age}` : ''}</span></span>`;
 }
 
 export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null }) {
     const tabs = mains.map(key => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
-        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}">${tabTint(c)}<span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}${tabBorn(c, clock)}</button>`;
+        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}">${tabTint(c)}<span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(c.name)}">${esc(c.name)}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}${state.characters[key] ? tabBorn(c, clock, key) : ''}</button>`;
     }).join('');
     const sticker = npc
         ? `<button type="button" class="iw-npc-sticker${view.startsWith('npc') ? ' on' : ''}" data-iw-view="npc" aria-pressed="${view.startsWith('npc')}">
@@ -249,7 +253,7 @@ export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', 
         const photo = persona.avatar
             ? `<span class="iw-photo" style="background-image:url('${esc(persona.avatar)}')"></span>`
             : `<span class="iw-photo iw-photo-letter">${esc((pc.name || '?').slice(0, 1).toUpperCase())}</span>`;
-        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет">${persona.key ? tabTint(pc) : ''}<span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${ce(pc.mood)}</span>` : ''}${persona.key ? tabBorn(pc, clock) : ''}</button>`;
+        me = `<button type="button" class="iw-tab iw-tab-persona${on ? ' on' : ''}" data-iw-view="me:${esc(persona.key || '')}" aria-pressed="${on}" title="Дневник твоего героя: только для тебя, на ответы бота не влияет">${persona.key ? tabTint(pc) : ''}<span class="iw-tape"></span><span class="iw-photo-wrap">${photo}${persona.key ? faceBadge(pc) : ''}</span><span class="iw-tab-name${nameFit(pc.name)}">${esc(pc.name)}</span>${pc.mood ? `<span class="iw-tab-mood">${ce(pc.mood)}</span>` : ''}${persona.key ? tabBorn(pc, clock, persona.key) : ''}</button>`;
     }
     return `<div class="iw-tabrow"><div class="iw-tabs">${tabs}${sticker}${me}</div>${noActs ? '' : `<span class="iw-divider" aria-hidden="true"></span>${analyzeButtons(busyKind, labels, books, picked, linked, working || !!busyKind, off, !!persona)}`}</div>`;
 }
@@ -1034,6 +1038,8 @@ function renderLive(live, theme, L) {
     const secs = Math.round((Date.now() - live.t0) / 1000);
     const delay = `style="animation-delay:-${((Date.now() - live.t0) / 1000).toFixed(2)}s"`;
     const list = steps.map(([k, text], i) => `<li class="iw-live-step${i < at ? ' done' : (i === at ? ' now' : '')}"><span class="iw-live-dot" aria-hidden="true">${i < at ? icon('tick') : ''}</span><span>${esc(text)}${i === at ? '<span class="iw-live-dots" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}</span></li>`).join('');
+    // календарь и время истории узнаются параллельно с разбором — отдельной строкой
+    const calStep = live.calendar ? `<li class="iw-live-step${live.calendar === 'done' ? ' done' : ' now'}"><span class="iw-live-dot" aria-hidden="true">${live.calendar === 'done' ? icon('tick') : ''}</span><span>Узнаю календарь и время истории${live.calendar === 'done' ? '' : '<span class="iw-live-dots" aria-hidden="true"><i></i><i></i><i></i></span>'}</span></li>` : '';
     const chars = (live.chars || []).map(c => `<li class="iw-live-char"><b>${esc(c.name)}</b>${c.mood ? ` <span class="iw-muted">— ${esc(c.mood)}</span>` : ''}${c.parts.length ? `<span class="iw-live-parts">${c.parts.map(p => `<span class="iw-live-part">${esc(p)}</span>`).join('')}</span>` : ''}</li>`).join('');
     return `
     <div class="iw-live" role="status" aria-live="polite">
@@ -1046,7 +1052,7 @@ function renderLive(live, theme, L) {
         </div>
         <svg class="iw-live-scribble" viewBox="0 0 220 14" preserveAspectRatio="none" aria-hidden="true"><path ${delay} d="M2 8c14-6 22 5 36 0s22-6 36 0 22 5 36 0 22-6 36 0 22 5 36 0 20-5 34 0"/></svg>
         <div class="iw-live-scroll">
-          <ol class="iw-live-steps">${list}</ol>
+          <ol class="iw-live-steps">${list}${calStep}</ol>
           ${chars ? `<ul class="iw-live-chars">${chars}</ul>` : ''}
         </div>
         ${live.len ? `<div class="iw-live-len iw-muted">Написано ~${Math.round(live.len / 5)} слов</div>` : ''}

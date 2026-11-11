@@ -14241,3 +14241,53 @@ ol {
 .iw-panel.iw-theme-pixel .iw-live-scroll::-webkit-scrollbar-thumb {
     border-radius: 0;
 }
+
+/* ---------- Листок часов раскрывается прямо в дневнике (не поверх), листается вместе с ним до конца;
+   текст крупнее и контрастнее — читается в любой теме ---------- */
+.iw-panel .iw-clock-pop {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    margin-top: 8px;
+    box-shadow: none;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--iw-ink);
+    background: var(--iw-block-bg);
+}
+
+.iw-panel .iw-clock-pop :is(.iw-muted, small, .iw-clock-ev > em, .iw-cal-legend, .iw-clock-cal p) {
+    color: color-mix(in srgb, var(--iw-ink) 72%, transparent);
+}
+
+.iw-panel .iw-clock-pop .iw-clock-sub {
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.iw-panel .iw-clock-pop :is(.iw-clock-ev, .iw-clock-hols > li, .iw-clock-cal p, .iw-clock-lock) {
+    font-size: 15px;
+}
+
+.iw-panel .iw-clock-cal > summary {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.iw-panel.iw-theme-pixel .iw-clock-pop :is(.iw-clock-ev, .iw-clock-hols > li, .iw-clock-cal p, .iw-clock-lock) {
+    font-size: 14px;
+}
+
+/* день рождения на карточке — можно нажать и вписать */
+.iw-tab-born[data-iw-born] {
+    cursor: pointer;
+    border-bottom: 1px dashed transparent;
+}
+
+.iw-tab-born[data-iw-born]:hover {
+    border-bottom-color: currentColor;
+}
+
+.iw-tab-born.iw-born-none {
+    opacity: .75;
+}
