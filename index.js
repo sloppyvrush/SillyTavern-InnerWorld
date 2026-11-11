@@ -9,21 +9,22 @@ import {
     plural,
     purseOf,
     cancelReward,
+    loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanRumor,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
-    normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay,
+    normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay, seasonOf,
     upcoming, monthGrid, monthMarks, shiftMonth, monthName, monthCount, monthDays, clockInjection, buildCalendarPrompt, parseCalendarAnswer, sceneTimeFix,
     parseClockCommand, CALENDAR_TYPES, MONTHS_RU, dayIndex,
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
-import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc } from './src/render.js';
+import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.5.4';
-const UPDATED = '10.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
+const VERSION = '0.6.0';
+const UPDATED = '12.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
@@ -119,9 +120,33 @@ function rosterKey() {
     return ch ? ch.avatar : '';
 }
 
+// Если при изучении лорбука модель не вернула, кем НПС приходится героям («knows_player» / «knows_main»),
+// достаём это из «кто это»: «бывший жених Евы» → для Евы «бывший жених», «лучший друг Виктора» → для Виктора «лучший друг».
+const REL_TAIL = /\s(с|у|от|для|к|о|об|про|через|возле|рядом|около|при|из|на|в|по)$/i;
+function relFromWho(who, name) {
+    const first = String(name || '').trim().split(/\s+/)[0] || '';
+    if (first.length < 3 || !who) return '';
+    const stem = first.replace(/[аяьй]$/i, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:^|[,;(]\\s*)([^,;()«»"]{2,48}?)\\s+${stem}[а-яё]{0,3}(?=$|[\\s,;.)!?])`, 'i');
+    const m = String(who).match(re);
+    if (!m) return '';
+    const rel = m[1].trim().toLowerCase();
+    if (rel.split(/\s+/).length > 5 || REL_TAIL.test(rel)) return '';
+    return rel.slice(0, 40);
+}
+function guessRel(e) {
+    if (!e || e.rel || e.relUser) return;
+    const c = ctx();
+    const u = relFromWho(e.who, c.name1);
+    const m = relFromWho(e.who, c.name2);
+    if (u) e.relUser = u;
+    if (m) e.rel = m;
+}
+
 function roster() {
     const key = rosterKey();
     const r = (key && settings().rosters[key]) || emptyRoster();
+    for (const e of r.npc || []) guessRel(e);
     return Object.assign({}, r, { find: name => rosterFind(r, name) });
 }
 
@@ -164,6 +189,13 @@ function personaKeyOf(state) {
     const name = ctx().name1 || '';
     return state.order.find(k => state.characters[k] && (state.characters[k].persona || (name && sameName(k, name)))) || null;
 }
+
+// Сколько НПС вести в дневнике (выбирается в первой настройке). 99 — все.
+function npcCap() {
+    const v = Number(settings().npcLimit);
+    return v > 0 && v < 99 ? v : Infinity;
+}
+const rosterWeight = e => npcWeight(null, e) + (e && e.relUser ? 4 : 0);
 
 function splitCast(state) {
     const mn = mainNames();
@@ -287,7 +319,7 @@ async function collectLoreSources(onlyBook = '') {
 
 // Разбор карточки и лорбуков: список НПС (дополняется, а не заменяется) и сведения для главного персонажа.
 // mode: 'lore' — только лорбук; 'all' — лорбук, а потом весь чат; book — доизучить одну книгу.
-async function studyLore({ mode = 'lore', book = '' } = {}) {
+async function studyLore({ mode = 'lore', book = '', keepLive = false } = {}) {
     const c = ctx();
     const key = rosterKey();
     if (!key || !hasChat()) return notice('Сначала открой чат с персонажем.');
@@ -321,8 +353,10 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
         const rosterOld = !settings().rosters[key] || (settings().rosters[key].v || 0) < ROSTER_V;
         if ((!sameLore || rosterOld) && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
             const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
+            const rAsk = withBudget('roster');
+            if (live) live.est = tokenEstimate(system, user, rAsk.responseLength);
             liveStage('think');
-            const raw = await callModel(system, user, withBudget('roster'), text => {
+            const raw = await callModel(system, user, rAsk, text => {
                 if (live && text && live.stage !== 'write') liveStage('write');
                 if (live) live.len = text.length;
             });
@@ -356,12 +390,12 @@ async function studyLore({ mode = 'lore', book = '' } = {}) {
     // сведения из карточки и лорбука — главному персонажу и тем, кто в сцене
     const last = lastBotMessageId();
     if (last >= 0) {
-        await analyze(last, { manual: true, fromLore: sources.map(x => `[${x.title}]\n${x.text}`), kind: mode === 'all' ? 'all' : 'lore' });
+        await analyze(last, { manual: true, fromLore: sources.map(x => `[${x.title}]\n${x.text}`), kind: mode === 'all' ? 'all' : 'lore', keepLive: true });
     }
     if (my !== runId) return;
     chatMeta().fp = Object.assign({}, chatMeta().fp, { lore: loreFp });
     ctx().saveMetadataDebounced?.();
-    setLive(null);
+    if (!keepLive) setLive(null);
     busyKind = '';
     syncSettingsForm();
     renderAll();
@@ -586,10 +620,22 @@ function stepClock(messageId) {
 // Для календаря и возраста: главные персонажи и персона первыми.
 function clockPeople(state) {
     // умерших не считаем: у них нет ни дня рождения в календаре, ни возраста «сейчас»
-    const list = Object.entries((state && state.characters) || {}).filter(([, c]) => c && (c.born || c.ageAt) && c.dead !== true);
+    const list = Object.entries((state && state.characters) || {}).filter(([, c]) => c && (c.born || c.ageAt || c.metOn) && c.dead !== true);
     const mains = new Set(splitCast(state || emptyState()).mains);
     list.sort((a, b) => (mains.has(b[0]) || b[1].persona ? 1 : 0) - (mains.has(a[0]) || a[1].persona ? 1 : 0));
-    return list.map(([, c]) => ({ name: c.name, born: c.born, ageAt: c.ageAt }));
+    return list.map(([, c]) => ({ name: c.name, born: c.born, ageAt: c.ageAt, met: c.metOn }));
+}
+
+// День знакомства с героем: ставим дату сцены, когда у персонажа впервые появилось впечатление
+// (кроме тех, кто знаком давно — у них знакомство было до истории).
+function pinMeetings(state, messageId) {
+    const now = clockNow(messageId + 1);
+    if (!now || !now.cal || !now.t || now.cal.type === 'days') return;
+    for (const c of Object.values(state.characters || {})) {
+        if (!c || c.persona || c.metOn || !c.impression || c.impression.known) continue;
+        if (c.met === false) continue;
+        c.metOn = { y: now.t.y, m: now.t.m, d: now.t.d };
+    }
 }
 
 // Возраст, названный в карточке, привязываем к дате сцены — дальше он растёт сам.
@@ -643,6 +689,59 @@ function applySceneTime(messageId, raw) {
 }
 
 // Один раз на чат: модель смотрит карточку, лорбук и сообщения и говорит, какой тут календарь и который час.
+// Дата из чата: самая свежая отметка с датой в последних сообщениях (сколько читает разбор, но не меньше 6).
+// Это главный источник «сейчас»: важнее карточки и лорбука.
+function chatStampTime(cal, { first = false } = {}) {
+    const chat = ctx().chat || [];
+    const c0 = cal || normCalendar({ type: 'greg' });
+    const n = Math.max(6, Number(settings().contextMessages) || 6);
+    const at = i => {
+        const m = chat[i];
+        if (!m || m.is_system || !m.mes) return null;
+        const st = findStamp(m.mes, c0);
+        if (!st || !st.date) return null;
+        const t = stampToTime(c0, null, st);
+        return t ? { index: i, t } : null;
+    };
+    for (let i = chat.length - 1, k = 0; i >= 0 && k < n; i--) {
+        const m = chat[i];
+        if (!m || m.is_system || !m.mes) continue;
+        k++;
+        const r = at(i);
+        if (r) return r;
+    }
+    // при первой настройке — ещё и первое сообщение (вступление часто начинается с даты)
+    if (first) {
+        const f = chat.findIndex(m => m && !m.is_system && m.mes);
+        if (f >= 0) return at(f);
+    }
+    return null;
+}
+
+// Перед разбором: если в чате есть свежая дата, а часы показывают другое — ставим часы по чату.
+// Время, которое дневник взял из карточки/лорбука или угадал, всегда уступает дате из чата.
+function syncClockFromChat() {
+    if (settings().clock === false || !hasChat()) return;
+    const cal = calendarOf();
+    if (!cal || cal.type === 'days') return;
+    const fc = chatStampTime(cal);
+    if (!fc) return;
+    const now = clockNow();
+    const chat = ctx().chat || [];
+    const last = chat.length - 1;
+    if (last < 0) return;
+    const rec = now && now.h && now.h.rec;
+    const recIdx = now && now.h ? now.h.index : -1;
+    const weak = !rec || rec.why === 'detect' || rec.why === 'base';
+    const same = now && now.t && toMinutes(cal, now.t) === toMinutes(cal, fc.t);
+    if (same) return;
+    if (!now || !now.t || weak || fc.index >= recIdx) {
+        writeClock(last, { t: fc.t, prev: (now && now.t) || null, why: 'stamp', size: 0 });
+        chatMeta().timeSet = true;
+        ctx().saveMetadataDebounced?.();
+    }
+}
+
 async function detectCalendar({ manual = false } = {}) {
     if (clockBusy || !hasChat() || settings().clock === false) return;
     const c = ctx();
@@ -664,18 +763,27 @@ async function detectCalendar({ manual = false } = {}) {
             const src = await collectLoreSources();
             lore = src.filter(x => /^Лорбук/.test(x.title)).map(x => `[${x.title}]\n${cleanMessageText(x.text, 5000)}`).slice(0, 3);
         } catch { /* без лорбука */ }
-        const { system, user } = buildCalendarPrompt({ botName: c.name2, userName: c.name1, card: cardText(c), persona: personaText(c), lore, messages: msgs }, settings().language || 'русском');
+        const pre = chatStampTime(null, { first: true });
+        const chatDate = pre ? `${String(pre.t.d).padStart(2, '0')}.${String(pre.t.m).padStart(2, '0')}.${pre.t.y}${pre.t.h !== undefined ? `, ${String(pre.t.h).padStart(2, '0')}:${String(pre.t.mi).padStart(2, '0')}` : ''}` : '';
+        const { system, user } = buildCalendarPrompt({ botName: c.name2, userName: c.name1, card: cardText(c), persona: personaText(c), lore, messages: msgs, chatDate }, settings().language || 'русском');
         const raw = await callModel(system, user, withBudget('rewards'));
         const ans = parseCalendarAnswer(extractJson(raw));
         const meta = chatMeta();
         const before = findClock();
         meta.calendar = ans.calendar;
-        // время: если уже идёт по отметкам в ответах обычного календаря — не трогаем, иначе берём то, что сказала модель
-        const keep = before.t && ans.calendar.type === 'greg' && (!before.cal || before.cal.type === 'greg') && !manual;
-        if (!keep && ans.now) {
-            const last = chat.length - 1;
+        // время: дата из чата — главнее всего; если часы уже идут (первый разбор был) — карточка и лорбук их не перебивают;
+        // и только в новом чате без даты в сообщениях берём то, что модель нашла в карточке и лорбуке
+        const last = chat.length - 1;
+        const fromChat = chatStampTime(calendarOf(), { first: !before.t });
+        if (fromChat && last >= 0) {
+            writeClock(last, { t: fromChat.t, prev: before.t || null, why: 'stamp', size: 0 });
+            meta.timeSet = true;
+        } else if (before.t && (meta.timeSet || before.rec)) {
+            // часы уже стоят — не трогаем
+        } else if (ans.now) {
             if (last >= 0) writeClock(last, { t: ans.now, prev: before.t || null, why: 'detect', size: 0 });
             else meta.clockBase = ans.now;
+            meta.timeSet = true;
         }
         clockMonth = null;
         ctx().saveMetadataDebounced?.();
@@ -690,6 +798,23 @@ async function detectCalendar({ manual = false } = {}) {
         updateInjection();
         renderAll();
     }
+}
+
+// Погода и время года для полоски часов. Погода устаревает через день по часам сцены.
+const WX_ICON = { 'ясно': 'wx_sun', 'жара': 'wx_sun', 'облачно': 'wx_cloud', 'пасмурно': 'wx_cloud', 'дождь': 'wx_rain', 'ливень': 'wx_rain', 'гроза': 'wx_storm', 'снег': 'wx_snow', 'метель': 'wx_snow', 'мороз': 'wx_snow', 'туман': 'wx_fog', 'ветер': 'wx_wind' };
+function weatherChip(cal, t, w) {
+    if (settings().weather === false) return null;
+    const season = seasonOf(cal, t);
+    let fresh = w;
+    if (w && w.day && cal.type !== 'days' && w.day.y !== undefined) {
+        const a = Date.UTC(w.day.y, (w.day.m || 1) - 1, w.day.d || 1), b = Date.UTC(t.y, (t.m || 1) - 1, t.d || 1);
+        if (cal.type === 'greg' && Math.abs(b - a) > 36 * 3600e3) fresh = null;
+        if (cal.type !== 'greg' && (w.day.y !== t.y || w.day.m !== t.m || Math.abs((w.day.d || 0) - t.d) > 1)) fresh = null;
+    }
+    if (!fresh && !season) return null;
+    const temp = fresh && fresh.temp !== null && fresh.temp !== undefined ? `${fresh.temp > 0 ? '+' : ''}${fresh.temp}°` : '';
+    const text = [fresh ? [temp, fresh.sky].filter(Boolean).join(' ') : '', season].filter(Boolean).join(' · ');
+    return { icon: (fresh && WX_ICON[fresh.sky]) || ({ 'зима': 'wx_snow', 'весна': 'wx_sprout', 'лето': 'wx_sun', 'осень': 'wx_leaf' }[season] || 'wx_cloud'), text, title: fresh && fresh.note ? fresh.note : '' };
 }
 
 // Модель часов для дневника: что показать в полоске и в листке.
@@ -720,6 +845,7 @@ function clockView() {
         time: fmtTime(t),
         part: partOfDay(t.h),
         date: fmtDate(cal, t),
+        wx: weatherChip(cal, t, meta.weather),
         today: ev.filter(e => e.inDays === 0),
         upcoming: ev,
         grid,
@@ -826,12 +952,54 @@ async function onClockAction(spec) {
         return renderAll();
     }
     if (cmd === 'hol-del') {
+        const h = (cal.holidays || [])[Number(arg)];
+        if (!(await confirmDelete(h && h.name, 'Дата уйдёт из календаря.'))) return;
         const list = (cal.holidays || []).slice();
         list.splice(Number(arg), 1);
         meta.calendar = Object.assign({}, cal, { holidays: list });
         ctx().saveMetadataDebounced?.();
         updateInjection();
         return renderAll();
+    }
+}
+
+// ---------- Love Score: работаем в связке ----------
+// Если у игрока стоит и включено расширение Love Score, отношение персонажа (и НПС группы) к игроку
+// дневник берёт оттуда: показывает его счёт, сверяет с ним свою шкалу −3…+3 и не дублирует подсказку модели.
+const LOVE_TYPES = { neutral: 'нейтрально', romance: 'романтика', friendship: 'дружба', family: 'семья', platonic: 'платоника', rival: 'соперничество', obsession: 'одержимость', hostile: 'ненависть' };
+function loveScoreInfo() {
+    try {
+        const c = ctx();
+        const es = c.extensionSettings || {};
+        const ls = es['love-score'];
+        if (!ls || ls.isEnabled === false || !ls.chatLoveData || !hasChat() || c.groupId) return null;
+        const off = es.disabledExtensions || [];
+        if (off.some(x => /love-score$/i.test(String(x)))) return null;
+        const id = c.chatId ?? (c.chatMetadata && c.chatMetadata.chat_id);
+        const d = id && ls.chatLoveData[id];
+        if (!d) return null;
+        const one = (name, x) => ({ name, nameEn: x.nameEn || '', score: Math.round((Number(x.score) || 0) * 10) / 10, max: Math.max(1, Number(x.maxScore) || 100), type: x.relationType || 'neutral', typeLabel: LOVE_TYPES[x.relationType || 'neutral'] || '' });
+        return {
+            main: one(c.name2, d),
+            npcs: ls.groupMode ? (d.groupNpcs || []).filter(n => n && n.name).map(n => one(n.name, n)) : [],
+        };
+    } catch { return null; }
+}
+
+// Отношение к игроку по Love Score — в нашу шкалу (сам счёт Love Score не трогаем)
+function syncLove(state, love) {
+    if (!love || !state) return;
+    for (const k of state.order || []) {
+        const ch = state.characters[k];
+        if (!ch || ch.persona || !ch.impression) continue;
+        const l = loveFor(love, ch.name);
+        if (!l) continue;
+        const v = loveToAttitude(l.score, l.max);
+        if ((ch.impression.nowScore ?? ch.impression.score) !== v) {
+            ch.impression.nowScore = v;
+            ch.attitude = (ch.attitude || []).concat([{ s: v, c: ch.cycle || 0 }]).slice(-16);
+        }
+        ch.loveType = l.type;
     }
 }
 
@@ -842,7 +1010,7 @@ function updateInjection(beforeId) {
     const s = settings();
     let text = '';
     if (s.enabled && s.inject && hasChat() && c.chat && c.chat.length) {
-        text = buildInjection(liveState(beforeId), s.modules, c.name1, s.moodInfluence);
+        text = buildInjection(liveState(beforeId), s.modules, c.name1, s.moodInfluence, { love: loveScoreInfo() });
     }
     c.setExtensionPrompt(PROMPT_KEY, text, 1, Number(s.injectDepth) || 0, false, 0);
     // притяжение — своей подсказкой, со своей настойчивостью
@@ -855,6 +1023,13 @@ function updateInjection(beforeId) {
     let clockText = '';
     if (s.enabled && s.inject && hasChat() && c.chat && c.chat.length) {
         try { clockText = clockPromptText(beforeId); } catch (e) { console.warn('[Внутренний мир] часы', e); }
+        // свежий сон (записан в последних сообщениях) — пусть отзовётся в утре героя
+        try {
+            const last = c.chat.length - 1;
+            const fresh = Object.values(liveState(beforeId).characters || {}).map(x => ({ c: x, d: (x.dreams || [])[(x.dreams || []).length - 1] }))
+                .filter(x => x.d && x.d.mes !== undefined && last - x.d.mes <= 4);
+            if (fresh.length) clockText += `${clockText ? ' ' : ''}[${fresh.map(x => `Прошлой ночью ${x.c.name} снилось: ${x.d.text}${x.d.tone ? ` (${x.d.tone} сон)` : ''}`).join('. ')}. Можно мимоходом отразить это в настроении утром, но не пересказывать сон дословно.]`;
+        } catch { /* без сна */ }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
 }
@@ -937,6 +1112,11 @@ function cancelledError() {
 let lastCall = { raw: '', budget: 0 };
 
 // Настройки с запасом на ответ под этот разбор (см. responseBudget): «сам» — по сцене и не выше потолка.
+// Примерный расход токенов: русский текст ≈ 3,2 знака на токен. Запрос считаем сами, ответ — до лимита.
+function tokenEstimate(system, user, limit) {
+    return { prompt: Math.round((String(system || '').length + String(user || '').length) / 3.2), limit: Number(limit) || 0, auto: settings().budgetMode !== 'fixed' };
+}
+
 function withBudget(kind, counts = {}) {
     const s = settings();
     return Object.assign({}, s, { responseLength: responseBudget(s, Object.assign({ kind, model: modelName(s) }, counts)) });
@@ -1128,7 +1308,7 @@ function livePreview(raw, base, s, opts) {
     renderAll();
 }
 
-async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat' } = {}) {
+async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat', keepLive = false } = {}) {
     const s = settings();
     const c = ctx();
     if (!MODEL_MODULES.some(m => s.modules[m])) {
@@ -1173,7 +1353,16 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             }
             const userTurns = chat.slice(0, messageId + 1).filter(m => m && m.is_user).length;
             const missingOk = missing.filter(n => !isIgnored(n));
-            if (missingOk.length && userTurns >= 1 && messageId >= 2) catchUp = missingOk.slice(0, 8);
+            if (missingOk.length && userTurns >= 1 && messageId >= 2) {
+                // сначала главные, потом НПС — по важности, сколько влезает в лимит
+                const ph = new Set(placeholders);
+                const have = splitCast(base).npcKeys.length;
+                const room = Math.max(0, npcCap() - have);
+                const npcs = missingOk.filter(n => !ph.has(n))
+                    .map(n => ({ n, w: rosterWeight(rosterFind(ros0, n)) })).sort((a, b) => b.w - a.w).slice(0, room).map(x => x.n);
+                catchUp = [...missingOk.filter(n => ph.has(n)), ...npcs].slice(0, 8);
+                if (!catchUp.length) catchUp = null;
+            }
         }
         const msgs = [];
         const catchUpCount = Math.min(40, Math.max(4, Number(s.catchUpMessages) || 12));
@@ -1223,8 +1412,10 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             knownNames: s.showNpc === false ? [] : [...(ros.main || []), ...(ros.npc || []).map(e => e.name).filter(n => !isIgnored(n))].slice(0, 40),
             ignored: ignoredNames(),
             lore: [],
-            clockNow: kind !== 'lore' && s.clock !== false ? clockForAnalysis(messageId) : '',
+            clockNow: kind !== 'lore' && s.clock !== false ? (syncClockFromChat(), clockForAnalysis(messageId)) : '',
             achTitles: (chatMeta().achList || []).filter(x => x.mes !== messageId).map(x => x.title).slice(-15),
+            love: loveScoreInfo(),
+            hasGifts: Object.values(base.characters || {}).some(ch => ch && (ch.buffs || []).some(b => b.kind === 'gift')),
         };
         // экономия: в запрос идут только те, кто есть в последнем обмене репликами
         const recent = [];
@@ -1244,27 +1435,52 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const pk = s.persona !== false ? personaKeyOf(base) : null;
         if (present && pk && !present.includes(pk)) present.push(pk);
         // знакомые по предыстории (друзья, бывшие, родня главного героя или игрока) — заводим им записи при разборе лорбука
-        if (s.showNpc !== false && (kind !== 'chat' || (catchUp && catchUp.length))) {
+        // лимит НПС: сколько ещё можно завести, самые важные — первыми
+        let npcRoom = Math.max(0, npcCap() - splitCast(base).npcKeys.length - (catchUp ? catchUp.length : 0));
+        const byWeight = list => [...list].sort((a, b) => rosterWeight(b) - rosterWeight(a));
+        // в обычном разборе чата: знакомые персоны (её бывший, подруга, родня) — всегда, знакомые бота — если их упоминали в чате
+        const plainChat = kind === 'chat' && !(catchUp && catchUp.length);
+        const seenInChat = plainChat ? new Set(historySeen().seen.map(e => e.name)) : null;
+        const acqEntries = [];
+        if (s.showNpc !== false) {
             info.acquainted = [];
-            for (const e of ros.npc || []) {
+            for (const e of byWeight(ros.npc || [])) {
+                if (npcRoom <= 0) break;
                 if (!e.rel && !e.relUser) continue;
+                if (plainChat && !e.relUser && !seenInChat.has(e.name)) continue;
                 if (isIgnored(e.name)) continue;
                 if (base.order.some(k => rosterFind(ros, k) === e || namesMatch(k, e.name))) continue;
                 const al = e.aliases || [], tr = e.traits || [];
                 info.acquainted.push(`${e.name}${al.length ? ` (${al.join(', ')})` : ''}: ${e.who || ''}${e.rel ? `; для ${c.name2} — ${e.rel}` : ''}${e.relUser ? `; для ${c.name1} — ${e.relUser}` : ''}${e.dead ? '; нет в живых' : ''}${tr.length ? `; черты: ${tr.join(', ')}` : ''}`);
+                acqEntries.push(e);
+                npcRoom--;
                 if (info.acquainted.length >= 8) break;
             }
         }
         // НПС из лорбука, которые впервые пришли в сцену: даём модели их описание
         if (s.showNpc !== false) {
-            for (const e of ros.npc || []) {
+            for (const e of byWeight(ros.npc || [])) {
+                if (npcRoom <= 0) break;
                 if (base.order.some(k => rosterFind(ros, k) === e)) continue;
                 if (isIgnored(e.name)) continue;
                 if (!rosterMentioned(e, recentText) && !(catchUp && catchUp.includes(e.name))) continue;
                 info.lore.push(`${e.name}${e.aliases.length ? ` (${e.aliases.join(', ')})` : ''}: ${e.who}${e.traits.length ? `; черты: ${e.traits.join(', ')}` : ''}`);
+                npcRoom--;
                 if (info.lore.length >= (catchUp ? 10 : 5)) break;
             }
         }
+        if (npcCap() !== Infinity) info.npcRoom = Math.max(0, npcRoom);
+        // погода, последний сон, слухи — чтобы модель не повторялась
+        try {
+            const meta = chatMeta();
+            if (meta.weather) info.weatherNow = weatherText(meta.weather);
+            const dreams = Object.values(base.characters || {}).flatMap(c => (c.dreams || []).map(d => Object.assign({ who: c.name }, d)));
+            const ld = dreams.sort((a, b) => (b.at || 0) - (a.at || 0))[0];
+            if (ld) info.lastDream = `${ld.who}${ld.date ? `, ${ld.date}` : ''}: ${ld.text}`;
+            info.rumorTexts = (meta.rumors || []).slice(-6).map(r => r.text);
+            // слухи и сны — только по ходу ролевой: при первом разборе (дневник ещё пуст) их не просим
+            info.firstRun = !(base.order || []).some(k => base.characters && base.characters[k]) || !(msgs && msgs.length);
+        } catch { /* без подсказок */ }
         const system = buildSystemPrompt(s, info);
         const user = buildUserPrompt(info, base, s.modules, present);
         const cast = present || base.order;
@@ -1272,6 +1488,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const castNpcs = (s.showNpc === false ? 0 : cast.filter(k => k !== pk && !isMain(k, mn)).length) + info.lore.length + (catchUp ? catchUp.length : 0) + (info.acquainted ? info.acquainted.length : 0);
         const ask = withBudget(catchUp || fromLore ? 'all' : 'chat', { mains: castMains, npcs: castNpcs });
         budget = ask.responseLength;
+        if (live) live.est = tokenEstimate(system, user, ask.responseLength);
         const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
         liveStage('think');
         raw = await callModel(system, user, ask, (text, think) => {
@@ -1302,6 +1519,16 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 f.name = known;
             }
         }
+        // знакомые персоны ещё до истории, которых модель всё равно пропустила, — заводим сами: карточка «знакомы лично»
+        {
+            for (const e of acqEntries) {
+                if (!e.relUser) continue;
+                if (base.order.some(k => namesMatch(k, e.name)) || fresh.some(f => namesMatch(f.name, e.name))) continue;
+                const rec = { name: e.name, g: e.g || 'n', who: e.who || '', met: true };
+                if (e.dead) rec.dead = true;
+                fresh.push(rec);
+            }
+        }
         if (s.showNpc === false) fresh = fresh.filter(x => isMain(x.name, mn));
         if (ignoredNames().length) fresh = fresh.filter(x => isMain(x.name, mn) || sameName(x.name, c.name1) || !isIgnored(x.name));
         if (s.track === 'bot') fresh = fresh.filter(x => sameName(x.name, c.name2));
@@ -1311,15 +1538,30 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
+        // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
+        if (npcCap() !== Infinity) try {
+            const was = new Set(base.order);
+            const { npcKeys } = splitCast(state);
+            const extra = npcKeys.length - npcCap();
+            if (extra > 0) {
+                const drop = npcKeys.filter(k => !was.has(k)).map(k => ({ k, w: npcWeight(state.characters[k], rosterFind(ros0, k)) }))
+                    .sort((a, b) => a.w - b.w).slice(0, extra).map(x => x.k);
+                for (const k of drop) { delete state.characters[k]; state.order = state.order.filter(x => x !== k); }
+            }
+        } catch (e) { console.warn('[Внутренний мир] лимит НПС', e); }
+        if (info.love) try { syncLove(state, info.love); } catch (e) { console.warn('[Внутренний мир] Love Score', e); }
         if (info.clockNow) applySceneTime(messageId, raw);
+        if (!fromLore && info.hasGifts) try { takeGifts(raw, state); } catch (e) { console.warn('[Внутренний мир] подарок', e); }
         if (!fromLore) try { takeAchievement(raw, messageId); } catch (e) { console.warn('[Внутренний мир] достижение', e); }
+        if (!fromLore) try { takeExtras(raw, state, messageId); } catch (e) { console.warn('[Внутренний мир] погода, сны, слухи', e); }
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
+        try { pinMeetings(state, messageId); } catch (e) { console.warn('[Внутренний мир] знакомство', e); }
         writeRecord(messageId, state);
         if (calP) {
             // ждём календарь, чтобы время встало вместе с записями
             await calP;
             if (info.clockNow === '' && s.clock !== false) {
-                try { pinAges(state, messageId); writeRecord(messageId, state); } catch { /* без возраста */ }
+                try { pinAges(state, messageId); pinMeetings(state, messageId); writeRecord(messageId, state); } catch { /* без возраста */ }
             }
         }
         chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
@@ -1348,7 +1590,9 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (my !== runId) return; // этот разбор остановили — флаги уже сброшены
         busy = false;
         if (live && live.previewPending) clearTimeout(live.previewPending);
-        setLive(null);
+        // листок не закрываем, если следом пойдёт ещё работа (награды в лавку) — он закроется в самом конце
+        if (!keepLive) setLive(null);
+        else if (live) { live.stage = 'done'; live.preview = null; }
         if (manual && kind === 'chat') busyKind = '';
         updateInjection();
         renderAll();
@@ -1381,7 +1625,19 @@ function notice(text, who = 'Дневник') {
     showEvent({ type: 'note', who, text: String(text || '') });
 }
 
+// Смайлики «Аськи» анимируются несколько секунд (касание на телефоне, новое уведомление)
+function playSmiles(el, ms = 3500) {
+    const list = el.classList && el.classList.contains('iw-smile') ? [el] : [...el.querySelectorAll('.iw-smile')];
+    for (const sm of list) {
+        sm.classList.add('iw-play');
+        clearTimeout(sm._iwPlay);
+        sm._iwPlay = setTimeout(() => sm.classList.remove('iw-play'), ms);
+    }
+}
+
 function showEvent(ev, delay = 0) {
+    // всплывашки выключены: событие всё равно записано (витрина, лента), просто не показываем
+    if (settings().popups === false) return;
     setTimeout(() => {
         const box = toastBox();
         const wrap = document.createElement('div');
@@ -1408,6 +1664,7 @@ function showEvent(ev, delay = 0) {
             close();
         });
         box.appendChild(wrap);
+        playSmiles(wrap);
         if (settings().sound !== false) playSound(ev.type === 'achievement' ? 'dream_done' : ev.type, currentTheme);
         setTimeout(close, 9000);
     }, delay);
@@ -1579,6 +1836,7 @@ function panelEl() {
         if (toasts) ui().insertBefore(el, toasts);
         else ui().appendChild(el);
         el.addEventListener('click', onPanelClick);
+        el.addEventListener('pointerdown', onBlockDragStart);
         el.addEventListener('change', onPanelChange);
         el.addEventListener('input', onPanelInput);
         el.addEventListener('toggle', e => rememberSection('diary', e.target), true);
@@ -1591,9 +1849,81 @@ function isOpen() {
     return !!el && !el.hidden;
 }
 
+// ---------- Перетаскивание блоков за «ручку» в заголовке: порядок общий для всех страниц ----------
+let blockDrag = null;
+let dragRenderPending = false;
+function onBlockDragStart(e) {
+    const grip = e.target.closest && e.target.closest('.iw-drag');
+    if (!grip || (e.button !== undefined && e.button > 0)) return;
+    const block = grip.closest('.iw-block');
+    const grid = block && block.closest('.iw-grid');
+    if (!block || !grid) return;
+    e.preventDefault();
+    const root = ui();
+    const scroller = isPhone() ? panelEl().querySelector('.iw-book') : panelEl().querySelector('.iw-body');
+    const d = blockDrag = { kind: grip.dataset.iwDrag, block, grid, x0: e.clientX, y0: e.clientY, s0: scroller ? scroller.scrollTop : 0, target: null, after: false, x: e.clientX, y: e.clientY, raf: 0 };
+    block.classList.add('iw-block-dragging');
+    try { grip.setPointerCapture(e.pointerId); } catch { /* старые браузеры */ }
+    const clearMarks = () => grid.querySelectorAll('.iw-drop-before, .iw-drop-after').forEach(x => x.classList.remove('iw-drop-before', 'iw-drop-after', 'iw-drop-side'));
+    const paint = () => {
+        d.raf = 0;
+        const ds = scroller ? scroller.scrollTop - d.s0 : 0;
+        block.style.transform = `translate(${d.x - d.x0}px, ${d.y - d.y0 + ds}px)`;
+        // под пальцем — сам перетаскиваемый блок; ищем блок под ним
+        const hits = root.elementsFromPoint ? root.elementsFromPoint(d.x, d.y) : (root.elementFromPoint ? [root.elementFromPoint(d.x, d.y)] : []);
+        const tgt = hits.map(h => h && h.closest && h.closest('.iw-grid > .iw-block')).find(b => b && b !== block && b.parentElement === grid);
+        clearMarks();
+        d.target = null;
+        if (!tgt || tgt === block) return;
+        const r = tgt.getBoundingClientRect();
+        const half = r.width < grid.getBoundingClientRect().width * 0.7;
+        d.after = half ? d.x > r.left + r.width / 2 : d.y > r.top + r.height / 2;
+        d.target = tgt;
+        tgt.classList.add(d.after ? 'iw-drop-after' : 'iw-drop-before');
+        tgt.classList.toggle('iw-drop-side', half);
+        // у краёв — листаем дневник
+        if (scroller) {
+            const sr = scroller.getBoundingClientRect();
+            if (d.y < sr.top + 50) scroller.scrollTop -= 14;
+            else if (d.y > sr.bottom - 50) scroller.scrollTop += 14;
+        }
+    };
+    const move = ev => {
+        d.x = ev.clientX;
+        d.y = ev.clientY;
+        if (!d.raf) d.raf = requestAnimationFrame(paint);
+    };
+    const up = () => {
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+        grip.removeEventListener('pointercancel', up);
+        if (d.raf) cancelAnimationFrame(d.raf);
+        clearMarks();
+        block.classList.remove('iw-block-dragging');
+        block.style.transform = '';
+        blockDrag = null;
+        const kindOf = el => ((el && el.className || '').match(/iw-b-([a-z]+)/) || [])[1] || '';
+        const to = kindOf(d.target);
+        if (to && to !== d.kind) {
+            const order = orderOfBlocks(settings().blockOrder).filter(k => k !== d.kind);
+            const at = order.indexOf(to);
+            order.splice(d.after ? at + 1 : at, 0, d.kind);
+            settings().blockOrder = order;
+            saveSettings();
+            dragRenderPending = true;
+        }
+        if (dragRenderPending) { dragRenderPending = false; renderPanelNow(); }
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+    grip.addEventListener('pointercancel', up);
+}
+
 function renderPanelNow() {
     const el = panelEl();
     if (el.hidden) return;
+    // пока блок тащат — не перерисовываем (иначе он выскочит из-под пальца); догоним после
+    if (blockDrag) { dragRenderPending = true; return; }
     const s = settings();
     if (!hasChat() && view !== 'settings') {
         el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
@@ -1618,7 +1948,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false });
     writeScroll(el, keepScroll);
 }
 
@@ -1638,7 +1968,69 @@ function seenAchievements() {
     }
 }
 
+// Подарок вручён: снимаем листочек «подарит», кладём вещь в коллекцию персоны
+function takeGifts(raw, state) {
+    let data = null;
+    try { data = extractJson(raw); } catch { return; }
+    const list = data && !Array.isArray(data) && Array.isArray(data.gift_given) ? data.gift_given : [];
+    if (!list.length) return;
+    const norm = t => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+    const pk = splitCast(state).personaKey;
+    const pc = pk && state.characters[pk];
+    for (const g of list) {
+        for (const k of state.order || []) {
+            const ch = state.characters[k];
+            const b = ch && (ch.buffs || []).find(x => x.kind === 'gift' && (norm(x.title) === norm(g && g.title) || norm(g && g.title).includes(norm(x.title)) || norm(x.title).includes(norm(g && g.title))));
+            if (!b) continue;
+            ch.buffs = ch.buffs.filter(x => x !== b);
+            if (pc) pc.collection = (pc.collection || []).concat([{ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }]).slice(-30);
+            showEvent({ type: 'reward', who: ch.name, text: `«${b.title}» — подарено${pc ? `, теперь в коллекции ${pc.name}` : ''}`, icon: b.icon }, 300);
+            break;
+        }
+    }
+}
+
 // Достижение из ответа модели — на полку витрины и всплывающим листочком
+// Погода, сон, слух — то, что модель вернула рядом с characters
+function weatherText(w) {
+    if (!w) return '';
+    return [w.sky, w.temp !== null && w.temp !== undefined ? `${w.temp > 0 ? '+' : ''}${w.temp}°` : '', w.note].filter(Boolean).join(', ');
+}
+function takeExtras(raw, state, messageId) {
+    let data = null;
+    try { data = extractJson(raw); } catch { return; }
+    if (!data || Array.isArray(data)) return;
+    const s = settings();
+    const meta = chatMeta();
+    const now = clockNow(messageId + 1);
+    const day = now && now.cal && now.t && now.cal.type !== 'days' ? { y: now.t.y, m: now.t.m, d: now.t.d } : (now && now.t ? { d: now.t.d } : null);
+    const dateText = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
+    let changed = false;
+    const w = s.weather !== false && cleanWeather(data.weather);
+    if (w) { meta.weather = Object.assign(w, { day }); changed = true; }
+    const nd = s.dreams !== false && cleanNightDream(data.night_dream);
+    if (nd) {
+        const key = Object.keys(state.characters || {}).find(k => sameName(k, nd.who) || sameName(state.characters[k].name, nd.who));
+        const c = key && state.characters[key];
+        if (c && !c.persona) {
+            const list = c.dreams || [];
+            const last = list[list.length - 1];
+            if (!(last && last.text === nd.text)) {
+                c.dreams = [...list, Object.assign(nd, { date: dateText, at: Date.now(), mes: messageId })].slice(-8);
+                delete c.dreams[c.dreams.length - 1].who;
+                showEvent({ type: 'night', who: c.name, text: nd.text, icon: 'moon' }, 900);
+            }
+        }
+    }
+    const r = s.rumors !== false && cleanRumor(data.rumor);
+    if (r && !(meta.rumors || []).some(x => x.text === r.text)) {
+        meta.rumors = [...(meta.rumors || []), Object.assign(r, { date: dateText, mes: messageId, at: Date.now() })].slice(-12);
+        changed = true;
+        showEvent({ type: 'rumor', who: r.who || 'Слухи', text: r.text, icon: 'chat' }, 1200);
+    }
+    if (changed) ctx().saveMetadataDebounced?.();
+}
+
 function takeAchievement(raw, messageId) {
     if (settings().achievements === false) return;
     let data = null;
@@ -1728,6 +2120,12 @@ function closePanel() {
 // Всплывающие окна таверны (подтверждения) живут в верхнем слое браузера и остаются над дневником.
 // Своё окно в стиле темы дневника — вместо всплывашек таверны.
 // buttons: [{ text, value, kind: 'main' | 'danger' | '' }]; input — подпись и значение поля; Esc и клик мимо — отмена (null).
+// Подтверждение перед любым удалением в дневнике
+async function confirmDelete(what, note = '') {
+    const ok = await iwDialog({ title: 'Точно удалить?', html: `<p class="iw-modal-text">${what ? `«${esc(String(what).slice(0, 120))}» пропадёт из дневника.` : 'Запись пропадёт из дневника.'}${note ? ` ${esc(note)}` : ''}</p>`, buttons: [{ text: 'Удалить', value: true, kind: 'danger' }, { text: 'Отмена', value: null }] });
+    return !!ok;
+}
+
 function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{ text: 'Хорошо', value: true, kind: 'main' }, { text: 'Отмена', value: null }] } = {}) {
     return new Promise(resolve => {
         const root = ui();
@@ -1868,15 +2266,56 @@ async function testShowcase(kind) {
         meta.achNew = (meta.achNew || []).filter(id => meta.achList.some(x => x.id === id));
         ctx().saveMetadataDebounced?.();
         for (const k of st.order) if (st.characters[k] && st.characters[k].collection) st.characters[k].collection = st.characters[k].collection.filter(x => !x.test);
+        for (const k of st.order) if (st.characters[k] && st.characters[k].dreams) st.characters[k].dreams = st.characters[k].dreams.filter(x => !x.test);
+        meta.rumors = (meta.rumors || []).filter(x => !x.test);
         await saveEditedState(st);
-        showEvent({ type: 'reward', who: 'Витрина', text: 'Тестовые достижения и вещи стёрты' });
+        showEvent({ type: 'reward', who: 'Проверка', text: 'Тестовые достижения, вещи, сны и слухи стёрты' });
         return renderAll();
     }
+}
+
+// Проверка снов и слухов: тестовый сон боту и пара слухов (о боте и о твоём герое), стираются кнопкой «Стереть тестовые»
+const TEST_DREAMS = [
+    { thought: 'Надо было проводить её до самой двери.', text: 'Снилась мокрая набережная и чужой смех за спиной; он всё шёл на свет в окне и никак не мог дойти.', tone: 'тревожный' },
+    { thought: 'Странная она. Хорошая, но странная.', text: 'Снилось лето, дача, запах яблок — и она смеялась так, будто они знакомы сто лет.', tone: 'тёплый' },
+];
+const TEST_RUMORS = [
+    { who: 'соседка с первого этажа', about: 'bot', text: 'Говорят, он по ночам сидит в машине у её подъезда и курит одну за одной', truth: 'half' },
+    { who: 'продавщица из ларька', about: 'persona', text: 'Ходят слухи, что она гадает на картах и знает, кто умрёт следующим', truth: 'false' },
+    { who: 'дворник', about: 'persona', text: 'Видели, как она выходила из его машины под утро', truth: 'true' },
+];
+let testDreamIdx = 0;
+async function testNightRumor(kind) {
+    if (!hasChat()) return showEvent({ type: kind === 'night' ? 'night' : 'rumor', who: 'Проверка', text: 'Открой чат с персонажем — тогда тестовый сон или слух запишутся в его дневник.' });
+    const st = currentState();
+    const { mains, personaKey } = splitCast(st);
+    const botKey = mains[0];
+    if (!botKey) return showEvent({ type: 'night', who: 'Проверка', text: 'Сначала заполни дневник этого чата (кнопка «Чат»).' });
+    const bot = st.characters[botKey];
+    const now = clockNow();
+    const date = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
+    if (kind === 'night') {
+        const d = TEST_DREAMS[testDreamIdx++ % TEST_DREAMS.length];
+        bot.dreams = [...(bot.dreams || []), Object.assign({ date, at: Date.now(), test: true }, d)].slice(-8);
+        await saveEditedState(st);
+        showEvent({ type: 'night', who: bot.name, text: d.text, icon: 'moon' });
+        return renderAll();
+    }
+    const meta = chatMeta();
+    const pname = (personaKey && st.characters[personaKey] && st.characters[personaKey].name) || ctx().name1 || '';
+    const have = (meta.rumors || []).map(r => r.text);
+    const r0 = TEST_RUMORS.find(r => !have.includes(r.text)) || TEST_RUMORS[0];
+    const r = Object.assign({}, r0, { about: r0.about === 'bot' ? bot.name : pname, date, at: Date.now(), test: true });
+    meta.rumors = [...(meta.rumors || []).filter(x => x.text !== r.text), r].slice(-12);
+    ctx().saveMetadataDebounced?.();
+    showEvent({ type: 'rumor', who: r.who, text: r.text, icon: 'chat' });
+    return renderAll();
 }
 
 function testNotice(kind) {
     const who = (currentState().order || []).map(k => currentState().characters[k] && currentState().characters[k].name).find(Boolean) || ctx().name2 || 'Персонаж';
     if (kind === 'ach' || kind === 'keep' || kind === 'clearcase') return testShowcase(kind);
+    if (kind === 'night' || kind === 'rumor') return testNightRumor(kind);
     if (kind === 'write') return writeSound();
     if (kind === 'error') return showError({ kind: 'test', title: 'Модель не ответила', text: 'Это проверочная ошибка: так выглядит листок, если разбор не удался.' }, { manual: true, what: 'Проверка' });
     if (kind === 'all') {
@@ -1896,7 +2335,10 @@ async function onPanelClick(e) {
     }
     // свернуть / развернуть блок: стрелка или заголовок; свёрнутый — кликом в любом его месте
     const folded = e.target.closest('.iw-block.iw-collapsed');
-    const fold = e.target.closest('[data-iw-fold]')
+    // и по всей строке заголовка, кроме своих кнопок в ней
+    const head = e.target.closest('.iw-block-head');
+    const headFold = head && !e.target.closest('button:not(.iw-fold), a, input, select, textarea, summary, details, label, [data-iw-born], [role="button"], .iw-drag') && head.querySelector('[data-iw-fold]');
+    const fold = e.target.closest('[data-iw-fold]') || headFold
         || (folded && !e.target.closest('a, input, select, textarea') && folded.querySelector('[data-iw-fold]'));
     if (fold) {
         const s0 = settings();
@@ -1931,6 +2373,15 @@ async function onPanelClick(e) {
         saveSettings();
         syncSettingsForm();
         return renderAll();
+    }
+    if (t.classList.contains('iw-popups')) {
+        s.popups = s.popups === false;
+        saveSettings();
+        t.classList.toggle('off', !s.popups);
+        t.setAttribute('aria-pressed', String(s.popups));
+        t.innerHTML = `${iconHtml(s.popups ? 'bell' : 'bell_off')}<span>${s.popups ? 'Всплывашки включены' : 'Всплывашки выключены'}</span>`;
+        if (s.popups) showEvent({ type: 'note', who: 'Дневник', text: 'Всплывающие уведомления снова включены.' });
+        return;
     }
     if (t.classList.contains('iw-sound')) {
         s.sound = s.sound === false;
@@ -1999,13 +2450,18 @@ async function onPanelClick(e) {
             const id = lastBotMessageId();
             if (id < 0) return notice('В чате ещё нет ответа персонажа.');
             const my = runId;
-            await analyze(id, { manual: true, kind: 'chat' });
+            const more = needsRewards();
+            await analyze(id, { manual: true, kind: 'chat', keepLive: more });
             if (my === runId) await autoRewards();
+            if (live && !busy && !rosterBusy && !shopBusy) setLive(null);
+            renderAll();
             return;
         }
         const my = runId;
-        await studyLore({ mode: kind });
+        await studyLore({ mode: kind, keepLive: true });
         if (my === runId) await autoRewards();
+        if (live && !busy && !rosterBusy && !shopBusy) setLive(null);
+        renderAll();
         return;
     }
     if (t.dataset.iwTheme) {
@@ -2063,6 +2519,8 @@ async function onPanelClick(e) {
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
     if (t.dataset.iwAchdel) {
         const meta = chatMeta();
+        const a0 = (meta.achList || []).find(x => x.id === t.dataset.iwAchdel);
+        if (!(await confirmDelete(a0 && a0.title, 'Достижение уйдёт с витрины.'))) return;
         meta.achList = (meta.achList || []).filter(x => x.id !== t.dataset.iwAchdel);
         ctx().saveMetadataDebounced?.();
         caseSel = '';
@@ -2092,15 +2550,20 @@ async function onPanelClick(e) {
         if (ageOnly) {
             // возраст вручную: привязываем к дате сцены, дальше он растёт по часам; год рождения из лорбука больше не главный
             const now = clockNow();
-            if (!now || !now.cal || !now.t) return notice('Сначала нужны часы сцены: открой календарь в дневнике.');
             const age = Number(ageOnly[1]);
-            ch.ageAt = Object.assign({ age }, now.cal.type === 'days' ? { d: now.t.d } : { y: now.t.y, m: now.t.m, d: now.t.d });
+            if (now && now.cal && now.t) {
+                ch.ageAt = Object.assign({ age }, now.cal.type === 'days' ? { d: now.t.d } : { y: now.t.y, m: now.t.m, d: now.t.d });
+                delete ch.ageSaid;
+            } else {
+                // часов сцены ещё нет — запоминаем возраст как есть; к дате он привяжется, когда появятся часы
+                delete ch.ageAt;
+                ch.ageSaid = age;
+            }
             if (ch.born && ch.born.y) { ch.born = Object.assign({}, ch.born); delete ch.born.y; }
-            delete ch.ageSaid;
             ch.bornManual = true;
             await saveEditedState(state);
             updateInjection();
-            notice(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')} — дальше по часам сцены`);
+            notice(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')}${now && now.cal && now.t ? ' — дальше по часам сцены' : ''}`);
             return renderAll();
         }
         if (!txt) {
@@ -2153,6 +2616,9 @@ async function onPanelClick(e) {
         const key = view.includes(':') ? view.slice(view.indexOf(':') + 1) : null;
         const ch = key && state.characters[key];
         if (!ch || !Array.isArray(ch[kind])) return;
+        const item = ch[kind][Number(idx)];
+        const what = item && (typeof item === 'string' ? item : (item.emotion || item.text || item.name || item.fact || item.title || ''));
+        if (!(await confirmDelete(what))) return;
         // убранный факт «что знает персона» модель больше не вернёт
         if (kind === 'heard' && ch.heard[Number(idx)]) ch.heardOff = [...(ch.heardOff || []), ch.heard[Number(idx)].fact].slice(-20);
         ch[kind].splice(Number(idx), 1);
@@ -2292,6 +2758,12 @@ function knowledgeLore(limit = 3) {
     return k && Array.isArray(k.lore) ? k.lore.filter(t => !t.startsWith('[Карточка')).slice(0, limit) : null;
 }
 
+function needsRewards() {
+    if (settings().points === false || !hasChat()) return false;
+    const st = currentState();
+    return splitCast(st).mains.some(k => { const ch = st.characters[k]; return !ch || !(ch.shop && ch.shop.length); });
+}
+
 // Награды подбираются сами после разбора — тем главным персонажам, у кого магазина ещё нет.
 async function autoRewards() {
     if (settings().points === false || !hasChat()) return;
@@ -2374,12 +2846,17 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
     if (!ch) return;
     const my = runId;
     shopBusy = true;
-    if (quiet) status = `Подбираю награды: ${ch.name}…`;
+    if (quiet) {
+        status = `Подбираю награды: ${ch.name}…`;
+        // листок разбора остаётся и показывает, что идёт ещё подбор наград
+        if (live) Object.assign(live, { kind: 'rewards', stage: 'think', chars: [], len: 0, est: null });
+    }
     renderAll();
     try {
         const info = analysisInfo(4);
         info.loreMain = knowledgeLore(2) || [];
         info.style = (THEMES[currentTheme] && THEMES[currentTheme].name) || '';
+        if (ch.persona) info.persona = cleanMessageText(personaText(ctx()), 1500);
         const { system, user } = buildRewardsPrompt(info, ch, settings().language);
         const raw = await callModel(system, user, withBudget('rewards'));
         const rewards = parseRewards(raw);
@@ -2419,6 +2896,7 @@ async function onAttrAction(spec, btn) {
     const arr = (ch[list] = Array.isArray(ch[list]) ? ch[list] : []);
     const other = list === 'likes' ? 'dislikes' : 'likes';
     if (act === 'del') {
+        if (!(await confirmDelete(arr[Number(rest[0])]))) return;
         arr.splice(Number(rest[0]), 1);
     } else {
         let tag = act === 'own' ? String((btn.closest('.iw-attr-own') && btn.closest('.iw-attr-own').querySelector('.iw-attr-input') || {}).value || '') : rest.join(':');
@@ -2482,9 +2960,7 @@ async function toggleWantPin(i) {
 // Подсказок нет. motherlode — +50 000, kaching — +1 000. За первый чит — ачивка.
 const CHEATS = { motherlode: 50000, kaching: 1000 };
 const CHEAT_LINES = [
-    'Ctrl + Shift + C. Все мы помним «Симс». Вводи на свой страх и риск: дневник всё видит и всё запомнит.',
     'Ctrl + Shift + C. Ты ведь знаешь, что вводить. Все мы помним «Симс» — и лестницу в бассейн тоже.',
-    'Ctrl + Shift + C. Консоль для тех, кому надоело копить. Совесть не входит в комплект.',
 ];
 async function enterCheat() {
     if (!hasChat()) return;
@@ -2521,13 +2997,13 @@ async function buy(id) {
     if (!ch) return;
     const reward = (ch.shop || []).find(r => r.id === id);
     // памятную вещь можно подарить и персоне игрока — она ляжет в её коллекцию
-    const pk = splitCast(st).personaKey;
-    const target = reward && reward.kind === 'collect' && giftTo === 'persona' && pk && st.characters[pk] ? st.characters[pk] : ch;
+    const target = ch;
     const err = buyReward(target, reward, st);
     if (err) return notice(err);
     await saveEditedState(st);
     updateInjection();
-    showEvent({ type: 'reward', who: target.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции, загляни на витрину` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : `действует ${reward.turns} ${plural(reward.turns, 'ответ', 'ответа', 'ответов')}`}`, icon: reward.icon });
+    const persName = ctx().name1 || 'тебе';
+    showEvent({ type: 'reward', who: target.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции, загляни на витрину` : reward.kind === 'gift' ? `«${reward.title}» — ${target.name} подарит это ${persName} в ближайшей сцене` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : `действует ${reward.turns} ${plural(reward.turns, 'ответ', 'ответа', 'ответов')}`}`, icon: reward.icon });
     renderAll();
 }
 
@@ -2849,7 +3325,7 @@ function syncSettingsForm() {
 }
 
 // Быстрые настройки на пустом дневнике: запас на ответ, сколько читать, какая модель.
-const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, catchUpMessages: null, source: ['main', 'custom'] };
+const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, catchUpMessages: null, npcLimit: null, source: ['main', 'custom'] };
 function onQuickSetting(spec) {
     const i = spec.indexOf(':');
     const key = spec.slice(0, i);
@@ -3066,6 +3542,12 @@ function init() {
     c.eventSource.on(ev.MESSAGE_DELETED, () => { updateInjection(); renderAll(); });
     document.querySelectorAll('#chat .iw-badge').forEach(b => b.remove());
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) closePanel(); });
+    // «Аська» на телефоне: наведения нет, поэтому смайлик оживает от касания
+    document.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' || !e.target || !e.target.closest) return;
+        const host = e.target.closest('.iw-smile, .iw-npc, .iw-tab, .iw-feel, .iw-toast-card, .iw-mood-word, .iw-dossier-face, .iw-panel li');
+        if (host) playSmiles(host);
+    }, { passive: true, capture: true });
     onChatChanged();
 }
 
