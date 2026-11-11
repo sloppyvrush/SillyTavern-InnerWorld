@@ -730,7 +730,9 @@ export function achIcon(name) {
 }
 function renderShowcase({ state, theme, got = [], sel = '' }) {
     const items = collectionOf(state);
-    const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+    // сверху золото, потом серебро, потом бронза; внутри — новые выше
+    const RANK = { gold: 0, silver: 1, bronze: 2 };
+    const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (RANK[a.tier] ?? 3) - (RANK[b.tier] ?? 3) || (b.at || 0) - (a.at || 0));
     const stars = t => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}<em>${esc(TIER_NAMES_RU[t] || '')}</em></span>`;
     const itemRow = x => `
       <li class="iw-reward iw-rk-collect iw-case-row">
