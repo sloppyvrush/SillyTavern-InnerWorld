@@ -1,5 +1,6 @@
 // Темы оформления дневника. Тему выбирает пользователь.
 import { PX_ICONS } from './pixel-icons.js';
+import { ICQ_FACES, ICQ_PICT, ICQ_SIZE } from './icq-smiles.js';
 
 export const THEMES = {
     diary: {
@@ -9,6 +10,11 @@ export const THEMES = {
     dark: {
         name: 'Тёмный дневник',
         fonts: 'family=Caveat:wght@600;700&family=Neucha',
+    },
+    icq: {
+        name: 'Аська',
+        // Tahoma есть почти на каждом компьютере; PT Sans — запасной, если её нет
+        fonts: 'family=PT+Sans:ital,wght@0,400;0,700;1,400',
     },
     sims: {
         name: 'Как в симуляторе жизни',
@@ -38,7 +44,7 @@ export const THEMES = {
     },
     herbal: {
         name: 'Травница',
-        fonts: 'family=Pacifico&family=Comfortaa:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600',
+        fonts: 'family=Pacifico&family=Philosopher:ital,wght@0,400;0,700;1,400&family=Comfortaa:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600',
     },
     arcana: {
         name: 'Аркан',
@@ -61,11 +67,9 @@ export const THEMES = {
         // как на сайте Stellar Fleet: Oswald — заголовки, Onest — текст, JetBrains Mono — служебное
         fonts: 'family=Oswald:wght@400;500;600&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500',
     },
-    pixel: {
-        name: 'Пиксельная игра',
-        // пиксельный шрифт с кириллицей, как на старых приставках — для заголовков, имён и кнопок;
-        // для длинных текстов — узкий пиксельный Pixelify Sans: у Press Start 2P слишком широкие буквы
-        fonts: 'family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600',
+    vk: {
+        name: 'ВКонтакте',
+        fonts: 'family=Open+Sans:wght@400;600;700',
     },
 };
 
@@ -85,7 +89,9 @@ export const THEME_SWATCHES = {
     nav: ['#111814', '#d9c8a6', '#d6392e'],
     dossier: ['#d8bf8a', '#2a2a2a', '#c0262d'],
     logbook: ['#0c141a', '#f2a93f', '#62d6c8'],
-    pixel: ['#f4b6c4', '#4a2730', '#7ccf5b'],
+    vk: ['#edeef0', '#4a76a8', '#ffffff'],
+    icq: ['#dfe8f2', '#3f8f2a', '#e2453c'],
+    telegram: ['#c9dbb7', '#3390ec', '#effdde'],
 };
 
 export const THEME_IDS = Object.keys(THEMES);
@@ -95,6 +101,7 @@ export const THEME_IDS = Object.keys(THEMES);
 const CURRENCY_ICONS = {
     diary: 'cur_heart', dark: 'cur_moon', sims: 'cur_crystal', medieval: 'cur_ducat', cyber: 'cur_chip', bimbo: 'cur_gem',
     grid: 'cur_star', china: 'cashcoin', herbal: 'cur_sprout', arcana: 'cur_sigil', seance: 'cur_candle', nav: 'cur_spindle', dossier: 'cur_token', logbook: 'credit', pixel: 'pxcoin',
+    vk: 'cur_vote', icq: 'cur_flower', telegram: 'cur_tgstar',
 };
 export function currencyIcon(theme) {
     return CURRENCY_ICONS[theme] || 'coin';
@@ -136,6 +143,49 @@ const BASE_LABELS = {
 };
 
 const THEME_LABELS = {
+    vk: {
+        title: 'Моя страница',
+        moodTitle: 'Статус',
+        moodLead: 'Сейчас {он}',
+        feels: 'Что на душе',
+        wants: 'Хочет',
+        fears: 'Боится',
+        chronicle: 'Стена',
+        chronicleEmpty: 'На стене пока нет записей.',
+        currency: 'голоса',
+        shop: 'Подарки',
+        rewards: 'Подарки',
+        analyzing: 'Обновляю страницу',
+        whois: 'Информация',
+    },
+    icq: {
+        title: 'Аська',
+        moodTitle: 'Статус',
+        moodLead: '{он} сейчас',
+        feels: 'Чувства',
+        wants: 'Хочет',
+        fears: 'Боится',
+        chronicle: 'История сообщений',
+        chronicleEmpty: 'История сообщений пуста.',
+        currency: 'цветочки',
+        shop: 'Смайлы и подарки',
+        analyzing: 'Соединение…',
+        whois: 'Анкета',
+    },
+    telegram: {
+        title: 'Избранное',
+        moodTitle: 'В сети',
+        moodLead: 'Сейчас {он}',
+        feels: 'Чувства',
+        wants: 'Хочет',
+        fears: 'Боится',
+        chronicle: 'Закреплённые',
+        chronicleEmpty: 'Пока ничего не закреплено.',
+        currency: 'звёзды',
+        shop: 'Подарки',
+        analyzing: 'печатает…',
+        whois: 'Профиль',
+    },
     grid: {
         chartMark: '✓',
         currency: 'звёздочки',
@@ -517,7 +567,8 @@ export function themeFontsUrl(theme) {
 }
 
 // Темы, которые заменены новыми: гримуар → травница, тетрадь в клетку → аркан.
-export const RENAMED_THEMES = { grimoire: 'herbal' };
+// пиксельная тема убрана — у кого она стояла, откроется обычный дневник
+export const RENAMED_THEMES = { grimoire: 'herbal', pixel: 'diary', telegram: 'diary' };
 
 export function validTheme(theme) {
     const t = RENAMED_THEMES[theme] || theme;
@@ -528,6 +579,7 @@ export function validTheme(theme) {
 const PATHS = {
     cur_star: '<path d="M12 3.5l2.4 5 5.4.6-4 3.7 1.1 5.4L12 15.6 7.1 18.2l1.1-5.4-4-3.7 5.4-.6z"/><path d="M12 8.5v4.5M9.8 11h4.4" stroke-width="1.4"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    grip: '<circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="currentColor" stroke="none"/>',
     calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
@@ -558,6 +610,9 @@ const PATHS = {
     arrowright: '<path d="M5 12h13.5"/><path d="M13 6.5l5.5 5.5-5.5 5.5"/>',
     credit: '<path d="M12 2.8l8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="M8.5 10.2h7M8.5 13.8h7"/>',
     cashcoin: '<circle cx="12" cy="12" r="8.5"/><rect x="9.6" y="9.6" width="4.8" height="4.8" rx=".4"/>',
+    cur_vote: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 9h1.8l1.7 5 1.7-5h1.8l-2.6 6.5h-1.8z" fill="currentColor" stroke="none"/>',
+    cur_flower: '<circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="6.2" r="2.8"/><circle cx="17.5" cy="10.2" r="2.8"/><circle cx="15.4" cy="16.6" r="2.8"/><circle cx="8.6" cy="16.6" r="2.8"/><circle cx="6.5" cy="10.2" r="2.8"/>',
+    cur_tgstar: '<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6-4.5-4.2 6.1-.7z" fill="currentColor" fill-opacity=".25"/>',
     cur_heart: '<circle cx="12" cy="12" r="8.5"/><path d="M12 15.8c-2.7-1.8-4-3.2-4-4.8 0-1.1.8-2 1.9-2 .9 0 1.6.5 2.1 1.3.5-.8 1.2-1.3 2.1-1.3 1.1 0 1.9.9 1.9 2 0 1.6-1.3 3-4 4.8z" fill="currentColor" stroke="none"/>',
     cur_moon: '<circle cx="12" cy="12" r="8.5"/><path d="M13.4 7.4a4.8 4.8 0 1 0 3 8.4 3.9 3.9 0 1 1-3-8.4z" fill="currentColor" stroke="none"/>',
     cur_crystal: '<path d="M12 2.6l5.2 9.4-5.2 9.4-5.2-9.4z"/><path d="M6.8 12h10.4M12 2.6v18.8" stroke-width="1.2" opacity=".6"/>',
@@ -604,6 +659,18 @@ const PATHS = {
     shield: '<path d="M12 3.5l7 2.5v5.5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
     gem: '<path d="M7 4.5h10l3.5 5L12 20 3.5 9.5z"/><path d="M3.5 9.5h17M9.5 4.5L8 9.5l4 10.5 4-10.5-1.5-5"/>',
     // совместимость: магнит-сердце, магнит, ровно, перечёркнутый магнит, разбитое сердце
+    wx_sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
+    wx_cloud: '<path d="M7 18h10.5a4 4 0 0 0 .4-8 6 6 0 0 0-11.4 1.6A3.3 3.3 0 0 0 7 18z"/>',
+    wx_rain: '<path d="M7 14h10.5a3.6 3.6 0 0 0 .4-7.2 5.6 5.6 0 0 0-10.7 1.4A2.9 2.9 0 0 0 7 14z"/><path d="M8 17.5l-1 2.5M12 17.5l-1 2.5M16 17.5l-1 2.5"/>',
+    wx_storm: '<path d="M7 13h10.5a3.6 3.6 0 0 0 .4-7.2 5.6 5.6 0 0 0-10.7 1.4A2.9 2.9 0 0 0 7 13z"/><path d="M12.5 14l-2 3.5h3l-2 3.5"/>',
+    wx_snow: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M10 4.5l2 1.5 2-1.5M10 19.5l2-1.5 2 1.5"/>',
+    wx_fog: '<path d="M4 9h16M6 13h12M4 17h16"/><path d="M8 5h8"/>',
+    wx_wind: '<path d="M3 9h12a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3M3 12h9"/>',
+    wx_sprout: '<path d="M12 21v-9"/><path d="M12 13c-4 0-6-2.5-6-6 4 0 6 2.5 6 6zM12 11c0-3.5 2-6 6-6 0 3.5-2 6-6 6z"/>',
+    wx_leaf: '<path d="M5 19C5 10 10 5 19 5c0 9-5 14-14 14z"/><path d="M5 19l8-8"/>',
+    camera: '<path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    bell_off: '<path d="M8.7 3A6 6 0 0 1 18 8c0 2.8.5 4.8 1.2 6.2M17 17H3s3-2 3-9c0-.7.1-1.4.4-2"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="M2 2l20 20"/>',
     sparkle_off: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M3.5 3.5l17 17" stroke-width="2.2"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     minus: '<path d="M5 12h14"/>',
@@ -657,7 +724,16 @@ const FACE_PATHS = {
 
 // Фон лица — переход двух цветов эмоции (--face-bg → --face-bg2); у одноцветных они совпадают.
 let faceSeq = 0;
-export function faceIcon(face, cls = '') {
+// Смайлик QIP (тема «Аська»): неподвижный, а при наведении — анимация (если анимации не выключены)
+const SMILE_BASE = new URL('../smiles/icq/', import.meta.url).href;
+export function smileHtml(file, cls = '', title = '') {
+    const [w, h] = ICQ_SIZE[file] || [20, 20];
+    return `<span class="iw-smile ${cls}" style="--sw:${w};--sh:${h};--s:url('${SMILE_BASE}${file}.png');--a:url('${SMILE_BASE}${file}.gif')"${title ? ` title="${title}"` : ''} aria-hidden="true"></span>`;
+}
+
+// plain = нарисованный значок даже в «Аське»: смайлики настроений — только у бота и персоны, у НПС смайлик уже на значке
+export function faceIcon(face, cls = '', plain = false) {
+    if (!plain && iconTheme === 'icq' && ICQ_FACES[face]) return smileHtml(ICQ_FACES[face], `iw-face-ico ${cls}`);
     const inner = FACE_PATHS[face] || FACE_PATHS.neutral;
     const id = 'iwfg' + (++faceSeq).toString(36);
     return `<svg class="iw-face-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--face-bg, #eee7dc)"/><stop offset="1" style="stop-color: var(--face-bg2, var(--face-bg, #eee7dc))"/></linearGradient></defs><path class="iw-face-bg" style="fill: url(#${id})" d="M12 3.2c4.9-.2 8.9 3.6 8.8 8.7-.1 4.9-3.9 8.8-8.9 8.8-4.9 0-8.7-3.8-8.7-8.8 0-4.8 3.9-8.5 8.8-8.7z"/>${inner}</svg>`;
@@ -680,7 +756,13 @@ export function icon(name, cls = '') {
     return `<svg class="iw-ico ${cls}" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || PATHS.star}</svg>`;
 }
 
-export const EVENT_ICONS = { achievement: 'trophy', note: 'feather',
+// Значок-рисунок (достижения, витрина, календарь, уведомления): в «Аське» — смайлик QIP
+export function pictIcon(name, cls = '') {
+    if (iconTheme === 'icq' && ICQ_PICT[name]) return smileHtml(ICQ_PICT[name], `iw-pict ${cls}`);
+    return icon(name, cls);
+}
+
+export const EVENT_ICONS = { achievement: 'trophy', note: 'feather', night: 'moon', rumor: 'chat',
     want_done: 'check',
     fear_real: 'ghost',
     fear_gone: 'sun',
@@ -709,6 +791,8 @@ export const BLOCK_ICONS = {
     attraction: 'chem_good',
     chronicle: 'scroll',
     rewards: 'gift',
+    nights: 'moon',
+    rumors: 'chat',
 };
 
 // Подписи всплывашек в духе темы.
@@ -723,12 +807,16 @@ const TOAST_KICKERS = {
     dossier: { want_done: 'Мотив реализован', fear_real: 'ВНИМАНИЕ: уязвимость подтвердилась', fear_gone: 'Угроза снята', trait_new: 'Выявлена новая черта', trait_up: 'Черта усилилась', trait_down: 'Черта ослабла', trait_gone: 'Черта утрачена', dream_step: 'Продвижение к цели', dream_done: 'Цель достигнута', dream_change: 'Цель сменилась', dream_grow: 'Цель расширена', impression: 'Новый фигурант', attitude: 'Отношение изменилось', reward: 'Поощрение выдано' },
     logbook: { want_done: 'Задача выполнена', fear_real: 'ТРЕВОГА: риск сработал', fear_gone: 'Риск миновал', trait_new: 'Профиль обновлён', trait_up: 'Профиль обновлён', trait_down: 'Профиль обновлён', trait_gone: 'Профиль обновлён', dream_step: 'Курс выдержан', dream_done: 'Пункт назначения достигнут', dream_change: 'Курс изменён', dream_grow: 'Курс продлён', impression: 'Первый контакт', attitude: 'Связь изменилась', reward: 'Груз получен' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
+    vk: { want_done: 'Новое уведомление: желание сбылось', fear_real: 'Новое уведомление: страх сбылся', fear_gone: 'Страх больше не беспокоит', trait_new: 'Обновлена информация: новая черта', trait_up: 'Обновлена информация', trait_down: 'Обновлена информация', dream_step: 'Шаг к мечте', dream_done: 'Мечта сбылась!', attitude: 'Изменилось отношение', impression: 'Новый друг', reward: 'Вам подарок' },
+    icq: { want_done: 'О-оу! Желание сбылось', fear_real: 'О-оу! Страх сбылся', fear_gone: 'Страх ушёл в оффлайн', trait_new: 'Анкета обновлена', trait_up: 'Анкета обновлена', trait_down: 'Анкета обновлена', dream_step: 'Шаг к мечте', dream_done: 'Мечта сбылась!', attitude: 'Новое сообщение: отношение', impression: 'Добавлен в контакты', reward: 'Новый подарок' },
+    telegram: { want_done: 'Желание сбылось ✓✓', fear_real: 'Страх сбылся', fear_gone: 'Страх отпустил', trait_new: 'Новая черта', trait_up: 'Черта окрепла', trait_down: 'Черта ослабла', dream_step: 'Шаг к мечте', dream_done: 'Мечта сбылась!', attitude: 'Новое сообщение', impression: 'Новый контакт', reward: 'Подарок' },
     pixel: { want_done: 'Квест выполнен!', fear_real: 'Получен урон!', fear_gone: 'Угроза пройдена', trait_new: 'Новый перк!', trait_up: 'Перк прокачан', trait_down: 'Перк ослаб', trait_gone: 'Перк потерян', dream_step: 'Прогресс главного квеста', dream_done: 'Главный квест пройден!', dream_change: 'Новый главный квест', dream_grow: 'Квест расширен', impression: 'Новый персонаж!', attitude: 'Отношение изменилось', reward: 'Лут получен!' },
 };
 
 // Подпись листика с ошибкой дневника — в голосе темы.
 const ERROR_KICKERS = {
     diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка', grid: 'Ошибка — исправить!',
+    vk: 'Ошибка', icq: 'О-оу! Ошибка соединения', telegram: 'Не удалось отправить',
     bimbo: 'Ой-ой, ошибочка…', medieval: 'Худая весть', cyber: 'ERR // сбой', china: 'Кисть сорвалась',
     herbal: 'Отвар не удался', arcana: 'Карты спутались', seance: 'Связь оборвалась', nav: 'Нить оборвалась', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', pixel: 'GAME OVER? Нет, просто ошибка',
 };

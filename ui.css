@@ -12534,7 +12534,7 @@ ol {
 .iw-panel.iw-theme-arcana .iw-attr-own .iw-attr-input { border-radius: 999px; padding: 0 14px; }
 
 /* ---------- Свёрнутый блок раскрывается кликом в любом его месте ---------- */
-.iw-panel .iw-block.iw-collapsed { cursor: pointer; }
+.iw-panel .iw-block.iw-collapsed { cursor: default; }
 
 /* ---------- Сеанс: подзаголовки ярче — «Врождённое», «Сейчас он», «Первое впечатление» не теряются ---------- */
 .iw-panel.iw-theme-seance :is(.iw-group-head, .iw-group-head > span:first-of-type, .iw-att-cap, .iw-group-cap, .iw-books-cap) {
@@ -15612,6 +15612,7 @@ ol {
     justify-content: center;
 }
 
+<<<<<<< HEAD
 /* InnerWorld: компактная HUD-плашка чата. Shadow DOM, никогда не часть сообщений. */
 .iw-chat-hud {
     position: fixed;
@@ -15655,3 +15656,1502 @@ ol {
 .iw-attr-row .iw-attr-group { margin:5px 0; max-width:100%; }
 .iw-attr-row .iw-attr-group .iw-attr-chips { display:flex; flex-wrap:wrap; gap:5px; padding:6px 7px 9px; }
 .iw-attr-row .iw-attr-group .iw-attr-cat-name { font-size:.86em; }
+=======
+
+
+/* ===================== Досье НПС — плотнее, без пустот ===================== */
+.iw-dossier.iw-dossier-tight {
+    grid-template-areas: 'face main';
+    align-items: center;
+    gap: 0 22px;
+    padding: 20px 20px 14px;
+}
+
+.iw-dossier-tight .iw-dossier-main {
+    gap: 6px;
+}
+
+.iw-dossier-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+}
+
+.iw-dossier-meta .iw-tab-born {
+    font-size: 13px;
+}
+
+.iw-dossier-tight .iw-whois {
+    margin: 16px 0 0;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+.iw-dossier-acts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 2px 14px;
+    margin-top: 4px;
+}
+
+.iw-dossier-acts .iw-heard-toggle {
+    margin: 0;
+    font-size: 12px;
+    opacity: .75;
+}
+
+.iw-dossier-acts .iw-heard-toggle:hover {
+    opacity: 1;
+}
+
+@media (max-width: 560px) {
+    .iw-dossier.iw-dossier-tight {
+        grid-template-areas: 'face' 'main';
+        gap: 8px;
+    }
+
+    .iw-dossier-tight .iw-dossier-meta,
+    .iw-dossier-tight .iw-dossier-acts {
+        justify-content: center;
+    }
+}
+
+/* листок разбора: прогноз токенов и сколько уже написано — двумя строками */
+.iw-live-len {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* подарок от персонажа — своя категория в лавке и свой листочек */
+.iw-rk-gift, .iw-rg-gift { --rk: #d9487a; --rk-bg: #fde0ea; }
+:is(.iw-theme-dark, .iw-theme-seance, .iw-theme-nav, .iw-theme-cyber, .iw-theme-logbook, .iw-theme-herbal, .iw-theme-arcana, .iw-theme-china) :is(.iw-rk-gift, .iw-rg-gift) { --rk: #ff8fb5; --rk-bg: rgba(255, 143, 181, .14); }
+.iw-note-gift { background: #ffdce8; }
+.iw-note-gift .iw-note-ico { color: #b02a5c; }
+
+/* ===================== Календарь: свои рисунки под каждую тему ===================== */
+.iw-panel.iw-theme-dark .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 14c-2-4-6-6-11-5 2 2 2 5 0 7 3-1 6 0 8 2 1-2 2-3 3-4zM20 14c2-4 6-6 11-5-2 2-2 5 0 7-3-1-6 0-8 2-1-2-2-3-3-4z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M19 12l1-3 1 3'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-dark .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 30c12 0 14-14 26-14s14 14 26 14 14-14 26-14c6 0 10 3 14 7'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M50 6v8M47 9h6'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-dark .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M16 40h12M18 40V20h8v20M22 20v-3'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 17c-2-2-2-5 0-9 2 4 2 7 0 9z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 26c-2 1-2 3 0 4M30 26c2 1 2 3 0 4'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-sims .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 3l8 14-8 20-8-20z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 17h16M20 3v34'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-sims .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 26c10-14 20-14 30 0s20 14 30 0 20-14 30 0'/%3E%3Ccircle cx='34' cy='26' r='2.5' fill='black'/%3E%3Ccircle cx='64' cy='26' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-sims .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 38S6 28 6 17a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 16c0-2 1-4 4-4'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-medieval .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M34 4C20 6 11 15 8 32'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M34 4c-1 10-8 17-20 19M8 32l-3 5'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M27 9l-6 4M23 15l-7 3'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-medieval .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M6 20h30M64 20h30'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M50 8c-6 0-9 5-6 9 2 3 6 3 6 3s4 0 6-3c3-4 0-9-6-9zM50 20v12M44 32h12'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M36 20c3-4 6-4 8-1M64 20c-3-4-6-4-8-1'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-medieval .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 40V16l6-4 6 4v24M24 40V20h12v20M8 16h12M24 20l6-6 6 6'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 40v-6a2 2 0 0 1 4 0v6M14 12V6l4 2-4 2'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-cyber .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M6 6h10v10H6zM24 24h10v10H24zM16 11h8v13M11 16v8h13'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-cyber .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 30h20l6-16h14l6 10h18l6-14h22'/%3E%3Ccircle cx='30' cy='14' r='2.5' fill='black'/%3E%3Ccircle cx='68' cy='24' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-cyber .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 30a20 20 0 0 1 28 0M13 25a13 13 0 0 1 18 0M18 20a6 6 0 0 1 8 0'/%3E%3Ccircle cx='22' cy='34' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-bimbo .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 18L8 10v16zM20 18l12-8v16z'/%3E%3Ccircle cx='20' cy='18' r='3' fill='black'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M18 21l-4 12M22 21l4 12'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-bimbo .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 24c6-10 14-10 20 0s14 10 20 0 14-10 20 0 14 10 20 0'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M90 8l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-bimbo .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 36S8 27 8 18a7 7 0 0 1 14-2 7 7 0 0 1 14 2c0 9-14 18-14 18z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M36 6l1 3 3 1-3 1-1 3-1-3-3-1 3-1z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-grid .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 20L36 6 26 34l-6-10z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 24l16-18'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-grid .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 30c6-2 8-12 14-12s6 12 12 12 8-20 14-20 6 20 12 20 8-12 14-12 6 12 12 12'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-grid .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='22' cy='22' r='16'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M15 17h.1M29 17h.1M14 26c4 5 12 5 16 0'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-china .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 26c-4 0-5-6 0-7 0-5 7-6 9-2 2-3 8-2 8 2 5 0 6 7 1 7z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 32c3 0 3-2 6-2s3 2 6 2'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-china .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 34c20-4 30-14 44-26'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M30 22c-3-3-1-7 3-6 1-4 6-3 6 1 4 0 4 5 0 6 0 4-5 4-6 1-3 2-6-1-3-2z'/%3E%3Ccircle cx='34' cy='22' r='1.4' fill='black'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M58 16c-2-2 0-5 2-4 1-3 4-2 4 1 3 0 3 3 0 4 0 3-3 3-4 1-2 1-4-1-2-2z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M76 12h18v18H76z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-china .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 4v8M16 12h12l2 8-2 12H16l-2-12z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 20h16M14 26h16M22 32v6M19 38h6'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-herbal .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 34C10 20 18 10 32 6'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 24c-4 0-7-3-7-6 4 0 7 2 7 6zM18 18c0-4 2-7 6-8 0 4-2 7-6 8zM24 12c-3-2-3-5-1-7 2 2 3 5 1 7z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-herbal .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 30c16 0 20-10 34-10s18 10 34 10 18-6 24-12'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M30 20c0-6 4-10 8-10-1 5-4 9-8 10zM60 26c4 2 6 6 4 10-4-2-6-6-4-10z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-herbal .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 22c0-8 6-14 14-14s14 6 14 14z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M18 22v14h8V22'/%3E%3Ccircle cx='16' cy='15' r='2' fill='black'/%3E%3Ccircle cx='27' cy='14' r='1.6' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-arcana .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 20c6-8 26-8 32 0-6 8-26 8-32 0z'/%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='20' cy='20' r='5'/%3E%3Ccircle cx='20' cy='20' r='2' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-arcana .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M10 20h80'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M50 6l3 11 11 3-11 3-3 11-3-11-11-3 11-3z'/%3E%3Ccircle cx='18' cy='20' r='2.5' fill='black'/%3E%3Ccircle cx='82' cy='20' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-arcana .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M26 6a16 16 0 1 0 12 22 13 13 0 0 1-12-22z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M10 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-nav .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 4l14 16-14 16L6 20z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 12l6 8-6 8-6-8z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 4V1M20 36v3M6 20H3M34 20h3'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-nav .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 30c10 0 18-6 26-14 6-6 14-8 22-6-6 2-8 6-6 10 8-4 16-2 20 4-8-2-12 0-14 4 10 0 18 4 22 10'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M30 16c-2-4 0-8 4-10'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-nav .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='22' cy='22' r='8'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 6v6M22 32v6M6 22h6M32 22h6M11 11l4 4M29 29l4 4M11 33l4-4M29 15l4-4'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-seance .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 36h12M16 36V18h8v18M20 18v-3'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 15c-2-2-2-5 0-9 2 4 2 7 0 9z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M24 26c2 0 3 2 2 4'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-seance .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M30 6c12 0 22 8 22 18 0 6-4 10-8 12H16c-4-2-8-6-8-12C8 14 18 6 30 6z'/%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='30' cy='18' r='5'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M62 26c8-6 18-6 26 0M66 32c6-4 12-4 18 0'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-seance .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M16 40V22l-4-4c-1-2 1-4 3-3l3 3V8a2 2 0 0 1 4 0v10V6a2 2 0 0 1 4 0v12V8a2 2 0 0 1 4 0v14l-2 18z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-dossier .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 30V9a5 5 0 0 1 10 0v20a3 3 0 0 1-6 0V12'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-dossier .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='26' cy='20' r='14' stroke-dasharray='3 2'/%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='26' cy='20' r='9'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M52 12h40M52 20h32M52 28h36'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-dossier .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M8 18h22v10a8 8 0 0 1-8 8h-6a8 8 0 0 1-8-8z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M30 21h3a4 4 0 0 1 0 8h-3'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M15 13c0-2 2-2 2-5M22 13c0-2 2-2 2-5'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-logbook .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' cx='20' cy='20' r='8'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 24c8 4 24 0 32-10'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-logbook .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 34C30 34 50 22 70 8' stroke-dasharray='4 4'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M70 8l14-4-4 14-4-4z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-logbook .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 4l3 13 13 3-13 3-3 13-3-13-13-3 13-3z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-pixel .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='black' d='M8 10h8v4H8zM24 10h8v4h-8zM4 14h4v8H4zM16 14h8v4h-8zM32 14h4v8h-4zM8 22h4v4H8zM28 22h4v4h-4zM12 26h4v4h-4zM24 26h4v4h-4zM16 30h8v4h-8z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-pixel .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='black' d='M4 28h8v4H4zM12 24h8v4h-8zM20 20h8v4h-8zM28 16h8v4h-8zM36 20h8v4h-8zM44 24h8v4h-8zM52 20h8v4h-8zM60 16h8v4h-8zM68 12h8v4h-8zM76 16h8v4h-8zM84 20h8v4h-8z'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-pixel .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='black' d='M18 4h8v8h-8zM10 12h24v8H10zM14 20h16v8H14zM10 28h8v8h-8zM26 28h8v8h-8z'/%3E%3C/svg%3E"); }
+
+/* праздники: Летопись — красный лавровый венок, Навь — вышитый ромб, Досье — красная печать */
+.iw-panel.iw-theme-medieval { --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' d='M8 29C3 24 3 12 9 6M32 29c5-5 5-17-1-23'/%3E%3Cpath fill='black' d='M6 11c-3-1-4-3-3-5 2 0 4 2 3 5zM5 18c-3 0-4-2-4-4 2 0 4 1 4 4zM6 25c-3 1-5-1-5-3 2-1 4 0 5 3zM34 11c3-1 4-3 3-5-2 0-4 2-3 5zM35 18c3 0 4-2 4-4-2 0-4 1-4 4zM34 25c3 1 5-1 5-3-2-1-4 0-5 3z'/%3E%3C/svg%3E"); --iw-doodle-color: #8a1f12; }
+.iw-panel.iw-theme-nav { --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round' d='M20 2l17 15-17 15L3 17z'/%3E%3Cpath fill='black' d='M20 0l2 3h-4zM20 34l2-3h-4zM1 17l3-2v4zM39 17l-3-2v4z'/%3E%3C/svg%3E"); --iw-doodle-color: #d6392e; }
+.iw-panel.iw-theme-dossier { --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cg transform='rotate%28-10 20 17%29'%3E%3Ccircle cx='20' cy='17' r='15' fill='none' stroke='black' stroke-width='2.2'/%3E%3Ccircle cx='20' cy='17' r='11.5' fill='none' stroke='black' stroke-width='1' stroke-dasharray='2 1.6'/%3E%3C/g%3E%3C/svg%3E"); --iw-doodle-color: #c0262d; }
+
+/* Досье: дата «сейчас» и выбранная — обведены красной ручкой */
+.iw-panel.iw-theme-dossier .iw-cal-today { background: transparent; box-shadow: none; }
+.iw-panel.iw-theme-dossier .iw-cal-today::after {
+    content: '';
+    position: absolute;
+    inset: -3px -4px;
+    z-index: 0;
+    pointer-events: none;
+    background: #c0262d;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M22 4C11 3 4 9 4 17s7 14 17 14 15-6 15-14S28 4 17 5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M22 4C11 3 4 9 4 17s7 14 17 14 15-6 15-14S28 4 17 5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+.iw-panel.iw-theme-dossier .iw-cal-today > span { color: #c0262d; }
+.iw-panel.iw-theme-dossier .iw-ev-ico::before { opacity: .85; }
+.iw-panel.iw-theme-dossier .iw-ev-ico { color: #c0262d; }
+.iw-panel.iw-theme-dossier .iw-clock-events .iw-ev-when b { color: #c0262d; }
+
+/* Навь и Летопись: значки праздников в списке — без кружка, рисунок темы сам по себе */
+.iw-panel:is(.iw-theme-nav, .iw-theme-medieval) .iw-ev-ico { width: 30px; height: 26px; font-size: 13px; }
+.iw-panel:is(.iw-theme-nav, .iw-theme-medieval) .iw-ev-ico::before { opacity: .9; }
+
+/* Навь и Летопись: у декоративных шрифтов нет жирного начертания — браузер «мазал» его сам.
+   Мелкие надписи — читаемым шрифтом темы, крупные заголовки остаются узорными. */
+.iw-panel.iw-theme-nav,
+.iw-panel.iw-theme-medieval { font-synthesis: none; }
+.iw-panel.iw-theme-nav { --iw-title-font: 'Kurale', Georgia, serif; }
+.iw-panel.iw-theme-medieval { --iw-title-font: 'Cormorant Garamond', Georgia, serif; }
+.iw-panel.iw-theme-nav :is(.iw-title, .iw-label),
+.iw-panel.iw-theme-medieval :is(.iw-title, .iw-label) { font-family: 'Ruslan Display', Georgia, serif; font-weight: 400; }
+.iw-panel.iw-theme-nav :is(b, strong) { font-family: var(--iw-body-font); font-weight: 700; }
+
+/* Травница: вместо рукописного — читаемый «ведьминский» шрифт; рукописный остался только в заголовке */
+.iw-panel.iw-theme-herbal { --iw-title-font: 'Philosopher', 'Comfortaa', Georgia, serif; }
+.iw-panel.iw-theme-herbal .iw-title { font-family: 'Pacifico', cursive; }
+.iw-panel.iw-theme-herbal .iw-npc-sticker-title { font-family: 'Philosopher', Georgia, serif; font-weight: 700; }
+.iw-panel.iw-theme-herbal :is(.iw-npc-name, .iw-tab-name, .iw-label, .iw-clock-chosen, .iw-cal-head .iw-pick-sum, .iw-cal-yin) { font-weight: 700; }
+
+/* часы: время, часть дня и дата — одним шрифтом (и в свёрнутом, и в развёрнутом виде) */
+.iw-panel .iw-clock-bar :is(.iw-clock-time, .iw-clock-part, .iw-clock-date),
+.iw-panel .iw-clock-chosen { font-family: var(--iw-body-font, inherit); }
+.iw-panel .iw-clock-time { font-weight: 700; font-size: 1.15em; }
+
+/* месяц и год в календаре — не обрезаем ни снизу, ни справа */
+.iw-panel .iw-cal-head { overflow: visible; flex-wrap: wrap; }
+.iw-panel .iw-cal-head .iw-pick-sum,
+.iw-panel .iw-cal-year { height: auto; min-height: 34px; }
+.iw-panel .iw-cal-head .iw-pick-sum { max-width: none; }
+.iw-panel .iw-cal-head .iw-pick-sum > span { overflow: visible; text-overflow: clip; line-height: 1.25; padding-block: 3px; }
+.iw-panel .iw-cal-yin { line-height: 1.25; padding-block: 3px; }
+
+/* ===================== Значки НПС: заливки внутри рисунков ===================== */
+.iw-npc-badge { --iw-knock: var(--iw-bg, #fff); }
+.iw-theme-sims .iw-npc-badge { --iw-knock: #2f73c0; }
+.iw-theme-bimbo .iw-npc-badge { --iw-knock: #ff7ab8; }
+.iw-theme-china .iw-npc-badge { --iw-knock: #d4a64a; }
+.iw-theme-dossier .iw-npc-badge { --iw-knock: #efe2c4; }
+.iw-npc-ico .f { fill: currentColor; }
+.iw-npc-ico .k { stroke: var(--iw-knock); }
+.iw-npc-ico .kf { fill: var(--iw-knock); stroke: none; }
+
+/* Досье: рамка значка — чёткая двойная линия, без «битых пикселей» */
+.iw-theme-dossier :is(.iw-npc-badge, .iw-rw-ico) {
+    box-shadow: none;
+    border: 2px solid #2a2a2a;
+    outline: 1.5px solid #2a2a2a;
+    outline-offset: -6px;
+    transform: rotate(-2deg);
+    backface-visibility: hidden;
+}
+.iw-theme-dossier :is(.iw-npc-ico, .iw-rw-ico .iw-ico) { filter: none; stroke-width: 1.9; }
+
+/* превью НПС: имя, под ним — кто это («мама Вити») */
+.iw-npc .iw-npc-status {
+    display: block;
+    max-width: 100%;
+    margin-top: -2px;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-align: center;
+    color: var(--iw-label-color, var(--iw-ink));
+    opacity: .85;
+    overflow-wrap: anywhere;
+}
+
+/* ===================== Тема «vk»: собрана на основе «Симс», дальше — свои правки ===================== */
+.iw-theme-vk {
+    --iw-bg: #edeef0;
+    --iw-paper: none;
+    --iw-ink: #222222;
+    --iw-muted: #828282;
+    --iw-title-font: 'Open Sans', 'Roboto', Tahoma, sans-serif;
+    --iw-body-font: 'Open Sans', 'Roboto', Tahoma, sans-serif;
+    --iw-title-color: #fff;
+    --iw-scribble: transparent;
+    --iw-label-color: #4a76a8;
+    --iw-label-size: 14px;
+    --iw-wants: #4a76a8;
+    --iw-fears: #4a76a8;
+    --iw-dream: #4a76a8;
+    --iw-traits: #4a76a8;
+    --iw-hl-good: #dcefd9;
+    --iw-hl-bad: #fbe2e2;
+    --iw-hl-mid: #e5ebf1;
+    --iw-hl-main: #5181b8;
+    --iw-block-bg: #fff;
+    --iw-block-border: none;
+    --iw-block-radius: 18px;
+    --iw-block-shadow: 0 3px 0 #d3dce6;
+    --iw-block-pad: 14px 16px;
+    --iw-divider: #e7ebf0;
+    --iw-note-bg: #fff;
+    --iw-note-ink: #222222;
+    --iw-bar-border: none;
+    --iw-bar-bg: #e7ebf0;
+    --iw-lvl-low: #e6b422;
+    --iw-lvl-mid: #4bb34b;
+    --iw-lvl-high: #4bb34b;
+    --iw-dream-fill: #5181b8;
+    --iw-dream-border: none;
+    --iw-dream-radius: 18px;
+    --iw-sticker-bg: #f0f2f5;
+    --iw-sticker-border: none;
+    --iw-sticker-radius: 999px;
+    --iw-new-bg: #4a76a8;
+    --iw-new-ink: #fff;
+    --iw-margin: transparent;
+    --iw-tape: transparent;
+    --iw-chip-ink: #222222;
+    --iw-chip-on: #4bb34b;
+    --iw-shell: #c5d0db;
+    --iw-text-size: 15px;
+}
+.iw-theme-vk .iw-book {
+    padding-left: 22px;
+}
+.iw-theme-vk .iw-title {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 999px;
+    background: #4a76a8;
+    font-size: 26px;
+    font-weight: 900;
+}
+.iw-theme-vk .iw-label {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 900;
+}
+.iw-theme-vk .iw-block-head {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.iw-theme-vk .iw-block-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #4a76a8;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    align-self: center;
+}
+.iw-theme-vk .iw-mood-word .iw-hl {
+    background: var(--iw-hl);
+    border-radius: 999px;
+    padding: 2px 14px;
+    font-weight: 900;
+    color: #fff;
+    font-size: .8em;
+}
+.iw-theme-vk .iw-mood-word {
+    font-weight: 900;
+}
+.iw-theme-vk .iw-feel {
+    background: #f5f7fa;
+    border-left: none;
+    border-radius: 14px;
+}
+.iw-theme-vk .iw-box {
+    border-radius: 50%;
+    border-color: #4bb34b;
+}
+.iw-theme-vk .iw-b-impression {
+    transform: none;
+    border-radius: 18px;
+    box-shadow: 0 3px 0 #d3dce6;
+}
+.iw-theme-vk .iw-tab {
+    transform: none;
+    border-radius: 16px;
+}
+.iw-theme-vk .iw-photo {
+    border-radius: 50%;
+}
+.iw-theme-vk .iw-new {
+    border-radius: 999px;
+    transform: none;
+}
+.iw-theme-vk .iw-list > li {
+    border-bottom-style: solid;
+}
+.iw-theme-vk .iw-toast-card {
+    transform: none;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 4px 0 #d3dce6, 0 12px 24px rgba(42, 88, 133, .25);
+    font-family: 'Open Sans', 'Roboto', Tahoma, sans-serif;
+}
+.iw-theme-vk .iw-toast-icon {
+    border: none;
+    background: var(--iw-ev);
+    color: #fff;
+}
+.iw-theme-vk .iw-toast-kicker {
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+@media (max-width: 760px) {
+    .iw-theme-vk .iw-book {
+        padding-left: 14px;
+    }
+}
+.iw-fab.iw-theme-vk .iw-fab-book { transform: none; }
+.iw-fab.iw-theme-vk .iw-fab-cover { background: #4a76a8; border-color: #fff; color: #fff; border-radius: 14px; padding-left: 0; }
+.iw-fab.iw-theme-vk .iw-fab-heart { stroke: #4a76a8; }
+.iw-fab.iw-theme-vk .iw-fab-spine, .iw-fab.iw-theme-vk .iw-fab-ribbon { display: none; }
+.iw-theme-vk { --iw-feel-bg: #f5f7fa; }
+.iw-theme-vk .iw-photo-unknown { border-radius: 50% !important; }
+.iw-theme-vk .iw-unknown-mark::before { font-family: 'Open Sans', 'Roboto', Tahoma, sans-serif; font-weight: 900; color: #4a76a8; }
+.iw-theme-vk .iw-npc-sticker {
+    transform: none;
+    border: none;
+    border-radius: 16px;
+    background: #4a76a8;
+    color: #fff;
+}
+.iw-theme-vk .iw-npc-sticker::before { display: none; }
+.iw-theme-vk .iw-npc-unknown { border-radius: 50%; border-style: solid; }
+.iw-theme-vk .iw-whois {
+    transform: none;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 3px 0 #d3dce6;
+}
+.iw-theme-vk .iw-whois-tag {
+    border-radius: 999px;
+    transform: none;
+    background: #4a76a8;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+.iw-theme-vk .iw-f-section > summary {
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.iw-theme-vk .iw-npc-badge {
+    background: #4a76a8;
+    border: 3px solid #fff;
+    color: #fff;
+    box-shadow: 0 3px 0 #d3dce6;
+}
+.iw-theme-vk .iw-npc-ico {
+    stroke-width: 2;
+}
+.iw-theme-vk .iw-dossier .iw-whois {
+    box-shadow: none;
+    background: #f5f7fa;
+}
+@media (max-width: 760px) {
+    .iw-theme-vk .iw-title {
+        font-size: 18px;
+        padding: 5px 12px;
+    }
+}
+.iw-theme-vk .iw-act, .iw-theme-vk .iw-lang-opt, .iw-theme-vk .iw-buy, .iw-theme-vk .iw-points {
+    border-radius: 12px;
+    transform: none;
+}
+.iw-theme-vk { --iw-scroll-thumb: #a8bfd9; --iw-scroll-hover: #4a76a8; --iw-scroll-radius: 8px; }
+.iw-theme-vk .iw-loader i {
+    display: none;
+}
+.iw-theme-vk .iw-loader b {
+    display: block;
+    width: 74px;
+    height: 12px;
+    border: 2px solid #222222;
+    border-radius: 999px;
+    background: repeating-linear-gradient(-45deg, #4bb34b 0 7px, #7cc47c 7px 14px);
+    background-size: 20px 20px;
+    animation: iw-stripes .6s linear infinite;
+}
+.iw-theme-vk .iw-acts-cap {
+    font-size: 15px;
+    font-weight: 800;
+}
+@media (max-width: 560px) {
+    .iw-theme-vk .iw-acts-cap {
+        font-size: 13px;
+    }
+}
+.iw-theme-vk { --iw-frame: 0 0 0 3px #fff, 0 0 0 6px #4a76a8, 0 3px 8px rgba(42, 88, 133, .3); --iw-frame-radius: 50%; }
+.iw-theme-vk .iw-tab .iw-photo-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -12px;
+    width: 11px;
+    height: 17px;
+    z-index: 2;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #cfe8cf, #4bb34b 60%, #2f7d2f);
+    clip-path: polygon(50% 0, 100% 45%, 50% 100%, 0 45%);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3));
+    animation: iw-bob 2.4s ease-in-out infinite;
+}
+.iw-theme-vk.iw-panel .iw-mood-word[class*="iw-face-"] .iw-hl {
+    border-radius: 999px;
+    padding: 2px 14px;
+    background: linear-gradient(90deg, var(--mw-a), var(--mw-b));
+}
+.iw-theme-vk { --iw-label-size: 16px; --iw-sub-size: 16px; }
+.iw-theme-vk .iw-chart-wrap { --ch-line: #4a76a8; --ch-dot: #5181b8; --ch-dot-line: #fff; --ch-end: #4bb34b; }
+.iw-theme-vk .iw-chart-wrap .iw-chart polyline { stroke-width: 4; }
+.iw-theme-vk .iw-chart-dot { width: 11px; height: 11px; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.iw-theme-vk .iw-arrow-long { filter: url(#iw-rough); }
+.iw-theme-vk .iw-rw-ico {
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #4a76a8;
+    color: #fff;
+    box-shadow: 0 3px 0 #d3dce6;
+}
+.iw-theme-vk .iw-persona-name { font-weight: 800; font-family: 'Open Sans', 'Roboto', Tahoma, sans-serif; }
+.iw-theme-vk .iw-shopbar { border: 3px solid #fff; background: #4a76a8; color: #fff; transform: none; border-radius: 999px; }
+.iw-theme-vk .iw-shopbar .iw-shop-sticker, .iw-theme-vk .iw-shopbar .iw-wallet > summary { color: #fff; border-left-color: rgba(255, 255, 255, .6); }
+:is(.iw-theme-vk) .iw-tape-blue {
+    display: none;
+}
+.iw-theme-vk .iw-live-card { border-radius: 18px; border: 3px solid #4a76a8; transform: translateX(-50%); }
+.iw-panel.iw-theme-vk .iw-form-foot .iw-lang-opt.on { background: #4a76a8; border-color: #4a76a8; color: #fff; }
+.iw-panel.iw-theme-vk .iw-attr-own .iw-attr-input { border-radius: 12px; border: 2px solid #4a76a8; background: #fff; color: #2a5885; }
+.iw-panel:is(.iw-theme-vk) .iw-trait:has(.iw-trait-det[open]) { border-radius: 16px; }
+.iw-panel.iw-theme-vk {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M20 2l4 8 9 1-6.5 6 1.5 9-8-4.5-8 4.5 1.5-9L7 11l9-1z' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --iw-doodle-color: #5181b8;
+}
+.iw-panel.iw-theme-vk .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 3l8 14-8 20-8-20z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 17h16M20 3v34'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-vk .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 26c10-14 20-14 30 0s20 14 30 0 20-14 30 0'/%3E%3Ccircle cx='34' cy='26' r='2.5' fill='black'/%3E%3Ccircle cx='64' cy='26' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-vk .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 38S6 28 6 17a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 16c0-2 1-4 4-4'/%3E%3C/svg%3E"); }
+.iw-theme-vk .iw-npc-badge { --iw-knock: #4a76a8; }
+
+/* ===================== Тема «telegram»: собрана на основе «Симс», дальше — свои правки ===================== */
+.iw-theme-telegram {
+    --iw-bg: #dbe6d0;
+    --iw-paper: none;
+    --iw-ink: #0f1419;
+    --iw-muted: #707579;
+    --iw-title-font: 'Roboto', 'Segoe UI', sans-serif;
+    --iw-body-font: 'Roboto', 'Segoe UI', sans-serif;
+    --iw-title-color: #fff;
+    --iw-scribble: transparent;
+    --iw-label-color: #3390ec;
+    --iw-label-size: 14px;
+    --iw-wants: #3390ec;
+    --iw-fears: #3390ec;
+    --iw-dream: #3390ec;
+    --iw-traits: #3390ec;
+    --iw-hl-good: #e1f6cf;
+    --iw-hl-bad: #fde4e4;
+    --iw-hl-mid: #e3f0fd;
+    --iw-hl-main: #3390ec;
+    --iw-block-bg: #fff;
+    --iw-block-border: none;
+    --iw-block-radius: 18px;
+    --iw-block-shadow: 0 3px 0 #c9dff5;
+    --iw-block-pad: 14px 16px;
+    --iw-divider: #e4edf6;
+    --iw-note-bg: #fff;
+    --iw-note-ink: #0f1419;
+    --iw-bar-border: none;
+    --iw-bar-bg: #e4edf6;
+    --iw-lvl-low: #f5b83d;
+    --iw-lvl-mid: #4fae4e;
+    --iw-lvl-high: #4fae4e;
+    --iw-dream-fill: #8774e1;
+    --iw-dream-border: none;
+    --iw-dream-radius: 18px;
+    --iw-sticker-bg: #eef5fc;
+    --iw-sticker-border: none;
+    --iw-sticker-radius: 999px;
+    --iw-new-bg: #3390ec;
+    --iw-new-ink: #fff;
+    --iw-margin: transparent;
+    --iw-tape: transparent;
+    --iw-chip-ink: #0f1419;
+    --iw-chip-on: #4fae4e;
+    --iw-shell: #b9d4ee;
+    --iw-text-size: 15px;
+}
+.iw-theme-telegram .iw-book {
+    padding-left: 22px;
+}
+.iw-theme-telegram .iw-title {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 999px;
+    background: #3390ec;
+    font-size: 26px;
+    font-weight: 900;
+}
+.iw-theme-telegram .iw-label {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 900;
+}
+.iw-theme-telegram .iw-block-head {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.iw-theme-telegram .iw-block-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #3390ec;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    align-self: center;
+}
+.iw-theme-telegram .iw-mood-word .iw-hl {
+    background: var(--iw-hl);
+    border-radius: 999px;
+    padding: 2px 14px;
+    font-weight: 900;
+    color: #fff;
+    font-size: .8em;
+}
+.iw-theme-telegram .iw-mood-word {
+    font-weight: 900;
+}
+.iw-theme-telegram .iw-feel {
+    background: #f4f8fc;
+    border-left: none;
+    border-radius: 14px;
+}
+.iw-theme-telegram .iw-box {
+    border-radius: 50%;
+    border-color: #4fae4e;
+}
+.iw-theme-telegram .iw-b-impression {
+    transform: none;
+    border-radius: 18px;
+    box-shadow: 0 3px 0 #c9dff5;
+}
+.iw-theme-telegram .iw-tab {
+    transform: none;
+    border-radius: 16px;
+}
+.iw-theme-telegram .iw-photo {
+    border-radius: 50%;
+}
+.iw-theme-telegram .iw-new {
+    border-radius: 999px;
+    transform: none;
+}
+.iw-theme-telegram .iw-list > li {
+    border-bottom-style: solid;
+}
+.iw-theme-telegram .iw-toast-card {
+    transform: none;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 4px 0 #c9dff5, 0 12px 24px rgba(15, 20, 25, .25);
+    font-family: 'Roboto', 'Segoe UI', sans-serif;
+}
+.iw-theme-telegram .iw-toast-icon {
+    border: none;
+    background: var(--iw-ev);
+    color: #fff;
+}
+.iw-theme-telegram .iw-toast-kicker {
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+@media (max-width: 760px) {
+    .iw-theme-telegram .iw-book {
+        padding-left: 14px;
+    }
+}
+.iw-fab.iw-theme-telegram .iw-fab-book { transform: none; }
+.iw-fab.iw-theme-telegram .iw-fab-cover { background: #3390ec; border-color: #fff; color: #fff; border-radius: 14px; padding-left: 0; }
+.iw-fab.iw-theme-telegram .iw-fab-heart { stroke: #3390ec; }
+.iw-fab.iw-theme-telegram .iw-fab-spine, .iw-fab.iw-theme-telegram .iw-fab-ribbon { display: none; }
+.iw-theme-telegram { --iw-feel-bg: #f4f8fc; }
+.iw-theme-telegram .iw-photo-unknown { border-radius: 50% !important; }
+.iw-theme-telegram .iw-unknown-mark::before { font-family: 'Roboto', 'Segoe UI', sans-serif; font-weight: 900; color: #3390ec; }
+.iw-theme-telegram .iw-npc-sticker {
+    transform: none;
+    border: none;
+    border-radius: 16px;
+    background: #3390ec;
+    color: #fff;
+}
+.iw-theme-telegram .iw-npc-sticker::before { display: none; }
+.iw-theme-telegram .iw-npc-unknown { border-radius: 50%; border-style: solid; }
+.iw-theme-telegram .iw-whois {
+    transform: none;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 3px 0 #c9dff5;
+}
+.iw-theme-telegram .iw-whois-tag {
+    border-radius: 999px;
+    transform: none;
+    background: #3390ec;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+.iw-theme-telegram .iw-f-section > summary {
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.iw-theme-telegram .iw-npc-badge {
+    background: #3390ec;
+    border: 3px solid #fff;
+    color: #fff;
+    box-shadow: 0 3px 0 #c9dff5;
+}
+.iw-theme-telegram .iw-npc-ico {
+    stroke-width: 2;
+}
+.iw-theme-telegram .iw-dossier .iw-whois {
+    box-shadow: none;
+    background: #f4f8fc;
+}
+@media (max-width: 760px) {
+    .iw-theme-telegram .iw-title {
+        font-size: 18px;
+        padding: 5px 12px;
+    }
+}
+.iw-theme-telegram .iw-act, .iw-theme-telegram .iw-lang-opt, .iw-theme-telegram .iw-buy, .iw-theme-telegram .iw-points {
+    border-radius: 12px;
+    transform: none;
+}
+.iw-theme-telegram { --iw-scroll-thumb: #8cc2f2; --iw-scroll-hover: #2481cc; --iw-scroll-radius: 8px; }
+.iw-theme-telegram .iw-loader i {
+    display: none;
+}
+.iw-theme-telegram .iw-loader b {
+    display: block;
+    width: 74px;
+    height: 12px;
+    border: 2px solid #0f1419;
+    border-radius: 999px;
+    background: repeating-linear-gradient(-45deg, #4fae4e 0 7px, #9be07a 7px 14px);
+    background-size: 20px 20px;
+    animation: iw-stripes .6s linear infinite;
+}
+.iw-theme-telegram .iw-acts-cap {
+    font-size: 15px;
+    font-weight: 800;
+}
+@media (max-width: 560px) {
+    .iw-theme-telegram .iw-acts-cap {
+        font-size: 13px;
+    }
+}
+.iw-theme-telegram { --iw-frame: 0 0 0 3px #fff, 0 0 0 6px #3390ec, 0 3px 8px rgba(15, 20, 25, .3); --iw-frame-radius: 50%; }
+.iw-theme-telegram .iw-tab .iw-photo-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -12px;
+    width: 11px;
+    height: 17px;
+    z-index: 2;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #effdde, #4fae4e 60%, #3a8a2c);
+    clip-path: polygon(50% 0, 100% 45%, 50% 100%, 0 45%);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3));
+    animation: iw-bob 2.4s ease-in-out infinite;
+}
+.iw-theme-telegram.iw-panel .iw-mood-word[class*="iw-face-"] .iw-hl {
+    border-radius: 999px;
+    padding: 2px 14px;
+    background: linear-gradient(90deg, var(--mw-a), var(--mw-b));
+}
+.iw-theme-telegram { --iw-label-size: 16px; --iw-sub-size: 16px; }
+.iw-theme-telegram .iw-chart-wrap { --ch-line: #3390ec; --ch-dot: #5fbf3e; --ch-dot-line: #fff; --ch-end: #4fae4e; }
+.iw-theme-telegram .iw-chart-wrap .iw-chart polyline { stroke-width: 4; }
+.iw-theme-telegram .iw-chart-dot { width: 11px; height: 11px; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.iw-theme-telegram .iw-arrow-long { filter: url(#iw-rough); }
+.iw-theme-telegram .iw-rw-ico {
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #3390ec;
+    color: #fff;
+    box-shadow: 0 3px 0 #c9dff5;
+}
+.iw-theme-telegram .iw-persona-name { font-weight: 800; font-family: 'Roboto', 'Segoe UI', sans-serif; }
+.iw-theme-telegram .iw-shopbar { border: 3px solid #fff; background: #3390ec; color: #fff; transform: none; border-radius: 999px; }
+.iw-theme-telegram .iw-shopbar .iw-shop-sticker, .iw-theme-telegram .iw-shopbar .iw-wallet > summary { color: #fff; border-left-color: rgba(255, 255, 255, .6); }
+:is(.iw-theme-telegram) .iw-tape-blue {
+    display: none;
+}
+.iw-theme-telegram .iw-live-card { border-radius: 18px; border: 3px solid #3390ec; transform: translateX(-50%); }
+.iw-panel.iw-theme-telegram .iw-form-foot .iw-lang-opt.on { background: #3390ec; border-color: #3390ec; color: #fff; }
+.iw-panel.iw-theme-telegram .iw-attr-own .iw-attr-input { border-radius: 12px; border: 2px solid #3390ec; background: #fff; color: #168acd; }
+.iw-panel:is(.iw-theme-telegram) .iw-trait:has(.iw-trait-det[open]) { border-radius: 16px; }
+.iw-panel.iw-theme-telegram {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M20 2l4 8 9 1-6.5 6 1.5 9-8-4.5-8 4.5 1.5-9L7 11l9-1z' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --iw-doodle-color: #5fbf3e;
+}
+.iw-panel.iw-theme-telegram .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 3l8 14-8 20-8-20z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 17h16M20 3v34'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-telegram .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 26c10-14 20-14 30 0s20 14 30 0 20-14 30 0'/%3E%3Ccircle cx='34' cy='26' r='2.5' fill='black'/%3E%3Ccircle cx='64' cy='26' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-telegram .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 38S6 28 6 17a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 16c0-2 1-4 4-4'/%3E%3C/svg%3E"); }
+.iw-theme-telegram .iw-npc-badge { --iw-knock: #3390ec; }
+
+/* ===================== Тема «icq»: собрана на основе «Симс», дальше — свои правки ===================== */
+.iw-theme-icq {
+    --iw-bg: #dfe8f2;
+    --iw-paper: none;
+    --iw-ink: #1f2a1a;
+    --iw-muted: #5f6b58;
+    --iw-title-font: Tahoma, Verdana, 'PT Sans', sans-serif;
+    --iw-body-font: Tahoma, Verdana, 'PT Sans', sans-serif;
+    --iw-title-color: #fff;
+    --iw-scribble: transparent;
+    --iw-label-color: #3f8f2a;
+    --iw-label-size: 14px;
+    --iw-wants: #3f8f2a;
+    --iw-fears: #3f8f2a;
+    --iw-dream: #3f8f2a;
+    --iw-traits: #3f8f2a;
+    --iw-hl-good: #d8f0c4;
+    --iw-hl-bad: #ffd9d3;
+    --iw-hl-mid: #fff1c9;
+    --iw-hl-main: #f39c1f;
+    --iw-block-bg: #fff;
+    --iw-block-border: none;
+    --iw-block-radius: 18px;
+    --iw-block-shadow: 0 3px 0 #c9d8b8;
+    --iw-block-pad: 14px 16px;
+    --iw-divider: #e3ecd9;
+    --iw-note-bg: #fff;
+    --iw-note-ink: #1f2a1a;
+    --iw-bar-border: none;
+    --iw-bar-bg: #e3ecd9;
+    --iw-lvl-low: #f2c84b;
+    --iw-lvl-mid: #78c043;
+    --iw-lvl-high: #5aa832;
+    --iw-dream-fill: #f39c1f;
+    --iw-dream-border: none;
+    --iw-dream-radius: 18px;
+    --iw-sticker-bg: #eef4e8;
+    --iw-sticker-border: none;
+    --iw-sticker-radius: 999px;
+    --iw-new-bg: #3f8f2a;
+    --iw-new-ink: #fff;
+    --iw-margin: transparent;
+    --iw-tape: transparent;
+    --iw-chip-ink: #1f2a1a;
+    --iw-chip-on: #78c043;
+    --iw-shell: #bcd0a8;
+    --iw-text-size: 15px;
+}
+.iw-theme-icq .iw-book {
+    padding-left: 22px;
+}
+.iw-theme-icq .iw-title {
+    display: inline-block;
+    padding: 6px 18px;
+    border-radius: 999px;
+    background: #3f8f2a;
+    font-size: 26px;
+    font-weight: 900;
+}
+.iw-theme-icq .iw-label {
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 900;
+}
+.iw-theme-icq .iw-block-head {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.iw-theme-icq .iw-block-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #3f8f2a;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    align-self: center;
+}
+.iw-theme-icq .iw-mood-word .iw-hl {
+    background: var(--iw-hl);
+    border-radius: 999px;
+    padding: 2px 14px;
+    font-weight: 900;
+    color: #fff;
+    font-size: .8em;
+}
+.iw-theme-icq .iw-mood-word {
+    font-weight: 900;
+}
+.iw-theme-icq .iw-feel {
+    background: #f6f9f2;
+    border-left: none;
+    border-radius: 14px;
+}
+.iw-theme-icq .iw-box {
+    border-radius: 50%;
+    border-color: #78c043;
+}
+.iw-theme-icq .iw-b-impression {
+    transform: none;
+    border-radius: 18px;
+    box-shadow: 0 3px 0 #c9d8b8;
+}
+.iw-theme-icq .iw-tab {
+    transform: none;
+    border-radius: 16px;
+}
+.iw-theme-icq .iw-photo {
+    border-radius: 50%;
+}
+.iw-theme-icq .iw-new {
+    border-radius: 999px;
+    transform: none;
+}
+.iw-theme-icq .iw-list > li {
+    border-bottom-style: solid;
+}
+.iw-theme-icq .iw-toast-card {
+    transform: none;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 4px 0 #c9d8b8, 0 12px 24px rgba(31, 42, 26, .25);
+    font-family: Tahoma, Verdana, 'PT Sans', sans-serif;
+}
+.iw-theme-icq .iw-toast-icon {
+    border: none;
+    background: var(--iw-ev);
+    color: #fff;
+}
+.iw-theme-icq .iw-toast-kicker {
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+@media (max-width: 760px) {
+    .iw-theme-icq .iw-book {
+        padding-left: 14px;
+    }
+}
+.iw-fab.iw-theme-icq .iw-fab-book { transform: none; }
+.iw-fab.iw-theme-icq .iw-fab-cover { background: #3f8f2a; border-color: #fff; color: #fff; border-radius: 14px; padding-left: 0; }
+.iw-fab.iw-theme-icq .iw-fab-heart { stroke: #3f8f2a; }
+.iw-fab.iw-theme-icq .iw-fab-spine, .iw-fab.iw-theme-icq .iw-fab-ribbon { display: none; }
+.iw-theme-icq { --iw-feel-bg: #f6f9f2; }
+.iw-theme-icq .iw-photo-unknown { border-radius: 50% !important; }
+.iw-theme-icq .iw-unknown-mark::before { font-family: Tahoma, Verdana, 'PT Sans', sans-serif; font-weight: 900; color: #3f8f2a; }
+.iw-theme-icq .iw-npc-sticker {
+    transform: none;
+    border: none;
+    border-radius: 16px;
+    background: #3f8f2a;
+    color: #fff;
+}
+.iw-theme-icq .iw-npc-sticker::before { display: none; }
+.iw-theme-icq .iw-npc-unknown { border-radius: 50%; border-style: solid; }
+.iw-theme-icq .iw-whois {
+    transform: none;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 3px 0 #c9d8b8;
+}
+.iw-theme-icq .iw-whois-tag {
+    border-radius: 999px;
+    transform: none;
+    background: #3f8f2a;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+.iw-theme-icq .iw-f-section > summary {
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+.iw-theme-icq .iw-npc-badge {
+    background: #3f8f2a;
+    border: 3px solid #fff;
+    color: #fff;
+    box-shadow: 0 3px 0 #c9d8b8;
+}
+.iw-theme-icq .iw-npc-ico {
+    stroke-width: 2;
+}
+.iw-theme-icq .iw-dossier .iw-whois {
+    box-shadow: none;
+    background: #f6f9f2;
+}
+@media (max-width: 760px) {
+    .iw-theme-icq .iw-title {
+        font-size: 18px;
+        padding: 5px 12px;
+    }
+}
+.iw-theme-icq .iw-act, .iw-theme-icq .iw-lang-opt, .iw-theme-icq .iw-buy, .iw-theme-icq .iw-points {
+    border-radius: 12px;
+    transform: none;
+}
+.iw-theme-icq { --iw-scroll-thumb: #9fcf7c; --iw-scroll-hover: #3f8f2a; --iw-scroll-radius: 8px; }
+.iw-theme-icq .iw-loader i {
+    display: none;
+}
+.iw-theme-icq .iw-loader b {
+    display: block;
+    width: 74px;
+    height: 12px;
+    border: 2px solid #1f2a1a;
+    border-radius: 999px;
+    background: repeating-linear-gradient(-45deg, #5aa832 0 7px, #9be07a 7px 14px);
+    background-size: 20px 20px;
+    animation: iw-stripes .6s linear infinite;
+}
+.iw-theme-icq .iw-acts-cap {
+    font-size: 15px;
+    font-weight: 800;
+}
+@media (max-width: 560px) {
+    .iw-theme-icq .iw-acts-cap {
+        font-size: 13px;
+    }
+}
+.iw-theme-icq { --iw-frame: 0 0 0 3px #fff, 0 0 0 6px #3f8f2a, 0 3px 8px rgba(31, 42, 26, .3); --iw-frame-radius: 50%; }
+.iw-theme-icq .iw-tab .iw-photo-wrap::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -12px;
+    width: 11px;
+    height: 17px;
+    z-index: 2;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #d8f0c4, #3f8f2a 60%, #2d6b18);
+    clip-path: polygon(50% 0, 100% 45%, 50% 100%, 0 45%);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .3));
+    animation: iw-bob 2.4s ease-in-out infinite;
+}
+.iw-theme-icq.iw-panel .iw-mood-word[class*="iw-face-"] .iw-hl {
+    border-radius: 999px;
+    padding: 2px 14px;
+    background: linear-gradient(90deg, var(--mw-a), var(--mw-b));
+}
+.iw-theme-icq { --iw-label-size: 16px; --iw-sub-size: 16px; }
+.iw-theme-icq .iw-chart-wrap { --ch-line: #3f8f2a; --ch-dot: #e2453c; --ch-dot-line: #fff; --ch-end: #3f8f2a; }
+.iw-theme-icq .iw-chart-wrap .iw-chart polyline { stroke-width: 4; }
+.iw-theme-icq .iw-chart-dot { width: 11px; height: 11px; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.iw-theme-icq .iw-arrow-long { filter: url(#iw-rough); }
+.iw-theme-icq .iw-rw-ico {
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #3f8f2a;
+    color: #fff;
+    box-shadow: 0 3px 0 #c9d8b8;
+}
+.iw-theme-icq .iw-persona-name { font-weight: 800; font-family: Tahoma, Verdana, 'PT Sans', sans-serif; }
+.iw-theme-icq .iw-shopbar { border: 3px solid #fff; background: #3f8f2a; color: #fff; transform: none; border-radius: 999px; }
+.iw-theme-icq .iw-shopbar .iw-shop-sticker, .iw-theme-icq .iw-shopbar .iw-wallet > summary { color: #fff; border-left-color: rgba(255, 255, 255, .6); }
+:is(.iw-theme-icq) .iw-tape-blue {
+    display: none;
+}
+.iw-theme-icq .iw-live-card { border-radius: 18px; border: 3px solid #3f8f2a; transform: translateX(-50%); }
+.iw-panel.iw-theme-icq .iw-form-foot .iw-lang-opt.on { background: #3f8f2a; border-color: #3f8f2a; color: #fff; }
+.iw-panel.iw-theme-icq .iw-attr-own .iw-attr-input { border-radius: 12px; border: 2px solid #3f8f2a; background: #fff; color: #24561a; }
+.iw-panel:is(.iw-theme-icq) .iw-trait:has(.iw-trait-det[open]) { border-radius: 16px; }
+.iw-panel.iw-theme-icq {
+    --iw-doodle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 34'%3E%3Cpath d='M20 2l4 8 9 1-6.5 6 1.5 9-8-4.5-8 4.5 1.5-9L7 11l9-1z' fill='none' stroke='black' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --iw-doodle-color: #e2453c;
+}
+.iw-panel.iw-theme-icq .iw-dd-a { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M20 3l8 14-8 20-8-20z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 17h16M20 3v34'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-icq .iw-dd-b { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 26c10-14 20-14 30 0s20 14 30 0 20-14 30 0'/%3E%3Ccircle cx='34' cy='26' r='2.5' fill='black'/%3E%3Ccircle cx='64' cy='26' r='2.5' fill='black'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-icq .iw-dd-c { --iw-dd: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M22 38S6 28 6 17a8 8 0 0 1 16-3 8 8 0 0 1 16 3c0 11-16 21-16 21z'/%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M14 16c0-2 1-4 4-4'/%3E%3C/svg%3E"); }
+.iw-theme-icq .iw-npc-badge { --iw-knock: #3f8f2a; }
+
+/* ===================== ВКонтакте (старый, 2013–2015): синяя шапка, серо-голубые полосы заголовков, квадратные аватарки ===================== */
+.iw-panel.iw-theme-vk { --iw-bg: #fff; --iw-ink: #000; --iw-muted: #777; --iw-label-color: #45688e; --iw-block-radius: 0; --iw-block-shadow: none; --iw-block-bg: #fff; --iw-label-size: 13px; --iw-sub-size: 13px; --iw-body-font: Tahoma, 'Open Sans', Verdana, sans-serif; --iw-title-font: Tahoma, 'Open Sans', Verdana, sans-serif; --iw-text-size: 14px; }
+.iw-panel.iw-theme-vk .iw-book { background: #fff; }
+.iw-panel.iw-theme-vk .iw-head { background: #597da3; margin: -14px -14px 8px -22px; padding: 9px 14px 9px 22px; align-items: center; border-radius: 0 0 8px 8px; }
+.iw-panel.iw-theme-vk .iw-title { background: none; padding: 0; border-radius: 0; font-size: 20px; font-weight: 700; letter-spacing: 0; color: #fff; }
+.iw-panel.iw-theme-vk .iw-head .iw-tool { background: rgba(255, 255, 255, .12); border: 0; color: #fff; border-radius: 3px; box-shadow: none; }
+.iw-panel.iw-theme-vk .iw-shopbar { background: rgba(255, 255, 255, .12); border: 0; border-radius: 3px; box-shadow: none; transform: none; }
+.iw-panel.iw-theme-vk .iw-shopbar :is(.iw-shop-sticker, .iw-wallet > summary) { color: #fff; }
+.iw-panel.iw-theme-vk .iw-block-head { margin: -14px -16px 10px; padding: 7px 12px; background: #e9edf1; border-bottom: 0; }
+.iw-panel.iw-theme-vk .iw-block.iw-collapsed .iw-block-head { margin-bottom: -14px; }
+.iw-panel.iw-theme-vk .iw-label { text-transform: none; letter-spacing: 0; font-weight: 700; font-size: var(--iw-label-size); color: #45688e; }
+.iw-panel.iw-theme-vk .iw-block-icon { background: none; color: #8fa5bd; width: auto; height: auto; font-size: 14px; }
+.iw-panel.iw-theme-vk .iw-act { background: #e9edf1; color: #45688e; border: 0; border-radius: 2px; font-weight: 400; transform: none; box-shadow: none; }
+.iw-panel.iw-theme-vk .iw-act.iw-act-all { background: #6083a9; color: #fff; }
+.iw-panel.iw-theme-vk :is(.iw-btn, .iw-mini, .iw-buy) { border-radius: 2px; transform: none; }
+.iw-panel.iw-theme-vk :is(.iw-tab, .iw-npc, .iw-npc-sticker) { border-radius: 0; box-shadow: none; border: 1px solid #dae1e8; transform: none; }
+.iw-panel.iw-theme-vk :is(.iw-tab-name, .iw-npc-name, .iw-persona-name) { color: #2b587a; font-weight: 700; }
+.iw-panel.iw-theme-vk .iw-npc-sticker { background: #6083a9; color: #fff; }
+.iw-panel.iw-theme-vk :is(.iw-photo, .iw-photo-wrap::before) { border-radius: 2px !important; }
+.iw-panel.iw-theme-vk .iw-acts-cap { color: #45688e; }
+.iw-panel.iw-theme-vk .iw-npc-badge { border-radius: 2px; background: #dae2ea; border: 0; color: #6083a9; }
+.iw-panel.iw-theme-vk .iw-npc-badge { --iw-knock: #dae2ea; }
+.iw-theme-vk .iw-toast-card { border-radius: 4px; border: 1px solid #c5d0db; box-shadow: 0 4px 16px rgba(0, 0, 0, .2); font-family: Tahoma, 'Open Sans', sans-serif; }
+.iw-theme-vk .iw-toast-kicker { text-transform: none; letter-spacing: 0; font-weight: 700; color: #45688e; }
+
+/* ===================== Телеграм: обои чата, блоки — пузыри сообщений ===================== */
+.iw-panel.iw-theme-telegram { --iw-ink: #0f1419; --iw-muted: #707579; --iw-label-color: #3a76b7; --iw-block-radius: 14px 14px 14px 4px; --iw-block-shadow: 0 1px 2px rgba(16, 35, 47, .18); --iw-label-size: 15px; }
+.iw-panel.iw-theme-telegram .iw-book {
+    background-color: #aabfd2;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='.28' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 20l8-4 8 4-8 4z'/%3E%3Ccircle cx='80' cy='22' r='6'/%3E%3Cpath d='M50 60c4-6 12-6 16 0M98 70l6 6m0-6l-6 6'/%3E%3Cpath d='M20 90c3 0 5 2 5 5s-2 5-5 5-5-2-5-5 2-5 5-5zM70 100l10-6 4 10z'/%3E%3Cpath d='M104 30l3 6 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1z'/%3E%3C/g%3E%3C/svg%3E"), linear-gradient(170deg, #c3d3e2, #a9bdd0 55%, #9cb2c8);
+    background-size: 120px 120px, 100% 100%;
+}
+.iw-panel.iw-theme-telegram .iw-head { background: #517da2; margin: -14px -14px 8px -22px; padding: 10px 14px 10px 22px; align-items: center; box-shadow: 0 1px 3px rgba(16, 35, 47, .25); }
+.iw-panel.iw-theme-telegram .iw-head .iw-tool { background: transparent; border: 0; color: #fff; box-shadow: none; }
+.iw-panel.iw-theme-telegram .iw-shopbar { background: rgba(255, 255, 255, .14); border: 0; box-shadow: none; transform: none; }
+.iw-panel.iw-theme-telegram .iw-shopbar :is(.iw-shop-sticker, .iw-wallet > summary) { color: #fff; }
+.iw-panel.iw-theme-telegram .iw-title { background: none; padding: 0; color: #fff; font-weight: 500; font-size: 20px; letter-spacing: 0; }
+.iw-panel.iw-theme-telegram .iw-label { text-transform: none; letter-spacing: 0; font-weight: 500; color: #3a76b7; }
+.iw-panel.iw-theme-telegram .iw-block-head { border-bottom: 0; }
+.iw-panel.iw-theme-telegram .iw-block-icon { background: linear-gradient(160deg, #72d5fd, #2a9ef1); }
+.iw-panel.iw-theme-telegram .iw-b-impression { background: #effdde; border-radius: 16px 16px 6px 16px; }
+.iw-panel.iw-theme-telegram .iw-act { border: 0; border-radius: 12px; background: rgba(255, 255, 255, .92); color: #3390ec; font-weight: 500; transform: none; box-shadow: 0 1px 2px rgba(16, 35, 47, .15); }
+.iw-panel.iw-theme-telegram .iw-act.iw-act-all { background: #65a9e0; color: #fff; }
+.iw-panel.iw-theme-telegram .iw-acts-cap { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.iw-panel.iw-theme-telegram :is(.iw-tab, .iw-npc, .iw-npc-sticker) { border-radius: 14px; transform: none; box-shadow: 0 1px 2px rgba(16, 35, 47, .18); }
+.iw-panel.iw-theme-telegram .iw-npc-badge { background: linear-gradient(160deg, #72d5fd, #2a9ef1); border: 0; color: #fff; box-shadow: none; }
+.iw-panel.iw-theme-telegram .iw-npc-badge { --iw-knock: #2a9ef1; }
+.iw-panel.iw-theme-telegram :is(.iw-divider, .iw-npc-group-head) { color: #fff; }
+.iw-theme-telegram .iw-toast-card { border-radius: 14px 14px 14px 4px; box-shadow: 0 6px 22px rgba(16, 35, 47, .25); }
+.iw-theme-telegram .iw-toast-kicker { text-transform: none; letter-spacing: 0; font-weight: 500; color: #3390ec; }
+
+/* ===================== Аська: белое окно в голубой рамке, зелёные заголовки групп, цветочки ===================== */
+.iw-panel.iw-theme-icq { --iw-ink: #1d2a33; --iw-muted: #5d6f7a; --iw-label-color: #2c6b14; --iw-block-radius: 4px; --iw-block-shadow: 0 0 0 1px #7ccac0; --iw-label-size: 14px; --iw-block-bg: #fff; }
+.iw-panel.iw-theme-icq .iw-book { background: #eaf7f1; box-shadow: inset 0 0 0 3px #4cb9b3, inset 0 0 0 4px #c9ece4; }
+.iw-panel.iw-theme-icq .iw-head { background: linear-gradient(180deg, #b5ebdd, #5cc1b0 60%, #46ae9d); margin: -14px -14px 6px -22px; padding: 9px 14px 9px 22px; align-items: center; border-bottom: 1px solid #2f8f80; }
+.iw-panel.iw-theme-icq .iw-title { background: none; padding: 0 0 0 30px; position: relative; color: #fff; font-weight: 700; font-size: 20px; letter-spacing: 0; text-shadow: 0 1px 1px rgba(0, 60, 50, .45); }
+.iw-panel.iw-theme-icq .iw-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 24px;
+    height: 24px;
+    transform: translateY(-50%);
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23ffffff' stroke-width='1'%3E%3Cellipse cx='12' cy='5' rx='3.4' ry='4.2' fill='%2378c043'/%3E%3Cellipse cx='12' cy='19' rx='3.4' ry='4.2' fill='%2378c043'/%3E%3Cellipse cx='5' cy='12' rx='4.2' ry='3.4' fill='%2378c043'/%3E%3Cellipse cx='19' cy='12' rx='4.2' ry='3.4' fill='%2378c043'/%3E%3Cellipse cx='7' cy='7' rx='3.4' ry='3.4' fill='%2378c043'/%3E%3Cellipse cx='17' cy='7' rx='3.4' ry='3.4' fill='%2378c043'/%3E%3Cellipse cx='7' cy='17' rx='3.4' ry='3.4' fill='%23e2453c'/%3E%3Cellipse cx='17' cy='17' rx='3.4' ry='3.4' fill='%2378c043'/%3E%3Ccircle cx='12' cy='12' r='3' fill='%23f6d33a'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+.iw-panel.iw-theme-icq .iw-head .iw-tool { background: linear-gradient(#ffffff, #dff3ec); border: 1px solid #2f8f80; color: #2f6f64; border-radius: 3px; box-shadow: none; }
+.iw-panel.iw-theme-icq .iw-shopbar { background: linear-gradient(#ffffff, #dff3ec); border: 1px solid #2f8f80; border-radius: 3px; transform: none; box-shadow: none; }
+.iw-panel.iw-theme-icq .iw-shopbar :is(.iw-shop-sticker, .iw-wallet > summary) { color: #2c6b14; }
+.iw-panel.iw-theme-icq .iw-block-head { margin: -14px -16px 10px; padding: 6px 12px; background: linear-gradient(180deg, #f0fbe8, #c6ebb0); border-bottom: 1px solid #9fd38a; border-radius: 4px 4px 0 0; }
+.iw-panel.iw-theme-icq .iw-block.iw-collapsed .iw-block-head { margin-bottom: -14px; border-bottom: 0; border-radius: 4px; }
+.iw-panel.iw-theme-icq .iw-label { text-transform: none; letter-spacing: 0; font-weight: 700; color: #2c6b14; }
+.iw-panel.iw-theme-icq .iw-block-icon { background: radial-gradient(circle at 40% 35%, #b6ec86, #4f9a2a); }
+.iw-panel.iw-theme-icq :is(.iw-act, .iw-btn, .iw-mini, .iw-buy) { background: linear-gradient(#ffffff, #dff3ec); border: 1px solid #7ccac0; border-radius: 3px; color: #1d4a42; transform: none; box-shadow: none; }
+.iw-panel.iw-theme-icq .iw-act.iw-act-all { background: linear-gradient(#f3fbe9, #bfe6a0); border-color: #7bbf5a; color: #1f5a10; font-weight: 700; }
+.iw-panel.iw-theme-icq :is(.iw-tab, .iw-npc, .iw-npc-sticker) { border-radius: 4px; transform: none; box-shadow: 0 0 0 1px #7ccac0; background: #fff; }
+.iw-panel.iw-theme-icq .iw-npc-badge { background: radial-gradient(circle at 40% 35%, #c9f19e, #5fae3a); border: 2px solid #fff; color: #fff; box-shadow: 0 0 0 1px #7ccac0; }
+.iw-panel.iw-theme-icq .iw-npc-badge { --iw-knock: #5fae3a; }
+.iw-theme-icq .iw-toast-card { border-radius: 4px; border: 1px solid #4cb9b3; background: #f4fbf8; box-shadow: 0 6px 18px rgba(30, 90, 80, .3); }
+.iw-theme-icq .iw-toast-kicker { text-transform: none; letter-spacing: 0; color: #2c6b14; }
+.iw-panel.iw-theme-icq .iw-npc-sticker { background: linear-gradient(#f0fbe8, #c6ebb0); color: #1f5a10; }
+.iw-panel.iw-theme-icq .iw-npc-sticker * { color: inherit; }
+.iw-panel:is(.iw-theme-vk, .iw-theme-icq) .iw-b-impression { box-shadow: var(--iw-block-shadow); }
+.iw-panel.iw-theme-telegram .iw-b-impression { box-shadow: var(--iw-block-shadow); }
+
+.iw-panel.iw-theme-telegram :is(.iw-tab-name, .iw-npc-name) { color: #0f1419; font-weight: 500; }
+.iw-panel.iw-theme-telegram .iw-npc-sticker { background: #517da2; color: #fff; }
+/* Аська: значки НПС — цветные колобки на светлом кружке */
+.iw-panel.iw-theme-icq .iw-npc-badge { background: radial-gradient(circle at 40% 35%, #ffffff, #dff3ec); border: 0; box-shadow: 0 0 0 1px #7ccac0; }
+.iw-panel.iw-theme-icq .iw-npc-ico { stroke: none; width: 80%; height: 80%; }
+
+/* ===================== Сон прошлой ночи ===================== */
+.iw-night {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, #3b3f8f 9%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 35%, transparent);
+}
+.iw-night-head { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--iw-label-color, var(--iw-ink)); text-transform: uppercase; letter-spacing: .05em; }
+.iw-night-head em { margin-left: auto; font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--iw-muted); }
+.iw-night-thought { margin-top: 6px; font-style: italic; color: var(--iw-muted); font-size: .92em; }
+.iw-night-text { margin-top: 4px; line-height: 1.4; }
+.iw-night-кошмар { background: color-mix(in srgb, #b3261e 10%, transparent); }
+.iw-night-романтичный, .iw-night-сладкий { background: color-mix(in srgb, #e86a9a 10%, transparent); }
+.iw-night-old { margin: 6px 0 0; padding-left: 16px; font-size: .9em; color: var(--iw-muted); }
+.iw-night-old b { color: var(--iw-ink); font-weight: 600; margin-right: 4px; }
+
+/* ===================== Слухи о персоне ===================== */
+.iw-rumors { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.iw-rumor { padding: 8px 10px; border-radius: 10px; background: var(--iw-feel-bg, rgba(0, 0, 0, .03)); border-left: 3px solid var(--iw-muted); }
+.iw-rumor-true { border-left-color: #4caf50; }
+.iw-rumor-half { border-left-color: #f2a93f; }
+.iw-rumor-false { border-left-color: #d6392e; }
+.iw-rumor-text { line-height: 1.4; }
+.iw-rumor-meta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--iw-muted); }
+.iw-rumor-meta b { color: var(--iw-ink); font-weight: 600; }
+.iw-rumor-truth { margin-left: auto; font-weight: 700; }
+.iw-rumor-true .iw-rumor-truth { color: #3f9a45; }
+.iw-rumor-half .iw-rumor-truth { color: #c98a1e; }
+.iw-rumor-false .iw-rumor-truth { color: #c0362c; }
+
+/* погода в полоске часов */
+.iw-clock-wx { display: inline-flex; align-items: center; gap: 4px; font-size: .9em; color: var(--iw-muted); white-space: nowrap; }
+.iw-clock-wx .iw-ico { font-size: 1.05em; }
+@media (max-width: 760px) { .iw-clock-wx > span { display: none; } }
+
+/* ===================== Аська: смайлики QIP — неподвижные, при наведении оживают ===================== */
+.iw-smile {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+    background: var(--s) center / contain no-repeat;
+    image-rendering: auto;
+}
+/* смайлики в родном масштабе: голова у всех ~20px, большие просто шире (руки, предметы) — так все выглядят одного размера */
+.iw-smile[style*="--sw"] {
+    width: calc(var(--sw) * var(--u, .05em));
+    height: calc(var(--sh) * var(--u, .05em));
+    background-size: contain;
+    flex: none;
+}
+.iw-smile.iw-face-ico { --u: .065em; }
+/* на значке НПС — одна и та же квадратная рамка, смайлик вписан без растяжения */
+.iw-panel .iw-npc-badge .iw-smile.iw-npc-ico { width: 60%; height: 60%; background-size: contain; }
+@media (hover: hover) {
+    :is(.iw-npc, .iw-tab, .iw-feel, .iw-toast-card, .iw-mood-word, .iw-dossier-face, li):hover .iw-smile,
+    .iw-smile:hover { background-image: var(--a); }
+}
+/* на телефоне наведения нет: смайлик оживает на несколько секунд по касанию и когда выскакивает уведомление */
+.iw-smile.iw-play { background-image: var(--a); }
+.iw-noanim .iw-smile,
+.iw-noanim .iw-smile.iw-play,
+.iw-noanim :is(.iw-npc, .iw-tab, .iw-feel, .iw-toast-card, li):hover .iw-smile { background-image: var(--s) !important; }
+
+/* ===================== «Аська»: смайлики QIP вместо скетчевых рисунков ===================== */
+.iw-smile.iw-pict { --u: .065em; }
+.iw-panel.iw-theme-icq .iw-dd,
+.iw-panel.iw-theme-icq .iw-doodle-mark,
+.iw-panel.iw-theme-icq .iw-lg::before,
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-hol::before,
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-bday > span::after {
+    -webkit-mask: none;
+    mask: none;
+    opacity: 1;
+    transform: none;
+    background: var(--icq-s) center / contain no-repeat;
+    image-rendering: auto;
+}
+/* внизу календаря: солнышко, друзья и кофе */
+.iw-panel.iw-theme-icq .iw-dd-a { --icq-s: url('smiles/icq/py.png'); width: 42px; height: 42px; top: 4px; }
+.iw-panel.iw-theme-icq .iw-dd-b { --icq-s: url('smiles/icq/jn.png'); width: 80px; height: 44px; top: 10px; left: 38%; }
+.iw-panel.iw-theme-icq .iw-dd-c { --icq-s: url('smiles/icq/cl.png'); width: 46px; height: 36px; top: 8px; }
+.iw-panel.iw-theme-icq .iw-doodle-mark { --icq-s: url('smiles/icq/ib.png'); width: 30px; height: 18px; }
+/* отметки на днях */
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-hol::before {
+    --icq-s: url('smiles/icq/cy.png');
+    inset: auto -6px auto auto;
+    top: -7px;
+    width: 18px;
+    height: 18px;
+    z-index: 2;
+}
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-hol { background: #eaf7e0; border-radius: 4px; }
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-canon::after {
+    -webkit-mask: none;
+    mask: none;
+    inset: auto 4px 1px 4px;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, #4e9fd8 0 3px, transparent 3px 5px);
+}
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-bday > span::after { --icq-s: url('smiles/icq/ib.png'); width: 20px; height: 14px; top: -9px; right: -14px; }
+.iw-panel.iw-theme-icq .iw-cal-today {
+    background: linear-gradient(#e3f6d6, #c6ebb0);
+    border: 1px solid #5aa63a;
+    border-radius: 4px;
+    color: #1f5a12;
+}
+.iw-panel.iw-theme-icq .iw-lg::before { width: 18px; height: 16px; }
+.iw-panel.iw-theme-icq .iw-lg-hol::before { --icq-s: url('smiles/icq/cy.png'); }
+.iw-panel.iw-theme-icq .iw-lg-bday::before { --icq-s: url('smiles/icq/ib.png'); width: 24px; }
+.iw-panel.iw-theme-icq .iw-lg-canon::before { background: repeating-linear-gradient(90deg, #4e9fd8 0 3px, transparent 3px 5px) center / 100% 2px no-repeat; }
+.iw-panel.iw-theme-icq .iw-lg-today::before { background: linear-gradient(#e3f6d6, #c6ebb0); border: 1px solid #5aa63a; border-radius: 3px; }
+/* список дат и витрина: смайлик без скетчевой обводки */
+.iw-panel.iw-theme-icq :is(.iw-ev-ico, .iw-case-ico)::before,
+.iw-panel.iw-theme-icq .iw-case-ico::after { display: none; }
+.iw-panel.iw-theme-icq .iw-ev-ico { width: 34px; font-size: 18px; }
+.iw-panel.iw-theme-icq .iw-case-ico { font-size: 26px; background: none; }
+.iw-panel.iw-theme-icq .iw-case-ico .iw-smile { filter: none; }
+.iw-theme-icq .iw-toast-icon .iw-smile,
+.iw-theme-icq .iw-log-icon .iw-smile { font-size: 20px; }
+.iw-theme-icq .iw-toast-icon:has(.iw-smile) { border: none; border-radius: 0; }
+/* заголовки групп — как группы в списке контактов */
+.iw-panel.iw-theme-icq .iw-rw-cat-name {
+    transform: none;
+    border-radius: 3px;
+    padding: 3px 10px 3px 8px;
+    background: linear-gradient(#7cc95a, #4f9a32);
+    border: 1px solid #3d7f25;
+    font-size: 13px;
+    letter-spacing: 0;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+}
+.iw-panel.iw-theme-icq .iw-rw-cat-name::before { content: '▾'; margin-right: 2px; }
+.iw-panel.iw-theme-icq.iw-b-showcase .iw-case-ach .iw-rw-title,
+.iw-panel.iw-theme-icq .iw-b-showcase .iw-case-ach .iw-rw-title { text-decoration: none; }
+
+/* «Аська»: пока идёт разбор, по верху листка туда-сюда ходит смайлик (вместо карандашной линии) */
+.iw-runner { display: none; }
+.iw-theme-icq .iw-live-card > .iw-live-scribble { display: none; }
+/* смайлик бегает в строке заголовка: от левого края до счётчика секунд и обратно */
+.iw-theme-icq .iw-live-head > .iw-runner {
+    display: block;
+    position: relative;
+    flex: 1 1 auto;
+    align-self: stretch;
+    min-width: 40px;
+    height: 26px;
+    margin-right: 8px;
+    overflow: hidden;
+    pointer-events: none;
+}
+.iw-theme-icq .iw-live-head > .iw-live-title { color: #2f7a1f; font-size: 17px; font-weight: 700; white-space: nowrap; flex: none; }
+.iw-theme-icq .iw-runner-go {
+    position: absolute;
+    top: 0;
+    left: 0;
+    animation: iw-icq-walk 9s linear infinite;
+}
+.iw-theme-icq .iw-runner .iw-smile { width: 20px; height: 26px; display: block; }
+@keyframes iw-icq-walk {
+    0% { left: 0; transform: scaleX(1); }
+    49.9% { left: calc(100% - 20px); transform: scaleX(1); }
+    50% { left: calc(100% - 20px); transform: scaleX(-1); }
+    99.9% { left: 0; transform: scaleX(-1); }
+    100% { left: 0; transform: scaleX(1); }
+}
+.iw-theme-icq.iw-noanim .iw-runner-go { animation: none; left: 8px; }
+/* «Соединение…» — ровно и со смайликом-телефоном вместо полоски */
+.iw-theme-icq .iw-cap-text { transform: none; }
+.iw-theme-icq .iw-acts-cap.busy .iw-cap-text::after { content: none; }
+.iw-theme-icq .iw-loader b {
+    width: 44px;
+    height: 24px;
+    border: none;
+    border-radius: 0;
+    background: url('smiles/icq/dt.gif') center / contain no-repeat;
+    animation: none;
+}
+.iw-theme-icq.iw-noanim .iw-loader b,
+.iw-noanim .iw-theme-icq .iw-loader b { background-image: url('smiles/icq/dt.png'); }
+/* листок разбора: шаг, который идёт сейчас, — задумчивый смайлик */
+.iw-theme-icq .iw-live-step.now .iw-live-dot {
+    border: none;
+    border-radius: 0;
+    background: url('smiles/icq/cs.gif') center / contain no-repeat;
+    box-shadow: none;
+    animation: none;
+    width: 22px;
+    height: 20px;
+}
+.iw-theme-icq.iw-noanim .iw-live-step.now .iw-live-dot { background-image: url('smiles/icq/cs.png'); }
+/* одинаковый масштаб смайликов по местам: голова ~20–26px */
+.iw-face .iw-smile.iw-face-ico,
+.iw-title-face .iw-smile.iw-face-ico { --u: 1.35px; }
+.iw-feel-face .iw-smile.iw-face-ico { --u: 1.15px; }
+.iw-panel.iw-theme-icq .iw-case-ico .iw-smile { --u: 1.4px; }
+.iw-panel.iw-theme-icq .iw-ev-ico .iw-smile { --u: 1px; }
+.iw-theme-icq :is(.iw-toast-icon, .iw-log-icon) .iw-smile { --u: 1px; }
+.iw-panel.iw-theme-icq .iw-case-ico { width: 64px; }
+
+/* Плавающая кнопка: в «ВКонтакте» — синяя плитка-приложение, в «Аське» — цветочек */
+.iw-fab-app, .iw-fab-flower { display: none; position: absolute; inset: 0; width: 100%; height: 100%; }
+.iw-fab:is(.iw-theme-vk, .iw-theme-icq) .iw-fab-book { transform: none; }
+.iw-fab:is(.iw-theme-vk, .iw-theme-icq) :is(.iw-fab-cover, .iw-fab-spine, .iw-fab-ribbon) { display: none; }
+.iw-fab.iw-theme-vk .iw-fab-app { display: block; }
+.iw-fab.iw-theme-icq .iw-fab-flower { display: block; transition: transform .5s ease; }
+.iw-fab.iw-theme-icq:hover:where(:not(.iw-noanim)) .iw-fab-flower { transform: rotate(72deg); }
+.iw-fab.iw-theme-vk:hover:where(:not(.iw-noanim)) .iw-fab-book { transform: translateY(-2px); }
+
+/* «Аська»: даты в календаре отмечаются цветочками, как в шапке темы; на умерших — смайлик-могилка */
+.iw-panel.iw-theme-icq { --icq-fl-hol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='%236cc24a' stroke='%232f7a1f' stroke-width='3'%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%280 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%2872 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28144 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28216 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28288 32 32%29'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='8' fill='%23ffe36b' stroke='%232f7a1f' stroke-width='3'/%3E%3C/svg%3E"); --icq-fl-bday: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='%23ff86b0' stroke='%23b0325f' stroke-width='3'%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%280 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%2872 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28144 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28216 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28288 32 32%29'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='8' fill='%23ffe36b' stroke='%23b0325f' stroke-width='3'/%3E%3C/svg%3E"); --icq-fl-canon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cg fill='%237cc0f0' stroke='%232a6fa8' stroke-width='3'%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%280 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%2872 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28144 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28216 32 32%29'/%3E%3Cellipse cx='32' cy='15' rx='9' ry='13' transform='rotate%28288 32 32%29'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='8' fill='%23ffe36b' stroke='%232a6fa8' stroke-width='3'/%3E%3C/svg%3E"); }
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-hol::before { --icq-s: var(--icq-fl-hol); width: 15px; height: 15px; top: -6px; right: -5px; }
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-bday > span::after { --icq-s: var(--icq-fl-bday); width: 13px; height: 13px; top: -8px; right: -12px; }
+.iw-panel.iw-theme-icq .iw-cal-day.iw-cal-canon::after {
+    inset: auto auto -4px 50%;
+    translate: -50% 0;
+    width: 11px;
+    height: 11px;
+    background: var(--icq-fl-canon) center / contain no-repeat;
+}
+.iw-panel.iw-theme-icq .iw-lg-hol::before { --icq-s: var(--icq-fl-hol); width: 14px; height: 14px; }
+.iw-panel.iw-theme-icq .iw-lg-bday::before { --icq-s: var(--icq-fl-bday); width: 14px; height: 14px; }
+.iw-panel.iw-theme-icq .iw-lg-canon::before { background: var(--icq-fl-canon) center / contain no-repeat; width: 14px; height: 14px; }
+.iw-panel.iw-theme-icq .iw-doodle-mark { --icq-s: var(--icq-fl-hol); width: 18px; height: 18px; }
+/* смайлики в списках вписаны в свою клетку и не наезжают на текст */
+.iw-panel.iw-theme-icq .iw-ev-ico { width: 42px; height: 30px; flex: none; }
+.iw-panel.iw-theme-icq .iw-ev-ico .iw-smile { max-width: 42px; max-height: 30px; }
+.iw-panel.iw-theme-icq .iw-case-ico { width: 64px; flex: none; }
+.iw-panel.iw-theme-icq .iw-case-ico .iw-smile { max-width: 64px; max-height: 44px; }
+.iw-theme-icq .iw-toast-icon .iw-smile { max-width: 44px; max-height: 38px; }
+.iw-theme-icq .iw-log-icon .iw-smile { max-width: 36px; max-height: 28px; }
+.iw-theme-icq .iw-clock-tag .iw-smile { max-width: 32px; max-height: 22px; }
+.iw-panel.iw-theme-icq .iw-dead-mark {
+    -webkit-mask: none;
+    mask: none;
+    background: url('smiles/icq/ej.png') center / contain no-repeat;
+    transform: none;
+    animation: none;
+    width: 50px;
+    height: 37px;
+    top: -14px;
+    right: -12px;
+}
+.iw-panel.iw-theme-icq .iw-dead-mark-lg { width: 66px; height: 48px; top: -18px; right: 14px; }
+.iw-panel.iw-theme-icq:not(.iw-noanim) :is(.iw-npc, .iw-dossier):hover > .iw-dead-mark { background-image: url('smiles/icq/ej.gif'); }
+
+/* «Аська»: календарь лаконичнее — один шрифт, два-три размера, без капса и разнобоя жирности */
+.iw-panel.iw-theme-icq .iw-clock,
+.iw-panel.iw-theme-icq .iw-clock * { font-family: Tahoma, Verdana, 'PT Sans', sans-serif; letter-spacing: 0; }
+.iw-panel.iw-theme-icq .iw-clock :is(.iw-clock-time, .iw-clock-date) { font-size: 15px; }
+.iw-panel.iw-theme-icq .iw-clock .iw-clock-time { font-weight: 700; }
+.iw-panel.iw-theme-icq .iw-clock .iw-clock-part { font-size: 12px; text-transform: none; }
+.iw-panel.iw-theme-icq .iw-clock .iw-clock-sub { font-size: 13px; font-weight: 700; text-transform: none; }
+.iw-panel.iw-theme-icq .iw-clock .iw-clock-chosen { font-size: 15px; font-weight: 400; }
+.iw-panel.iw-theme-icq .iw-clock .iw-pick-sum span,
+.iw-panel.iw-theme-icq .iw-clock .iw-clock-colon { font-size: 14px; font-weight: 700; }
+.iw-panel.iw-theme-icq .iw-clock .iw-pick-opt { font-size: 13px; }
+.iw-panel.iw-theme-icq .iw-clock .iw-cal th { font-size: 12px; font-weight: 700; }
+.iw-panel.iw-theme-icq .iw-clock .iw-cal-day > span { font-size: 14px; }
+.iw-panel.iw-theme-icq .iw-clock :is(.iw-cal-legend, .iw-ev-when em, .iw-clock-partof, small) { font-size: 12px; font-style: normal; }
+.iw-panel.iw-theme-icq .iw-clock .iw-ev-when b { font-size: 13px; font-weight: 700; }
+.iw-panel.iw-theme-icq .iw-clock .iw-ev-name { font-size: 13px; }
+.iw-panel.iw-theme-icq .iw-clock :is(button, .iw-btn) span { font-size: 13px; }
+.iw-panel.iw-theme-icq .iw-clock input { font-size: 14px; font-weight: 700; }
+.iw-panel.iw-theme-icq .iw-clock label { font-size: 13px; }
+
+/* Телефон: всплывающие меню шапки (звук, проверка, кошелёк) открываются от края панели, а не от кнопки — не уезжают за экран */
+@media (max-width: 760px) {
+    .iw-panel .iw-head { position: relative; }
+    .iw-panel .iw-head :is(details.iw-vol, details.iw-testmenu) { position: static; }
+    .iw-panel .iw-head :is(.iw-vol-menu, .iw-test-menu) {
+        top: calc(100% + 4px);
+        right: 0;
+        left: auto;
+        max-width: calc(100vw - 24px);
+        max-height: 70vh;
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
+    .iw-panel .iw-test-menu .iw-test-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .iw-panel .iw-test-menu button { min-width: 0; white-space: normal; }
+}
+
+/* Телефон: длинные слова и поля ввода не выталкивают кнопки за край */
+@media (max-width: 760px) {
+    .iw-panel .iw-feel-name { min-width: 0; overflow-wrap: anywhere; }
+    .iw-panel .iw-feel-top > :is(.iw-del, .iw-feel-power, .iw-feel-face) { flex: none; }
+    .iw-panel .iw-attr-own { flex-wrap: wrap; }
+    .iw-panel .iw-attr-own .iw-attr-input { min-width: 0; flex: 1 1 140px; }
+    .iw-panel .iw-tab-mood { max-width: 100%; white-space: normal; text-overflow: clip; overflow: visible; line-height: 1.15; font-size: 11px; text-align: center; }
+}
+@media (max-width: 760px) {
+    /* в «Аське» и «ВКонтакте» шапка — цветная полоса: даём место значку с цветочками над кнопкой лавки */
+    .iw-panel:is(.iw-theme-icq, .iw-theme-vk) .iw-head { margin-top: -4px; padding-top: 14px; }
+}
+@media (max-width: 760px) {
+    /* бортовой журнал: на телефоне подпись «запись активна» не помещается под заголовком рядом с кнопками */
+    .iw-panel.iw-theme-logbook .iw-titlebox::after { display: none; }
+}
+
+/* ===================== Перетаскивание блоков ===================== */
+.iw-drag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 18px;
+    height: 24px;
+    margin: 0 2px 0 -6px;
+    color: currentColor;
+    opacity: .38;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.iw-drag:hover { opacity: .85; }
+.iw-drag .iw-ico { font-size: 15px; }
+.iw-block-dragging {
+    position: relative;
+    z-index: 30;
+    opacity: .9;
+    box-shadow: 0 16px 34px rgba(0, 0, 0, .35) !important;
+    cursor: grabbing;
+    transition: none !important;
+}
+.iw-block-dragging .iw-drag { cursor: grabbing; opacity: 1; }
+.iw-grid > .iw-block.iw-drop-before { box-shadow: inset 0 4px 0 var(--iw-scribble, var(--iw-ink)) !important; }
+.iw-grid > .iw-block.iw-drop-after { box-shadow: inset 0 -4px 0 var(--iw-scribble, var(--iw-ink)) !important; }
+@media (max-width: 760px) {
+    .iw-drag { width: 24px; height: 28px; opacity: .5; }
+}
+.iw-grid > .iw-block.iw-drop-side.iw-drop-before { box-shadow: inset 4px 0 0 var(--iw-scribble, var(--iw-ink)) !important; }
+.iw-grid > .iw-block.iw-drop-side.iw-drop-after { box-shadow: inset -4px 0 0 var(--iw-scribble, var(--iw-ink)) !important; }
+
+/* «вернуть блоки» — под стикером НПС, появляется только когда блоки переставлены */
+.iw-npc-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-self: center;
+    gap: 6px;
+    flex: none;
+}
+.iw-npc-col > .iw-npc-sticker { align-self: center; }
+.iw-order-reset {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    padding: 2px 8px 3px;
+    border: 1px dashed #d0453a;
+    border-radius: 999px;
+    background: transparent;
+    color: #d0453a;
+    font: inherit;
+    font-family: var(--iw-body-font);
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.iw-order-reset .iw-ico { font-size: 11px; }
+.iw-order-reset:hover { background: rgba(208, 69, 58, .1); }
+@media (max-width: 760px) {
+    .iw-panel .iw-npc-col > .iw-npc-sticker { padding-left: 8px; padding-right: 8px; }
+    .iw-order-reset { font-size: 10.5px; padding: 2px 6px; }
+}
+
+/* «Аська» и «ВКонтакте»: никаких симсовских кристаллов над аватарками (они только в теме «Как в симуляторе жизни») */
+.iw-panel:is(.iw-theme-icq, .iw-theme-vk) .iw-tab .iw-photo-wrap::before { content: none; display: none; animation: none; }
+>>>>>>> 897301c9693f7811c80b7d31868601261d80e1e9

@@ -366,6 +366,51 @@ export const PATTERNS = {
         "reward": [{"d":0.2,"v":0.388,"w":"noise","a":0.002,"f":{"t":"lowpass","f":220}},{"n":60,"d":0.25,"v":0.291,"g":0.7,"h":[]},{"t":0.15,"d":0.45,"v":0.077,"w":"noise","a":0.02,"f":{"t":"highpass","f":4000}},{"n":"E6","t":0.5,"d":0.4,"v":0.049,"a":0.003,"h":[[2,0.1]]}],
         "write": [{"n":1200,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1200,"t":0.058,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":2400,"t":0.16,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1200,"t":0.237,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":900,"t":0.224,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1200,"t":0.398,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1500,"t":0.432,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1800,"t":0.407,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":900,"t":0.553,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":900,"t":0.526,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1800,"t":0.639,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":900,"t":0.682,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":1800,"t":0.85,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":2100,"t":1.032,"d":0.03,"v":0.144,"a":0.003,"h":[[2,0.1]]},{"n":"E6","t":1.133,"d":0.1,"v":0.206,"a":0.003,"h":[[2,0.1]]},{"n":"B6","t":1.232,"d":0.18,"v":0.206,"a":0.003,"h":[[2,0.1]]}]
     },
+    "telegram": {
+        "want_done": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "dream_step": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "dream_done": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6},{"n":"C6","t":0.5,"d":0.1,"v":0.08,"a":0.004},{"n":"E6","t":0.6,"d":0.1,"v":0.08,"a":0.004},{"n":"G6","t":0.7,"d":0.4,"v":0.08,"a":0.004}],
+        "dream_change": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "dream_grow": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "fear_real": [{"n":"A5","t":0,"d":0.12,"v":0.11,"a":0.004,"w":"triangle"},{"n":"F5","t":0.1,"d":0.35,"v":0.1,"a":0.004,"w":"triangle"}],
+        "fear_gone": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "trait_new": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "trait_up": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "trait_down": [{"n":"B5","t":0,"d":0.09,"v":0.1,"a":0.004},{"n":"G5","t":0.06,"d":0.25,"v":0.09,"a":0.004}],
+        "impression": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "attitude": [{"smp":"tg-msg","t":0,"d":0.8,"v":0.6}],
+        "reward": [{"n":"C7","t":0,"d":0.06,"v":0.08,"a":0.004},{"n":"E7","t":0.05,"d":0.06,"v":0.08,"a":0.004},{"n":"G7","t":0.1,"d":0.3,"v":0.07,"a":0.004},{"t":0,"d":0.06,"v":0.15,"w":"noise","a":0.002,"f":{"t":"bandpass","f":3000,"q":2}}]
+    },
+    "vk": {
+        "want_done": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "dream_step": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "dream_done": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6},{"n":"C6","t":0.5,"d":0.1,"v":0.08,"a":0.004},{"n":"E6","t":0.6,"d":0.1,"v":0.08,"a":0.004},{"n":"G6","t":0.7,"d":0.4,"v":0.08,"a":0.004}],
+        "dream_change": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "dream_grow": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "fear_real": [{"n":"E5","t":0,"d":0.1,"v":0.14,"a":0.004,"w":"square","f":{"t":"lowpass","f":1400}},{"n":"C5","t":0.1,"d":0.3,"v":0.12,"a":0.004,"w":"square","f":{"t":"lowpass","f":1100}}],
+        "fear_gone": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "trait_new": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "trait_up": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "trait_down": [{"n":"F6","t":0,"d":0.05,"v":0.12,"a":0.004,"w":"triangle"},{"n":"C6","t":0.06,"d":0.22,"v":0.11,"a":0.004,"w":"triangle"}],
+        "impression": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "attitude": [{"smp":"vk-msg","t":0,"d":0.8,"v":0.6}],
+        "reward": [{"n":"C7","t":0,"d":0.05,"v":0.1,"a":0.004,"w":"triangle"},{"n":"G7","t":0.05,"d":0.3,"v":0.09,"a":0.004,"w":"triangle"}]
+    },
+    "icq": {
+        "want_done": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.6}],
+        "impression": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.6}],
+        "attitude": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.6}],
+        "reward": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.6}],
+        "trait_new": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.55}],
+        "dream_step": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.55}],
+        "dream_done": [{"smp":"icq-uhoh","t":0,"d":0.8,"v":0.6},{"n":"C6","t":0.75,"d":0.1,"v":0.08,"a":0.004},{"n":"E6","t":0.85,"d":0.1,"v":0.08,"a":0.004},{"n":"G6","t":0.95,"d":0.4,"v":0.08,"a":0.004}],
+        "fear_real": [{"n":"E4","t":0,"d":0.25,"v":0.14,"a":0.004,"w":"square","f":{"t":"lowpass","f":900}},{"n":"C4","t":0.22,"d":0.45,"v":0.12,"a":0.004,"w":"square","f":{"t":"lowpass","f":800}}],
+        "fear_gone": [{"n":"C5","t":0,"d":0.08,"v":0.1,"a":0.004,"w":"square","f":{"t":"lowpass","f":2000}},{"n":"G5","t":0.09,"d":0.25,"v":0.09,"a":0.004,"w":"square","f":{"t":"lowpass","f":2000}}],
+        "trait_up": [{"n":"E5","t":0,"d":0.07,"v":0.1,"a":0.004,"w":"square","f":{"t":"lowpass","f":2200}},{"n":"A5","t":0.08,"d":0.2,"v":0.09,"a":0.004,"w":"square","f":{"t":"lowpass","f":2200}}],
+        "trait_down": [{"n":"A5","t":0,"d":0.07,"v":0.1,"a":0.004,"w":"square","f":{"t":"lowpass","f":2200}},{"n":"E5","t":0.08,"d":0.22,"v":0.09,"a":0.004,"w":"square","f":{"t":"lowpass","f":2200}}],
+        "dream_change": [{"n":"D5","t":0,"d":0.08,"v":0.1,"a":0.004,"w":"square","f":{"t":"lowpass","f":2000}},{"n":"A5","t":0.09,"d":0.25,"v":0.09,"a":0.004,"w":"square","f":{"t":"lowpass","f":2000}}],
+        "dream_grow": [{"n":"G5","t":0,"d":0.06,"v":0.1,"a":0.004,"w":"square","f":{"t":"lowpass","f":2400}},{"n":"D6","t":0.07,"d":0.2,"v":0.09,"a":0.004,"w":"square","f":{"t":"lowpass","f":2400}}]
+    },
     "pixel": {
         "want_done": [{"n":"C5","d":0.07,"v":0.123,"w":"square","a":0.002,"h":[],"f":{"t":"lowpass","f":5200}},{"n":"E5","t":0.065,"d":0.07,"v":0.123,"w":"square","a":0.002,"h":[],"f":{"t":"lowpass","f":5200}},{"n":"G5","t":0.13,"d":0.07,"v":0.123,"w":"square","a":0.002,"h":[],"f":{"t":"lowpass","f":5200}},{"n":"C6","t":0.2,"d":0.32,"v":0.123,"w":"square","a":0.002,"h":[],"f":{"t":"lowpass","f":5200}},{"n":"C3","t":0.2,"d":0.3,"v":0.294,"w":"triangle","a":0.003,"h":[]}],
         "dream_step": [{"n":"G5","d":0.06,"v":0.253,"w":"square","a":0.002,"h":[],"f":{"t":"lowpass","f":5200}},{"n":"C6","t":0.07,"d":0.16,"v":0.253,"w":"square","a":0.002,"h":[],"f":{"t":"lowpass","f":5200}}],
@@ -386,7 +431,7 @@ export const PATTERNS = {
 /* PATTERNS-END */
 
 // Какая тема каким набором звучит. Остальные темы — обычный набор.
-const THEME_SET = { bimbo: 'bimbo', cyber: 'cyber', medieval: 'medieval', china: 'china', herbal: 'herbal', arcana: 'arcana', nav: 'nav', seance: 'seance', dossier: 'dossier', logbook: 'logbook', pixel: 'pixel' };
+const THEME_SET = { bimbo: 'bimbo', cyber: 'cyber', medieval: 'medieval', china: 'china', herbal: 'herbal', arcana: 'arcana', nav: 'nav', seance: 'seance', dossier: 'dossier', logbook: 'logbook', pixel: 'pixel', vk: 'vk', icq: 'icq', telegram: 'telegram' };
 
 function envelope(param, at, v, a, s, d) {
     param.setValueAtTime(0.0001, at);
@@ -458,6 +503,8 @@ function lengthOf(pattern) {
     return pattern.reduce((m, p) => Math.max(m, (p.t || 0) + (p.d || 0.3)), 0);
 }
 
+const ICQ_ONLY = [{ smp: 'icq-uhoh', t: 0, d: 0.8, v: 0.6 }];
+
 export function playSound(kind, theme = '') {
     try {
         if (volume <= 0) return;
@@ -469,7 +516,9 @@ export function playSound(kind, theme = '') {
         if (start - now > 2.5) return;
         const set = PATTERNS[THEME_SET[theme]] || PATTERNS.base || {};
         // запись дневника во всех темах звучит одинаково — карандаш по бумаге
-        const pattern = kind === 'write' ? (PATTERNS.base || {}).write : (set[kind] || (PATTERNS.base || {})[kind]);
+        // в «Аське» один-единственный звук на всё — «у-оу»
+        const pattern = theme === 'icq' ? ICQ_ONLY
+            : kind === 'write' ? (PATTERNS.base || {}).write : (set[kind] || (PATTERNS.base || {})[kind]);
         if (!pattern) return;
         for (const p of pattern) voice(ac, master, p, start);
         lastAt = start + Math.min(lengthOf(pattern) * 0.7, 1.1);
