@@ -12,7 +12,7 @@ import {
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
-    normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay,
+    normCalendar, normTime, advance, findStamp, findSceneStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay,
     upcoming, monthGrid, monthMarks, shiftMonth, monthName, monthCount, monthDays, clockInjection, buildCalendarPrompt, parseCalendarAnswer, sceneTimeFix,
     parseClockCommand, CALENDAR_TYPES, MONTHS_RU, dayIndex,
 } from './src/clock.js';
@@ -56,6 +56,7 @@ let liveTimer = null;
 let attrMode = 'likes';
 let attrOpen = false;
 let attrMore = {};
+let attrCatsOpen = {};
 let currentTheme = 'diary';
 // Часы сцены: какой месяц открыт в календаре, раскрыт ли листок часов, идёт ли определение календаря.
 let clockMonth = null;
@@ -85,6 +86,78 @@ function ui() {
     link.href = `${UI_CSS}?v=${VERSION}-${Date.now()}`;
     uiRoot.appendChild(link);
     return uiRoot;
+}
+
+// История событий только в оперативной памяти вкладки: не добавляется в чат и не
+// передаётся модели. Не записываем API-ключи или полный набор персональных настроек.
+const debugRows = [];
+function debugLog(kind, message) {
+    if (!settings().debugMode) return;
+    debugRows.push({ kind: String(kind).slice(0, 24), message: String(message).slice(0, 420) });
+    if (debugRows.length > 30) debugRows.splice(0, debugRows.length - 30);
+    renderChatHud();
+}
+function renderChatHud() {
+    const s = settings();
+    let el = byId('iw_chat_hud');
+    if (!hasChat() || (!s.hud && !s.debugMode)) {
+        if (el) el.remove();
+        return;
+    }
+    const chat = document.getElementById('chat');
+    if (!chat) { if (el) el.remove(); return; }
+    if (!el) {
+        el = document.createElement('aside');
+        el.id = 'iw_chat_hud';
+        el.setAttribute('aria-label', 'Внутренний мир: инфоблок');
+        ui().appendChild(el);
+    }
+    el.className = `iw-chat-hud iw-theme-${currentTheme}`;
+    const rect = chat.getBoundingClientRect();
+    const w = Math.max(0, Math.min(rect.width - 16, 580));
+    if (w < 160 || rect.bottom < 0 || rect.top > innerHeight) { el.hidden = true; return; }
+    el.hidden = false;
+    el.style.left = `${Math.max(8, rect.left + (rect.width - w) / 2)}px`;
+    el.style.width = `${w}px`;
+    if (s.hudPosition === 'bottom') {
+        el.style.top = 'auto';
+        el.style.bottom = `${Math.max(8, innerHeight - rect.bottom + 10)}px`;
+    } else {
+        el.style.bottom = 'auto';
+        el.style.top = `${Math.max(8, rect.top + 10)}px`;
+    }
+    const parts = [];
+    if (s.hud) {
+        if (s.hudClock !== false || s.hudSeason || s.hudNextEvent) {
+            try {
+                const now = clockNow();
+                if (now?.cal && now.t) {
+                    if (s.hudClock !== false) parts.push(`📅 ${fmtDate(now.cal, now.t)} · ${fmtTime(now.t)} · ${partOfDay(now.t.h)}`);
+                    if (s.hudSeason !== false && now.cal.type === 'greg') {
+                        const seasons = ['зима', 'зима', 'весна', 'весна', 'весна', 'лето', 'лето', 'лето', 'осень', 'осень', 'осень', 'зима'];
+                        parts.push(`🍂 ${seasons[now.t.m - 1]}`);
+                    }
+                    if (s.hudNextEvent && now.cal.type !== 'days') {
+                        const item = upcoming(now.cal, now.t, clockPeople(liveState()), 31).find(e => e.inDays >= 0);
+                        if (item) parts.push(`✦ ${item.name} — через ${item.inDays} дн.`);
+                    }
+                }
+            } catch { /* ещё нет даты */ }
+        }
+        if (s.hudWeather) {
+            // Погоду не генерируем: только описанная в ближайших сообщениях сцены.
+            const recent = (ctx().chat || []).slice(-3).map(m => m?.mes || '').join(' ');
+            const weather = recent.match(/(?:на улице|за окном|снаружи|погода|небо)[^.!?]{0,75}?(дожд[ьяем]|снег[аом]?|метел[ьи]|туман[аом]?|гроз[аыеу]|солнечно|ясно|пасмурно|облачно|ветрено)/i);
+            if (weather) parts.push(`☁ ${weather[1]}`);
+        }
+        if (s.hudMood !== false) {
+            const st = liveState();
+            const moods = (st.order || []).map(k => st.characters[k]).filter(c => c && c.mood && !c.dead && c.met !== false).slice(0, 3);
+            if (moods.length) parts.push(`♥ ${moods.map(c => `${c.name}: ${c.mood}`).join(' · ')}`);
+        }
+    }
+    const detail = s.debugMode ? debugRows.slice(-4).map(x => `<div class="iw-hud-debug"><strong>${esc(x.kind)}</strong> ${esc(x.message)}</div>`).join('') : '';
+    el.innerHTML = `${parts.length ? `<div class="iw-hud-items">${parts.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}${detail || (s.debugMode ? '<div class="iw-hud-debug">Диагностика включена: ожидаю события…</div>' : '')}`;
 }
 
 function byId(id) {
@@ -509,7 +582,7 @@ function findClock(beforeId) {
     for (let i = from; i >= Math.max(0, from - 40); i--) {
         const m = chat[i];
         if (!m || m.is_system || !m.mes) continue;
-        const st = findStamp(m.mes, cal);
+        const st = findStamp(m.mes, cal) || findSceneStamp(m.mes, cal);
         if (!st || (!cal && !st.date)) continue;
         const t = stampToTime(cal || normCalendar({ type: 'greg' }), null, st);
         if (t) return { index: i, t, rec: null, fromStamp: true, cal: cal || normCalendar({ type: 'greg', source: 'stamp' }) };
@@ -567,8 +640,8 @@ function stepClock(messageId) {
     const texts = [...user, mes.mes || ''];
     // календаря ещё нет, но в ответе есть дата — значит, обычный календарь
     if (!cal) {
-        const st = findStamp(mes.mes, null);
-        if (!st || !st.date) return;
+        const st = texts.slice().reverse().map(tx => findStamp(tx, null) || findSceneStamp(tx, null)).find(x => x && x.date);
+        if (!st) return;
         cal = normCalendar({ type: 'greg', source: 'stamp' });
     }
     if (!meta.calendar) meta.calendar = cal;
@@ -581,6 +654,25 @@ function stepClock(messageId) {
     if (!res || !res.t) return;
     writeClock(messageId, { t: res.t, prev: cur, why: res.why, size: cur ? toMinutes(cal, res.t) - toMinutes(cal, cur) : 0 });
     ctx().saveMetadataDebounced?.();
+    debugLog('ВРЕМЯ', `#${messageId}: ${res.why} → ${fmtDate(cal, res.t)} ${fmtTime(res.t)}`);
+}
+
+// Учитываем сюжетную дату и таймскип из последней реплики игрока ДО генерации.
+// Сохраняем метаданные сообщения, не добавляя служебный текст в сам чат.
+function syncUserClockBeforeReply() {
+    const s = settings();
+    if (s.clock === false || !hasChat()) return;
+    const chat = ctx().chat || [];
+    const id = chat.length - 1, m = chat[id];
+    if (!m || !m.is_user || clockRecOf(m)) return;
+    const prev = findClock(id);
+    const cal = calendarOf() || prev.cal;
+    if (!cal) return;
+    const res = advance(cal, prev.t ? normTime(cal, prev.t) : null, [m.mes || ''], { step: 0 });
+    if (!res || !res.t || !['stamp', 'scene', 'skip'].includes(res.why)) return;
+    writeClock(id, { t: res.t, prev: prev.t || null, why: res.why,
+        size: prev.t ? toMinutes(cal, res.t) - toMinutes(cal, prev.t) : 0 });
+    saveChatSoon();
 }
 
 // Для календаря и возраста: главные персонажи и персона первыми.
@@ -635,7 +727,7 @@ function applySceneTime(messageId, raw) {
     // если в самом ответе есть отметка времени — она главнее
     const mes = (ctx().chat || [])[messageId];
     const own = clockRecOf(mes);
-    if (own && own.why === 'stamp') return;
+    if (own && (own.why === 'stamp' || own.why === 'scene' || own.why === 'manual')) return;
     const t = sceneTimeFix(now.cal, now.t, st);
     if (!t) return;
     const prev = own ? own.prev : now.t;
@@ -670,12 +762,20 @@ async function detectCalendar({ manual = false } = {}) {
         const meta = chatMeta();
         const before = findClock();
         meta.calendar = ans.calendar;
-        // время: если уже идёт по отметкам в ответах обычного календаря — не трогаем, иначе берём то, что сказала модель
-        const keep = before.t && ans.calendar.type === 'greg' && (!before.cal || before.cal.type === 'greg') && !manual;
-        if (!keep && ans.now) {
+        // Сообщения чата, включая последние реплики игрока, важнее догадки модели.
+        // При обновлении расширения не перезаписываем достигнутую дату более ранней.
+        // Не берём устаревшие упоминания даты из прошлых реплик:
+        // после обновления расширения нельзя откатывать май обратно на март.
+        const start = before.t ? Math.max(before.h.index + 1, chat.length - 10, 0) : Math.max(chat.length - 10, 0);
+        const lastExplicit = chat.slice(start).reverse().map(m => m && !m.is_system && m.mes
+            ? (findStamp(m.mes, ans.calendar) || findSceneStamp(m.mes, ans.calendar)) : null).find(st => st && st.date);
+        const explicitTime = lastExplicit && stampToTime(ans.calendar, before.t || ans.now, lastExplicit);
+        const keep = before.t && !explicitTime;
+        const target = explicitTime || (keep ? null : ans.now);
+        if (target) {
             const last = chat.length - 1;
-            if (last >= 0) writeClock(last, { t: ans.now, prev: before.t || null, why: 'detect', size: 0 });
-            else meta.clockBase = ans.now;
+            if (last >= 0) writeClock(last, { t: target, prev: before.t || null, why: explicitTime ? 'scene' : 'detect', size: 0 });
+            else meta.clockBase = target;
         }
         clockMonth = null;
         ctx().saveMetadataDebounced?.();
@@ -848,7 +948,10 @@ function updateInjection(beforeId) {
     // притяжение — своей подсказкой, со своей настойчивостью
     let attr = '';
     if (s.enabled && s.inject && s.modules.attraction !== false && s.attrInfluence !== 'none' && hasChat() && c.chat && c.chat.length) {
-        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence);
+        // В ситуативном режиме из чата берём недавний текст, а не все предпочтения разом.
+        const recent = s.attrActivation === 'always' ? null : (c.chat || []).slice(-3)
+            .filter(m => m && !m.is_system && m.mes).map(m => cleanMessageText(m.mes, 1400)).join('\n');
+        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence, recent);
     }
     c.setExtensionPrompt(ATTR_PROMPT_KEY, attr, 1, Number(s.attrDepth) || 4, false, 0);
     // часы сцены — у самого конца чата, чтобы модель не теряла время суток и дату
@@ -857,6 +960,7 @@ function updateInjection(beforeId) {
         try { clockText = clockPromptText(beforeId); } catch (e) { console.warn('[Внутренний мир] часы', e); }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
+    debugLog('ПРОМПТЫ', `эмоции/баффы ${text.length} зн.; предпочтения ${attr.length} зн.; время ${clockText.length} зн. ${clockText.slice(0, 160)}`);
 }
 
 // ---------- Анализ ----------
@@ -1209,8 +1313,10 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const info = {
             botName: c.name2,
             userName: c.name1,
-            card: kind !== 'chat' && offBooks().includes('__card') ? '' : cardText(c),
-            persona: kind !== 'chat' && offBooks().includes('__persona') ? '' : personaText(c),
+            // После первого полного разбора база живёт в сохранённом состоянии: в
+            // обычной ролевой не пересылаем целиком карточку на каждом ответе.
+            card: kind === 'chat' && base.order.length ? '' : (offBooks().includes('__card') ? '' : cardText(c)),
+            persona: kind === 'chat' && base.order.length ? '' : (offBooks().includes('__persona') ? '' : personaText(c)),
             trackNames: [c.name2, ...trackNames(s)],
             trackPersona: s.persona !== false,
             messages: msgs,
@@ -1265,6 +1371,12 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 if (info.lore.length >= (catchUp ? 10 : 5)) break;
             }
         }
+        // Сны — только при сценах сна, не при любом текущем анализе.
+        // Отдельный ночной сон не требует прямого описания моделью в ролевой.
+        if (kind !== 'lore' && msgs.length) {
+            const latest = msgs.slice(-2).join(' ');
+            info.sleepEvent = /(усну[ллаи]|засну[ллаи]|засыпа|спат[ьи]|легл?[аио]?\s+спать|провалил[а-я]*\s+в\s+сон|просну|пробуди|пробужд|woke\s+up|fell\s+asleep|falling\s+asleep|go\s+to\s+sleep)/i.test(latest);
+        }
         const system = buildSystemPrompt(s, info);
         const user = buildUserPrompt(info, base, s.modules, present);
         const cast = present || base.order;
@@ -1274,6 +1386,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         budget = ask.responseLength;
         const previewOpts = { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) };
         liveStage('think');
+        const analyzeStartedAt = Date.now();
+        debugLog('ТОКЕНЫ', `запрос анализа: приблизительно ${Math.round((system.length + user.length) / 3.5)} токенов входа; полный расход зависит от токенизатора модели; сообщений ${msgs.length}`);
         raw = await callModel(system, user, ask, (text, think) => {
             if (!live) return;
             if (text) {
@@ -1285,6 +1399,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             }
         });
         liveStage('done');
+        debugLog('СКОРОСТЬ', `анализ #${messageId}: ${(Date.now() - analyzeStartedAt) / 1000} с, ответ ${raw.length} символов`);
         if (chatId && c.getCurrentChatId && ctx().getCurrentChatId() !== chatId) return; // чат сменился
         if (looksCut(raw)) {
             console.warn('[Внутренний мир] ответ модели оборвался', String(raw || '').slice(-300));
@@ -1310,6 +1425,9 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
+        debugLog('АНАЛИЗ', `#${messageId}: режим ${kind}, взято ${msgs.length} сообщений; карточка ${info.card ? 'да' : 'нет'}; персона ${info.persona ? 'да' : 'нет'}; лорбук ${info.loreMain?.length || info.lore?.length ? 'да' : 'нет'}. Участников: ${fresh.map(f => f.name).join(', ')}`);
+        if (info.sleepEvent) debugLog('УСЛОВИЕ', 'Обнаружено засыпание/пробуждение в последних сообщениях');
+        if (fresh.some(f => f.beforeSleep || f.nightDream)) debugLog('СОН', fresh.filter(f => f.beforeSleep || f.nightDream).map(f => `${f.name}: ${f.beforeSleep ? 'мысли перед сном' : ''}${f.beforeSleep && f.nightDream ? ', ' : ''}${f.nightDream ? 'ночной сон' : ''}`).join('; '));
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
         if (info.clockNow) applySceneTime(messageId, raw);
         if (!fromLore) try { takeAchievement(raw, messageId); } catch (e) { console.warn('[Внутренний мир] достижение', e); }
@@ -1336,6 +1454,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             if (s.toasts) events.forEach((ev, i) => showEvent(ev, i * 450));
             else if (s.sound !== false && events.length) playSound(events[0].type, currentTheme);
         }
+        if (events.length) debugLog('СОБЫТИЯ', events.map(e => `${e.who || ''}: ${e.type}`).join('; '));
         if (events.length && !isOpen()) markFab(true);
         if (!view) view = '';
     } catch (err) {
@@ -1484,6 +1603,9 @@ function nextAnalysisIn() {
 
 function onGenerationStarted(type, _options, dryRun) {
     if (dryRun) return;
+    if (type !== 'swipe' && type !== 'regenerate') {
+        try { syncUserClockBeforeReply(); } catch (e) { console.warn('[Внутренний мир] время игрока', e); }
+    }
     // При свайпе и перегенерации прячем то, что было посчитано по заменяемому ответу.
     if (type === 'swipe' || type === 'regenerate') {
         const last = lastBotMessageId();
@@ -1581,7 +1703,10 @@ function panelEl() {
         el.addEventListener('click', onPanelClick);
         el.addEventListener('change', onPanelChange);
         el.addEventListener('input', onPanelInput);
-        el.addEventListener('toggle', e => rememberSection('diary', e.target), true);
+        el.addEventListener('toggle', e => {
+            rememberSection('diary', e.target);
+            if (e.target.matches?.('details[data-iw-attr-cat]')) attrCatsOpen[e.target.dataset.iwAttrCat] = e.target.open;
+        }, true);
     }
     return el;
 }
@@ -1618,7 +1743,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, attrCatsOpen, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo });
     writeScroll(el, keepScroll);
 }
 
@@ -1646,11 +1771,18 @@ function takeAchievement(raw, messageId) {
     const a = cleanAchievement(data && !Array.isArray(data) ? data.achievement : null);
     if (!a) return;
     const meta = chatMeta();
+    // Случайные мелкие сцены не должны превращаться в поток достижений.
+    const last = Number(meta.achLastMessage);
+    if (Number.isFinite(last) && messageId >= last && messageId - last < 8) {
+        debugLog('Достижение', 'Пропущено: ещё действует пауза после предыдущей ачивки');
+        return;
+    }
     const now = clockNow(messageId + 1);
     const scene = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
     const { list, added } = addAchievement(meta.achList, a, { mes: messageId, scene });
     meta.achList = list;
     if (!added) return;
+    meta.achLastMessage = messageId;
     meta.achNew = [...(meta.achNew || []).filter(id => list.some(x => x.id === id)), added.id].slice(-30);
     ctx().saveMetadataDebounced?.();
     showEvent({ type: 'achievement', who: 'Витрина', text: added.title, desc: added.desc, icon: added.icon, tier: added.tier, kind: added.kind }, 600);
@@ -1709,6 +1841,7 @@ function renderAll() {
     const fab = document.getElementById('iw_fab');
     if (fab) fab.classList.toggle('iw-noanim', settings().animations === false);
     renderPanelNow();
+    renderChatHud();
 }
 
 async function openPanel() {
@@ -2203,7 +2336,7 @@ async function onPanelClick(e) {
         state.order = state.order.filter(k => k !== key);
         // после «забыть» следующий разбор не должен решить, что ничего нового нет
         chatMeta().fp = {};
-        view = '';
+        if (view !== 'settings') view = '';
         await saveEditedState(state);
         updateInjection();
         return renderAll();
@@ -2296,11 +2429,17 @@ function knowledgeLore(limit = 3) {
 async function autoRewards() {
     if (settings().points === false || !hasChat()) return;
     const st = currentState();
-    for (const key of splitCast(st).mains) {
-        const ch = st.characters[key];
-        if (!ch || (ch.shop && ch.shop.length)) continue;
-        await regenShop(key, { quiet: true });
+    if (Array.isArray(st.shop) && st.shop.length) return;
+    const key = splitCast(st).mains.find(k => st.characters[k]);
+    // При переходе со старой версии переносим существующий ассортимент
+    // основного персонажа в единый магазин, не тратя новый запрос к модели.
+    const previous = key && st.characters[key] && st.characters[key].shop;
+    if (Array.isArray(previous) && previous.length) {
+        st.shop = JSON.parse(JSON.stringify(previous));
+        await saveEditedState(st);
+        return;
     }
+    if (key) await regenShop(key, { quiet: true });
 }
 
 async function onDreamAction(action) {
@@ -2380,13 +2519,19 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
         const info = analysisInfo(4);
         info.loreMain = knowledgeLore(2) || [];
         info.style = (THEMES[currentTheme] && THEMES[currentTheme].name) || '';
+        const st0 = currentState();
+        const cast = splitCast(st0);
+        const pk = cast.personaKey;
+        const pc = pk && st0.characters[pk];
+        info.pair = pc && pk !== key ? { name: pc.name, traits: (pc.traits || []).map(t => t.name), wants: (pc.wants || []).map(x => x.text) } : null;
         const { system, user } = buildRewardsPrompt(info, ch, settings().language);
         const raw = await callModel(system, user, withBudget('rewards'));
         const rewards = parseRewards(raw);
         if (!rewards.length) throw new Error('модель не вернула наград');
         const st = currentState();
         if (!st.characters[key]) return;
-        st.characters[key].shop = rewards;
+        // Одна лавка и один общий ассортимент на чат: не привязываем к вкладке.
+        st.shop = rewards;
         await saveEditedState(st);
     } catch (err) {
         if (err && err.cancelled) return;
@@ -2418,8 +2563,25 @@ async function onAttrAction(spec, btn) {
     if (!ch || !['likes', 'dislikes'].includes(list)) return;
     const arr = (ch[list] = Array.isArray(ch[list]) ? ch[list] : []);
     const other = list === 'likes' ? 'dislikes' : 'likes';
+    if (act === 'keys') {
+        const tag = arr[Number(rest[0])];
+        if (!tag) return;
+        const old = String((ch.attrKeys || {})[tag] || '');
+        const ans = await iwDialog({ title: `Ключи предпочтения: ${tag}`, text: 'Укажи слова или фразы через запятую. Регулярное выражение: re:шаблон (один шаблон на строку). Пустое поле — автоматический подбор по теме. Проверяется только текст последних сообщений.', input: { label: 'Ключи активации', value: old, placeholder: 'причёска, волосы, re:локон\w*' }, buttons: [{ text: 'Сохранить', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }] });
+        if (!ans) return;
+        const val = String(ans.input || '').slice(0, 600).trim();
+        ch.attrKeys = Object.assign({}, ch.attrKeys || {});
+        if (val) ch.attrKeys[tag] = val;
+        else delete ch.attrKeys[tag];
+        markEdited(ch, 'attrKeys');
+        await saveEditedState(st);
+        updateInjection();
+        return renderAll();
+    }
     if (act === 'del') {
+        const tag = arr[Number(rest[0])];
         arr.splice(Number(rest[0]), 1);
+        if (tag && ch.attrKeys) delete ch.attrKeys[tag];
     } else {
         let tag = act === 'own' ? String((btn.closest('.iw-attr-own') && btn.closest('.iw-attr-own').querySelector('.iw-attr-input') || {}).value || '') : rest.join(':');
         tag = tag.trim().replace(/\s+/g, ' ').slice(0, 40).toLowerCase();
@@ -2519,7 +2681,7 @@ async function buy(id) {
     const st = currentState();
     const ch = key && st.characters[key];
     if (!ch) return;
-    const reward = (ch.shop || []).find(r => r.id === id);
+    const reward = (st.shop || ch.shop || []).find(r => r.id === id);
     // памятную вещь можно подарить и персоне игрока — она ляжет в её коллекцию
     const pk = splitCast(st).personaKey;
     const target = reward && reward.kind === 'collect' && giftTo === 'persona' && pk && st.characters[pk] ? st.characters[pk] : ch;
@@ -2681,6 +2843,7 @@ function addFab() {
     window.addEventListener('resize', () => {
         const b = document.getElementById('iw_fab');
         if (b) placeFab(b);
+        renderChatHud();
     });
 }
 
@@ -3041,6 +3204,7 @@ function registerCommands() {
 async function onChatChanged() {
     view = '';
     status = '';
+    debugRows.length = 0;
     clockMonth = null;
     clockOpen = false;
     clockSetOpen = false;

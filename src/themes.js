@@ -702,6 +702,7 @@ export const BLOCK_ICONS = {
     wants: 'heart',
     fears: 'ghost',
     dream: 'star',
+    sleep: 'moon',
     traits: 'feather',
     persona: 'persona',
     impression: 'eye',

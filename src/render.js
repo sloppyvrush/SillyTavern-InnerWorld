@@ -389,16 +389,39 @@ function renderAttraction(c, L, opts = {}) {
     const likes = c.likes || [];
     const dislikes = c.dislikes || [];
     const mode = opts.attrMode === 'dislikes' ? 'dislikes' : 'likes';
-    const chip = (list, t, i) => `<span class="iw-attr-chip iw-attr-${list}"><span>${ce(t)}</span><button type="button" class="iw-attr-x" data-iw-attr="del:${list}:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></span>`;
-    const row = (list, cap, items) => `
-        <div class="iw-attr-row iw-attr-row-${list}">
+    const chip = (list, t, i) => `<span class="iw-attr-chip iw-attr-${list}"><span>${ce(t)}</span><button type="button" class="iw-attr-keys" data-iw-attr="keys:${list}:${i}" title="Настроить ключи активации (слова и RegEx)" aria-label="Настроить ключи активации">${icon('key')}</button><button type="button" class="iw-attr-x" data-iw-attr="del:${list}:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></span>`;
+    const row = (list, cap, items) => {
+        // Готовые теги тоже классифицируются, а не лежат сплошной простынёй.
+        // Для своих тегов, отсутствующих в каталоге, есть отдельная группа.
+        const catEntries = Object.entries(ATTRACT_CATALOG);
+        const groups = new Map();
+        items.forEach((tag, i) => {
+            const normalize = x => String(x).toLowerCase().replace(/ё/g, 'е');
+            const catIndex = catEntries.findIndex(([, tags]) => tags.some(t => normalize(t) === normalize(tag)));
+            const id = catIndex < 0 ? 'own' : String(catIndex);
+            const name = catIndex < 0 ? 'Особые предпочтения' : catEntries[catIndex][0];
+            if (!groups.has(id)) groups.set(id, { name, entries: [] });
+            groups.get(id).entries.push({ tag, i });
+        });
+        const classified = [...groups].map(([id, g]) => {
+            const foldId = `selected-${list}-${id}`;
+            return `<details class="iw-attr-cat iw-attr-group" data-iw-attr-cat="${foldId}"${!opts.attrCatsOpen || opts.attrCatsOpen[foldId] !== false ? ' open' : ''}>
+                <summary class="iw-attr-cat-name">${esc(g.name)} <small>${g.entries.length}</small>${icon('chevron')}</summary>
+                <div class="iw-attr-chips">${g.entries.map(({ tag, i }) => chip(list, tag, i)).join('')}</div>
+            </details>`;
+        }).join('');
+        return `<div class="iw-attr-row iw-attr-row-${list}">
           <span class="iw-attr-cap">${icon(list === 'likes' ? 'heart' : 'x')}<span>${cap}</span><span class="iw-attr-count">${items.length || ''}</span></span>
-          <div class="iw-attr-chips">${items.length ? items.map((t, i) => (i < ATTR_SHOWN || (opts.attrMore && opts.attrMore[list]) ? chip(list, t, i) : '')).join('') : '<span class="iw-muted">Пока ничего</span>'}${items.length > ATTR_SHOWN ? `<button type="button" class="iw-attr-more" data-iw-attr="more:${list}">${opts.attrMore && opts.attrMore[list] ? 'свернуть' : `ещё ${items.length - ATTR_SHOWN}`}${icon('chevron')}</button>` : ''}</div>
+          ${classified || '<span class="iw-muted">Пока ничего</span>'}
         </div>`;
+    };
     const have = new Set((mode === 'likes' ? likes : dislikes).map(x => x.toLowerCase()));
     const other = new Set((mode === 'likes' ? dislikes : likes).map(x => x.toLowerCase()));
-    const cats = Object.entries(ATTRACT_CATALOG).map(([cat, tags]) => `
-          <div class="iw-attr-cat"><div class="iw-attr-cat-name">${esc(cat)}</div><div class="iw-attr-opts">${tags.map(t => `<button type="button" class="iw-attr-opt${have.has(t) ? ' on' : ''}${other.has(t) ? ' other' : ''}" data-iw-attr="toggle:${mode}:${esc(t)}" aria-pressed="${have.has(t)}">${ce(t)}</button>`).join('')}</div></div>`).join('');
+    const cats = Object.entries(ATTRACT_CATALOG).map(([cat, tags], i) => `
+          <details class="iw-attr-cat" data-iw-attr-cat="${i}"${opts.attrCatsOpen && opts.attrCatsOpen[i] ? ' open' : ''}>
+            <summary class="iw-attr-cat-name">${esc(cat)} <small>${tags.length}</small>${icon('chevron')}</summary>
+            <div class="iw-attr-opts">${tags.map(t => `<button type="button" class="iw-attr-opt${have.has(t) ? ' on' : ''}${other.has(t) ? ' other' : ''}" data-iw-attr="toggle:${mode}:${esc(t)}" aria-pressed="${have.has(t)}">${ce(t)}</button>`).join('')}</div>
+          </details>`).join('');
     const empty = !likes.length && !dislikes.length;
     return `
     <section class="iw-block iw-b-attraction">
@@ -510,6 +533,17 @@ function renderDream(c, L, opts = {}) {
       ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key))}`)}
       <div class="iw-dream-title">${esc(c.dream.title)}${c.dream.plus ? `${/^[…,;:—–-]/.test(c.dream.plus.trim()) ? ' ' : ', '}<span class="iw-dream-plus">${esc(c.dream.plus.trim())}</span>` : ''}</div>
       <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${ce(s.text)}</span></li>`).join('')}</ol>
+    </section>`;
+}
+
+function renderSleep(c) {
+    const thought = c.beforeSleep || '';
+    const dream = c.nightDream || '';
+    return `<section class="iw-block iw-b-sleep">
+      ${blockHead('sleep', 'Сны и мысли перед сном')}
+      ${thought ? `<div class="iw-sleep-sub"><b>Перед сном</b><p>${ce(thought)}</p></div>` : ''}
+      ${dream ? `<div class="iw-sleep-sub"><b>Приснилось</b><p>${ce(dream)}</p></div>` : ''}
+      ${!thought && !dream ? '<span class="iw-muted">Появится после засыпания или пробуждения в ролевой.</span>' : ''}
     </section>`;
 }
 
@@ -715,7 +749,7 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
 <button type="button" class="iw-back" data-iw-view="main:${esc(key)}">${icon('back')}<span>к дневнику</span></button>
 <section class="iw-block iw-b-shop">
   ${blockHead('rewards', esc(L.shop), `<span class="iw-points" title="${Number(pts || 0).toLocaleString('ru-RU')}"><span class="iw-cheat-coin" data-iw-cheat="1">${icon(currencyIcon(theme))}</span><b>${shortPoints(pts)}</b></span>`)}
-  <div class="iw-muted">Очки: желание +10, этап мечты +25, мечта целиком +100. Награды подобраны под персонажа: ${esc(c.name)}.</div>
+  <div class="iw-muted">Одна лавка для персоны и бота. Общие монеты можно потратить на награды для обоих.</div>
   <div class="iw-shop-top"><button type="button" class="iw-btn${shopBusy ? ' busy' : ''}" data-iw-shop="regen"${shopBusy ? ' disabled' : ''}>${icon(shopBusy ? 'rotate' : 'dice')}<span>${groups ? 'Подобрать заново' : 'Подобрать награды'}</span></button></div>
   ${buffNotes(c, key)}
   ${groups || ((c.shop || []).length ? '<div class="iw-empty">Всё уже куплено. Нажми «Подобрать заново» — появятся новые награды.</div>' : '<div class="iw-empty">Наград пока нет — нажми «Подобрать награды».</div>')}
@@ -800,6 +834,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.wants) blocks.push(renderWants(c, L));
     if (modules.fears) blocks.push(renderFears(c, L));
     if (modules.dream) blocks.push(renderDream(c, L, opts));
+    if (modules.sleep) blocks.push(renderSleep(c));
     if (modules.traits) blocks.push(renderTraits(c, L));
     if (modules.traits) blocks.push(renderPersona(c, L, opts));
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
@@ -1037,7 +1072,7 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner' }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, attrCatsOpen = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner' }) {
     NEXT_IN = nextIn;
     // showcase: { got, sel, fresh } — витрина этого чата
     CASE_BTN = showcase && !noChat ? { on: view === 'showcase', fresh: showcase.fresh || 0 } : null;
@@ -1065,7 +1100,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   ${footHtml()}
 </div>`;
     }
-    const opts = { manualTurns: settings.moodMode === 'manual' ? settings.moodTurns : null, dreamBusy, points: settings.points !== false, attrMode, attrOpen, attrMore, collapsed: settings.collapsed || {} };
+    const opts = { manualTurns: settings.moodMode === 'manual' ? settings.moodTurns : null, dreamBusy, points: settings.points !== false, attrMode, attrOpen, attrMore, attrCatsOpen, collapsed: settings.collapsed || {} };
     const showNpc = settings.showNpc !== false;
     let body;
     let current = null;
@@ -1171,7 +1206,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key }, opts))}`;
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
         const pcS = persona && persona.key && state.characters[persona.key];
-        body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null, persona: pcS && persona.key !== key ? { key: persona.key, name: pcS.name, collection: pcS.collection || [] } : null, giftTo });
+        body = renderShop(Object.assign({}, state.characters[key], { shop: state.shop || state.characters[key].shop || [] }), theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null, persona: pcS && persona.key !== key ? { key: persona.key, name: pcS.name, collection: pcS.collection || [] } : null, giftTo });
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0] }, opts));

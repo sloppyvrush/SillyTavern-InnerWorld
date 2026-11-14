@@ -15611,3 +15611,47 @@ ol {
     align-self: stretch;
     justify-content: center;
 }
+
+/* InnerWorld: компактная HUD-плашка чата. Shadow DOM, никогда не часть сообщений. */
+.iw-chat-hud {
+    position: fixed;
+    z-index: 3051;
+    pointer-events: none;
+    padding: 7px 11px;
+    border: 1px solid color-mix(in srgb, var(--iw-ink, #555) 22%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--iw-bg, #faf7f0) 94%, transparent);
+    color: var(--iw-ink, #333);
+    box-shadow: 0 3px 15px #0001;
+    backdrop-filter: blur(6px);
+    font: 12px/1.45 var(--iw-body-font, sans-serif);
+    overflow: hidden;
+    max-height: min(32vh, 240px);
+}
+.iw-hud-items { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 13px; }
+.iw-hud-items > span { display: inline-block; }
+.iw-hud-debug { border-top: 1px dashed color-mix(in srgb, var(--iw-ink, #555) 18%, transparent); padding-top: 4px; margin-top: 4px; overflow-wrap: anywhere; }
+.iw-hud-debug strong { font: 700 10px sans-serif; letter-spacing: .06em; margin-right: 5px; color: var(--iw-label-color, #73548e); }
+.iw-attr-cat { border: 1px solid color-mix(in srgb, var(--iw-ink, #555) 20%, transparent); border-radius: 9px; padding: 5px 8px; margin-top: 6px; }
+.iw-attr-cat-name { display: flex; align-items: center; gap: 6px; margin: 0; cursor: pointer; list-style: none; }
+.iw-attr-cat-name::-webkit-details-marker { display:none; }
+.iw-attr-cat-name small { font-size: .9em; opacity: .65; font-weight: 400; }
+.iw-attr-cat-name .iw-ico { margin-left: auto; transition: transform .12s; }
+.iw-attr-cat[open] > .iw-attr-cat-name .iw-ico { transform: rotate(180deg); }
+.iw-attr-cat .iw-attr-opts { padding: 8px 0 3px; }
+/* Праздники: одно событие — одна компактная строка, подробности по наведению. */
+.iw-clock-hols > li { padding: 6px 8px; border-radius: 7px; background: color-mix(in srgb, var(--iw-ink, #333) 4%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--iw-ink, #333) 12%, transparent); line-height: 1.4; }
+.iw-clock-hols > li > span { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .iw-chat-hud { font-size: 11px; padding: 5px 8px; max-height: 28vh; } }
+
+/* Ключи активации тегов симпатии/антипатии (не затрагивают ролевой промпт). */
+.iw-attr-keys { border:0; background:transparent; color:inherit; opacity:.63; cursor:pointer; padding:0 3px; display:inline-flex; align-items:center; }
+.iw-attr-keys:hover { opacity:1; }
+/* Сновидения отдельно от мечты жизни, для персоны, чара и НПС. */
+.iw-b-sleep .iw-sleep-sub { margin:8px 0; padding:9px 11px; border-radius:7px; border:1px solid var(--iw-line, rgba(120,100,90,.22)); }
+.iw-b-sleep .iw-sleep-sub b { font-size:.83em; opacity:.76; }
+.iw-b-sleep .iw-sleep-sub p { margin:5px 0 0; line-height:1.46; }
+/* Готовые симпатии и антипатии группируются по категориям. */
+.iw-attr-row .iw-attr-group { margin:5px 0; max-width:100%; }
+.iw-attr-row .iw-attr-group .iw-attr-chips { display:flex; flex-wrap:wrap; gap:5px; padding:6px 7px 9px; }
+.iw-attr-row .iw-attr-group .iw-attr-cat-name { font-size:.86em; }
