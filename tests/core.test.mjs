@@ -6,10 +6,11 @@ import { dominantMood, settleMood, purseOf,
 } from '../src/core.js';
 import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
-import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait, responseBudget, classifyError, parseBorn, zodiacOf } from '../src/core.js';
-import { renderNpcList, renderErrorToast } from '../src/render.js';
+import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait, responseBudget, classifyError, looksCut, parseBorn, zodiacOf } from '../src/core.js';
+import { renderNpcList, renderErrorToast, layoutBlocks } from '../src/render.js';
 import { cancelReward } from '../src/core.js';
 import * as S from '../src/showcase.js';
+import * as C2 from '../src/core.js';
 
 const all = DEFAULT_SETTINGS.modules;
 let passed = 0;
@@ -689,16 +690,8 @@ test('пустой дневник: без фото, с быстрыми наст
     assert.ok(waiting.includes('data-iw-quick-open="connect"'));
 });
 
-test('пиксельная тема: есть, со своими подписями, монеткой и звуками', async () => {
-    assert.equal(validTheme('pixel'), 'pixel');
-    const L = themeLabels('pixel', 'f');
-    assert.equal(L.wants, 'Квесты');
-    assert.equal(L.analyze, 'Сохранить игру');
-    const html = renderPanel({ state: applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'спокоен' }), all).state, settings: DEFAULT_SETTINGS, theme: 'pixel', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
-    assert.ok(html.includes('Квесты') && html.includes('Перки') && html.includes('iw-px'));
-    assert.ok(!renderPanel({ state: emptyState(), settings: DEFAULT_SETTINGS, theme: 'diary', view: '', mains: [], npcKeys: [] }).includes('iw-px'));
-    const snd = await import('../src/sound.js');
-    assert.ok(snd.PATTERNS.pixel && snd.PATTERNS.pixel.want_done.length);
+test('пиксельная тема убрана: старый выбор переезжает в «Дневник»', () => {
+    assert.equal(validTheme('pixel'), 'diary');
 });
 
 test('персона игрока: ведётся отдельно, не влияет на ответы, карточка вместо наклейки лавки', () => {
@@ -1029,4 +1022,68 @@ test('год рождения без дня, отмена покупки, дос
     assert.equal(S.cleanAchievement({}), null);
 });
 
+test('связка с Love Score', () => {
+    const { loveToAttitude, loveFor } = C2;
+    assert.equal(loveToAttitude(53.5, 100), 2);
+    assert.equal(loveToAttitude(-30, 100), -1);
+    assert.equal(loveToAttitude(100, 100), 3);
+    assert.equal(loveToAttitude(-100, 100), -3);
+    const love = { main: { name: 'Роберт', score: 53.5, max: 100, type: 'romance', typeLabel: 'романтика' }, npcs: [{ name: 'Марта', nameEn: 'Martha', score: 10, max: 100, type: 'friendship', typeLabel: 'дружба' }] };
+    assert.ok(loveFor(love, 'Martha'));
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'спокоен', impression: { label: 'странная', score: 0, why: 'x', now: 'тянет к ней' } }), all, {});
+    const inj = buildInjection(state, all, 'Эвелин', 'medium', { love });
+    assert.ok(!inj.includes('из 3'));
+    assert.ok(inj.includes('тянет к ней'));
+    assert.ok(buildInjection(state, all, 'Эвелин').includes('из 3'));
+    const up = buildUserPrompt({ love, userName: 'Эвелин', botName: 'Роберт' }, state, all);
+    assert.ok(up.includes('Love Score') && up.includes('54 из 100, романтика'));
+    assert.ok(!cleanMessageText('Привет <!-- [LOVE_SCORE:47:признание > всё] --> мир').includes('LOVE'));
+});
+
+test('подарки от персонажа и лавка персоны', () => {
+    const st = { characters: { r: { name: 'Роберт', shop: [{ id: 'g', kind: 'gift', title: 'Старый компас', effect: 'компас отца', cost: 40, tone: 'romantic' }] } }, order: ['r'], purse: 100 };
+    const ch = st.characters.r;
+    assert.equal(buyReward(ch, ch.shop[0], st), null);
+    assert.equal(ch.buffs[0].kind, 'gift');
+    const later = decayState(st, 3);
+    assert.equal(later.characters.r.buffs.length, 1);
+    assert.ok(buildInjection(st, all, 'Эвелин').includes('сам дарит Эвелин'));
+    const up = buildUserPrompt({ userName: 'Эвелин', botName: 'Роберт' }, st, all);
+    assert.ok(up.includes('gift_pending'));
+    assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Эвелин', botName: 'Роберт', hasGifts: true, trackNames: [], mainNames: ['Роберт'] }).includes('gift_given'));
+    const P = C2.buildRewardsPrompt({ userName: 'Эвелин' }, { name: 'Эвелин', persona: true });
+    assert.ok(P.system.includes('памятные вещи для персоны'));
+    const R = C2.parseRewards(JSON.stringify({ rewards: [{ title: 'Компас', kind: 'gift', tone: 'funny', cost: 30 }] }));
+    assert.equal(R[0].kind, 'gift');
+    assert.equal(R[0].tone, 'funny');
+});
+
 console.log(`значки: ${passed} проверок прошло`);
+
+test('обрыв ответа: хвост после закрытого JSON — не обрыв, незакрытые скобки — обрыв', () => {
+    assert.equal(looksCut('{"a": [1, 2]}'), false);
+    assert.equal(looksCut('```json\n{"a": 1}\n```\nНадеюсь, помогла.'), false);
+    assert.equal(looksCut('{"a": "x"}</answer>'), false);
+    assert.equal(looksCut('{"a": "фигурная } в тексте", "b": [1]}.'), false);
+    assert.equal(looksCut('<think>думаю {</think>{"a": 1}'), false);
+    assert.equal(looksCut('{"a": [1, 2'), true);
+    assert.equal(looksCut('{"a": "оборвалось на полусло'), true);
+    assert.equal(looksCut(''), false);
+    assert.equal(looksCut('просто текст'), false);
+});
+
+test('думающие модели: новые версии тоже получают место на размышления', () => {
+    const s = mergeSettings({ budgetCap: 20000 });
+    const plain = responseBudget(s, { kind: 'chat', mains: 1, model: 'mistral-large-4' });
+    for (const m of ['google/gemini-4-argon', 'google/gemini-3.8-flash', 'z-ai/glm-5.3', 'deepseek/deepseek-v4-pro', 'moonshotai/kimi-k3', 'x-ai/grok-4.1'])
+        assert.ok(responseBudget(s, { kind: 'chat', mains: 1, model: m }) > plain, m);
+});
+
+test('свёрнутые блоки: развёрнутые «Хочет / Боится» не уезжают наверх', () => {
+    const b = k => `<section class="iw-block iw-b-${k}"></section>`;
+    const kinds = html => [...html.matchAll(/iw-b-([a-z]+)([^"]*)/g)].map(m => m[1] + (m[2].includes('iw-solo') ? '*' : ''));
+    const all = [b('mood'), b('impression'), b('wants'), b('fears')];
+    assert.deepEqual(kinds(layoutBlocks(all, { mood: true, impression: true })), ['mood', 'impression', 'wants', 'fears']);
+    assert.deepEqual(kinds(layoutBlocks(all, { impression: true })), ['mood*', 'impression*', 'wants', 'fears']);
+    assert.deepEqual(kinds(layoutBlocks(all, {})), ['mood', 'impression', 'wants', 'fears']);
+});

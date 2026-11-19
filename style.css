@@ -392,3 +392,12 @@
 .iw-form-st .iw-sign { font-size: .85em; opacity: .7; text-align: center; line-height: 1.45; }
 .iw-form-st .iw-sign-nick { color: inherit; font-weight: 700; text-decoration: underline dotted; }
 .iw-form-st .iw-lang-opt.on { background: var(--SmartThemeQuoteColor, #e18a24); color: var(--SmartThemeBlurTintColor, #111); }
+
+/* Плавающая кнопка: в «ВКонтакте» — синяя плитка-приложение, в «Аське» — цветочек, в остальных — блокнот */
+#iw_fab .iw-fab-app,
+#iw_fab .iw-fab-flower { display: none; position: absolute; inset: 0; width: 100%; height: 100%; }
+#iw_fab:is(.iw-theme-vk, .iw-theme-icq) .iw-fab-book { transform: none; }
+#iw_fab:is(.iw-theme-vk, .iw-theme-icq) :is(.iw-fab-cover, .iw-fab-spine, .iw-fab-ribbon) { display: none; }
+#iw_fab.iw-theme-vk .iw-fab-app { display: block; }
+#iw_fab.iw-theme-icq .iw-fab-flower { display: block; transition: transform .5s ease; }
+#iw_fab.iw-theme-icq:hover:not(.iw-noanim) .iw-fab-flower { transform: rotate(72deg); }

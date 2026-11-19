@@ -1,5 +1,7 @@
 import { PX_ICONS, PX_PORTRAITS, PX_PORTRAIT_OF } from './pixel-icons.js';
-import { iconStyle, pxSvg } from './themes.js';
+import { iconStyle, pxSvg, smileHtml } from './themes.js';
+import { ICQ_NPC } from './icq-smiles.js';
+import { NPC_THEME_ICONS } from './npc-theme-icons.js';
 // Значки НПС: рисованные архетипы, подбираются по тому, кто это (роль из лорбука или от модели).
 // Рисунок один, а вид — под тему: в дневнике дрожащая линия, в летописи — чернила в медальоне и т. д.
 
@@ -101,8 +103,12 @@ export function pickNpcIcon({ who = '', traits = [], name = '', g = 'n' } = {}) 
 
 export function npcIconSvg(id) {
     const icon = BY_ID[id] || BY_ID.man;
-    if (iconStyle() === 'pixel' && PX_ICONS['npc:' + icon.id]) return pxSvg(PX_ICONS['npc:' + icon.id], 'iw-npc-ico');
-    return `<svg class="iw-npc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icon.svg}</svg>`;
+    const theme = iconStyle();
+    if (theme === 'pixel' && PX_ICONS['npc:' + icon.id]) return pxSvg(PX_ICONS['npc:' + icon.id], 'iw-npc-ico');
+    // у каждой темы свой рисунок; если темы нет в наборах — общий контур
+    if (theme === 'icq' && ICQ_NPC[icon.id]) return smileHtml(ICQ_NPC[icon.id], 'iw-npc-ico');
+    const own = NPC_THEME_ICONS[theme] && NPC_THEME_ICONS[theme][icon.id];
+    return `<svg class="iw-npc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${own || icon.svg}</svg>`;
 }
 
 // Готовый значок в рамке темы.

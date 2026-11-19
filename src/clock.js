@@ -515,6 +515,16 @@ export function upcoming(cal, t, people = [], days = 60) {
         if (!p || !p.born || !p.born.m || !p.born.d) continue;
         add(p.born.m, p.born.d, { name: p.name, kind: 'birthday', by: p.born.y });
     }
+    // годовщины знакомства с героем: каждый год, а в первый год — ещё и «месяц»
+    for (const p of people || []) {
+        const met = p && p.met;
+        if (!met || !met.m || !met.d || met.y === undefined) continue;
+        for (const y of [t.y, t.y + 1]) {
+            if (y - met.y >= 1 && addAt(y, met.m, met.d, { name: p.name, kind: 'anniv', years: y - met.y })) break;
+        }
+        const one = shiftMonth(cal, met.y, met.m, 1);
+        addAt(one.y, one.m, met.d, { name: p.name, kind: 'anniv', months: 1 });
+    }
     for (const e of out) if (e.kind === 'birthday' && e.by && cal.type === 'greg') e.age = e.y - e.by;
     return out.sort((a, b) => a.inDays - b.inDays || (a.kind === 'holiday') - (b.kind === 'holiday'));
 }
@@ -592,6 +602,7 @@ export function monthMarks(cal, y, m, people = []) {
     }
     for (const p of people || []) {
         if (p.born && p.born.m === m && p.born.d) out.push({ m, d: p.born.d, name: p.name, kind: 'birthday', age: cal && cal.type === 'greg' && p.born.y ? y - p.born.y : null });
+        if (p.met && p.met.m === m && p.met.d && y > p.met.y) out.push({ m, d: p.met.d, name: p.name, kind: 'anniv', years: y - p.met.y });
     }
     return out;
 }
@@ -602,6 +613,22 @@ export function shiftMonth(cal, y, m, by) {
     let idx = (y * n) + (m - 1) + by;
     const ny = Math.floor(idx / n);
     return { y: ny, m: idx - ny * n + 1 };
+}
+
+// «Виктор: 1 год со дня знакомства»
+export function annivText(e) {
+    const n = e.years || 0;
+    const w = n % 100 > 10 && n % 100 < 20 ? 'лет' : (n % 10 === 1 ? 'год' : (n % 10 >= 2 && n % 10 <= 4 ? 'года' : 'лет'));
+    return `${e.name}: ${e.months ? 'месяц' : `${n} ${w}`} со дня знакомства`;
+}
+
+// Время года по дате (наш календарь). В южном полушарии — наоборот.
+const SOUTH = ['AU', 'NZ', 'AR', 'CL', 'ZA', 'BR', 'UY', 'PY'];
+export function seasonOf(cal, t) {
+    if (!cal || !t || cal.type !== 'greg') return '';
+    let i = Math.floor(((t.m % 12) + 0) / 3); // 0 — зима (дек–фев), 1 — весна, 2 — лето, 3 — осень
+    if (SOUTH.includes(String(cal.country || '').toUpperCase())) i = (i + 2) % 4;
+    return ['зима', 'весна', 'лето', 'осень'][i];
 }
 
 // ---------- Подсказка основной модели ----------
@@ -615,7 +642,7 @@ export function clockInjection(cal, t, { people = [], lastSkip = 0, lang = 'ru' 
     const ev = upcoming(cal, t, people, 7);
     const today = ev.filter(e => e.inDays === 0);
     const soon = ev.filter(e => e.inDays > 0).slice(0, 3);
-    const evText = e => e.kind === 'birthday' ? `${e.name} — день рождения${e.age ? ` (исполнится ${e.age})` : ''}` : (e.kind === 'canon' && e.who ? `${e.who}: ${e.name}` : e.name);
+    const evText = e => e.kind === 'birthday' ? `${e.name} — день рождения${e.age ? ` (исполнится ${e.age})` : ''}` : (e.kind === 'anniv' ? annivText(e) : (e.kind === 'canon' && e.who ? `${e.who}: ${e.name}` : e.name));
     if (today.length) parts.push(`Сегодня: ${today.map(evText).join(', ')}.`);
     if (soon.length) parts.push(`Скоро: ${soon.map(e => `${evText(e)} — через ${fmtSpan(e.inDays * 1440)}`).join('; ')}.`);
     if (lastSkip >= 180) parts.push(`С прошлой сцены прошло ${fmtSpan(lastSkip)}.`);
@@ -637,6 +664,7 @@ export function buildCalendarPrompt(info, lang = 'русском') {
         'Для "real": country — двухбуквенный код страны, где идёт история (RU, US, GB, JP…). holidays — 5–12 праздников, которые на самом деле отмечали ИМЕННО в этой стране и в эту эпоху (с month и day числами; from/to — годы, если праздник появился или отменён). Не добавляй чужие праздники: например, в России 90-х Хэллоуин и католическое Рождество почти не праздновали, а 7 ноября было выходным. Для России и США можно не перечислять общеизвестные — их дневник знает сам; добавь только местные и особые для сеттинга.',
         'canon — личные даты из карточки и лорбука, которые важны персонажам: годовщины, дни памяти (например, когда герой ездит на кладбище к матери), свадьба, день знакомства, профессиональные праздники героя. who — чья это дата, name — что за дата, month и day — числами, about — коротко, что в этот день происходит. Только то, что прямо есть в тексте; если нет — пустой список.',
         'now — какое сейчас число и время в истории по последним сообщениям: date — "ГГГГ-ММ-ДД" для real, "Г-М-Д" числами для custom (месяц — номер по порядку), null если не понять; time — "ЧЧ:ММ" или null; day — номер дня истории для "days". Если дату не назвали прямо, но её можно надёжно вывести (год, сезон, события) — выведи; если нельзя — null.',
+        'Откуда брать now: сначала — из последних сообщений чата (если там названа дата или она ясно выводится), потом — из первого сообщения, и только если в сообщениях даты нет совсем — из карточки и лорбука. Дата из чата всегда важнее карточки и лорбука.',
         'why — одна короткая фраза, почему такой календарь.',
         'Формат: {"calendar":{"type":"real|custom|days","country":"RU","name":"","era":"","why":"","months":[{"name":"","gen":"","days":30}],"weekdays":[""],"holidays":[{"name":"","month":1,"day":1,"about":"","from":null,"to":null}],"canon":[{"who":"","name":"","month":1,"day":1,"about":""}]},"now":{"date":null,"time":null,"day":1}}',
     ].join('\n');
@@ -645,6 +673,7 @@ export function buildCalendarPrompt(info, lang = 'русском') {
     if (info.persona) parts.push(`[Игрок: ${info.userName}]\n${info.persona}`);
     if (info.lore && info.lore.length) parts.push(`[Лорбук]\n${info.lore.join('\n\n')}`);
     if (info.messages && info.messages.length) parts.push(`[Сообщения]\n${info.messages.join('\n\n')}`);
+    if (info.chatDate) parts.push(`[Дата прямо указана в сообщениях чата]\n${info.chatDate} — это и есть «сейчас» в истории; now ставь ровно по ней, а не по карточке и лорбуку.`);
     parts.push('Верни JSON.');
     return { system, user: parts.join('\n\n') };
 }
