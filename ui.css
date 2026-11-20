@@ -17118,3 +17118,179 @@ ol {
 
 /* «Аська»: никаких симсовских кристаллов над аватарками */
 .iw-panel.iw-theme-icq .iw-tab .iw-photo-wrap::before { content: none; display: none; animation: none; }
+
+
+/* Сводка событий после разбора: несколько перемен — одним листком, подробности по кнопке */
+.iw-toast-group .iw-toast-body { min-width: 0; }
+.iw-group-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 5px;
+}
+.iw-group-row {
+    display: flex;
+    gap: 7px;
+    align-items: flex-start;
+    font-size: 13.5px;
+    line-height: 1.3;
+    cursor: pointer;
+}
+.iw-group-row:where(:not(.iw-noanim *)):hover .iw-group-line b { text-decoration: underline; }
+.iw-group-ic {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    color: var(--iw-ev, var(--iw-label-color));
+}
+.iw-group-ic svg, .iw-group-ic img { width: 100%; height: 100%; }
+.iw-group-line { min-width: 0; overflow-wrap: anywhere; }
+.iw-group-line em {
+    font-style: normal;
+    opacity: .7;
+    font-size: .92em;
+}
+.iw-toast-group:not(.iw-open) .iw-group-extra { display: none; }
+.iw-toast-group.iw-open .iw-group-list { max-height: 46vh; overflow-y: auto; padding-right: 4px; }
+.iw-group-more {
+    margin-top: 7px;
+    padding: 2px 10px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12.5px;
+    opacity: .85;
+    cursor: pointer;
+}
+.iw-group-more:where(:not(.iw-noanim *)):hover { opacity: 1; }
+
+/* ---------- Инфоблок над чатом ---------- */
+/* Живёт в своём теневом DOM: берёт цвета, бумагу, шрифты и рамки выбранной темы */
+.iw-ib-wrap {
+    padding: 5px 8px 3px;
+    font-family: var(--iw-body-font);
+    color: var(--iw-ink);
+    font-size: 14px;
+}
+.iw-ib-wrap.iw-ib-bottom { padding: 3px 8px 5px; }
+.iw-ib-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+    padding: 5px 12px;
+    background-color: var(--iw-bg);
+    background-image: var(--iw-paper);
+    background-size: var(--iw-paper-size, auto);
+    border: var(--iw-bar-border, 1.5px solid var(--iw-ink));
+    border-radius: var(--iw-block-radius, 10px);
+    box-shadow: var(--iw-block-shadow, 0 2px 6px rgba(0, 0, 0, .18));
+    line-height: 1.2;
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+}
+.iw-ib-bar:focus-visible { outline: 2px solid var(--iw-label-color); outline-offset: 2px; }
+.iw-ib-line {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    flex-wrap: wrap;
+    row-gap: 2px;
+}
+.iw-ib-line > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.iw-ib-line svg { width: 15px; height: 15px; flex: none; color: var(--iw-label-color); }
+.iw-ib-time b {
+    font-family: var(--iw-title-font);
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--iw-ink);
+    letter-spacing: .02em;
+}
+.iw-ib-time em,
+.iw-ib-wx,
+.iw-ib-date { font-style: normal; }
+.iw-ib-time em { color: var(--iw-muted); }
+.iw-ib-wx { color: var(--iw-muted); }
+.iw-ib-today {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--iw-hl-mid) 45%, transparent);
+    color: var(--iw-ink);
+}
+.iw-ib-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--iw-divider, currentColor);
+    opacity: .7;
+}
+.iw-ib-cast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    min-width: 0;
+}
+.iw-ib-who {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+    min-width: 0;
+}
+.iw-ib-who .iw-face-ico { width: 21px; height: 21px; flex: none; }
+.iw-ib-name { font-weight: 700; }
+.iw-ib-mood {
+    padding: 0 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--iw-hl-main) 45%, transparent);
+    color: var(--iw-ink);
+    max-width: 11em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.iw-ib-me .iw-ib-mood { background: color-mix(in srgb, var(--iw-hl-good) 45%, transparent); }
+.iw-ib-chev { flex: none; display: inline-flex; color: var(--iw-muted); }
+.iw-ib-chev svg { width: 14px; height: 14px; transition: transform .2s; }
+.iw-ib-bar.iw-open .iw-ib-chev svg { transform: rotate(180deg); }
+.iw-noanim .iw-ib-chev svg { transition: none; }
+.iw-ib-more {
+    margin-top: 4px;
+    padding: 8px 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 6px 18px;
+    background-color: var(--iw-bg);
+    background-image: var(--iw-paper);
+    background-size: var(--iw-paper-size, auto);
+    border: var(--iw-bar-border, 1.5px solid var(--iw-ink));
+    border-radius: var(--iw-block-radius, 10px);
+    font-size: 13.5px;
+    line-height: 1.35;
+}
+.iw-ib-more ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.iw-ib-more b { color: var(--iw-ink); }
+.iw-ib-feels { display: block; color: var(--iw-muted); font-size: .93em; }
+.iw-ib-feels i { font-style: normal; color: var(--iw-fears); }
+.iw-ib-soon li { display: flex; gap: 6px; align-items: flex-start; }
+.iw-ib-soon svg, .iw-ib-soon img { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--iw-label-color); }
+.iw-ib-soon em { font-style: normal; color: var(--iw-muted); }
+/* тёмные и «экранные» темы: тонкое свечение вместо тени */
+.iw-theme-cyber .iw-ib-bar,
+.iw-theme-logbook .iw-ib-bar { box-shadow: 0 0 10px color-mix(in srgb, var(--iw-label-color) 35%, transparent); }
+.iw-theme-cyber .iw-ib-time b { text-shadow: 0 0 8px color-mix(in srgb, var(--iw-label-color) 60%, transparent); }
+/* телефон: имена прячем, остаются лица и настроения; строка переносится */
+@media (max-width: 760px) {
+    .iw-ib-wrap { padding: 4px 6px 2px; font-size: 13px; }
+    .iw-ib-bar { flex-wrap: wrap; gap: 4px 8px; padding: 4px 10px; }
+    .iw-ib-time b { font-size: 18px; }
+    .iw-ib-cast { margin-left: 0; gap: 7px; }
+    .iw-ib-name { display: none; }
+    .iw-ib-mood { max-width: 7.5em; }
+    .iw-ib-chev { margin-left: auto; }
+}

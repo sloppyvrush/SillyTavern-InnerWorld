@@ -1409,6 +1409,64 @@ export function renderToast(ev, theme) {
 </div>`;
 }
 
+// Инфоблок над чатом: одна тонкая строка в стиле темы, по нажатию — подробности.
+// model: { clock, cast: [{ name, mood, face, face2, feels: [{ e, w }] , persona }], show: { time, date, weather, events, moods } }
+export function renderInfobarHtml(model, theme, open = false) {
+    setIconTheme(theme);
+    const { clock, cast = [], show = {} } = model || {};
+    const parts = [];
+    if (clock && clock.t) {
+        if (show.time !== false) parts.push(`<span class="iw-ib-time">${icon('clock')}<b>${esc(clock.time)}</b><em>${esc(clock.part)}</em></span>`);
+        if (show.date !== false) parts.push(`<span class="iw-ib-date">${esc(clock.date)}</span>`);
+        if (show.weather !== false && clock.wx) parts.push(`<span class="iw-ib-wx"${clock.wx.title ? ` title="${esc(clock.wx.title)}"` : ''}>${icon(clock.wx.icon)}<span>${esc(clock.wx.text)}</span></span>`);
+        if (show.events !== false && clock.today && clock.today.length) parts.push(`<span class="iw-ib-today">${calIcon(clock.today[0].kind)}<span>${esc(clockEventText(clock.today[0]))}${clock.today.length > 1 ? ` +${clock.today.length - 1}` : ''}</span></span>`);
+    }
+    const faces = show.moods !== false ? cast.filter(p => p.mood).map(p => {
+        const style = p.face2 ? ` style="--face-bg2: var(--fb-${p.face2}); --face-ink2: var(--fi-${p.face2})"` : '';
+        return `<span class="iw-ib-who iw-face-${esc(p.face || 'neutral')}${p.persona ? ' iw-ib-me' : ''}" title="${esc(`${p.name} — ${p.mood}`)}"${style}>${faceIcon(p.face || 'neutral', '', true)}<span class="iw-ib-name">${esc(ibShortName(p.name))}</span><span class="iw-ib-mood">${esc(p.mood)}</span></span>`;
+    }).join('') : '';
+    if (!parts.length && !faces) return '';
+    // подробности: настроения с главными чувствами и ближайшие события
+    const rows = show.moods !== false ? cast.filter(p => p.mood).map(p => `<li><b>${esc(p.name)}</b> — ${esc(p.mood)}${p.feels && p.feels.length ? `<span class="iw-ib-feels">${p.feels.map(f => `${esc(f.e)}${f.w === 'deep' ? ' <i>сильно</i>' : ''}`).join(', ')}</span>` : ''}</li>`).join('') : '';
+    const soon = show.events !== false && clock && clock.upcoming ? clock.upcoming.filter(e => e.inDays > 0).slice(0, 3) : [];
+    const evs = soon.map(e => `<li>${calIcon(e.kind)}<span><b>${esc(e.dateText)}</b> ${esc(clockEventText(e))} <em>${esc(clockWhen(e))}</em></span></li>`).join('');
+    const more = rows || evs;
+    return `
+<div class="iw-ib-bar${open ? ' iw-open' : ''}" role="button" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" title="Внутренний мир: нажми — подробности">
+  <span class="iw-ib-line">${parts.join('<span class="iw-ib-sep" aria-hidden="true"></span>')}</span>
+  ${faces ? `<span class="iw-ib-cast">${faces}</span>` : ''}
+  ${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}
+</div>
+${more && open ? `<div class="iw-ib-more">${rows ? `<ul class="iw-ib-people">${rows}</ul>` : ''}${evs ? `<ul class="iw-ib-soon">${evs}</ul>` : ''}</div>` : ''}`;
+}
+
+function ibShortName(n) {
+    const w = String(n || '').trim().split(/\s+/);
+    return w[0] || '';
+}
+
+// Сводка событий после разбора: верхние три строки видны сразу, остальные — по «подробнее».
+export function renderGroupToast(items, theme) {
+    setIconTheme(theme);
+    const rows = items.map((ev, i) => `<li class="iw-group-row${i >= 3 ? ' iw-group-extra' : ''}" data-iw-ev="${i}"><span class="iw-group-ic">${pictIcon(ev.icon || EVENT_ICONS[ev.type] || 'star')}</span><span class="iw-group-line"><b>${esc(ev.who || '')}</b> <em>${esc(eventTitle(ev))}</em> ${ce(eventText(ev))}</span></li>`).join('');
+    const more = items.length > 3 ? items.length - 3 : 0;
+    const label = `подробнее · ещё ${more}`;
+    const pts = items.reduce((n, ev) => n + (Number(ev.points) || 0), 0);
+    return `
+<div class="iw-toast-card iw-ev-${esc(items[0].type)} iw-toast-group" role="status">
+  <span class="iw-tape" aria-hidden="true"></span>
+  <span class="iw-toast-icon">${pictIcon(items[0].icon || EVENT_ICONS[items[0].type] || 'star')}</span>
+  <div class="iw-toast-body">
+    <div class="iw-toast-kicker">${esc(toastKicker(theme, 'note', 'В дневнике'))}</div>
+    <div class="iw-toast-who">${items.length} ${esc(plural(items.length, 'перемена', 'перемены', 'перемен'))}</div>
+    <ul class="iw-group-list">${rows}</ul>
+    ${more ? `<button type="button" class="iw-group-more" data-label="${esc(label)}">${esc(label)}</button>` : ''}
+    ${pts ? `<div class="iw-toast-points">+${esc(String(pts))} ${icon(currencyIcon(theme))}<span>${esc(themeLabels(theme, 'm').currency || '')}</span></div>` : ''}
+  </div>
+  <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
+</div>`;
+}
+
 // Скетчевая стрелка «сюда»: в рисованных темах — от руки, в технических — ломаная линия.
 const TECH_THEMES = ['cyber', 'logbook', 'dossier'];
 function sketchArrow(theme, cls = '') {

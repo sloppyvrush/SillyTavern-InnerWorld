@@ -10,6 +10,7 @@ import {
     purseOf,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
+    eventTitle, signed, WEIGHT_NAMES, moodFaces,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -19,11 +20,11 @@ import {
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
-import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
+import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.2';
+const VERSION = '0.6.3';
 const UPDATED = '20.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -651,7 +652,7 @@ function pinAges(state, messageId) {
 
 function clockPromptText(beforeId) {
     const s = settings();
-    if (s.clock === false || s.clockInject === false) return '';
+    if (s.clock === false) return '';
     const now = clockNow(beforeId);
     if (!now || !now.cal || !now.t) return '';
     const rec = now.h && now.h.rec;
@@ -1032,18 +1033,157 @@ function updateInjection(beforeId) {
     }
     c.setExtensionPrompt(ATTR_PROMPT_KEY, attr, 1, Number(s.attrDepth) || 4, false, 0);
     // часы сцены — у самого конца чата, чтобы модель не теряла время суток и дату
+    // часы сцены модель видит всегда, пока часы включены: даже если «Влияние на ролевую» выключено
     let clockText = '';
-    if (s.enabled && s.inject && hasChat() && c.chat && c.chat.length) {
+    if (s.enabled && hasChat() && c.chat && c.chat.length) {
         try { clockText = clockPromptText(beforeId); } catch (e) { console.warn('[Внутренний мир] часы', e); }
-        // свежий сон (записан в последних сообщениях) — пусть отзовётся в утре героя
+    }
+    if (s.enabled && s.inject && hasChat() && c.chat && c.chat.length) {
+        // свежий сон (записан в последних сообщениях) — пусть отзовётся в утре героя; сны персоны — только для игрока
         try {
             const last = c.chat.length - 1;
-            const fresh = Object.values(liveState(beforeId).characters || {}).map(x => ({ c: x, d: (x.dreams || [])[(x.dreams || []).length - 1] }))
+            const fresh = Object.values(liveState(beforeId).characters || {}).filter(x => x && !x.persona).map(x => ({ c: x, d: (x.dreams || [])[(x.dreams || []).length - 1] }))
                 .filter(x => x.d && x.d.mes !== undefined && last - x.d.mes <= 4);
             if (fresh.length) clockText += `${clockText ? ' ' : ''}[${fresh.map(x => `Прошлой ночью ${x.c.name} снилось: ${x.d.text}${x.d.tone ? ` (${x.d.tone} сон)` : ''}`).join('. ')}. Можно мимоходом отразить это в настроении утром, но не пересказывать сон дословно.]`;
         } catch { /* без сна */ }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
+    lastInjected = { mood: text, attr, clock: clockText, moodDepth: Number(s.injectDepth) || 0, attrDepth: Number(s.attrDepth) || 4, moodLevel: s.moodInfluence, attrLevel: s.attrInfluence };
+}
+
+// ---------- Теги влияния в чате (диагностика) ----------
+// Перед ответом бота запоминаем, что расширение отдало модели; после разбора — что изменилось.
+// Всё это живёт в extra сообщения и рисуется под ним; в промпт не попадает.
+const DIAG_KEY = 'inner_world_diag';
+let lastInjected = null;
+let pendingDiag = null;
+
+function snapshotDiag() {
+    if (!lastInjected) return null;
+    const x = lastInjected;
+    if (!x.mood && !x.attr && !x.clock) return null;
+    return Object.assign({ at: Date.now() }, clone(x));
+}
+
+function diagOf(mes) {
+    const d = mes && mes.extra && mes.extra[DIAG_KEY];
+    if (!d) return null;
+    const sid = typeof mes.swipe_id === 'number' ? mes.swipe_id : 0;
+    return d.sid === undefined || d.sid === sid ? d : null;
+}
+
+function writeDiag(mesId, patch) {
+    const mes = (ctx().chat || [])[mesId];
+    if (!mes) return;
+    const sid = typeof mes.swipe_id === 'number' ? mes.swipe_id : 0;
+    mes.extra = mes.extra || {};
+    const cur = diagOf(mes) || { sid };
+    mes.extra[DIAG_KEY] = Object.assign(cur, patch, { sid });
+}
+
+// Что изменилось после разбора: события дневника, эмоции (новые и ушедшие), отношение к игроку, часы, сны, слухи.
+function diagChanges(base, state, events, extra) {
+    const out = [];
+    for (const ev of [...(events || []), ...(extra || [])]) {
+        if (!ev) continue;
+        out.push({ kind: ev.type, who: ev.who || '', text: `${eventTitle(ev)}${ev.text ? `: ${String(ev.text).slice(0, 140)}` : ''}` });
+    }
+    const chars = (state && state.characters) || {};
+    for (const [k, c] of Object.entries(chars)) {
+        if (!c) continue;
+        const was = base && base.characters && base.characters[k];
+        const before = new Set(((was && was.moodlets) || []).map(m => m.emotion));
+        const now = new Set((c.moodlets || []).map(m => m.emotion));
+        const added = (c.moodlets || []).filter(m => !before.has(m.emotion));
+        const gone = [...before].filter(e => !now.has(e));
+        if (added.length) out.push({ kind: 'mood_up', who: c.name, text: `новые эмоции: ${added.map(m => `${m.emotion}${m.weight ? ` (${WEIGHT_NAMES[m.weight] || m.weight})` : ''}`).join(', ')}` });
+        if (gone.length) out.push({ kind: 'mood_down', who: c.name, text: `прошло: ${gone.join(', ')}` });
+        if (was && was.mood !== c.mood && c.mood) out.push({ kind: 'mood', who: c.name, text: `настроение: ${was.mood || '—'} → ${c.mood}` });
+        const a = was && was.impression ? (was.impression.nowScore ?? was.impression.score) : null;
+        const b = c.impression ? (c.impression.nowScore ?? c.impression.score) : null;
+        if (a !== null && b !== null && a !== b && !c.persona) out.push({ kind: 'attitude', who: c.name, text: `отношение к игроку: ${signed(a)} → ${signed(b)}` });
+        const ca = was && was.chemNow ? was.chemNow.score : null;
+        const cb = c.chemNow ? c.chemNow.score : null;
+        if (ca !== null && cb !== null && ca !== cb && cb !== undefined) out.push({ kind: 'chem', who: c.name, text: `совместимость сейчас: ${signed(ca)} → ${signed(cb)}` });
+    }
+    // события дневника про эмоции и отношение уже есть — не дублируем одинаковые строки
+    const seen = new Set();
+    return out.filter(x => { const k = x.who + '|' + x.text; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 30);
+}
+
+function renderDiagAll() {
+    const on = settings().diag === true && hasChat();
+    const chatEl = document.getElementById('chat');
+    if (!chatEl) return;
+    if (!on) { chatEl.querySelectorAll('.iw-diag').forEach(el => el.remove()); return; }
+    const chat = ctx().chat || [];
+    for (const el of chatEl.querySelectorAll('.mes[mesid]')) {
+        const id = Number(el.getAttribute('mesid'));
+        const mes = chat[id];
+        const html = mes ? diagHtml(mes, id) : '';
+        let box = el.querySelector(':scope .iw-diag');
+        if (!html) { if (box) box.remove(); continue; }
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'iw-diag';
+            const anchor = el.querySelector('.mes_text');
+            if (!anchor) continue;
+            anchor.after(box);
+        }
+        box.className = `iw-diag iw-diag-${currentTheme}`;
+        if (box.dataset.sig !== html.length + ':' + id) {
+            const open = box.querySelector('details[open]');
+            box.innerHTML = html;
+            if (open) box.querySelector('details') && box.querySelector('details').setAttribute('open', '');
+            box.dataset.sig = html.length + ':' + id;
+        }
+    }
+}
+
+function diagHtml(mes, id) {
+    const d = diagOf(mes);
+    const rec = clockRecOf(mes);
+    const chips = [];
+    const chip = (kind, label, text, title = '') => chips.push(`<span class="iw-dg iw-dg-${kind}"${title ? ` title="${esc(title)}"` : ''}><i>${esc(label)}</i>${esc(text)}</span>`);
+    // часы: какое время у этого сообщения и почему
+    if (rec && rec.t) {
+        const cal = calendarOf() || normCalendar({ type: 'greg' });
+        const WHY = { stamp: 'по отметке в тексте', skip: 'по скачку времени', model: 'поправил дневник', step: 'обычный шаг', manual: 'вручную', detect: 'определил дневник', locked: 'часы на паузе', same: 'без изменений' };
+        const sz = rec.size > 0 ? ` (+${fmtSpan(rec.size)})` : (rec.size < 0 ? ` (назад ${fmtSpan(-rec.size)})` : '');
+        try { chip('clock', 'время', `${fmtDate(cal, normTime(cal, rec.t), { year: false })}, ${fmtTime(rec.t)}${sz}`, `${WHY[rec.why] || rec.why || ''}${rec.user ? ' · из сообщения игрока' : ''}`); } catch { /* без часов */ }
+    }
+    if (d && d.sent) {
+        const x = d.sent;
+        const LEVEL = { 1: 'очень сильно', 2: 'сильно', 4: 'обычно', 6: 'мягко', 10: 'еле заметно' };
+        // по строкам подсказки «Имя: …» — один тег на персонажа: настроение, чувства, отношение и что ещё ушло модели
+        const people = [];
+        for (const line of String(x.mood || '').split('\n').slice(1)) {
+            const m = line.match(/^([^:]{1,60}):\s*(.*)$/);
+            if (!m) continue;
+            const body = m[2];
+            const mood = (body.match(/сейчас ([^;.]+)/) || [])[1];
+            const soul = (body.match(/на душе: ([^.]+)/) || [])[1];
+            const feels = soul ? soul.split('; ').map(f => f.split(' — ')[0]).slice(0, 2) : [];
+            const att = (body.match(/отношение к игроку[^:]*: ([+−-]?\d+)/) || [])[1];
+            const what = [/хочет:/.test(body) && 'желания', /боится:/.test(body) && 'страхи', /только что сбылось то, чего боялся/.test(body) && 'страх сбылся!', /мечта:/.test(body) && 'мечта', /сам дарит|сейчас действует|вплети в ближайший ответ/.test(body) && 'награда'].filter(Boolean);
+            people.push({ who: m[1], text: [mood, feels.join(', '), att !== undefined ? `отн. ${att}` : '', what.join(', ')].filter(Boolean).join(' · ') });
+        }
+        const LEVELW = LEVEL[x.moodDepth] || 'обычно';
+        people.slice(0, 3).forEach(p => chip('mood', p.who.split(/\s+/)[0], p.text, `${p.who}: что ушло модели (настойчивость — ${LEVELW})`));
+        if (people.length > 3) chip('mood', `+${people.length - 3}`, plural(people.length - 3, 'персонаж', 'персонажа', 'персонажей'), people.slice(3).map(p => `${p.who}: ${p.text}`).join('\n'));
+        if (x.attr) chip('attr', 'притяжение', ({ strong: 'заметно', medium: 'проскальзывает', light: 'оттенок' }[x.attrLevel] || 'есть'), 'что привлекает и отталкивает → модели');
+        if (/снилось:/.test(x.clock || '')) chip('night', 'сон', 'свежий — в настроении', 'свежий сон → модели: может отозваться в настроении героя');
+    }
+    const after = d && d.after ? d.after : [];
+    if (!chips.length && !after.length && !(d && d.sent)) return '';
+    const tok = t => Math.round(String(t || '').length / 3.6);
+    const sentTxt = d && d.sent ? [['Эмоции, желания, отношение', d.sent.mood], ['Притяжение', d.sent.attr], ['Часы сцены и сон', d.sent.clock]].filter(([, t]) => t) : [];
+    const total = sentTxt.reduce((n, [, t]) => n + tok(t), 0);
+    return `<div class="iw-dg-row"><b class="iw-dg-head" title="Теги влияния «Внутреннего мира» — видны только тебе">ВМ</b>${chips.join('')}${after.length ? `<span class="iw-dg iw-dg-after"><i>после разбора</i>${after.length} ${plural(after.length, 'перемена', 'перемены', 'перемен')}</span>` : ''}</div>`
+        + (sentTxt.length || after.length ? `<details class="iw-dg-more"><summary>${sentTxt.length ? `что ушло модели · ≈${total} ток.` : ''}${sentTxt.length && after.length ? ' · ' : ''}${after.length ? 'что изменилось' : ''}</summary>`
+            + (after.length ? `<ul class="iw-dg-after-list">${after.map(a => `<li class="iw-dg-k-${esc(a.kind)}"><b>${esc(a.who)}</b> ${esc(a.text)}</li>`).join('')}</ul>` : '')
+            + sentTxt.map(([n, t]) => `<div class="iw-dg-sent"><div class="iw-dg-sent-h">${esc(n)} · ≈${tok(t)} ток.</div><pre>${esc(t)}</pre></div>`).join('')
+            + '</details>' : '');
 }
 
 // ---------- Анализ ----------
@@ -1605,6 +1745,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             fresh = fresh.filter(x => allowed.some(n => sameName(n, x.name)));
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
+        evBatch = [];
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
         fillBornFromCards(state);
         // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
@@ -1648,13 +1789,21 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         await ctx().saveChat();
         status = fromLore ? 'Дневник дополнен по карточке и лорбуку' : (catchUp ? `Дневник заполнен по истории чата (до сообщения #${messageId})` : `Обновлено после сообщения #${messageId}`);
+        // сны, слухи, подарки, собранные по ходу разбора, — вместе с событиями дневника
+        const extra = evBatch || [];
+        evBatch = null;
         if (!catchUp && !fromLore) {
-            if (s.toasts) events.forEach((ev, i) => showEvent(ev, i * 450));
+            try { writeDiag(messageId, { after: diagChanges(base, state, events, extra.filter(x => x.type !== 'achievement')) }); saveChatSoon(); } catch (e) { console.warn('[Внутренний мир] теги', e); }
+        }
+        if (!catchUp && !fromLore) {
+            if (s.toasts) flushEvents([...events, ...extra]);
             else if (s.sound !== false && events.length) playSound(events[0].type, currentTheme);
         }
         if (events.length && !isOpen()) markFab(true);
         if (!view) view = '';
     } catch (err) {
+        if (evBatch && evBatch.length) { const left = evBatch; evBatch = null; flushEvents(left); }
+        evBatch = null;
         if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
         const info = classifyError(err, { raw, budget, cut: looksCut(raw) && /JSON|испорчен|персонаж/.test(String(err && err.message)), thinking: settings().thinking });
@@ -1720,9 +1869,68 @@ function playSmiles(el, ms = 3500) {
     }
 }
 
+// Пока идёт разбор, события копятся здесь и после разбора показываются одним уведомлением.
+let evBatch = null;
+
+// Важность события для звука и порядка в сводке: что сильнее — то и звучит.
+const EV_RANK = ['dream_done', 'fear_real', 'want_done', 'dream_change', 'trait_new', 'trait_gone', 'dream_step', 'dream_grow', 'fear_gone', 'trait_up', 'trait_down', 'impression', 'attitude', 'reward', 'night', 'rumor', 'note'];
+function evRank(t) { const i = EV_RANK.indexOf(t); return i < 0 ? EV_RANK.length : i; }
+
+// После разбора: ачивки — каждая отдельно (их редко больше одной), остальное — одним уведомлением,
+// если событий больше двух; одно-два — как раньше, по отдельности.
+function flushEvents(list) {
+    const items = (list || []).filter(Boolean);
+    if (!items.length) return;
+    if (items.length <= 2) { items.forEach((ev, i) => showEvent(ev, i * 450)); return; }
+    showGroup(items);
+}
+
+function showGroup(items) {
+    if (settings().popups === false) return;
+    const sorted = [...items].sort((a, b) => evRank(a.type) - evRank(b.type));
+    const box = toastBox();
+    const wrap = document.createElement('div');
+    wrap.className = 'iw-toast-wrap';
+    wrap.innerHTML = renderGroupToast(sorted, currentTheme);
+    let timer = null;
+    const close = () => {
+        if (timer) clearTimeout(timer);
+        wrap.classList.add('iw-out');
+        setTimeout(() => wrap.remove(), 350);
+    };
+    wrap.addEventListener('click', e => {
+        if (e.target.closest('.iw-toast-close')) return close();
+        if (e.target.closest('.iw-group-more')) {
+            // раскрыли — больше не закрываем сами: человек читает
+            const card = wrap.querySelector('.iw-toast-group');
+            card.classList.toggle('iw-open');
+            const btn = wrap.querySelector('.iw-group-more');
+            btn.textContent = card.classList.contains('iw-open') ? 'свернуть' : btn.dataset.label;
+            if (timer) { clearTimeout(timer); timer = null; }
+            return;
+        }
+        const row = e.target.closest('[data-iw-ev]');
+        const ev = row ? sorted[Number(row.dataset.iwEv)] : sorted[0];
+        const st = currentState();
+        const key = ev && st.order.find(k => sameName(k, ev.who));
+        if (key) {
+            const cast = splitCast(st);
+            view = key === cast.personaKey ? 'me:' + key : (cast.mains.includes(key) ? 'main:' + key : 'npc:' + key);
+        }
+        openPanel();
+        close();
+    });
+    box.appendChild(wrap);
+    playSmiles(wrap);
+    if (settings().sound !== false) playSound(sorted[0].type, currentTheme);
+    timer = setTimeout(close, 14000);
+}
+
 function showEvent(ev, delay = 0) {
     // всплывашки выключены: событие всё равно записано (витрина, лента), просто не показываем
     if (settings().popups === false) return;
+    // идёт разбор — копим, ачивку показываем сразу
+    if (evBatch && ev.type !== 'achievement') { evBatch.push(ev); return; }
     setTimeout(() => {
         const box = toastBox();
         const wrap = document.createElement('div');
@@ -1793,6 +2001,7 @@ async function onMessageReceived(messageId, type) {
         return;
     }
     try { stepClock(id); } catch (e) { console.warn('[Внутренний мир] часы', e); }
+    if (pendingDiag) { try { writeDiag(id, { sent: pendingDiag, after: [] }); } catch { /* без тегов */ } pendingDiag = null; }
     updateInjection();
     // режим «пока бот пишет»: дневник уже разобран в начале генерации — здесь только часы
     if (s.analyzeWhen === 'parallel') {
@@ -1824,8 +2033,35 @@ function nextAnalysisIn() {
     return every - ((chatMeta().counter || 0) % every);
 }
 
+// Сообщение игрока: «прошло два дня», «наутро», отметка времени — часы сдвигаются сразу, ещё до ответа бота,
+// чтобы бот писал уже в новом времени. Обычного шага за сообщение игрока нет — его даёт ответ бота.
+function stepUserClock(messageId) {
+    const s = settings();
+    if (s.clock === false || !hasChat()) return false;
+    const chat = ctx().chat || [];
+    const mes = chat[messageId];
+    if (!mes || !mes.is_user || !mes.mes || clockRecOf(mes)) return false;
+    const prev = findClock(messageId);
+    const cal = chatMeta().calendar || prev.cal || null;
+    if (!cal) return false;
+    const cur = prev.t ? normTime(cal, prev.t) : null;
+    if (!cur || chatMeta().clockLocked) return false;
+    const res = advance(cal, cur, [mes.mes], { step: 0 });
+    if (!res || !res.t || res.why === 'same') return false;
+    writeClock(messageId, { t: res.t, prev: cur, why: res.why, size: toMinutes(cal, res.t) - toMinutes(cal, cur), user: true });
+    ctx().saveMetadataDebounced?.();
+    return true;
+}
+
 function onGenerationStarted(type, _options, dryRun) {
     if (dryRun) return;
+    if (type !== 'swipe' && type !== 'regenerate' && hasChat()) {
+        try {
+            const chat = ctx().chat || [];
+            const lastId = chat.length - 1;
+            if (chat[lastId] && chat[lastId].is_user && stepUserClock(lastId)) saveChatSoon();
+        } catch (e) { console.warn('[Внутренний мир] часы по сообщению игрока', e); }
+    }
     // При свайпе и перегенерации прячем то, что было посчитано по заменяемому ответу.
     if (type === 'swipe' || type === 'regenerate') {
         const last = lastBotMessageId();
@@ -1833,6 +2069,8 @@ function onGenerationStarted(type, _options, dryRun) {
     } else {
         updateInjection();
     }
+    // что именно ушло модели перед этим ответом — для тегов влияния
+    pendingDiag = snapshotDiag();
     // «Пока бот пишет»: разбираем всё до последней реплики игрока параллельно с ответом бота.
     // К концу ответа дневник уже обновлён; сам ответ бота попадёт в следующий разбор.
     const s = settings();
@@ -2158,6 +2396,73 @@ function safeClockView() {
     try { return clockView(); } catch (e) { console.warn('[Внутренний мир] часы', e); return null; }
 }
 
+// ---------- Инфоблок над чатом ----------
+// Свой теневой DOM со стилями дневника: плашка в стиле выбранной темы и не задевает стили таверны.
+let ibOpen = false;
+const WEIGHT_RANK_IB = { deep: 3, medium: 2, light: 1 };
+
+function infobarModel() {
+    const s = settings();
+    const clock = s.clock !== false ? safeClockView() : null;
+    const st = liveState();
+    const cast = [];
+    try {
+        const { mains, personaKey } = splitCast(st);
+        for (const k of [...mains, personaKey].filter(Boolean)) {
+            const c = st.characters[k];
+            if (!c || !c.mood) continue;
+            const [face, face2] = moodFaces(c);
+            const feels = [...(c.moodlets || [])].sort((a, b) => (WEIGHT_RANK_IB[b.weight] || 2) - (WEIGHT_RANK_IB[a.weight] || 2)).slice(0, 3).map(m => ({ e: m.emotion, w: m.weight }));
+            cast.push({ name: c.name, mood: c.mood, face, face2, feels, persona: !!c.persona || k === personaKey });
+        }
+    } catch { /* без настроений */ }
+    return { clock: clock && clock.t ? clock : null, cast: cast.slice(0, 4), show: { time: s.ibTime, date: s.ibDate, weather: s.ibWeather && s.weather !== false, events: s.ibEvents, moods: s.ibMoods } };
+}
+
+function renderInfobar() {
+    const s = settings();
+    let host = document.getElementById('iw_infobar');
+    const chatEl = document.getElementById('chat');
+    if (!s.enabled || s.infobar === false || !hasChat() || !chatEl) {
+        if (host) host.remove();
+        return;
+    }
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'iw_infobar';
+        host.style.cssText = 'display:block;flex:0 0 auto;position:relative;z-index:3;';
+        const root = host.attachShadow({ mode: 'open' });
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = `${UI_CSS}?v=${VERSION}`;
+        root.appendChild(link);
+        const wrap = document.createElement('div');
+        wrap.className = 'iw-ib-wrap';
+        root.appendChild(wrap);
+        const toggle = e => {
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+            if (!e.composedPath().some(n => n.classList && n.classList.contains('iw-ib-bar'))) return;
+            e.preventDefault();
+            ibOpen = !ibOpen;
+            renderInfobar();
+        };
+        wrap.addEventListener('click', toggle);
+        wrap.addEventListener('keydown', toggle);
+    }
+    // место: над сообщениями или над полем ввода
+    const form = document.getElementById('form_sheld');
+    if (s.infobarPos === 'bottom' && form) { if (host.nextElementSibling !== form) form.before(host); }
+    else if (host.nextElementSibling !== chatEl) chatEl.before(host);
+    const html = renderInfobarHtml(infobarModel(), currentTheme, ibOpen);
+    const wrap = host.shadowRoot.querySelector('.iw-ib-wrap');
+    wrap.className = `iw-ib-wrap iw-theme-${currentTheme} iw-ib-${s.infobarPos === 'bottom' ? 'bottom' : 'top'}${s.animations === false ? ' iw-noanim' : ''}`;
+    host.hidden = !html;
+    if (wrap.dataset.html !== html) {
+        wrap.innerHTML = html;
+        wrap.dataset.html = html;
+    }
+}
+
 // Телефон: кнопки разбора переезжают в шапку. Перерисовываем, когда экран переходит через границу (поворот, окно).
 const PHONE_QUERY = typeof matchMedia === 'function' ? matchMedia('(max-width: 760px)') : null;
 function isPhone() {
@@ -2207,6 +2512,8 @@ function renderAll() {
     const fab = document.getElementById('iw_fab');
     if (fab) fab.classList.toggle('iw-noanim', settings().animations === false);
     renderPanelNow();
+    try { renderDiagAll(); } catch (e) { console.warn('[Внутренний мир] теги', e); }
+    try { renderInfobar(); } catch (e) { console.warn('[Внутренний мир] инфоблок', e); }
 }
 
 async function openPanel() {
@@ -3629,6 +3936,11 @@ function init() {
     c.eventSource.on(ev.CHAT_CHANGED, onChatChanged);
     c.eventSource.on(ev.MESSAGE_SWIPED, () => { updateInjection(); renderAll(); });
     c.eventSource.on(ev.MESSAGE_DELETED, () => { updateInjection(); renderAll(); });
+    // теги влияния и инфоблок живут рядом с сообщениями: перерисовываем, когда таверна дорисовала чат
+    const redrawChatBits = () => setTimeout(() => { try { renderDiagAll(); renderInfobar(); } catch { /* без тегов */ } }, 60);
+    for (const name of ['CHARACTER_MESSAGE_RENDERED', 'USER_MESSAGE_RENDERED', 'MORE_MESSAGES_LOADED', 'MESSAGE_EDITED', 'MESSAGE_UPDATED', 'CHAT_LOADED']) {
+        if (ev[name]) c.eventSource.on(ev[name], redrawChatBits);
+    }
     document.querySelectorAll('#chat .iw-badge').forEach(b => b.remove());
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) closePanel(); });
     // «Аська» на телефоне: наведения нет, поэтому смайлик оживает от касания

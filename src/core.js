@@ -38,7 +38,15 @@ export const DEFAULT_SETTINGS = {
     budgetMode: 'auto',      // auto — запас считается по сцене, но не выше потолка; fixed — ровно responseLength
     budgetCap: 8000,
     responseLength: 4000,
-    thinking: 'low',         // сколько модели думать на разборах: low / medium / high / chat (как в основном чате)
+    thinking: 'low',
+    diag: false,             // теги влияния под сообщениями (для проверки)
+    infobar: true,           // инфоблок над чатом
+    infobarPos: 'top',
+    ibTime: true,
+    ibDate: true,
+    ibWeather: true,
+    ibEvents: true,
+    ibMoods: true,         // сколько модели думать на разборах: low / medium / high / chat (как в основном чате)
     persona: true,           // вести дневник персоны игрока (только для информации, на ответы бота не влияет)
     maxChars: 12,
     language: 'русском',
@@ -452,6 +460,7 @@ export function mergeSettings(saved) {
     if (!['auto', 'fixed'].includes(s.budgetMode)) s.budgetMode = 'auto';
     s.budgetCap = Math.max(2000, Math.min(32000, Number(s.budgetCap) || 8000));
     if (!THINKING_OPTIONS.some(([k]) => k === s.thinking)) s.thinking = 'low';
+    if (!['top', 'bottom'].includes(s.infobarPos)) s.infobarPos = 'top';
     s.responseLength = Math.max(1000, Math.min(32000, Number(s.responseLength) || 4000));
     delete s.badges;
     delete s.track;

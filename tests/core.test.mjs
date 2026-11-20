@@ -1114,3 +1114,29 @@ test('сны: список на ночь, по одному на каждого,
     assert.equal(C2.cleanNightDreams({ who: 'Виктор', text: 'Один сон' }).length, 1);
     assert.deepEqual(C2.cleanNightDreams(null), []);
 });
+
+test('часы: сторонние инфоблоки в HTML и размышления не мешают', () => {
+    const g = C.normCalendar({ type: 'greg' });
+    const html = '<think>в 1985 году ему было 27</think><div class="status"><span>📅 9 мая 1997</span> · <span>07:20</span></div>\n\nТекст сцены.';
+    const st = C.findStamp(html, g);
+    assert.deepEqual(st.date, { d: 9, m: 5, y: 1997 });
+    assert.deepEqual(st.time, { h: 7, mi: 20 });
+    // «прошло два дня» в сообщении игрока
+    const cur = { y: 1997, m: 5, d: 9, h: 7, mi: 20 };
+    const r = C.advance(g, cur, ['*Прошло два дня.*'], { step: 0 });
+    assert.equal(r.why, 'skip');
+    assert.equal(r.t.d, 11);
+    assert.equal(C.advance(g, cur, ['Привет!'], { step: 0 }).why, 'same');
+});
+
+test('часы: «через три дня ей исполнится» — не скачок; «прошло два дня. Вечером» — вечер', () => {
+    const g = C.normCalendar({ type: 'greg' });
+    assert.equal(C.findSkip('Он помнил то, что через три дня, в среду, ей исполнится двадцать восемь.'), null);
+    assert.equal(C.findSkip('Через неделю будет суд.'), null);
+    assert.equal(C.findSkip('Через два часа они вернулись домой.').add, 120);
+    assert.equal(C.findSkip('Они поужинали, а через час легли спать.').add, 60);
+    const cur = { y: 1997, m: 8, d: 15, h: 8, mi: 10 };
+    const r = C.advance(g, cur, ['*Прошло два дня. Вечером Ева вернулась с работы.*'], { step: 0 });
+    assert.equal(r.t.d, 17);
+    assert.equal(r.t.h, 19);
+});

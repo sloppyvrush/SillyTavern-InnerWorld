@@ -337,8 +337,21 @@ function looksLikeStamp(line) {
 }
 
 // Ищет в начале или в конце ответа строку-отметку с временем и/или датой. Возвращает { time, date, wd } или null.
+// Текст ответа без разметки: размышления (<think>, <plan>) выкидываем, HTML-инфоблоки сторонних расширений
+// разворачиваем в строки, брайлевские и неразрывные пробелы — в обычные.
+export function plainForClock(text) {
+    return String(text || '')
+        .replace(/<(think|thinking|plan|reasoning)\b[^>]*>[\s\S]*?<\/\1>/gi, '\n')
+        .replace(/<style\b[\s\S]*?<\/style>/gi, '\n')
+        .replace(/<(br|\/p|\/div|\/li|\/tr|\/td|\/th|\/h\d|\/summary|\/details|\/section|\/header|\/span)\b[^>]*>/gi, m => (/^<\/span/i.test(m) ? ' ' : '\n'))
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/[\u2800\u00a0]/g, ' ')
+        .replace(/[ \t]+/g, ' ');
+}
+
 export function findStamp(text, cal = null) {
-    const lines = String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    const lines = plainForClock(text).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     if (!lines.length) return null;
     const pool = lines.length <= 12 ? lines : [...lines.slice(0, 6), ...lines.slice(-6)];
     let found = null;
@@ -413,14 +426,39 @@ function narrativeOnly(text) {
         .replace(/(^|\n)\s*[—–-]\s[^\n]*/g, '$1');
 }
 
+// Время суток, названное в повествовании: «вечером», «утром», «днём», «ночью» (первое по тексту).
+export function partWordHour(text) {
+    const t = ' ' + narrativeOnly(plainForClock(text)).toLowerCase().replace(/ё/g, 'е') + ' ';
+    const words = [[/[^а-я](утром|с утра|рано утром|на рассвете)[^а-я]/, 8], [/[^а-я](днем|в полдень|после обеда)[^а-я]/, 13], [/[^а-я](вечером|под вечер|к вечеру)[^а-я]/, 19], [/[^а-я](ночью|поздно ночью|за полночь)[^а-я]/, 23]];
+    let best = null;
+    for (const [re, h] of words) {
+        const m = re.exec(t);
+        if (m && (!best || m.index < best.i)) best = { i: m.index, h };
+    }
+    return best ? best.h : null;
+}
+
+// Будущее время в той же фразе: это план, а не скачок времени.
+const FUTURE_RE = /(исполнит|будет|будут|состоит|наступит|приедет|приедут|начнет|начнется|закончит|вернется|вернет|уедет|придет|придется|планир|собира|обеща|will |going to)/;
+
 // Возвращает самый большой найденный скачок: { add: минуты } или { at: час, next: true|false }.
 export function findSkip(text) {
-    const t = ' ' + narrativeOnly(text).toLowerCase().replace(/ё/g, 'е') + ' ';
+    const t = ' ' + narrativeOnly(plainForClock(text)).toLowerCase().replace(/ё/g, 'е') + ' ';
     let best = null;
     const take = (cand, size) => { if (!best || size > best.size) best = Object.assign({ size }, cand); };
     let r;
+    // «через два дня» — скачок, только если с него начинается предложение и это не план на будущее
+    // («то, что через три дня ей исполнится…», «через неделю будет суд» — не скачок)
     const re1 = new RegExp(`(?:через|спустя|after)\\s+(?:${NUM_RE}\\s+)?(?:с\\s+)?${UNIT_RE}`, 'g');
-    while ((r = re1.exec(t))) { const v = numOf(r[1]) * unitMin(r[2]); take({ add: v }, v); }
+    while ((r = re1.exec(t))) {
+        const startOk = /(?:^\s*|[.!?…»"*_)\n—–]\s*)$/.test(t.slice(Math.max(0, r.index - 20), r.index));
+        const clause = t.slice(r.index, r.index + 90).split(/[.!?…\n]/)[0];
+        if (FUTURE_RE.test(clause)) continue;
+        // посреди фразы — только если дальше прошедшее время («а через час легли спать»)
+        if (!startOk && !/(^|[^а-я])[а-я]{2,}(?:л|ла|ло|ли|лся|лась|лись)(?=[^а-я]|$)/.test(clause.slice(r[0].length))) continue;
+        const v = numOf(r[1]) * unitMin(r[2]);
+        take({ add: v }, v);
+    }
     const re2 = new RegExp(`(?:${NUM_RE}\\s+)?${UNIT_RE}\\s+(?:спустя|later)`, 'g');
     while ((r = re2.exec(t))) { const v = numOf(r[1]) * unitMin(r[2]); take({ add: v }, v); }
     const re3 = new RegExp(`прош(?:ло|ла|ел|ли)\\s+(?:еще\\s+|целых\\s+|почти\\s+)?(?:${NUM_RE}\\s+)?${UNIT_RE}`, 'g');
@@ -487,7 +525,18 @@ export function advance(cal, cur, texts, { step = 5 } = {}) {
         const size = toMinutes(cal, a) - toMinutes(cal, cur);
         if (!skip || size > skip.size) skip = { t: a, size };
     }
-    if (skip && skip.size > 0) return { t: skip.t, why: 'skip', size: skip.size };
+    if (skip && skip.size > 0) {
+        // «прошло два дня. Вечером…» — после скачка на сутки и больше ставим названное время суток
+        if (skip.size >= 1440 && !findStamp(botText, cal)) {
+            const tod = partWordHour(all.join('\n'));
+            if (tod !== null) {
+                const at = atHour(cal, skip.t, tod);
+                const size = toMinutes(cal, at) - toMinutes(cal, cur);
+                if (size > 0) return { t: at, why: 'skip', size };
+            }
+        }
+        return { t: skip.t, why: 'skip', size: skip.size };
+    }
     if (step > 0) return { t: addMinutes(cal, cur, step), why: 'step', size: step };
     return { t: cur, why: 'same', size: 0 };
 }
@@ -651,7 +700,7 @@ export function clockInjection(cal, t, { people = [], lastSkip = 0, lang = 'ru' 
     const ages = (people || []).map(p => ({ name: p.name, age: ageNow(cal, t, p) })).filter(x => x.age !== null && x.age >= 0).slice(0, 10);
     if (ages.length) parts.push(`Возраст сейчас: ${ages.map(x => `${x.name} — ${x.age}`).join(', ')} (это актуальный возраст на дату сцены — он важнее возраста, написанного в карточке и лорбуке).`);
     if (cal.type === 'custom') parts.push(`Календарь мира свой${cal.name ? ` («${cal.name}»)` : ''}: месяцы — ${cal.months.map(x => x.name).join(', ')}${cal.weekdays && cal.weekdays.length ? `; дни недели — ${cal.weekdays.join(', ')}` : ''}.`);
-    parts.push('Учитывай время суток, день недели и сколько прошло времени. Время в истории идёт только вперёд.');
+    parts.push('Это текущие часы сцены — держи их в голове всегда: учитывай время суток, день недели, погоду по сезону и сколько прошло. Если в последних сообщениях время сдвинулось («прошло два дня», «наутро», «через час»), считай уже от новой точки. Время в истории идёт только вперёд.');
     return `[${parts.join(' ')}]`;
 }
 
