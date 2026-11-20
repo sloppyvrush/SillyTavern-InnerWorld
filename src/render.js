@@ -928,7 +928,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.traits) blocks.push(renderPersona(c, L, opts));
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
-    if (opts.nights && !opts.persona && !opts.npc) blocks.push(renderNights(c));
+    if (opts.nights && !opts.npc) blocks.push(renderNights(c));
     if (Array.isArray(opts.rumors) && !opts.npc) blocks.push(renderRumors(opts.rumors, c.name, !!opts.persona));
     // порядок блоков: свой (перетащила игрок) или обычный; хроника — в самом низу
     const order = orderOfBlocks(opts.blockOrder);
@@ -1116,7 +1116,7 @@ export function renderClock(clock) {
     const evRow = e => `<li class="iw-clock-ev iw-clock-${e.kind}"${e.about ? ` title="${esc(e.about)}"` : ''}><span class="iw-ev-ico">${calIcon(e.kind)}</span><span class="iw-ev-body"><span class="iw-ev-when"><b>${esc(e.dateText)}</b><em>${esc(clockWhen(e))}</em></span><span class="iw-ev-name">${esc(clockEventText(e))}</span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span></li>`;
     const evAll = clock.upcoming || [];
     const events = evAll.length ? `<ul class="iw-clock-events">${evAll.slice(0, 3).map(evRow).join('')}</ul>${evAll.length > 3 ? `<details class="iw-clock-evmore"><summary>${icon('chevron')}<span>Ещё ${evAll.length - 3}</span></summary><ul class="iw-clock-events">${evAll.slice(3).map(evRow).join('')}</ul></details>` : ''}` : '<p class="iw-muted iw-clock-noev">В ближайший год ничего не отмечено</p>';
-    const hols = (clock.holidays || []).map((h, i) => `<li class="iw-clock-${h.kind}"><span>${esc(h.dateText)} — ${esc(h.kind === 'canon' && h.who ? `${h.who}: ${h.name}` : h.name)}${h.years ? `<small class="iw-muted"> (${esc(h.years)})</small>` : ''}</span><button type="button" class="iw-mini iw-clock-x" data-iw-clock="hol-del:${i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></li>`).join('');
+    const hols = (clock.holidays || []).map((h, i) => `<li class="iw-clock-${h.kind}"><span>${esc(h.dateText)} — ${esc(h.kind === 'canon' && h.who ? `${h.who}: ${h.name}` : h.name)}</span><button type="button" class="iw-mini iw-clock-x" data-iw-clock="hol-del:${h.idx ?? i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></li>`).join('');
     return `
 <details class="iw-clock"${clock.open ? ' open' : ''}>
   <summary class="iw-clock-bar" title="Часы и календарь сцены">

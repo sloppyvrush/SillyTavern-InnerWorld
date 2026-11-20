@@ -1,5 +1,5 @@
 // Настройки «Внутреннего мира» — одна схема, два вида: в панели расширений таверны и внутри дневника.
-import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS } from './core.js';
+import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS } from './core.js';
 import { THEMES, THEME_IDS, THEME_SWATCHES } from './themes.js';
 import { API_KINDS } from './api.js';
 
@@ -43,7 +43,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'onlyPresent', label: 'Экономия: только те, кто сейчас в сцене', hint: 'Остальные персонажи ждут, пока снова не появятся.' },
                 { type: 'select', key: 'maxChars', label: 'Сколько персонажей держать в дневнике', options: n([4, 6, 8, 12, 16, 20]) },
                 { type: 'toggle', key: 'clock', label: 'Часы и календарь сцены', hint: 'Дата и время истории над дневником: сами понимают таймскипы и строчки вида «[02:50 | 08.10.1996]», календарь подстраивается под сеттинг, есть праздники и дни рождения.' },
-                { type: 'select', key: 'clockStep', label: 'Сколько времени проходит за обычный ответ', options: [[0, 'нисколько — только явные скачки'], [1, '1 минута'], [2, '2 минуты'], [5, '5 минут'], [10, '10 минут'], [15, '15 минут'], [30, '30 минут']], show: s => s.clock !== false, hint: 'Если в ответе нет ни отметки времени, ни «через два дня», часы сдвигаются на столько.' },
+                { type: 'select', key: 'clockStep', label: 'Часы сцены: шаг за обычный ответ', options: [[0, 'не двигать — только по тексту'], [1, '1 минута'], [2, '2 минуты'], [5, '5 минут'], [10, '10 минут'], [15, '15 минут'], [30, '30 минут']], show: s => s.clock !== false, hint: 'Это время ВНУТРИ истории, а не то, сколько модель думает или пишет. Каждый ответ бота часы сцены двигаются сами: по отметке времени в ответе, по названной дате, по «через два часа» или «наутро». Если в ответе ничего такого нет — на этот шаг: 5 минут подходят для разговора, 0 — если время у вас стоит, пока его не назовут.' },
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
                 { type: 'toggle', key: 'achievements', label: 'Достижения на витрине', hint: 'Когда в истории случается что-то крупное, дневник сам выдаёт достижение и ставит его на полку витрины. Почти не тратит токенов: строчка в ответе только в важные моменты.' },
                 { type: 'toggle', key: 'dreams', label: 'Сны героев', hint: 'Когда герой ложится спать или наступает утро, дневник записывает, о чём он думал, засыпая, и что ему снилось. Сон мягко отзывается в его утре.' },
@@ -70,6 +70,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'text', key: 'apiKey', input: 'password', label: 'Ключ API', placeholder: 'вставь ключ', show: own },
                 { type: 'model', key: 'apiModel', label: 'Модель', options: models, show: own },
                 { type: 'buttons', show: custom, buttons: [{ id: 'testApi', label: 'Проверить подключение', hint: ctx.apiStatus || '' }] },
+                { type: 'select', key: 'thinking', label: 'Сколько модели думать при разборе', options: THINKING_OPTIONS, hint: 'Разбор — это выписка из готового текста, долгие размышления ему почти не нужны. Думающие модели (Gemini 3 и 4, GLM, DeepSeek и похожие) иначе тратят на размышления весь запас, и запись обрывается. «Как в основном чате» — как выставлено в таверне.' },
                 { type: 'select', key: 'budgetMode', label: 'Запас на ответ модели', options: [['auto', 'сам, по размеру сцены'], ['fixed', 'как я задам']], hint: s => (s.budgetMode === 'fixed' ? 'Каждый запрос получает ровно столько. Если ответы обрываются — увеличь.' : 'Дневник считает запас сам: сколько персонажей в сцене, какой разбор, думающая ли модель. Платишь только за то, что модель написала, а запас лишь не даёт ей оборваться. Повторных запросов дневник сам не делает.') },
                 { type: 'select', key: 'budgetCap', label: 'Потолок на один ответ', options: BUDGET_CAP_OPTIONS.map((v, i) => [v, i === 0 ? `${v} токенов` : (v === 8000 ? '8000 (обычно)' : String(v))]), show: s => s.budgetMode !== 'fixed', hint: 'Больше этого дневник не попросит ни при каком разборе. Защищает от слишком долгих размышлений модели.' },
                 { type: 'select', key: 'responseLength', label: 'Запас на каждый ответ', options: RESPONSE_LENGTH_OPTIONS.map((v, i) => [v, i === 0 ? `${v} токенов` : String(v)]), show: s => s.budgetMode === 'fixed', hint: 'Думающие модели (Gemini 3 Pro и похожие) тратят запас ещё и на размышления.' },
@@ -95,7 +96,7 @@ export function settingsSchema(ctx = {}) {
             title: 'Этот чат',
             fields: [
                 { type: 'books', label: 'Лорбуки для разбора', options: books, studied: ctx.studied || [], html: ctx.booksHtml || '', hint: 'Кроме лорбука персонажа можно доизучить книгу памяти или лорбук мира — сведения добавятся, а не заменятся.' },
-                { type: 'forget', only: 'diary', label: 'Забыть персонажа', html: ctx.forgetHtml || '', hint: 'Персонаж пропадёт из дневника этого чата. Если он снова появится в сцене, дневник заведёт его заново.' },
+                { type: 'forget', only: 'diary', label: 'Забыть персонажа', html: ctx.forgetHtml || '', hint: 'Нажми на имя и выбери: убрать только сейчас (вернётся, если снова придёт в сцену) или навсегда. Забытых навсегда возвращает стрелочка.' },
             ],
         },
         {

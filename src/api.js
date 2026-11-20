@@ -1,6 +1,8 @@
 // Отдельное подключение для дневника: OpenRouter, свой OpenAI-совместимый адрес или Google Gemini.
 // Запросы идут прямо из браузера, как в расширениях для картинок.
 
+import { thinkingBody } from './core.js';
+
 export const API_KINDS = [
     ['profile', 'профиль подключения таверны'],
     ['openrouter', 'OpenRouter'],
@@ -86,6 +88,8 @@ async function readSse(res, onData) {
 
 // onText(весь текст на сейчас, размышления на сейчас) — если передан, ответ идёт потоком.
 export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch, onText = null) {
+    const think = thinkingBody(s.thinking);
+    const budget = { low: 1024, medium: 4096, high: 12000 }[s.thinking];
     const key = cleanKey(s.apiKey);
     if (s.apiKind === 'gemini' && onText) {
         const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`, {
@@ -94,7 +98,7 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: system }] },
                 contents: [{ role: 'user', parts: [{ text: user }] }],
-                generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+                generationConfig: Object.assign({ maxOutputTokens: maxTokens, temperature: 0.7 }, budget ? { thinkingConfig: { thinkingBudget: Math.min(budget, Math.floor(maxTokens / 2)) } } : {}),
             }),
         });
         if (!res.ok) throw new Error(await readError(res));
@@ -118,7 +122,7 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: system }] },
                 contents: [{ role: 'user', parts: [{ text: user }] }],
-                generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+                generationConfig: Object.assign({ maxOutputTokens: maxTokens, temperature: 0.7 }, budget ? { thinkingConfig: { thinkingBudget: Math.min(budget, Math.floor(maxTokens / 2)) } } : {}),
             }),
         });
         if (!res.ok) throw new Error(await readError(res));
@@ -143,6 +147,7 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
             messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
             max_tokens: maxTokens,
             temperature: 0.7,
+            ...think,
             ...(onText ? { stream: true } : {}),
         }),
     });

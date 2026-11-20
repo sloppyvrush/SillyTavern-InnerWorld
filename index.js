@@ -4,12 +4,12 @@ import {
     buildSystemPrompt, buildUserPrompt, buildInjection, buildAttrInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
-    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut,
+    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut, includeBodyWithThinking,
     extractJson, nameScript, parseBorn, zodiacOf, bornText,
     plural,
     purseOf,
     cancelReward,
-    loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanRumor, bornFromText,
+    loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -23,8 +23,8 @@ import { renderPanel, renderToast, renderErrorToast, renderFab, renderBooksField
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.1';
-const UPDATED = '19.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
+const VERSION = '0.6.2';
+const UPDATED = '20.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
@@ -374,7 +374,7 @@ async function studyLore({ mode = 'lore', book = '', keepLive = false } = {}) {
     } catch (err) {
         if ((err && err.cancelled) || my !== runId) return;
         console.error('[Внутренний мир]', err);
-        const info = classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) });
+        const info = classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw), thinking: settings().thinking });
         status = 'Не получилось изучить: ' + info.title;
         showError(info, { manual: true, what: 'Изучение лорбука' });
         setLive(null);
@@ -682,7 +682,16 @@ function applySceneTime(messageId, raw) {
     const mes = (ctx().chat || [])[messageId];
     const own = clockRecOf(mes);
     if (own && own.why === 'stamp') return;
-    const t = sceneTimeFix(now.cal, now.t, st);
+    // последние сообщения: если дата прямо названа там, часы встают на неё даже при большом скачке
+    const chat = ctx().chat || [];
+    const recent = [];
+    for (let i = messageId, k = 0; i >= 0 && k < 6; i--) {
+        const m = chat[i];
+        if (!m || m.is_system || !m.mes) continue;
+        recent.push(m.mes);
+        k++;
+    }
+    const t = sceneTimeFix(now.cal, now.t, st, recent.join('\n'));
     if (!t) return;
     const prev = own ? own.prev : now.t;
     writeClock(messageId, { t, prev, why: 'model', size: prev ? toMinutes(now.cal, t) - toMinutes(now.cal, prev) : 0 });
@@ -792,7 +801,7 @@ async function detectCalendar({ manual = false } = {}) {
     } catch (err) {
         if (err && err.cancelled) return;
         console.warn('[Внутренний мир] календарь не определился', err);
-        if (manual) showError(classifyError(err), { manual: true, what: 'календарь' });
+        if (manual) showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw), thinking: settings().thinking }), { manual: true, what: 'календарь' });
     } finally {
         clockBusy = false;
         updateInjection();
@@ -861,7 +870,10 @@ function clockView() {
         holMonth: clockHolMonth || draft.m || 1,
         monthsText: cal.type === 'custom' ? cal.months.map(x => `${x.name} (${x.days})`).join(', ') : '',
         weekdaysText: cal.type === 'custom' && cal.weekdays ? cal.weekdays.join(', ') : '',
-        holidays: (cal.holidays || []).map(h => ({ name: h.name, kind: h.kind === 'canon' ? 'canon' : 'holiday', who: h.who, dateText: holDate(h), years: h.from && h.to ? `${h.from}–${h.to}` : (h.from ? `с ${h.from}` : (h.to ? `до ${h.to}` : '')) })),
+        // в списке — только праздники, которые уже (и ещё) отмечают в год сцены; годы появления не показываем
+        holidays: (cal.holidays || []).map((h, idx) => ({ h, idx }))
+            .filter(({ h }) => cal.type === 'days' || t.y === undefined || !((h.from && t.y < h.from) || (h.to && t.y > h.to)))
+            .map(({ h, idx }) => ({ idx, name: h.name, kind: h.kind === 'canon' ? 'canon' : 'holiday', who: h.who, dateText: holDate(h) })),
     };
 }
 
@@ -1172,6 +1184,7 @@ async function callModel(system, user, s, onText = null) {
     }
     if (my !== runId) throw cancelledError();
     lastCall.raw = typeof res === 'string' ? res : '';
+    try { window.__innerWorldLast = { raw: lastCall.raw, budget: lastCall.budget, at: Date.now() }; } catch { /* нет окна */ }
     return res;
 }
 
@@ -1203,11 +1216,16 @@ async function drainStream(gen, onText) {
 }
 
 // Основное подключение таверны (Chat Completion) — тем же запросом, но потоком.
-function mainStreamRequest(c, system, user, max) {
+function mainStreamRequest(c, system, user, max, stream = true) {
     const o = c.chatCompletionSettings || {};
+    const think = settings().thinking;
+    // свой адрес (custom) таверна шлёт как есть: «reasoning: effort» добавляем в тело запроса;
+    // остальным источникам таверна сама переводит reasoning_effort в нужный вид
+    const effort = think && think !== 'chat' ? think : o.reasoning_effort;
+    const includeBody = o.chat_completion_source === 'custom' ? includeBodyWithThinking(o.custom_include_body, think) : o.custom_include_body;
     const num = v => (v === undefined || v === null || v === '' || isNaN(Number(v)) ? undefined : Number(v));
     return {
-        stream: true,
+        stream,
         messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
         max_tokens: max,
         model: c.getChatCompletionModel ? c.getChatCompletionModel() : undefined,
@@ -1215,13 +1233,13 @@ function mainStreamRequest(c, system, user, max) {
         temperature: num(o.temp_openai),
         top_p: num(o.top_p_openai),
         custom_url: o.custom_url,
-        custom_include_body: o.custom_include_body,
+        custom_include_body: includeBody,
         custom_exclude_body: o.custom_exclude_body,
         custom_include_headers: o.custom_include_headers,
         custom_prompt_post_processing: o.custom_prompt_post_processing,
         reverse_proxy: o.reverse_proxy,
         proxy_password: o.proxy_password,
-        reasoning_effort: o.reasoning_effort,
+        reasoning_effort: effort,
         include_reasoning: !!o.show_thoughts,
         vertexai_auth_mode: o.vertexai_auth_mode,
         vertexai_region: o.vertexai_region,
@@ -1263,13 +1281,24 @@ async function callModelRaw(system, user, s, signal, onText = null) {
         const res = await c.ConnectionManagerRequestService.sendRequest(s.profileId, msgs, max, { stream: false, extractData: true, includePreset: true, includeInstruct: true });
         return typeof res === 'string' ? res : (res && res.content) || '';
     }
-    if (watch && c.mainApi === 'openai' && c.ChatCompletionService && c.chatCompletionSettings) {
+    if (c.mainApi === 'openai' && c.ChatCompletionService && c.chatCompletionSettings) {
+        // тем же запросом, что и поток, — чтобы и без потока работала настройка «сколько думать»
+        if (watch) {
+            try {
+                const res = await c.ChatCompletionService.processRequest(mainStreamRequest(c, system, user, max), {}, true, signal);
+                if (typeof res === 'function') return await drainStream(res, watch);
+                const text = typeof res === 'string' ? res : (res && res.content) || '';
+                if (text) return text;
+            } catch (err) { fallback(err); }
+        }
         try {
-            const res = await c.ChatCompletionService.processRequest(mainStreamRequest(c, system, user, max), {}, true, signal);
-            if (typeof res === 'function') return await drainStream(res, watch);
+            const res = await c.ChatCompletionService.processRequest(mainStreamRequest(c, system, user, max, false), {}, true, signal);
             const text = typeof res === 'string' ? res : (res && res.content) || '';
             if (text) return text;
-        } catch (err) { fallback(err); }
+        } catch (err) {
+            if (signal.aborted) throw err;
+            console.warn('[Внутренний мир] запрос без потока не получился, пробую обычной генерацией', err);
+        }
     }
     return await c.generateRaw({ systemPrompt: system, prompt: user, responseLength: max, trimNames: false });
 }
@@ -1503,9 +1532,19 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         try {
             const meta = chatMeta();
             if (meta.weather) info.weatherNow = weatherText(meta.weather);
-            const dreams = Object.values(base.characters || {}).flatMap(c => (c.dreams || []).map(d => Object.assign({ who: c.name }, d)));
-            const ld = dreams.sort((a, b) => (b.at || 0) - (a.at || 0))[0];
-            if (ld) info.lastDream = `${ld.who}${ld.date ? `, ${ld.date}` : ''}: ${ld.text}`;
+            const dreams = Object.values(base.characters || {}).flatMap(c => (c.dreams || []).map(d => Object.assign({ who: c.name }, d)))
+                .sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 4);
+            if (dreams.length) info.lastDream = dreams.map(ld => `${ld.who}${ld.date ? `, ${ld.date}` : ''}: ${ld.text}`).join('; ');
+            // по часам сцены прошла ночь (дата сменилась с прошлого разбора) — подсказываем модели, даже если сон не описан
+            try {
+                const nowC = clockNow(messageId + 1);
+                const lastNight = dreams.length ? dreams[0].night : '';
+                if (nowC && nowC.t && nowC.cal && nowC.cal.type !== 'days') {
+                    const today = JSON.stringify({ y: nowC.t.y, m: nowC.t.m, d: nowC.t.d });
+                    const prevDay = chatMeta().sceneDay;
+                    if (prevDay && prevDay !== today && lastNight !== today && nowC.t.h >= 4 && nowC.t.h < 14) info.nightPassed = true;
+                }
+            } catch { /* без подсказки */ }
             info.rumorTexts = (meta.rumors || []).slice(-6).map(r => r.text);
             // слухи и сны — только по ходу ролевой: при первом разборе (дневник ещё пуст) их не просим
             info.firstRun = !(base.order || []).some(k => base.characters && base.characters[k]) || !(msgs && msgs.length);
@@ -1534,7 +1573,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (chatId && c.getCurrentChatId && ctx().getCurrentChatId() !== chatId) return; // чат сменился
         if (looksCut(raw)) {
             console.warn('[Внутренний мир] ответ модели оборвался', String(raw || '').slice(-300));
-            showError(classifyError(null, { cut: true, budget }), { manual });
+            showError(classifyError(null, { cut: true, budget, thinking: settings().thinking }), { manual });
         }
         let fresh = parseAnalysis(raw, { manualTurns: s.moodMode === 'manual' ? s.moodTurns : null });
         // имена приводим к тем, что в лорбуке («Волк» → «Константин Волков»)
@@ -1587,6 +1626,11 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         try { pinMeetings(state, messageId); } catch (e) { console.warn('[Внутренний мир] знакомство', e); }
         writeRecord(messageId, state);
+        // день сцены на момент разбора: по нему следующий разбор поймёт, что прошла ночь
+        try {
+            const nowC = clockNow(messageId + 1);
+            if (!fromLore && nowC && nowC.t && nowC.cal && nowC.cal.type !== 'days') chatMeta().sceneDay = JSON.stringify({ y: nowC.t.y, m: nowC.t.m, d: nowC.t.d });
+        } catch { /* без дня */ }
         if (calP) {
             // ждём календарь, чтобы время встало вместе с записями
             await calP;
@@ -1613,7 +1657,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     } catch (err) {
         if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
-        const info = classifyError(err, { raw, budget, cut: looksCut(raw) && /JSON|испорчен|персонаж/.test(String(err && err.message)) });
+        const info = classifyError(err, { raw, budget, cut: looksCut(raw) && /JSON|испорчен|персонаж/.test(String(err && err.message)), thinking: settings().thinking });
         status = 'Не получилось: ' + info.title;
         showError(info, { manual });
     } finally {
@@ -2066,19 +2110,23 @@ function takeExtras(raw, state, messageId) {
     let changed = false;
     const w = s.weather !== false && cleanWeather(data.weather);
     if (w) { meta.weather = Object.assign(w, { day }); changed = true; }
-    const nd = s.dreams !== false && cleanNightDream(data.night_dream);
-    if (nd) {
-        const key = Object.keys(state.characters || {}).find(k => sameName(k, nd.who) || sameName(state.characters[k].name, nd.who));
+    // сны: по одному на каждого, кто спал; за одну ночь (одну дату сцены) у героя — один сон
+    const dreams = s.dreams !== false ? cleanNightDreams(data.night_dream) : [];
+    const night = day ? JSON.stringify(day) : '';
+    let delay = 900;
+    for (const nd of dreams) {
+        const key = Object.keys(state.characters || {}).find(k => sameName(k, nd.who) || sameName(state.characters[k].name, nd.who) || namesMatch(state.characters[k].name, nd.who));
         const c = key && state.characters[key];
-        if (c && !c.persona) {
-            const list = c.dreams || [];
-            const last = list[list.length - 1];
-            if (!(last && last.text === nd.text)) {
-                c.dreams = [...list, Object.assign(nd, { date: dateText, at: Date.now(), mes: messageId })].slice(-8);
-                delete c.dreams[c.dreams.length - 1].who;
-                showEvent({ type: 'night', who: c.name, text: nd.text, icon: 'moon' }, 900);
-            }
-        }
+        if (!c) continue;
+        if (c.persona && s.persona === false) continue;
+        const list = c.dreams || [];
+        const last = list[list.length - 1];
+        if (last && (last.text === nd.text || (night && last.night === night))) continue;
+        const rec = Object.assign(nd, { date: dateText, night, at: Date.now(), mes: messageId });
+        delete rec.who;
+        c.dreams = [...list, rec].slice(-8);
+        showEvent({ type: 'night', who: c.name, text: nd.text, icon: 'moon' }, delay);
+        delay += 600;
     }
     const r = s.rumors !== false && cleanRumor(data.rumor);
     if (r && !(meta.rumors || []).some(x => x.text === r.text)) {
@@ -2687,14 +2735,14 @@ async function onPanelClick(e) {
         updateInjection();
         return renderAll();
     }
-    if (t.dataset.iwNpcx) {
-        // убрать НПС: только сейчас (вернётся, когда снова придёт в сцену) или навсегда
-        const key = t.dataset.iwNpcx;
+    if (t.dataset.iwNpcx || t.dataset.iwForget) {
+        // убрать персонажа: только сейчас (вернётся, когда снова придёт в сцену) или навсегда.
+        // Одинаково из списка НПС и из настроек «Этот чат»; экран, где был игрок, не меняется.
+        const key = t.dataset.iwNpcx || t.dataset.iwForget;
         const state = currentState();
         const ch = state.characters[key];
         if (!ch) return;
-        const c0 = ctx();
-        const res = await iwDialog({ title: `Убрать ${ch.name} из НПС?`, html: `<p class="iw-modal-text"><b>Только сейчас</b> — запись пропадёт, но если ${esc(ch.name)} снова появится в сцене, дневник заведёт запись заново.</p><p class="iw-modal-text"><b>Навсегда</b> — дневник больше не будет ни вести, ни показывать этого персонажа в этом чате. Вернуть можно внизу списка НПС или в настройках, раздел «Этот чат».</p>`, buttons: [{ text: 'Только сейчас', value: 1, kind: 'main' }, { text: 'Навсегда', value: 2, kind: 'danger' }, { text: 'Отмена', value: null }] });
+        const res = await iwDialog({ title: `Убрать ${ch.name} из дневника?`, html: `<p class="iw-modal-text"><b>Только сейчас</b> — запись пропадёт, но если ${esc(ch.name)} снова появится в сцене, она заведётся заново.</p><p class="iw-modal-text"><b>Навсегда</b> — в этом чате ${esc(ch.name)} больше не попадёт ни в записи, ни в списки. Вернуть можно внизу списка НПС или в настройках, раздел «Этот чат», — с чистого листа.</p>`, buttons: [{ text: 'Только сейчас', value: 1, kind: 'main' }, { text: 'Навсегда', value: 2, kind: 'danger' }, { text: 'Отмена', value: null }] });
         if (res !== 1 && res !== 2) return;
         delete state.characters[key];
         state.order = state.order.filter(k => k !== key);
@@ -2702,11 +2750,13 @@ async function onPanelClick(e) {
             const meta = chatMeta();
             meta.ignored = [...ignoredNames().filter(n => !sameName(n, ch.name)), ch.name];
         }
+        // после удаления следующий разбор не должен решить, что ничего нового нет
         chatMeta().fp = {};
-        if (view === 'npc:' + key) view = 'npc';
+        if (view === 'npc:' + key || view === key) view = view.startsWith('npc') ? 'npc' : '';
         await saveEditedState(state);
         ctx().saveMetadataDebounced?.();
         updateInjection();
+        syncSettingsForm();
         notice(res === 2 ? `${ch.name}: забыт навсегда` : `${ch.name}: убран, вернётся, если снова придёт в сцену`);
         return renderAll();
     }
@@ -2716,22 +2766,6 @@ async function onPanelClick(e) {
         ctx().saveMetadataDebounced?.();
         syncSettingsForm();
         notice(`${name}: дневник снова будет его замечать`);
-        return renderAll();
-    }
-    if (t.dataset.iwForget) {
-        const key = t.dataset.iwForget;
-        const state = currentState();
-        if (!state.characters[key]) return;
-        const c0 = ctx();
-        const ok = await iwDialog({ title: `Забыть ${state.characters[key].name}?`, text: 'Всё, что о нём записано в дневнике этого чата, пропадёт. Если он снова появится в сцене, дневник заведёт запись заново.', buttons: [{ text: 'Забыть', value: true, kind: 'danger' }, { text: 'Отмена', value: null }] });
-        if (!ok) return;
-        delete state.characters[key];
-        state.order = state.order.filter(k => k !== key);
-        // после «забыть» следующий разбор не должен решить, что ничего нового нет
-        chatMeta().fp = {};
-        view = '';
-        await saveEditedState(state);
-        updateInjection();
         return renderAll();
     }
 }
@@ -2884,7 +2918,7 @@ async function onDreamAction(action) {
         } catch (err) {
             if (err && err.cancelled) return;
             console.error('[Внутренний мир]', err);
-            showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) }), { manual: true, what: 'Мечта не придумалась' });
+            showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw), thinking: settings().thinking }), { manual: true, what: 'Мечта не придумалась' });
         } finally {
             if (my === runId) {
                 dreamBusy = false;
@@ -2923,7 +2957,7 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
     } catch (err) {
         if (err && err.cancelled) return;
         console.error('[Внутренний мир]', err);
-        if (!quiet) showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw) }), { manual: true, what: 'Награды не подобрались' });
+        if (!quiet) showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw), thinking: settings().thinking }), { manual: true, what: 'Награды не подобрались' });
     } finally {
         if (my === runId) {
             shopBusy = false;

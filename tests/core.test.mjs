@@ -861,6 +861,14 @@ test('часы сцены: отметки, таймскипы, шаг, праз�
     assert.equal(C.sceneTimeFix(g, t0, { time: '06:30' }).h, 6);
     assert.equal(C.sceneTimeFix(g, t0, { time: '01:00' }), null);
     assert.equal(C.sceneTimeFix(g, t0, { time: '07:00', flashback: true }), null);
+    // дата прямо названа в чате: часы догоняют её даже через месяцы и даже назад (дневник убежал вперёд)
+    const mar = { y: 1997, m: 3, d: 8, h: 2, mi: 0 };
+    assert.deepEqual(C.sceneTimeFix(g, mar, { date: '1997-05-09', time: '07:20' }, 'Утро 9 мая выдалось тёплым'), { y: 1997, m: 5, d: 9, h: 7, mi: 20 });
+    assert.equal(C.sceneTimeFix(g, mar, { date: '1997-05-09', time: '07:20' }, 'ничего про дату'), null);
+    assert.equal(C.sceneTimeFix(g, { y: 1997, m: 6, d: 1, h: 9, mi: 0 }, { date: '1997-05-09' }, '09.05.1997').m, 5);
+    assert.equal(C.dateNamedIn(g, { y: 1997, m: 5, d: 9 }, 'в мае 1997 года'), true);
+    assert.equal(C.dateNamedIn(g, { y: 1997, m: 5, d: 9 }, 'мама 1997'), false);
+    assert.equal(C.dateNamedIn(g, { y: 1997, m: 5, d: 9 }, 'прошло девять дней'), false);
     // ручные команды
     assert.equal(C.parseClockCommand(g, t0, '+2ч').h, 4);
     assert.equal(C.parseClockCommand(g, t0, '+3д').d, 11);
@@ -1086,4 +1094,23 @@ test('свёрнутые блоки: развёрнутые «Хочет / Бо�
     assert.deepEqual(kinds(layoutBlocks(all, { mood: true, impression: true })), ['mood', 'impression', 'wants', 'fears']);
     assert.deepEqual(kinds(layoutBlocks(all, { impression: true })), ['mood*', 'impression*', 'wants', 'fears']);
     assert.deepEqual(kinds(layoutBlocks(all, {})), ['mood', 'impression', 'wants', 'fears']);
+});
+
+test('сколько думать: тело запроса для своего адреса и OpenRouter-образных прокси', () => {
+    assert.deepEqual(C2.thinkingBody('low'), { reasoning: { effort: 'low' } });
+    assert.deepEqual(C2.thinkingBody('chat'), {});
+    assert.equal(C2.includeBodyWithThinking('', 'low'), 'reasoning:\n  effort: low');
+    assert.equal(C2.includeBodyWithThinking('top_k: 40', 'medium'), 'top_k: 40\nreasoning:\n  effort: medium');
+    assert.equal(C2.includeBodyWithThinking('{"top_k":40}', 'low'), '{"top_k":40,"reasoning":{"effort":"low"}}');
+    // своё «reasoning» в теле не перебиваем, «как в чате» ничего не добавляет
+    assert.equal(C2.includeBodyWithThinking('reasoning:\n  max_tokens: 500', 'low'), 'reasoning:\n  max_tokens: 500');
+    assert.equal(C2.includeBodyWithThinking('top_k: 40', 'chat'), 'top_k: 40');
+    assert.equal(mergeSettings({ thinking: 'weird' }).thinking, 'low');
+});
+
+test('сны: список на ночь, по одному на каждого, старый формат тоже понимается', () => {
+    const list = C2.cleanNightDreams([{ who: 'Виктор', text: 'Снился мост', tone: 'тревожный' }, { who: 'Ева', text: 'Снилось море' }, { who: '', text: 'без имени' }]);
+    assert.equal(list.length, 2);
+    assert.equal(C2.cleanNightDreams({ who: 'Виктор', text: 'Один сон' }).length, 1);
+    assert.deepEqual(C2.cleanNightDreams(null), []);
 });
