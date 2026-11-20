@@ -462,3 +462,7 @@
     border-radius: 6px;
     background: color-mix(in srgb, var(--SmartThemeBodyColor, #888) 8%, transparent);
 }
+
+/* хозяин инфоблока «Внутреннего мира» в сообщении: сам блок в теневом DOM */
+.iw-ib-host { display: block; margin: 2px 0 0; }
+.iw-ib-host[hidden] { display: none; }

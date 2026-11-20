@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES } from './core.js';
+import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -467,6 +467,35 @@ export function shortPoints(n) {
     return one(v / 1000000) + 'М';
 }
 
+// Брак и дети (как в модах «Симс»): устойчивые взгляды. Модель заполняет один раз и меняет только по событию;
+// игрок может поправить сам — тогда взгляды закреплены и модель их не трогает.
+function renderLife(c) {
+    const life = c.life || {};
+    const sel = (f, opts) => {
+        const cur = f === 'count' ? String(life.count || '') : (life[f] || '');
+        const list = Object.entries(opts).map(([v, t]) => `<option value="${esc(v)}"${String(v) === cur ? ' selected' : ''}>${esc(t)}</option>`).join('');
+        return `<select class="iw-life-sel${cur ? '' : ' iw-unk'}" data-iw-life="${f}" aria-label="${esc(f === 'count' ? 'Сколько детей хотел бы' : LIFE_FIELDS[f].label)}"><option value=""${cur ? '' : ' selected'}>не определено</option>${list}</select>`;
+    };
+    const counts = Object.fromEntries(COUNT_WORDS.slice(1).map((w, i) => [String(i + 1), w]));
+    const row = (cap, html) => `<div class="iw-life-row"><span class="iw-life-cap">${esc(cap)}</span><span class="iw-life-val">${html}</span></div>`;
+    const ownOff = life.own === 'no' || life.own === 'has';
+    const log = (c.lifeLog || []).slice().reverse();
+    return `
+    <section class="iw-block iw-b-life">
+      ${blockHead('life', 'Брак и дети')}
+      <div class="iw-life">
+        ${row('Брак', sel('marry', LIFE_FIELDS.marry.opts))}
+        ${row('Дети вообще', sel('kids', LIFE_FIELDS.kids.opts))}
+        ${row('Свои дети', sel('own', LIFE_FIELDS.own.opts))}
+        ${ownOff ? '' : row('Когда', sel('when', LIFE_FIELDS.when.opts))}
+        ${ownOff ? '' : row('Сколько', sel('count', counts))}
+      </div>
+      ${life.why ? `<div class="iw-life-why">${ce(life.why)}</div>` : ''}
+      ${c.lifeSet ? `<div class="iw-life-set">${icon('pin')}<span>Поправлено тобой — модель эти взгляды не меняет.</span><button type="button" class="iw-mini" data-iw-life-free="1">вернуть модели</button></div>` : '<div class="iw-muted iw-life-hint">Меняются только после важного события в истории. Можно поправить самой.</div>'}
+      ${log.length ? `<details class="iw-more"><summary>как менялись · ${log.length}</summary><ul class="iw-life-log">${log.map(e => `<li><b>${esc(e.from || 'не определено')} → ${esc(e.to)}</b>${e.why ? ` — ${ce(e.why)}` : ''}</li>`).join('')}</ul></details>` : ''}
+    </section>`;
+}
+
 const ATTR_SHOWN = 6; // столько тегов видно сразу, остальные — по стрелке
 
 // Что привлекает и что отталкивает (как в «Симс»): теги от модели, их можно убрать и добавить свои из списка.
@@ -868,7 +897,7 @@ function renderShowcase({ state, theme, got = [], sel = '' }) {
 // узкие (настроение, отношение, желания, страхи) — открытые парами, под ними свёрнутые плашками по две;
 // если узкому не хватило пары, он растягивается на всю ширину. Широкий блок сворачивается полоской на своём месте.
 const NARROW_BLOCKS = new Set(['mood', 'impression', 'wants', 'fears']);
-export const BLOCK_ORDER = ['mood', 'impression', 'wants', 'fears', 'dream', 'traits', 'persona', 'attraction', 'nights', 'rumors', 'chronicle'];
+export const BLOCK_ORDER = ['mood', 'impression', 'wants', 'fears', 'dream', 'traits', 'persona', 'attraction', 'life', 'nights', 'rumors', 'chronicle'];
 export function orderOfBlocks(custom) {
     const own = Array.isArray(custom) ? custom.filter(k => BLOCK_ORDER.includes(k)) : [];
     const rest = BLOCK_ORDER.filter(k => !own.includes(k));
@@ -927,6 +956,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.traits) blocks.push(renderTraits(c, L));
     if (modules.traits) blocks.push(renderPersona(c, L, opts));
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
+    if (modules.attraction && !opts.persona) blocks.push(renderLife(c));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
     if (opts.nights && !opts.npc) blocks.push(renderNights(c));
     if (Array.isArray(opts.rumors) && !opts.npc) blocks.push(renderRumors(opts.rumors, c.name, !!opts.persona));
@@ -1411,7 +1441,7 @@ export function renderToast(ev, theme) {
 
 // Инфоблок над чатом: одна тонкая строка в стиле темы, по нажатию — подробности.
 // model: { clock, cast: [{ name, mood, face, face2, feels: [{ e, w }] , persona }], show: { time, date, weather, events, moods } }
-export function renderInfobarHtml(model, theme, open = false) {
+export function renderInfobarHtml(model, theme, open = false, tab = '') {
     setIconTheme(theme);
     const { clock, cast = [], show = {} } = model || {};
     const parts = [];
@@ -1426,18 +1456,55 @@ export function renderInfobarHtml(model, theme, open = false) {
         return `<span class="iw-ib-who iw-face-${esc(p.face || 'neutral')}${p.persona ? ' iw-ib-me' : ''}" title="${esc(`${p.name} — ${p.mood}`)}"${style}>${faceIcon(p.face || 'neutral', '', true)}<span class="iw-ib-name">${esc(ibShortName(p.name))}</span><span class="iw-ib-mood">${esc(p.mood)}</span></span>`;
     }).join('') : '';
     if (!parts.length && !faces) return '';
-    // подробности: настроения с главными чувствами и ближайшие события
-    const rows = show.moods !== false ? cast.filter(p => p.mood).map(p => `<li><b>${esc(p.name)}</b> — ${esc(p.mood)}${p.feels && p.feels.length ? `<span class="iw-ib-feels">${p.feels.map(f => `${esc(f.e)}${f.w === 'deep' ? ' <i>сильно</i>' : ''}`).join(', ')}</span>` : ''}</li>`).join('') : '';
-    const soon = show.events !== false && clock && clock.upcoming ? clock.upcoming.filter(e => e.inDays > 0).slice(0, 3) : [];
-    const evs = soon.map(e => `<li>${calIcon(e.kind)}<span><b>${esc(e.dateText)}</b> ${esc(clockEventText(e))} <em>${esc(clockWhen(e))}</em></span></li>`).join('');
-    const more = rows || evs;
+    // подробности: то, что есть в дневнике, коротко — настроение уже видно в строке, здесь не повторяем
+    // развёрнуто: герои вкладками, у выбранного — по строке на раздел
+    const people = cast.map(p => ({ p, rows: ibRows(p, show) })).filter(x => x.rows.length);
+    const cur = people.find(x => x.p.key === tab) || people[0];
+    const soon = show.soon !== false && show.events !== false && clock && clock.upcoming ? clock.upcoming.filter(e => e.inDays > 0).slice(0, 3) : [];
+    const evs = soon.map(e => `<span class="iw-ib-ev">${calIcon(e.kind)}<b>${esc(e.dateText)}</b> ${esc(clockEventText(e))} <em>${esc(clockWhen(e))}</em></span>`).join('');
+    const more = people.length || evs;
+    let body = '';
+    if (more && open) {
+        const tabs = people.map(({ p }) => {
+            const on = cur && p.key === cur.p.key;
+            return `<button type="button" class="iw-ib-tab${on ? ' on' : ''}${people.length > 1 ? '' : ' solo'}" data-iw-ib-tab="${esc(p.key)}" aria-pressed="${on}">${faceIcon(p.face || 'neutral', '', true)}<span>${esc(ibShortName(p.name))}</span>${p.status ? `<em>${esc(p.status)}</em>` : ''}</button>`;
+        }).join('');
+        body = `
+<div class="iw-ib-more">
+  ${cur ? `<div class="iw-ib-tabs">${tabs}<button type="button" class="iw-ib-open" data-iw-ib-open="${esc(cur.p.key)}">в дневник ${icon('arrowright')}</button></div>
+  <dl class="iw-ib-rows">${cur.rows.join('')}</dl>` : ''}
+  ${evs ? `<div class="iw-ib-soon"><span class="iw-ib-cap">Скоро</span><span class="iw-ib-evs">${evs}</span></div>` : ''}
+</div>`;
+    }
     return `
 <div class="iw-ib-bar${open ? ' iw-open' : ''}" role="button" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" title="Внутренний мир: нажми — подробности">
   <span class="iw-ib-line">${parts.join('<span class="iw-ib-sep" aria-hidden="true"></span>')}</span>
   ${faces ? `<span class="iw-ib-cast">${faces}</span>` : ''}
   ${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}
-</div>
-${more && open ? `<div class="iw-ib-more">${rows ? `<ul class="iw-ib-people">${rows}</ul>` : ''}${evs ? `<ul class="iw-ib-soon">${evs}</ul>` : ''}</div>` : ''}`;
+</div>${body}`;
+}
+
+// «пятница, 15 августа 1997» → «15 августа»
+function ibDay(d) {
+    return String(d || '').replace(/^[^,\d]+,\s*/, '').replace(/\s+\d{3,4}(\s*г\.?)?\s*$/, '').trim();
+}
+
+// Только то, что меняется по ходу истории (мечта, черты и вкусы — в дневнике).
+// Строки раздела: подпись слева, одна запись справа в одну строку (целиком — в подсказке и в дневнике), остальные — «+N»
+function ibRows(p, show) {
+    const rows = [];
+    const row = (cls, cap, items, lead = '') => {
+        const list = (Array.isArray(items) ? items : [items]).map(t => String(t || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+        if (!list.length && !lead) return;
+        const extra = list.length > 1 ? `<span class="iw-ib-plus" title="${esc(list.slice(1).join('\n'))}">+${list.length - 1}</span>` : '';
+        rows.push(`<div class="iw-ib-row ${cls}"><dt class="iw-ib-cap">${esc(cap)}</dt><dd class="iw-ib-val"${list[0] ? ` title="${esc(list[0])}"` : ''}>${lead}<span class="iw-ib-txt">${esc(list[0] || '')}</span>${extra}</dd></div>`);
+    };
+    if (show.attitude && !p.persona) row('iw-ib-r-att', 'К тебе', p.attitude, p.chem ? `<b class="iw-ib-chem iw-ib-chem-${esc(p.chemTone || 'mid')}">${esc(p.chem)}</b>` : '');
+    if (show.wants) row('iw-ib-r-wants', 'Хочет', p.wants);
+    if (show.fears) row('iw-ib-r-fears', 'Боится', p.fears);
+    if (show.night && p.night) row('iw-ib-r-night', 'Сон', p.night.text, p.night.date ? `<em class="iw-ib-when">${esc(ibDay(p.night.date))}</em>` : '');
+    if (show.feels && p.feels && p.feels.length) row('iw-ib-r-feels', 'Чувства', p.feels.map(f => `${f.e}${f.why ? ` — ${f.why}` : ''}`));
+    return rows;
 }
 
 function ibShortName(n) {
@@ -1558,6 +1625,17 @@ function renderWaiting(name, s, theme, roster) {
       <div class="iw-quick-body">
         <div class="iw-quick-title">Какая модель пишет дневник</div>
         <div class="iw-qrow">${quickOpt('source', 'main', 'та же, что в чате', s.source !== 'custom')}${quickOpt('source', 'custom', 'отдельная — настроить', s.source === 'custom')}</div>
+        <div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">Сколько ей думать:</span>${quickOpt('thinking', 'low', 'коротко', s.thinking === 'low' || !s.thinking)}${quickOpt('thinking', 'medium', 'средне', s.thinking === 'medium')}${quickOpt('thinking', 'chat', 'как в чате', s.thinking === 'chat')}</div>
+        <div class="iw-quick-hint"><span>Разбор — выписка из готового текста, долгие размышления ему не нужны. Думающие модели (Gemini 3 и 4 и похожие) иначе съедают весь запас, и запись обрывается.</span></div>
+      </div>
+    </div>
+    <div class="iw-quick-step">
+      <span class="iw-quick-num">7</span>
+      <div class="iw-quick-body">
+        <div class="iw-quick-title">Инфоблок в чате</div>
+        <div class="iw-qrow">${quickOpt('infobar', 'on', 'добавлять', s.infobar !== false)}${quickOpt('infobar', 'off', 'не нужен', s.infobar === false)}</div>
+        ${s.infobar !== false ? `<div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">Где:</span>${quickOpt('infobarWhere', 'all', 'в каждом ответе', s.infobarWhere !== 'last')}${quickOpt('infobarWhere', 'last', 'только в последнем', s.infobarWhere === 'last')}</div>` : ''}
+        <div class="iw-quick-hint"><span>В начале ответа бота — тонкая плашка в стиле темы: время и дата сцены, погода, праздник, настроение героев. Только для тебя: в текст и в запрос к модели не попадает. Потом можно поменять в настройках, раздел «Оформление».</span></div>
       </div>
     </div>
     <div class="iw-quick-foot">

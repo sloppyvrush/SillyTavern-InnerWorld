@@ -657,6 +657,7 @@ const PATHS = {
     cup: '<path d="M5 8.5h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8.5 3.5c-.8 1 .8 2 0 3M12 3.5c-.8 1 .8 2 0 3"/>',
     letter: '<rect x="3.5" y="6" width="17" height="12" rx="1.5"/><path d="M4 7l8 6 8-6"/>',
     shield: '<path d="M12 3.5l7 2.5v5.5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/>',
+    ring: '<circle cx="12" cy="14.5" r="6"/><path d="M9.6 6.2L12 3.5l2.4 2.7L12 8.6z"/>',
     gem: '<path d="M7 4.5h10l3.5 5L12 20 3.5 9.5z"/><path d="M3.5 9.5h17M9.5 4.5L8 9.5l4 10.5 4-10.5-1.5-5"/>',
     // совместимость: магнит-сердце, магнит, ровно, перечёркнутый магнит, разбитое сердце
     wx_sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>',
@@ -788,6 +789,7 @@ export const BLOCK_ICONS = {
     persona: 'persona',
     impression: 'eye',
     attraction: 'chem_good',
+    life: 'ring',
     chronicle: 'scroll',
     rewards: 'gift',
     nights: 'moon',

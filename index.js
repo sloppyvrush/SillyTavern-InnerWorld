@@ -10,13 +10,13 @@ import {
     purseOf,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
-    eventTitle, signed, WEIGHT_NAMES, moodFaces,
+    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
     normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay, seasonOf,
     upcoming, monthGrid, monthMarks, shiftMonth, monthName, monthCount, monthDays, clockInjection, buildCalendarPrompt, parseCalendarAnswer, sceneTimeFix,
-    parseClockCommand, CALENDAR_TYPES, MONTHS_RU, dayIndex,
+    parseClockCommand, CALENDAR_TYPES, MONTHS_RU, dayIndex, plainForClock,
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
@@ -24,7 +24,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, renderEr
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.3';
+const VERSION = '0.6.4';
 const UPDATED = '20.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1018,6 +1018,18 @@ function syncLove(state, love) {
 
 // ---------- Подсказка основной модели ----------
 
+// Последние сообщения чата одним текстом (без размышлений и разметки) — по ним включаются ключи.
+function recentText(beforeId, n = 4) {
+    const chat = ctx().chat || [];
+    const out = [];
+    for (let i = Math.min(beforeId ?? chat.length, chat.length) - 1; i >= 0 && out.length < n; i--) {
+        const m = chat[i];
+        if (!m || m.is_system || !m.mes) continue;
+        out.unshift(plainForClock(m.mes));
+    }
+    return out.join('\n');
+}
+
 function updateInjection(beforeId) {
     const c = ctx();
     const s = settings();
@@ -1028,8 +1040,9 @@ function updateInjection(beforeId) {
     c.setExtensionPrompt(PROMPT_KEY, text, 1, Number(s.injectDepth) || 0, false, 0);
     // притяжение — своей подсказкой, со своей настойчивостью
     let attr = '';
+    const attrHits = [];
     if (s.enabled && s.inject && s.modules.attraction !== false && s.attrInfluence !== 'none' && hasChat() && c.chat && c.chat.length) {
-        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence);
+        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence, { mode: s.attrKeys === 'always' ? 'always' : 'keys', recent: recentText(beforeId, 4), hits: attrHits });
     }
     c.setExtensionPrompt(ATTR_PROMPT_KEY, attr, 1, Number(s.attrDepth) || 4, false, 0);
     // часы сцены — у самого конца чата, чтобы модель не теряла время суток и дату
@@ -1048,7 +1061,7 @@ function updateInjection(beforeId) {
         } catch { /* без сна */ }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
-    lastInjected = { mood: text, attr, clock: clockText, moodDepth: Number(s.injectDepth) || 0, attrDepth: Number(s.attrDepth) || 4, moodLevel: s.moodInfluence, attrLevel: s.attrInfluence };
+    lastInjected = { mood: text, attr, clock: clockText, moodDepth: Number(s.injectDepth) || 0, attrDepth: Number(s.attrDepth) || 4, moodLevel: s.moodInfluence, attrLevel: s.attrInfluence, attrHits: attrHits.slice(0, 20), attrMode: s.attrKeys === 'always' ? 'always' : 'keys' };
 }
 
 // ---------- Теги влияния в чате (диагностика) ----------
@@ -1171,7 +1184,14 @@ function diagHtml(mes, id) {
         const LEVELW = LEVEL[x.moodDepth] || 'обычно';
         people.slice(0, 3).forEach(p => chip('mood', p.who.split(/\s+/)[0], p.text, `${p.who}: что ушло модели (настойчивость — ${LEVELW})`));
         if (people.length > 3) chip('mood', `+${people.length - 3}`, plural(people.length - 3, 'персонаж', 'персонажа', 'персонажей'), people.slice(3).map(p => `${p.who}: ${p.text}`).join('\n'));
-        if (x.attr) chip('attr', 'притяжение', ({ strong: 'заметно', medium: 'проскальзывает', light: 'оттенок' }[x.attrLevel] || 'есть'), 'что привлекает и отталкивает → модели');
+        if (x.attr) {
+            const hits = x.attrHits || [];
+            if (x.attrMode === 'keys') {
+                if (hits.length) hits.slice(0, 4).forEach(h => chip('attr', h.who.split(/\s+/)[0], `${h.side === 'life' ? 'брак и дети' : (h.side === 'dislike' ? 'не любит' : 'любит') + ': ' + h.tag} ← «${h.word}»`, 'тег притяжения включился по слову в последних сообщениях'));
+                if (hits.length > 4) chip('attr', 'притяжение', `ещё ${hits.length - 4}`, hits.slice(4).map(h => `${h.who}: ${h.tag} ← ${h.word}`).join('\n'));
+                if (!hits.length) chip('attr', 'притяжение', 'только совместимость', 'теги «нравится / не нравится» к этой сцене не подошли — модели ушла только совместимость с игроком');
+            } else chip('attr', 'притяжение', `все теги · ${({ strong: 'заметно', medium: 'проскальзывает', light: 'оттенок' }[x.attrLevel] || 'есть')}`, 'что привлекает и отталкивает → модели');
+        }
         if (/снилось:/.test(x.clock || '')) chip('night', 'сон', 'свежий — в настроении', 'свежий сон → модели: может отозваться в настроении героя');
     }
     const after = d && d.after ? d.after : [];
@@ -2347,7 +2367,13 @@ function takeExtras(raw, state, messageId) {
     const dateText = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
     let changed = false;
     const w = s.weather !== false && cleanWeather(data.weather);
-    if (w) { meta.weather = Object.assign(w, { day }); changed = true; }
+    if (w) {
+        meta.weather = Object.assign(w, { day });
+        changed = true;
+        // погода этого сообщения — для инфоблока в чате (у старых сообщений своя погода)
+        const mes = (ctx().chat || [])[messageId];
+        if (mes) { mes.extra = mes.extra || {}; mes.extra[WX_KEY] = clone(meta.weather); }
+    }
     // сны: по одному на каждого, кто спал; за одну ночь (одну дату сцены) у героя — один сон
     const dreams = s.dreams !== false ? cleanNightDreams(data.night_dream) : [];
     const night = day ? JSON.stringify(day) : '';
@@ -2396,70 +2422,152 @@ function safeClockView() {
     try { return clockView(); } catch (e) { console.warn('[Внутренний мир] часы', e); return null; }
 }
 
-// ---------- Инфоблок над чатом ----------
-// Свой теневой DOM со стилями дневника: плашка в стиле выбранной темы и не задевает стили таверны.
-let ibOpen = false;
+// ---------- Инфоблок внутри чата ----------
+// В начале каждого ответа бота — тонкая плашка в стиле темы: время, дата, погода, праздник и настроения
+// на момент ЭТОГО сообщения. У каждой плашки свой теневой DOM со стилями дневника; в текст сообщения
+// и в запрос к модели она не попадает.
+const ibOpen = new Set();
+const ibTab = new Map(); // какой герой открыт в развёрнутом инфоблоке
 const WEIGHT_RANK_IB = { deep: 3, medium: 2, light: 1 };
+const WX_KEY = 'inner_world_wx';
 
-function infobarModel() {
+// Погода на момент сообщения: ближайшая записанная до него (или общая погода чата).
+function weatherAt(id) {
+    const chat = ctx().chat || [];
+    for (let i = id; i >= 0 && i > id - 60; i--) {
+        const w = chat[i] && chat[i].extra && chat[i].extra[WX_KEY];
+        if (w) return w;
+    }
+    return chatMeta().weather || null;
+}
+
+function infobarModelFor(id) {
     const s = settings();
-    const clock = s.clock !== false ? safeClockView() : null;
-    const st = liveState();
+    const chat = ctx().chat || [];
+    let clock = null;
+    if (s.clock !== false) {
+        try {
+            const now = clockNow(id + 1);
+            if (now && now.cal && now.t) {
+                const { cal, t } = now;
+                const st0 = currentState(id + 1);
+                const people = clockPeople(st0);
+                const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
+                const ev = upcoming(cal, t, people, 14).map(e => Object.assign(e, { dateText: `${e.d} ${monthName(cal, e.m, true)}`, inDaysText: `${e.inDays} ${daysWord(e.inDays)}` }));
+                clock = { t, time: fmtTime(t), part: partOfDay(t.h), date: fmtDate(cal, t), wx: weatherChip(cal, t, weatherAt(id)), today: ev.filter(e => e.inDays === 0), upcoming: ev };
+            }
+        } catch (e) { console.warn('[Внутренний мир] инфоблок: часы', e); }
+    }
     const cast = [];
     try {
+        const st = currentState(id + 1);
         const { mains, personaKey } = splitCast(st);
+        const live = arr => (arr || []).filter(x => x && x.text && (!x.status || x.status === 'active'));
         for (const k of [...mains, personaKey].filter(Boolean)) {
             const c = st.characters[k];
-            if (!c || !c.mood) continue;
-            const [face, face2] = moodFaces(c);
-            const feels = [...(c.moodlets || [])].sort((a, b) => (WEIGHT_RANK_IB[b.weight] || 2) - (WEIGHT_RANK_IB[a.weight] || 2)).slice(0, 3).map(m => ({ e: m.emotion, w: m.weight }));
-            cast.push({ name: c.name, mood: c.mood, face, face2, feels, persona: !!c.persona || k === personaKey });
+            if (!c) continue;
+            const persona = !!c.persona || k === personaKey;
+            const [face, face2] = c.mood ? moodFaces(c) : ['neutral', null];
+            const byWeight = [...(c.moodlets || [])].sort((a, b) => (WEIGHT_RANK_IB[b.weight] || 2) - (WEIGHT_RANK_IB[a.weight] || 2));
+            const wants = live(c.wants).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).slice(0, 2).map(w => w.text);
+            const fears = live(c.fears).sort((a, b) => (b.strength || 1) - (a.strength || 1)).slice(0, 2).map(f => f.text);
+            const imp = c.impression || {};
+            const now = c.chemNow ? c.chemNow.score : null;
+            const attitude = persona ? '' : (imp.now || imp.why || imp.label || '');
+            const chem = !persona && now !== null && CHEM_NOW_NAMES[now] ? CHEM_NOW_NAMES[now] : '';
+            const night = (c.dreams || [])[(c.dreams || []).length - 1];
+            cast.push({
+                key: k, name: c.name, mood: c.mood || '', face, face2, persona,
+                feels: byWeight.slice(0, 3).map(m => ({ e: m.emotion, w: m.weight, why: m.why || '' })),
+                status: c.rel && c.rel.label ? c.rel.label : '',
+                wants, fears,
+                attitude, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
+                night: night && night.text ? { text: night.text, date: night.date || '' } : null,
+            });
         }
-    } catch { /* без настроений */ }
-    return { clock: clock && clock.t ? clock : null, cast: cast.slice(0, 4), show: { time: s.ibTime, date: s.ibDate, weather: s.ibWeather && s.weather !== false, events: s.ibEvents, moods: s.ibMoods } };
+    } catch (e) { console.warn('[Внутренний мир] инфоблок: герои', e); }
+    const show = { time: s.ibTime, date: s.ibDate, weather: s.ibWeather && s.weather !== false, events: s.ibEvents, moods: s.ibMoods };
+    for (const f of ['Wants', 'Fears', 'Attitude', 'Night', 'Soon', 'Feels']) show[f.toLowerCase()] = !!s['ib' + f];
+    if (s.dreams === false) show.night = false;
+    return { clock, cast: cast.slice(0, 4), show };
+}
+
+// Открыть дневник на странице героя (из инфоблока)
+function openDiaryAt(key) {
+    const st = currentState();
+    const k = st.order.find(x => x === key) || st.order.find(x => sameName(x, key));
+    if (k) {
+        const cast = splitCast(st);
+        view = k === cast.personaKey ? 'me:' + k : (cast.mains.includes(k) ? 'main:' + k : 'npc:' + k);
+    }
+    openPanel();
 }
 
 function renderInfobar() {
     const s = settings();
-    let host = document.getElementById('iw_infobar');
     const chatEl = document.getElementById('chat');
-    if (!s.enabled || s.infobar === false || !hasChat() || !chatEl) {
-        if (host) host.remove();
-        return;
-    }
-    if (!host) {
-        host = document.createElement('div');
-        host.id = 'iw_infobar';
-        host.style.cssText = 'display:block;flex:0 0 auto;position:relative;z-index:3;';
-        const root = host.attachShadow({ mode: 'open' });
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = `${UI_CSS}?v=${VERSION}`;
-        root.appendChild(link);
-        const wrap = document.createElement('div');
-        wrap.className = 'iw-ib-wrap';
-        root.appendChild(wrap);
-        const toggle = e => {
-            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
-            if (!e.composedPath().some(n => n.classList && n.classList.contains('iw-ib-bar'))) return;
-            e.preventDefault();
-            ibOpen = !ibOpen;
-            renderInfobar();
-        };
-        wrap.addEventListener('click', toggle);
-        wrap.addEventListener('keydown', toggle);
-    }
-    // место: над сообщениями или над полем ввода
-    const form = document.getElementById('form_sheld');
-    if (s.infobarPos === 'bottom' && form) { if (host.nextElementSibling !== form) form.before(host); }
-    else if (host.nextElementSibling !== chatEl) chatEl.before(host);
-    const html = renderInfobarHtml(infobarModel(), currentTheme, ibOpen);
-    const wrap = host.shadowRoot.querySelector('.iw-ib-wrap');
-    wrap.className = `iw-ib-wrap iw-theme-${currentTheme} iw-ib-${s.infobarPos === 'bottom' ? 'bottom' : 'top'}${s.animations === false ? ' iw-noanim' : ''}`;
-    host.hidden = !html;
-    if (wrap.dataset.html !== html) {
-        wrap.innerHTML = html;
-        wrap.dataset.html = html;
+    if (!chatEl) return;
+    document.getElementById('iw_infobar')?.remove(); // старая плашка над чатом
+    const on = s.enabled && s.infobar !== false && hasChat();
+    if (!on) { chatEl.querySelectorAll('.iw-ib-host').forEach(el => el.remove()); return; }
+    const chat = ctx().chat || [];
+    const lastBot = lastBotMessageId();
+    for (const el of chatEl.querySelectorAll('.mes[mesid]')) {
+        const id = Number(el.getAttribute('mesid'));
+        const mes = chat[id];
+        let host = el.querySelector(':scope .iw-ib-host');
+        const want = mes && !mes.is_user && !mes.is_system && (s.infobarWhere !== 'last' || id === lastBot);
+        if (!want) { if (host) host.remove(); continue; }
+        const anchor = el.querySelector('.mes_text');
+        if (!anchor) continue;
+        if (!host) {
+            host = document.createElement('div');
+            host.className = 'iw-ib-host';
+            const root = host.attachShadow({ mode: 'open' });
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = `${UI_CSS}?v=${VERSION}`;
+            root.appendChild(link);
+            const wrap = document.createElement('div');
+            wrap.className = 'iw-ib-wrap';
+            root.appendChild(wrap);
+            const toggle = e => {
+                if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+                const tabEl = e.composedPath().find(n => n.dataset && n.dataset.iwIbTab);
+                if (tabEl) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const mid = Number(host.closest('.mes')?.getAttribute('mesid'));
+                    ibTab.set(mid, tabEl.dataset.iwIbTab);
+                    renderInfobar();
+                    return;
+                }
+                const go = e.composedPath().find(n => n.dataset && n.dataset.iwIbOpen);
+                if (go) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openDiaryAt(go.dataset.iwIbOpen);
+                    return;
+                }
+                if (!e.composedPath().some(n => n.classList && n.classList.contains('iw-ib-bar'))) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const mid = Number(host.closest('.mes')?.getAttribute('mesid'));
+                if (ibOpen.has(mid)) ibOpen.delete(mid); else ibOpen.add(mid);
+                renderInfobar();
+            };
+            wrap.addEventListener('click', toggle);
+            wrap.addEventListener('keydown', toggle);
+        }
+        if (host.nextElementSibling !== anchor) anchor.before(host);
+        const html = renderInfobarHtml(infobarModelFor(id), currentTheme, ibOpen.has(id), ibTab.get(id) || '');
+        const wrap = host.shadowRoot.querySelector('.iw-ib-wrap');
+        wrap.className = `iw-ib-wrap iw-ib-in iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
+        host.hidden = !html;
+        if (wrap.dataset.html !== html) {
+            wrap.innerHTML = html;
+            wrap.dataset.html = html;
+        }
     }
 }
 
@@ -2821,6 +2929,7 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : '');
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
+    if (t.dataset.iwLifeFree) return onLifeEdit(null, null);
     if (t.dataset.iwLiveHide !== undefined) {
         if (live) live.hidden = true;
         return renderAll();
@@ -3314,6 +3423,23 @@ async function onAttrAction(spec, btn) {
     renderAll();
 }
 
+// Брак и дети: правка игрока закрепляет взгляды (field null — вернуть модели)
+async function onLifeEdit(field, value) {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    if (!ch) return;
+    if (field === null) delete ch.lifeSet;
+    else {
+        const life = Object.assign({ marry: '', kids: '', own: '', when: '', count: 0, why: '' }, ch.life);
+        life[field] = field === 'count' ? (Number(value) || 0) : String(value || '');
+        ch.life = life;
+        ch.lifeSet = true;
+    }
+    await saveEditedState(st);
+    renderAll();
+}
+
 // Отметка «игрок правил этот блок руками» — при повторном разборе того же ответа правка не потеряется.
 function markEdited(ch, field) {
     ch.edited = Object.assign({}, ch.edited, { [field]: findHolder().index });
@@ -3426,6 +3552,7 @@ function onPanelInput(e) {
 
 async function onPanelChange(e) {
     const el = e.target;
+    if (el && el.matches && el.matches('[data-iw-life]')) return onLifeEdit(el.dataset.iwLife, el.value);
     if (el && el.matches && el.matches('[data-iw-clock="lock"]')) return onClockAction('lock');
     if (el && el.matches && el.matches('[data-iw-clock-in="vy"]')) {
         const now = clockNow();
@@ -3721,7 +3848,7 @@ function syncSettingsForm() {
 }
 
 // Быстрые настройки на пустом дневнике: запас на ответ, сколько читать, какая модель.
-const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, catchUpMessages: null, npcLimit: null, source: ['main', 'custom'] };
+const QUICK_KEYS = { budgetMode: ['auto', 'fixed'], budgetCap: null, responseLength: null, contextMessages: null, catchUpMessages: null, npcLimit: null, source: ['main', 'custom'], thinking: ['low', 'medium', 'chat'], infobar: ['on', 'off'], infobarWhere: ['all', 'last'] };
 function onQuickSetting(spec) {
     const i = spec.indexOf(':');
     const key = spec.slice(0, i);
@@ -3729,14 +3856,16 @@ function onQuickSetting(spec) {
     if (!(key in QUICK_KEYS)) return;
     const allowed = QUICK_KEYS[key];
     if (allowed && !allowed.includes(raw)) return;
-    const value = allowed ? raw : Number(raw);
+    let value = allowed ? raw : Number(raw);
     if (!allowed && !(value > 0)) return;
+    if (key === 'infobar') value = raw === 'on';
     const s = settings();
     s[key] = value;
     saveSettings();
     syncSettingsForm();
     if (key === 'source' && value === 'custom') return openSettingsAt('connect');
     renderPanelNow();
+    if (key === 'infobar' || key === 'infobarWhere') renderInfobar();
 }
 
 function openSettingsAt(section) {

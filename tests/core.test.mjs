@@ -8,7 +8,7 @@ import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
 import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait, responseBudget, classifyError, looksCut, parseBorn, zodiacOf } from '../src/core.js';
 import { renderNpcList, renderErrorToast, layoutBlocks } from '../src/render.js';
-import { cancelReward } from '../src/core.js';
+import { cancelReward, cleanLife, lifeText, lifeHit } from '../src/core.js';
 import * as S from '../src/showcase.js';
 import * as C2 from '../src/core.js';
 
@@ -789,9 +789,17 @@ test('блоки сворачиваются: у свёрнутого тольк�
 
 test('притяжение попадает в чат своей подсказкой и выключается', () => {
     const st = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', turn_ons: ['рыжие'], turn_offs: ['лживые'], impression: { label: 'x', score: 1 }, chem: { level: 'good' } }), all).state;
-    const t = buildAttrInjection(st, 'Ева', 'strong');
+    const t = buildAttrInjection(st, 'Ева', 'strong', { mode: 'always' });
     assert.ok(t.includes('привлекает: рыжие') && t.includes('отталкивает: лживые') && t.includes('тянет друг к другу') && t.includes('заметно'));
     assert.equal(buildAttrInjection(st, 'Ева', 'none'), '');
+    // по ключам: совместимость всегда, вкусы — только когда тема всплыла
+    const quiet = buildAttrInjection(st, 'Ева', 'strong', { recent: 'Они молча смотрели в окно.' });
+    assert.ok(quiet.includes('тянет друг к другу') && !quiet.includes('рыжие') && !quiet.includes('лживые'));
+    const hits = [];
+    const hair = buildAttrInjection(st, 'Ева', 'strong', { recent: 'Ева поправила рыжую прядь и соврала, что не устала.', hits });
+    assert.ok(hair.includes('привлекает: рыжие') && hair.includes('отталкивает: лживые'));
+    assert.deepEqual(hits.map(h => h.tag), ['рыжие', 'лживые']);
+    assert.ok(quiet.length < t.length);
 });
 
 test('очки коротко: 1,2К и 15К, полное число — в пояснении', async () => {
@@ -1140,3 +1148,36 @@ test('часы: «через три дня ей исполнится» — не 
     assert.equal(r.t.d, 17);
     assert.equal(r.t.h, 19);
 });
+
+test('брак и дети: заполняются один раз, меняются только по событию, правку игрока не трогают', () => {
+    assert.deepEqual(cleanLife({ marry: 'не хочет', kids: 'love', own: 'maybe', when: 'later', count: 2 }).marry, 'no');
+    assert.equal(cleanLife({ marry: 'unknown', kids: 'unknown' }), null);
+    assert.equal(lifeText({ marry: 'no', kids: 'love', own: 'no', when: 'later', count: 2 }), 'брак: не хочет; дети: любит; свои: не хочет');
+    assert.equal(lifeHit('Он заговорил о свадьбе'), 'свадьб');
+    assert.equal(lifeHit('Детектив осмотрел двор'), null);
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', life: { marry: 'yes', kids: 'love', own: 'want', when: 'later', count: 2, why: 'вырос в большой семье' } }), all, {});
+    const k = state.order[0];
+    assert.equal(state.characters[k].life.marry, 'yes');
+    // повторный разбор без события — взгляды не меняются
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'спокоен', life: { marry: 'no', kids: 'dislike' } }), all, {}));
+    assert.equal(state.characters[k].life.marry, 'yes');
+    // событие — меняются, с историей
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'грустен', life: { marry: 'no', changed: true, why: 'невеста сбежала со свадьбы' } }), all, {}));
+    assert.equal(state.characters[k].life.marry, 'no');
+    assert.equal(state.characters[k].lifeLog.length, 1);
+    // правка игрока закрепляет
+    state.characters[k].lifeSet = true;
+    state.characters[k].life.marry = 'maybe';
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'грустен', life: { marry: 'yes', changed: true, why: 'помирились' } }), all, {}));
+    assert.equal(state.characters[k].life.marry, 'maybe');
+    // к месту — только когда в сообщениях тема брака и детей
+    const quiet = buildAttrInjection(state, 'Ева', 'medium', { mode: 'keys', recent: 'Они пили чай.' });
+    assert.ok(!quiet.includes('брак'));
+    const hits = [];
+    const talk = buildAttrInjection(state, 'Ева', 'medium', { mode: 'keys', recent: 'А ты хочешь детей?', hits });
+    assert.ok(talk.includes('взгляды на брак и детей'));
+    assert.equal(hits[0].side, 'life');
+    const html = renderPanel({ state, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:' + k, mains: [k], npcKeys: [] });
+    assert.ok(html.includes('iw-b-life') && html.includes('data-iw-life="marry"'));
+});
+console.log(`итого: ${passed} проверок`);
