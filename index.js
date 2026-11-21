@@ -20,12 +20,12 @@ import {
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
-import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
+import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortName, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.4';
-const UPDATED = '20.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
+const VERSION = '0.6.5';
+const UPDATED = '21.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
@@ -1042,7 +1042,7 @@ function updateInjection(beforeId) {
     let attr = '';
     const attrHits = [];
     if (s.enabled && s.inject && s.modules.attraction !== false && s.attrInfluence !== 'none' && hasChat() && c.chat && c.chat.length) {
-        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence, { mode: s.attrKeys === 'always' ? 'always' : 'keys', recent: recentText(beforeId, 4), hits: attrHits });
+        attr = buildAttrInjection(liveState(beforeId), c.name1, s.attrInfluence, { mode: s.attrKeys === 'always' ? 'always' : 'keys', recent: recentText(beforeId, 4), hits: attrHits, mains: mainNames().length ? mainNames() : null });
     }
     c.setExtensionPrompt(ATTR_PROMPT_KEY, attr, 1, Number(s.attrDepth) || 4, false, 0);
     // часы сцены — у самого конца чата, чтобы модель не теряла время суток и дату
@@ -2486,10 +2486,43 @@ function infobarModelFor(id) {
             });
         }
     } catch (e) { console.warn('[Внутренний мир] инфоблок: герои', e); }
+    // что изменилось в дневнике после этого ответа (сравнение с записью до него)
+    const changes = [];
+    try {
+        const st = currentState(id + 1);
+        const was = currentState(id);
+        if (st !== was && st.order) {
+            const { mains, personaKey } = splitCast(st);
+            const txt = arr => new Map((arr || []).filter(x => x && x.text).map(x => [x.text, x.status || 'active']));
+            for (const k of [...mains, personaKey].filter(Boolean)) {
+                const c = st.characters[k];
+                const o = was.characters && was.characters[k];
+                if (!c || !o) continue;
+                const who = ibShortName(c.name);
+                const nw = txt(c.wants), ow = txt(o.wants);
+                for (const [t, stt] of nw) {
+                    if (!ow.has(t) && stt === 'active') changes.push({ who, kind: 'want', sign: '+', text: t });
+                    else if (ow.get(t) === 'active' && stt === 'done') changes.push({ who, kind: 'want', sign: '✓', text: t });
+                }
+                const nf = txt(c.fears), of = txt(o.fears);
+                for (const [t, stt] of nf) {
+                    if (!of.has(t) && stt === 'active') changes.push({ who, kind: 'fear', sign: '+', text: t });
+                    else if (of.get(t) === 'active' && stt === 'gone') changes.push({ who, kind: 'fear', sign: '−', text: t });
+                }
+                const ni = c.impression || {}, oi = o.impression || {};
+                if (!c.persona && ni.now && ni.now !== oi.now && ((ni.nowScore ?? ni.score) !== (oi.nowScore ?? oi.score))) changes.push({ who, kind: 'att', sign: '~', text: ni.now });
+                const ot = new Set((o.traits || []).map(t => t && t.name));
+                for (const t of c.traits || []) if (t && t.name && !ot.has(t.name) && t.kind !== 'gone') changes.push({ who, kind: 'trait', sign: '+', text: t.name });
+                if ((c.lifeLog || []).length > (o.lifeLog || []).length) changes.push({ who, kind: 'life', sign: '~', text: (c.lifeLog[c.lifeLog.length - 1] || {}).why || 'взгляды на брак и детей' });
+            }
+        }
+    } catch (e) { console.warn('[Внутренний мир] инфоблок: изменения', e); }
     const show = { time: s.ibTime, date: s.ibDate, weather: s.ibWeather && s.weather !== false, events: s.ibEvents, moods: s.ibMoods };
     for (const f of ['Wants', 'Fears', 'Attitude', 'Night', 'Soon', 'Feels']) show[f.toLowerCase()] = !!s['ib' + f];
     if (s.dreams === false) show.night = false;
-    return { clock, cast: cast.slice(0, 4), show };
+    show.clockOn = s.clock !== false;
+    show.changes = s.ibChanges !== false;
+    return { clock, cast: cast.slice(0, 4), show, changes: changes.slice(0, 8) };
 }
 
 // Открыть дневник на странице героя (из инфоблока)
@@ -2929,7 +2962,7 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : '');
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
-    if (t.dataset.iwLifeFree) return onLifeEdit(null, null);
+    if (t.dataset.iwLifePin) return onLifeEdit(null, null);
     if (t.dataset.iwLiveHide !== undefined) {
         if (live) live.hidden = true;
         return renderAll();
@@ -3362,6 +3395,7 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
         info.loreMain = knowledgeLore(2) || [];
         info.style = (THEMES[currentTheme] && THEMES[currentTheme].name) || '';
         if (ch.persona) info.persona = cleanMessageText(personaText(ctx()), 1500);
+        else info.personaText = cleanMessageText(personaText(ctx()), 800);
         const { system, user } = buildRewardsPrompt(info, ch, settings().language);
         const raw = await callModel(system, user, withBudget('rewards'));
         const rewards = parseRewards(raw);
@@ -3429,7 +3463,10 @@ async function onLifeEdit(field, value) {
     const st = currentState();
     const ch = key && st.characters[key];
     if (!ch) return;
-    if (field === null) delete ch.lifeSet;
+    if (field === null) {
+        if (ch.lifeSet) delete ch.lifeSet;
+        else ch.lifeSet = true;
+    }
     else {
         const life = Object.assign({ marry: '', kids: '', own: '', when: '', count: 0, why: '' }, ch.life);
         life[field] = field === 'count' ? (Number(value) || 0) : String(value || '');
@@ -3518,8 +3555,19 @@ async function buy(id) {
     const ch = key && st.characters[key];
     if (!ch) return;
     const reward = (ch.shop || []).find(r => r.id === id);
-    // памятную вещь можно подарить и персоне игрока — она ляжет в её коллекцию
-    const target = ch;
+    // вещица «для тебя» ложится в коллекцию персоны игрока (если её дневник ведётся)
+    const pk = reward && reward.forUser ? splitCast(st).personaKey : null;
+    const target = pk && st.characters[pk] ? st.characters[pk] : ch;
+    if (reward && reward.forUser && target !== ch) {
+        const have = purseOf(st);
+        if (have < reward.cost) return notice('не хватает монет');
+        st.purse = have - reward.cost;
+        target.collection = (target.collection || []).concat([{ title: reward.title, icon: reward.icon, desc: reward.desc, got: Date.now() }]).slice(-30);
+        ch.shop = (ch.shop || []).filter(r => r.id !== reward.id);
+        await saveEditedState(st);
+        showEvent({ type: 'reward', who: target.name, text: `«${reward.title}» — в твоей коллекции, загляни на витрину`, icon: reward.icon });
+        return renderAll();
+    }
     const err = buyReward(target, reward, st);
     if (err) return notice(err);
     await saveEditedState(st);

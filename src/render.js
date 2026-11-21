@@ -471,28 +471,28 @@ export function shortPoints(n) {
 // игрок может поправить сам — тогда взгляды закреплены и модель их не трогает.
 function renderLife(c) {
     const life = c.life || {};
-    const sel = (f, opts) => {
+    const sel = (f, opts, cap) => {
         const cur = f === 'count' ? String(life.count || '') : (life[f] || '');
         const list = Object.entries(opts).map(([v, t]) => `<option value="${esc(v)}"${String(v) === cur ? ' selected' : ''}>${esc(t)}</option>`).join('');
-        return `<select class="iw-life-sel${cur ? '' : ' iw-unk'}" data-iw-life="${f}" aria-label="${esc(f === 'count' ? 'Сколько детей хотел бы' : LIFE_FIELDS[f].label)}"><option value=""${cur ? '' : ' selected'}>не определено</option>${list}</select>`;
+        return `<label class="iw-life-row"><span class="iw-life-cap">${esc(cap)}</span><select class="iw-life-sel${cur ? '' : ' iw-unk'}" data-iw-life="${f}"><option value=""${cur ? '' : ' selected'}>не ясно</option>${list}</select></label>`;
     };
     const counts = Object.fromEntries(COUNT_WORDS.slice(1).map((w, i) => [String(i + 1), w]));
-    const row = (cap, html) => `<div class="iw-life-row"><span class="iw-life-cap">${esc(cap)}</span><span class="iw-life-val">${html}</span></div>`;
     const ownOff = life.own === 'no' || life.own === 'has';
     const log = (c.lifeLog || []).slice().reverse();
+    const pinned = !!c.lifeSet;
+    const pin = `<button type="button" class="iw-life-pin${pinned ? ' on' : ''}" data-iw-life-pin="1" aria-pressed="${pinned}" title="${pinned ? 'Закреплено: модель не меняет эти взгляды. Нажми, чтобы открепить' : 'Закрепить: модель не будет менять эти взгляды'}" aria-label="${pinned ? 'Открепить' : 'Закрепить'}">${icon('pin')}</button>`;
     return `
     <section class="iw-block iw-b-life">
-      ${blockHead('life', 'Брак и дети')}
+      ${blockHead('life', 'Брак и дети', pin)}
       <div class="iw-life">
-        ${row('Брак', sel('marry', LIFE_FIELDS.marry.opts))}
-        ${row('Дети вообще', sel('kids', LIFE_FIELDS.kids.opts))}
-        ${row('Свои дети', sel('own', LIFE_FIELDS.own.opts))}
-        ${ownOff ? '' : row('Когда', sel('when', LIFE_FIELDS.when.opts))}
-        ${ownOff ? '' : row('Сколько', sel('count', counts))}
+        ${sel('marry', LIFE_FIELDS.marry.opts, 'Брак')}
+        ${sel('kids', LIFE_FIELDS.kids.opts, 'К детям')}
+        ${sel('own', LIFE_FIELDS.own.opts, 'Свои')}
+        ${ownOff ? '' : sel('when', LIFE_FIELDS.when.opts, 'Когда')}
+        ${ownOff ? '' : sel('count', counts, 'Сколько')}
       </div>
-      ${life.why ? `<div class="iw-life-why">${ce(life.why)}</div>` : ''}
-      ${c.lifeSet ? `<div class="iw-life-set">${icon('pin')}<span>Поправлено тобой — модель эти взгляды не меняет.</span><button type="button" class="iw-mini" data-iw-life-free="1">вернуть модели</button></div>` : '<div class="iw-muted iw-life-hint">Меняются только после важного события в истории. Можно поправить самой.</div>'}
-      ${log.length ? `<details class="iw-more"><summary>как менялись · ${log.length}</summary><ul class="iw-life-log">${log.map(e => `<li><b>${esc(e.from || 'не определено')} → ${esc(e.to)}</b>${e.why ? ` — ${ce(e.why)}` : ''}</li>`).join('')}</ul></details>` : ''}
+      ${life.why ? `<div class="iw-life-why" title="${esc(life.why)}">${ce(life.why)}</div>` : ''}
+      ${log.length ? `<details class="iw-more"><summary>как менялись · ${log.length}</summary><ul class="iw-life-log">${log.map(e => `<li><b>${esc(e.from || 'не ясно')} → ${esc(e.to)}</b>${e.why ? ` — ${ce(e.why)}` : ''}</li>`).join('')}</ul></details>` : ''}
     </section>`;
 }
 
@@ -802,22 +802,23 @@ const REWARD_GROUPS = [
     { kind: 'collect', icon: 'gem', name: 'В коллекцию', hint: 'памятная вещь, остаётся навсегда' },
 ];
 
-export function renderShop(c, theme, key, { shopBusy = false, purse = null, personaName = '' } = {}) {
+export function renderShop(c, theme, key, { shopBusy = false, purse = null, personaName = '', personaOwned = [] } = {}) {
     const persona = null, forPersona = false;
+    const userOwned = new Set(personaOwned.map(t => String(t || '').toLowerCase()));
     const own = !!c.persona; // лавка персоны игрока — только памятные вещи для неё
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who));
     const pts = purse ?? (c.points || 0);
     const row = r => `
       <li class="iw-reward iw-rk-${r.kind}${pts < r.cost ? ' locked' : ''}">
         <span class="iw-rw-ico iw-rw-big">${icon(r.icon || 'gift')}</span>
-        <span class="iw-rw-body"><b class="iw-rw-title">${ce(r.title)}</b><span class="iw-rw-desc">${ce(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
+        <span class="iw-rw-body"><b class="iw-rw-title">${ce(r.title)}</b>${r.forUser ? `<span class="iw-rw-for">для ${esc(personaName || 'тебя')}</span>` : ''}<span class="iw-rw-desc">${ce(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
         <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost ? ' disabled' : ''} title="${pts < r.cost ? 'Не хватает очков' : 'Купить'}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
       </li>`;
     // купленное уходит с полки: действующее висит листочком, памятная вещь — уже на витрине
     const active = new Set((c.buffs || []).map(b => b.id));
     // памятная вещь уходит с полки, когда она уже есть у того, кому её сейчас покупают
     const owned = new Set(((forPersona ? persona.collection : c.collection) || []).map(x => String(x.title || '').toLowerCase()));
-    const shop = (c.shop || []).filter(r => !active.has(r.id) && !(r.kind === 'collect' && owned.has(String(r.title || '').toLowerCase())));
+    const shop = (c.shop || []).filter(r => !active.has(r.id) && !(r.kind === 'collect' && (r.forUser ? userOwned : owned).has(String(r.title || '').toLowerCase())));
     const groups = REWARD_GROUPS.map(g => {
         if (own && g.kind !== 'collect') return '';
         const list = shop.filter(r => r.kind === g.kind);
@@ -956,7 +957,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.traits) blocks.push(renderTraits(c, L));
     if (modules.traits) blocks.push(renderPersona(c, L, opts));
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
-    if (modules.attraction && !opts.persona) blocks.push(renderLife(c));
+    if (modules.attraction && !opts.persona && !opts.npc) blocks.push(renderLife(c));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
     if (opts.nights && !opts.npc) blocks.push(renderNights(c));
     if (Array.isArray(opts.rumors) && !opts.npc) blocks.push(renderRumors(opts.rumors, c.name, !!opts.persona));
@@ -992,7 +993,8 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
       <button type="button" class="iw-npc met iw-npc-heard${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
         ${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span><span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
         <span class="iw-npc-name${nameFit(shortName(c.name))}" title="${esc(c.name)}">${esc(shortName(c.name))}</span>
-        ${shortStatus(who) ? `<span class="iw-npc-status">${ce(shortStatus(who))}</span>` : ''}
+        <span class="iw-npc-status" title="${esc(shortStatus(who) || '')}">${shortStatus(who) ? ce(shortStatus(who)) : ''}</span>
+        <span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>
         <span class="iw-npc-mood iw-npc-heardmark">${dead ? 'нет в живых' : 'понаслышке'}</span>
       </button>`);
             continue;
@@ -1001,9 +1003,9 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
       <button type="button" class="iw-npc met${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `Открыть: ${c.name}`)}">
         ${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span><span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c, true)}</span>
         <span class="iw-npc-name${nameFit(shortName(c.name))}" title="${esc(c.name)}">${esc(shortName(c.name))}</span>
-        ${shortStatus(who) ? `<span class="iw-npc-status">${ce(shortStatus(who))}</span>` : ''}
-        ${!dead && (c.born || c.ageAt || c.ageSaid) ? tabBorn(c, clock, key) : ''}
-        ${dead ? '<span class="iw-npc-mood iw-npc-heardmark">нет в живых</span>' : (c.mood ? `<span class="iw-npc-mood iw-npc-now">${ce(c.mood)}</span>` : '')}
+        <span class="iw-npc-status" title="${esc(shortStatus(who) || '')}">${shortStatus(who) ? ce(shortStatus(who)) : ''}</span>
+        ${!dead && (c.born || c.ageAt || c.ageSaid) ? tabBorn(c, clock, key) : '<span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>'}
+        ${dead ? '<span class="iw-npc-mood iw-npc-heardmark">нет в живых</span>' : `<span class="iw-npc-mood iw-npc-now">${c.mood ? ce(c.mood) : ''}</span>`}
       </button>`);
     }
     for (const e of seenOnly) {
@@ -1016,7 +1018,8 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
       <div class="iw-npc seen${e.checked ? ' checked' : ''}" title="${esc(tip)}">
         ${npcBadge(badgeInfo(e, e))}
         <span class="iw-npc-name${nameFit(shortName(e.name))}" title="${esc(e.name)}">${esc(shortName(e.name))}</span>
-        ${shortStatus(e.who) ? `<span class="iw-npc-status">${ce(shortStatus(e.who))}</span>` : ''}
+        <span class="iw-npc-status" title="${esc(shortStatus(e.who) || '')}">${shortStatus(e.who) ? ce(shortStatus(e.who)) : ''}</span>
+        <span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>
         <span class="iw-npc-mood">${e.checked ? gw(g, 'только упоминался', 'только упоминалась', 'только упоминание') : 'ждёт разбора'}</span>
       </div>`);
     }
@@ -1333,7 +1336,8 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
         }
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
-        body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null, personaName: (persona && persona.name) || '' });
+        const pKey = state.order.find(k => state.characters[k] && state.characters[k].persona);
+        body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null, personaName: (persona && persona.name) || '', personaOwned: pKey ? (state.characters[pKey].collection || []).map(x => x.title) : [] });
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0], rumors, nights }, opts));
@@ -1343,7 +1347,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
         body = `<div class="iw-empty">${esc(L.empty)}</div>`;
     }
     const shopKey = settings.points !== false
-        ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] ? current : (mains.find(k => state.characters[k]) || null)))
+        ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] && !state.characters[current].persona ? current : (mains.find(k => state.characters[k]) || null)))
         : null;
     const wallet = settings.points !== false
         ? { current: shopKey, purse: purseOf(state), list: state.order.filter(k => state.characters[k] && !state.characters[k].persona && (mains.includes(k) || (state.characters[k].points || 0) > 0)).map(k => ({ key: k, name: state.characters[k].name, points: state.characters[k].points || 0 })) }
@@ -1443,8 +1447,11 @@ export function renderToast(ev, theme) {
 // model: { clock, cast: [{ name, mood, face, face2, feels: [{ e, w }] , persona }], show: { time, date, weather, events, moods } }
 export function renderInfobarHtml(model, theme, open = false, tab = '') {
     setIconTheme(theme);
-    const { clock, cast = [], show = {} } = model || {};
+    const { clock, cast = [], show = {}, changes = [] } = model || {};
     const parts = [];
+    if (!(clock && clock.t) && show.clockOn !== false && (show.time !== false || show.date !== false)) {
+        parts.push(`<span class="iw-ib-time iw-ib-notime" title="Дневник пока не понял, когда идёт сцена. Время появится, когда в истории прозвучит дата или время — или задай его в дневнике, над блоками.">${icon('clock')}<em>время сцены не определено</em></span>`);
+    }
     if (clock && clock.t) {
         if (show.time !== false) parts.push(`<span class="iw-ib-time">${icon('clock')}<b>${esc(clock.time)}</b><em>${esc(clock.part)}</em></span>`);
         if (show.date !== false) parts.push(`<span class="iw-ib-date">${esc(clock.date)}</span>`);
@@ -1462,7 +1469,10 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
     const cur = people.find(x => x.p.key === tab) || people[0];
     const soon = show.soon !== false && show.events !== false && clock && clock.upcoming ? clock.upcoming.filter(e => e.inDays > 0).slice(0, 3) : [];
     const evs = soon.map(e => `<span class="iw-ib-ev">${calIcon(e.kind)}<b>${esc(e.dateText)}</b> ${esc(clockEventText(e))} <em>${esc(clockWhen(e))}</em></span>`).join('');
-    const more = people.length || evs;
+    const chg = show.changes !== false ? changes : [];
+    const CHG = { want: 'хочет', fear: 'боится', att: 'к тебе', trait: 'черта', life: 'брак и дети' };
+    const chgHtml = chg.map(x => `<li class="iw-ib-chg-${esc(x.kind)}${x.sign === '−' || x.sign === '✓' ? ' iw-ib-chg-off' : ''}"><b class="iw-ib-sign">${esc(x.sign)}</b><span class="iw-ib-chg-who">${esc(x.who)}</span><span class="iw-ib-chg-kind">${esc(x.sign === '✓' ? 'сбылось' : (x.sign === '−' && x.kind === 'fear' ? 'страх ушёл' : CHG[x.kind] || ''))}</span><span class="iw-ib-txt" title="${esc(x.text)}">${esc(x.text)}</span></li>`).join('');
+    const more = people.length || evs || chgHtml;
     let body = '';
     if (more && open) {
         const tabs = people.map(({ p }) => {
@@ -1471,6 +1481,7 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
         }).join('');
         body = `
 <div class="iw-ib-more">
+  ${chgHtml ? `<div class="iw-ib-chg"><span class="iw-ib-cap" title="Что изменилось в дневнике после этого ответа">Новое</span><ul>${chgHtml}</ul></div>` : ''}
   ${cur ? `<div class="iw-ib-tabs">${tabs}<button type="button" class="iw-ib-open" data-iw-ib-open="${esc(cur.p.key)}">в дневник ${icon('arrowright')}</button></div>
   <dl class="iw-ib-rows">${cur.rows.join('')}</dl>` : ''}
   ${evs ? `<div class="iw-ib-soon"><span class="iw-ib-cap">Скоро</span><span class="iw-ib-evs">${evs}</span></div>` : ''}
@@ -1480,6 +1491,7 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
 <div class="iw-ib-bar${open ? ' iw-open' : ''}" role="button" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" title="Внутренний мир: нажми — подробности">
   <span class="iw-ib-line">${parts.join('<span class="iw-ib-sep" aria-hidden="true"></span>')}</span>
   ${faces ? `<span class="iw-ib-cast">${faces}</span>` : ''}
+  ${chg.length ? `<span class="iw-ib-chgcount" title="Изменилось в дневнике после этого ответа: ${chg.length}">${icon('sparkle')}${chg.length}</span>` : ''}
   ${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}
 </div>${body}`;
 }
@@ -1507,7 +1519,7 @@ function ibRows(p, show) {
     return rows;
 }
 
-function ibShortName(n) {
+export function ibShortName(n) {
     const w = String(n || '').trim().split(/\s+/);
     return w[0] || '';
 }

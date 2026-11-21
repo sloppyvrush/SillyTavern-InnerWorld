@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS = {
     ibEvents: true,
     ibMoods: true,
     // что видно в развёрнутом инфоблоке (по героям)
+    ibChanges: true,
     ibWants: true,
     ibFears: true,
     ibAttitude: true,
@@ -1426,7 +1427,7 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
         if (!out.attrSet && fresh.likes && fresh.likes.length && !(out.likes && out.likes.length)) out.likes = fresh.likes;
         if (!out.attrSet && fresh.dislikes && fresh.dislikes.length && !(out.dislikes && out.dislikes.length)) out.dislikes = fresh.dislikes;
         // брак и дети: заполняются один раз; потом — только если модель отметила событие (changed + why); правку игрока не трогаем
-        if (fresh.life && !out.persona && !out.lifeSet) {
+        if (fresh.life && !out.persona && !out.lifeSet && !mopts.npc) {
             const { changed, ...life } = fresh.life;
             if (!out.life) out.life = life;
             else if (changed && life.why) {
@@ -1511,7 +1512,7 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         const counted = next.order.filter(k => next.characters[k] && !next.characters[k].persona && !isShortRecord(next.characters[k])).length;
         const heardCount = next.order.filter(k => isShortRecord(next.characters[k])).length;
         if (!old && !isPersona && (heardOnly ? heardCount >= 12 : counted >= maxChars)) continue;
-        const merged = mergeCharacter(old, fresh, modules, { rebuild: !!opts.rebuild });
+        const merged = mergeCharacter(old, fresh, modules, { rebuild: !!opts.rebuild, npc: !!(opts.mains && !isPersona && !isMain(fresh.name, opts.mains)) });
         if (isPersona) merged.persona = true;
         const evs = diffCharacter(old, merged, modules);
         if (merged.dream) delete merged.dream.event;
@@ -1910,7 +1911,7 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
                 o.turn_ons = c.likes || [];
                 o.turn_offs = c.dislikes || [];
             } else o.no_attraction = true;
-            if (!c.persona) {
+            if (!c.persona && !npc) {
                 if (c.life) o.life = { marry: c.life.marry || 'unknown', kids: c.life.kids || 'unknown', own: c.life.own || 'unknown', when: c.life.when || 'unknown', count: c.life.count || 0 };
                 else o.no_life = true;
             }
@@ -2000,7 +2001,7 @@ const ATTR_TONE = {
 };
 // mode 'keys' — теги только к месту (по последним сообщениям recent), совместимость — всегда; 'always' — все теги всегда.
 // hits (если передан массив) — сюда пишется, какие теги сработали и на каком слове: для тегов влияния.
-export function buildAttrInjection(state, userName, level = 'medium', { mode = 'keys', recent = '', hits = null } = {}) {
+export function buildAttrInjection(state, userName, level = 'medium', { mode = 'keys', recent = '', hits = null, mains = null } = {}) {
     if (!ATTR_TONE[level] || !state || !state.order) return '';
     const lines = [];
     for (const key of state.order) {
@@ -2014,7 +2015,7 @@ export function buildAttrInjection(state, userName, level = 'medium', { mode = '
             dislikes = act.dislikes.map(x => x.tag);
             if (hits) for (const x of [...act.likes.map(v => Object.assign({ who: c.name, side: 'like' }, v)), ...act.dislikes.map(v => Object.assign({ who: c.name, side: 'dislike' }, v))]) hits.push(x);
         }
-        if (c.life) {
+        if (c.life && !(mains && !isMain(c.name, mains))) {
             const word = mode === 'keys' ? lifeHit(recent) : 'всегда';
             const lt = lifeText(c.life);
             if (word && lt) {
@@ -2339,10 +2340,12 @@ export function buildRewardsPrompt(info, c, lang = 'русском') {
         `Четыре вида: buff — предмет, который действует несколько ответов (turns 3–10) и меняет поведение персонажа; event — случай, который рассказчик вплетёт в ближайший ответ; gift — подарок, который САМ персонаж в силу своего характера, вкусов и возможностей мог бы подарить ${user} (2–3 таких: от трогательных и романтичных до забавных, практичных или неловких — как он умеет; у сурового человека подарок может быть грубоватым и полезным, у циника — с подколкой); collect — памятная вещица в коллекцию, на поведение не влияет.`,
         `desc — для игрока, просто и конкретно, одной фразой: что изменится в истории («Ещё 5 ответов Роберт мягче и ласковее с тобой», «В следующем ответе Еве приходит письмо от сестры», «В ближайшей сцене Роберт подарит тебе старый компас», «Просто милая вещица на память»). Без поэзии и метафор.`,
         'effect — для buff, event и gift: что именно передать рассказчику, одной фразой (для gift — что за вещь и откуда она у персонажа). tone — только для gift: romantic, cute, funny, practical, awkward или dark. cost — от 10 до 150, сильнее и редкое — дороже. icon — одно из: ' + REWARD_ICONS.join(', ') + '.',
-        'Формат: {"rewards":[{"title":"название","desc":"коротко для игрока","kind":"buff|event|gift|collect","effect":"для рассказчика","turns":5,"cost":40,"icon":"gift","tone":"romantic"}]}',
+        `Лавка одна на чат. buff, event и gift — всегда о персонаже. Среди collect можно одну-две вещицы для персоны игрока (${user}) — под её характер и вкусы; у таких поставь "for":"user". Остальные collect — для персонажа, без for.`,
+        'Формат: {"rewards":[{"title":"название","desc":"коротко для игрока","kind":"buff|event|gift|collect","effect":"для рассказчика","turns":5,"cost":40,"icon":"gift","tone":"romantic","for":""}]}',
     ].join('\n');
     const parts = [];
     if (info.card) parts.push(`[Карточка: ${info.botName}]\n${info.card}`);
+    if (info.personaText) parts.push(`[Персона игрока: ${user}]\n${info.personaText}`);
     if (c) parts.push(`[Персонаж]\n${JSON.stringify({ name: c.name, traits: (c.traits || []).map(t => t.name), dream: c.dream ? c.dream.title : '', wants: (c.wants || []).map(w => w.text), fears: (c.fears || []).map(f => f.text) })}`);
     if (info.loreMain && info.loreMain.length) parts.push(`[Лорбук — сведения из прошлого разбора]\n${info.loreMain.join('\n\n')}`);
     if (info.messages && info.messages.length) parts.push(`[Последние сообщения]\n${info.messages.slice(-4).join('\n\n')}`);
@@ -2363,6 +2366,7 @@ export function parseRewards(text) {
         cost: num(r && r.cost, 5, 500, 30),
         icon: oneOf(r && r.icon, REWARD_ICONS, 'gift'),
         tone: oneOf(r && r.tone, GIFT_TONES, ''),
+        forUser: !!(r && r.kind === 'collect' && /^(user|игрок|персона|me)$/i.test(String(r.for || '').trim())),
     })).filter(r => r.title).slice(0, 12);
 }
 

@@ -120,6 +120,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'ibEvents', label: 'Праздник или день рождения сегодня', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibMoods', label: 'Настроение героев', show: s => s.infobar !== false },
                 { type: 'sub', label: 'Если развернуть', show: s => s.infobar !== false },
+                { type: 'toggle', key: 'ibChanges', label: 'Что изменилось после ответа', hint: 'Новые желания и страхи, что сбылось, что прошло, перемены в отношении к тебе. В строке — значок с числом перемен.', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibAttitude', label: 'Отношение к тебе', hint: 'Совместимость сейчас и что герой о тебе думает.', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibWants', label: 'Желания', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibFears', label: 'Страхи', show: s => s.infobar !== false },
