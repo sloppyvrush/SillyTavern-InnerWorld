@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus } from './core.js';
+import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -485,14 +485,13 @@ function renderLife(c) {
     <section class="iw-block iw-b-life">
       ${blockHead('life', 'Брак и дети', pin)}
       <div class="iw-life">
-        <div class="iw-life-line">${sel('marry', LIFE_FIELDS.marry.opts, 'Брак')}</div>
-        <div class="iw-life-sub">Дети</div>
-        <div class="iw-life-line">
-          ${sel('kids', LIFE_FIELDS.kids.opts, 'вообще')}
-          ${sel('own', LIFE_FIELDS.own.opts, 'свои')}
-          ${ownOff ? '' : sel('when', LIFE_FIELDS.when.opts, 'когда')}
-          ${ownOff ? '' : sel('count', counts, 'сколько')}
-        </div>
+        <div class="iw-life-sec">${icon('ring')}<span>Брак</span></div>
+        ${sel('marry', LIFE_FIELDS.marry.opts, 'Хочет ли в брак')}
+        <div class="iw-life-sec">${icon('users')}<span>Дети</span></div>
+        ${sel('kids', LIFE_FIELDS.kids.opts, 'Как относится')}
+        ${sel('own', LIFE_FIELDS.own.opts, 'Свои дети')}
+        ${ownOff ? '' : sel('when', LIFE_FIELDS.when.opts, 'Когда')}
+        ${ownOff ? '' : sel('count', counts, 'Сколько')}
       </div>
       ${life.why ? `<div class="iw-life-why" title="${esc(life.why)}">${ce(life.why)}</div>` : ''}
       ${log.length ? `<details class="iw-more"><summary>как менялись · ${log.length}</summary><ul class="iw-life-log">${log.map(e => `<li><b>${esc(e.from || 'не ясно')} → ${esc(e.to)}</b>${e.why ? ` — ${ce(e.why)}` : ''}</li>`).join('')}</ul></details>` : ''}
@@ -573,45 +572,72 @@ function renderAttitude(c, L, opts = {}) {
           <div class="iw-imp-row">${scoreBadge(nowScore)}<span class="iw-imp-now">${ce(im.now || '')}</span></div>
         </div>` : ''}
       </div>
-      ${attitudeChart(c.attitude, L.chartMark)}
-      ${opts.persona ? '' : relPlate(c)}
+      ${opts.persona ? attitudeChart(c.attitude, L.chartMark) : relPlate(c)}
     </section>`;
 }
 
 const REL_ICON = {
-    married: 'ring', engaged: 'ring', dating: 'heart', love: 'heart', crush: 'heart', spark: 'sparkle',
+    married: 'ring', engaged: 'ring', dating: 'heart', soul: 'heart', love: 'heart', crush: 'heart',
     best: 'handshake', close: 'handshake', friend: 'handshake', know: 'smile', strangers: 'user',
     dislike: 'wx_cloud', enemy: 'swords', rivals: 'swords', ex: 'heartbreak', exspouse: 'heartbreak', kin: 'users',
 };
+const REL_GROUP = {
+    married: 'ring', engaged: 'ring', dating: 'love', soul: 'love', love: 'love', crush: 'love',
+    best: 'friends', close: 'friends', friend: 'friends', know: 'hello', strangers: 'hello', kin: 'home',
+    dislike: 'storm', enemy: 'storm', rivals: 'storm', ex: 'broken', exspouse: 'broken',
+};
+// Рисованные зарисовки рядом с плашкой статуса — штрихом, цветом темы
+const REL_DOODLE = {
+    love: '<path d="M22 30c-6-4-11-8-11-13 0-3 2.4-5 5-5 2.4 0 4.6 1.6 6 4 1.4-2.4 3.6-4 6-4 2.6 0 5 2 5 5 0 5-5 9-11 13z"/><path d="M47 22c-3.6-2.4-6.6-4.8-6.6-7.8 0-1.8 1.4-3 3-3 1.4 0 2.8 1 3.6 2.4.8-1.4 2.2-2.4 3.6-2.4 1.6 0 3 1.2 3 3 0 3-3 5.4-6.6 7.8z"/><path d="M34 10l2-4M40 8l3-2M58 26c3 1 6 0 8-3M60 33l4 1" class="t"/>',
+    ring: '<circle cx="24" cy="24" r="9"/><path d="M19 13l5-6 5 6-5 3z"/><circle cx="44" cy="26" r="8"/><path d="M33 8l1-3M37 10l3-2M54 14l2 3 3 1-3 1-2 3-1-3-3-1 3-1z" class="t"/>',
+    friends: '<path d="M10 16h14v9a7 7 0 0 1-14 0z"/><path d="M24 18h3a3 3 0 0 1 0 6h-3"/><path d="M38 16h14v9a7 7 0 0 1-14 0z"/><path d="M38 18h-3a3 3 0 0 0 0 6h3"/><path d="M14 11c0-2 2-2 2-4M45 11c0-2 2-2 2-4M30 33h4" class="t"/>',
+    hello: '<path d="M8 26l40-14-12 22-6-8z"/><path d="M30 26l18-14"/><path d="M52 30c3 0 5 2 5 4s-2 3-3 4M54 42v1" class="t"/>',
+    storm: '<path d="M14 22a7 7 0 0 1 12-6 8 8 0 0 1 15 3 5 5 0 0 1-1 10H17a5 5 0 0 1-3-7z"/><path d="M28 30l-4 7h6l-4 7" class="t"/>',
+    broken: '<path d="M30 36c-8-5-15-10-15-17 0-4 3-7 7-7 3.2 0 6 2 8 5 2-3 4.8-5 8-5 4 0 7 3 7 7 0 7-7 12-15 17z"/><path d="M30 17l-3 6 5 3-3 6" class="t"/>',
+    home: '<path d="M12 22l16-12 16 12"/><path d="M16 20v14h24V20"/><path d="M25 34v-8h6v8M50 14c2-1 4 0 5 2M52 22h4" class="t"/>',
+};
 
-// Кто они друг другу и две шкалы, как в «Симс»: дружба (от врагов до лучших друзей) и романтика
+// Большой набросок под шкалами: заполняет пустое место листка (если места нет — просто сжимается)
+const REL_ART = {
+    love: '<path d="M100 74c-16-10-29-20-29-33 0-8 6-14 14-14 6 0 11 4 15 9 4-5 9-9 15-9 8 0 14 6 14 14 0 13-13 23-29 33z"/><path d="M40 60l112-34" class="t"/><path d="M146 22l8 3-5 7M40 60l-8-4M40 60l-5 7" class="t"/><path d="M30 30c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8zM170 66c-3-2-5-4-5-6 0-1.5 1-2.5 2.5-2.5 1 0 2 .7 2.5 1.6.5-.9 1.5-1.6 2.5-1.6 1.5 0 2.5 1 2.5 2.5 0 2-2 4-5 6z"/><path d="M12 76c8-6 14 4 22-2s10 4 18-2M150 82c8-6 14 4 22-2s10 4 18-2" class="t"/>',
+    ring: '<circle cx="84" cy="52" r="20"/><circle cx="116" cy="52" r="20"/><path d="M78 30l6-10 6 10-6 4zM110 30l6-10 6 10-6 4z"/><path d="M40 36l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM160 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" class="t"/><path d="M20 78c14-10 26 6 40-2s22 6 36-2M104 78c14-10 26 6 40-2s22 6 36-2" class="t"/>',
+    friends: '<path d="M58 34h30v22a15 15 0 0 1-30 0z"/><path d="M88 38h6a7 7 0 0 1 0 14h-6"/><path d="M112 34h30v22a15 15 0 0 1-30 0z"/><path d="M112 38h-6a7 7 0 0 0 0 14h6"/><path d="M66 26c-3-4 3-6 0-11M80 26c-3-4 3-6 0-11M122 26c-3-4 3-6 0-11M136 26c-3-4 3-6 0-11" class="t"/><path d="M30 40l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM170 46l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" class="t"/><path d="M40 82c20-6 40 6 60 0s40-6 60 0" class="t"/>',
+    hello: '<path d="M120 30l50-16-16 40-10-12z"/><path d="M144 42l26-28"/><path d="M120 30c-30 6-48 22-70 20s-26-18-12-22 22 12 8 26-30 10-36 6" class="t" stroke-dasharray="3 5"/><path d="M60 20l1.6 4 4 1.6-4 1.6L60 31l-1.6-4-4-1.6 4-1.6z" class="t"/>',
+    storm: '<path d="M60 44a14 14 0 0 1 24-12 18 18 0 0 1 34 6 11 11 0 0 1-2 22H66a11 11 0 0 1-6-16z"/><path d="M92 60l-8 14h12l-8 14" class="t"/><path d="M30 30c6 4 2 10 8 14s8-2 12 4M150 30c6 4 2 10 8 14s8-2 12 4" class="t"/><path d="M20 78l10-6 6 8 10-6M154 78l10-6 6 8 10-6" class="t"/>',
+    broken: '<path d="M100 80c-18-11-32-22-32-36 0-9 7-15 15-15 7 0 12 4 17 10 5-6 10-10 17-10 8 0 15 6 15 15 0 14-14 25-32 36z"/><path d="M100 39l-6 12 9 6-6 12" class="t"/><path d="M40 70c4-8 10-8 14 0M146 70c4-8 10-8 14 0M30 40l12 4M158 40l12-4" class="t"/>',
+    home: '<path d="M70 50l30-24 30 24"/><path d="M78 46v32h44V46"/><path d="M94 78V62h12v16"/><path d="M114 30v-8h6v12" /><path d="M118 18c-3-4 3-6 0-10" class="t"/><path d="M40 60c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8zM160 60c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8z"/><path d="M20 84c20-6 40 4 60-2M120 82c20-6 40 4 60-2" class="t"/>',
+};
+
+// Кто они друг другу + две шкалы, как в «Симс 4»: дружба (зелёная) и романтика (розовая); в минусе — красные, около нуля — серые
 function relPlate(c) {
-    const met = !!c.impression;
+    const met = !!c.impression && !c.unmet;
     const rel = c.rel || null;
     const st = relStatus(rel, met);
     const f = rel ? (rel.friend || 0) : 0;
     const r = rel ? (rel.romance || 0) : 0;
-    const left = f >= 0 ? 50 : 50 + f / 2;
-    const width = Math.abs(f) / 2;
+    const fl = friendLevel(f);
+    const rl = romanceLevel(r);
+    const tone = (v, lo) => (v <= -lo ? 'neg' : (v < lo ? 'mid' : 'pos'));
     const log = (c.relLog || []).slice(-1)[0];
-    const bars = rel && met && rel.met !== false ? `
-        <div class="iw-rel-bars">
-          <div class="iw-rel-bar iw-rel-fr${f < 0 ? ' neg' : ''}" title="Дружба: ${signed(f)} из 100">
-            <span class="iw-rel-cap">дружба</span>
-            <span class="iw-rel-track iw-rel-mid"><span class="iw-rel-fill" style="left:${left}%;width:${width}%"></span></span>
-            <span class="iw-rel-num">${signed(f)}</span>
-          </div>
-          <div class="iw-rel-bar iw-rel-ro" title="Романтика: ${r} из 100">
-            <span class="iw-rel-cap">романтика</span>
-            <span class="iw-rel-track"><span class="iw-rel-fill" style="left:0;width:${r}%"></span></span>
-            <span class="iw-rel-num">${r}</span>
-          </div>
-        </div>` : '';
+    const bar = (cls, ic, cap, lvl, v, t, tip) => `
+          <div class="iw-rel-bar ${cls} iw-rel-${t}" title="${esc(tip)}">
+            <span class="iw-rel-cap">${icon(ic)}<span>${cap}</span><em>${esc(lvl)}</em></span><span class="iw-rel-num">${signed(v)}</span>
+            <span class="iw-rel-track"><span class="iw-rel-fill" style="width:${Math.round((v + 100) / 2)}%"></span></span>
+          </div>`;
+    const doodle = REL_DOODLE[REL_GROUP[st.key] || 'hello'];
     return `
       <div class="iw-rel iw-rel-${esc(st.key)}">
-        <div class="iw-rel-badge" title="${esc(log && log.why ? `${log.from ? log.from + ' → ' : ''}${log.to}: ${log.why}` : 'Кто вы друг другу')}">
-          <span class="iw-rel-ico">${icon(REL_ICON[st.key] || 'heart')}</span><b>${esc(st.label)}</b>
-        </div>${bars}
+        <div class="iw-rel-head">
+          <div class="iw-rel-badge" title="${esc(log && log.why ? `${log.from ? log.from + ' → ' : ''}${log.to}: ${log.why}` : 'Кто вы друг другу')}">
+            <span class="iw-rel-ico">${icon(REL_ICON[st.key] || 'heart')}</span><b>${esc(st.label)}</b>
+          </div>
+          <svg class="iw-rel-doodle" viewBox="0 0 66 46" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${doodle}</svg>
+        </div>
+        <div class="iw-rel-bars">
+          ${bar('iw-rel-fr', 'handshake', 'Дружба', fl[1], f, tone(f, 20), `Дружба: ${signed(f)} — ${fl[1]}. Шкала от −100 до +100`)}
+          ${bar('iw-rel-ro', 'heart', 'Романтика', rl[1], r, tone(r, 10), `Романтика: ${signed(r)} — ${rl[1]}. Шкала от −100 до +100`)}
+        </div>
+        <div class="iw-rel-art" aria-hidden="true"><svg viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${REL_ART[REL_GROUP[st.key] || 'hello']}</svg></div>
       </div>`;
 }
 
@@ -1021,6 +1047,21 @@ export function renderCharacter(c, modules, theme, opts = {}) {
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
+// Плитка НПС: имя, настроение маркером, ниже приклеенный листочек «кто это»; всё на одних уровнях
+function npcTile({ tag = 'button', cls = '', attrs = '', title = '', x = '', face = '', name = '', mood = '', moodMark = false, who = '', born = '', action = '' }) {
+    const fullWho = String(who || '').replace(/\s+/g, ' ').trim();
+    return `
+      <${tag}${tag === 'button' ? ' type="button"' : ''} class="iw-npc ${cls}" ${attrs} title="${esc(title)}">
+        ${x}<span class="iw-npc-face-wrap">${face}</span>
+        <span class="iw-npc-body">
+          <span class="iw-npc-top"><span class="iw-npc-name" title="${esc(name)}">${esc(name)}</span>${born || ''}</span>
+          <span class="iw-npc-mood${moodMark ? ' iw-npc-mark' : ''}">${mood ? (moodMark ? esc(mood) : `<span class="iw-hl iw-hl-main">${ce(mood)}</span>`) : '&nbsp;'}</span>
+          <span class="iw-npc-note${fullWho ? '' : ' empty'}" title="${esc(fullWho)}">${fullWho ? ce(fullWho) : '&nbsp;'}</span>
+          ${action}
+        </span>
+      </${tag}>`;
+}
+
 export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, seenOnly = [], personaName = '', personaG = 'n', clock = null, ignored = [] }) {
     const used = new Set();
     const cards = [];
@@ -1039,24 +1080,22 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         if (isHearsay(c)) {
             const g = genderOf(c.g && c.g !== 'n' ? c.g : (entry && entry.g), c.name, c.who || '');
             const who = c.who || ''; // только то, что знает персона, а не лорбук
-            heardCards.push(`
-      <button type="button" class="iw-npc met iw-npc-heard${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`)}">
-        ${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span><span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}</span>
-        <span class="iw-npc-name${nameFit(shortName(c.name))}" title="${esc(c.name)}">${esc(shortName(c.name))}</span>
-        <span class="iw-npc-status" title="${esc(shortStatus(who) || '')}">${shortStatus(who) ? ce(shortStatus(who)) : ''}</span>
-        <span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>
-        <span class="iw-npc-mood iw-npc-heardmark">${dead ? 'нет в живых' : 'понаслышке'}</span>
-      </button>`);
+            heardCards.push(npcTile({
+                cls: `met iw-npc-heard${dead ? ' iw-dead' : ''}`, attrs: `data-iw-view="npc:${esc(key)}"`,
+                title: dead ? `${c.name}: нет в живых` : `${personaName || 'Твой герой'} знает ${gw(g, 'его', 'её', 'его')} только понаслышке`,
+                x: `${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span>`,
+                face: npcBadge(badgeInfo(c, entry)), name: c.name, mood: dead ? 'нет в живых' : 'понаслышке', moodMark: true, who,
+            }));
             continue;
         }
-        cards.push(`
-      <button type="button" class="iw-npc met${dead ? ' iw-dead' : ''}" data-iw-view="npc:${esc(key)}" title="${esc(dead ? `${c.name}: нет в живых` : `Открыть: ${c.name}`)}">
-        ${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span><span class="iw-npc-face-wrap">${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c, true)}</span>
-        <span class="iw-npc-name${nameFit(shortName(c.name))}" title="${esc(c.name)}">${esc(shortName(c.name))}</span>
-        <span class="iw-npc-status" title="${esc(shortStatus(who) || '')}">${shortStatus(who) ? ce(shortStatus(who)) : ''}</span>
-        ${!dead && (c.born || c.ageAt || c.ageSaid) ? tabBorn(c, clock, key) : '<span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>'}
-        ${dead ? '<span class="iw-npc-mood iw-npc-heardmark">нет в живых</span>' : `<span class="iw-npc-mood iw-npc-now">${c.mood ? ce(c.mood) : ''}</span>`}
-      </button>`);
+        cards.push(npcTile({
+            cls: `met${dead ? ' iw-dead' : ''}`, attrs: `data-iw-view="npc:${esc(key)}"`,
+            title: dead ? `${c.name}: нет в живых` : `Открыть: ${c.name}`,
+            x: `${deadMark}<span class="iw-npc-x" data-iw-npcx="${esc(key)}" role="button" tabindex="0" title="Убрать из НПС" aria-label="Убрать ${esc(c.name)} из НПС">${icon('x')}</span>`,
+            face: `${npcBadge(badgeInfo(c, entry))}${dead ? '' : faceBadge(c, true)}`, name: c.name,
+            mood: dead ? 'нет в живых' : (c.mood || ''), moodMark: dead, who,
+            born: !dead && (c.born || c.ageAt || c.ageSaid) ? tabBorn(c, clock, key) : '',
+        }));
     }
     for (const e of seenOnly) {
         used.add(e.name);
@@ -1064,33 +1103,29 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
         const tip = (e.checked
             ? gw(g, 'О нём говорили, но лично он в сцене не появлялся.', 'О ней говорили, но лично она в сцене не появлялась.', 'Об этом персонаже говорили, но лично в сцене его не было.')
             : gw(g, 'Упоминался', 'Упоминалась', 'Был упомянут') + ' в этом чате, дневник его ещё не разбирал.')
-            + ' Нажми — дневник заведёт карточку: характер, желания, страхи, мечта. Отношение к тебе появится после встречи в сцене.';
-        cards.push(`
-      <button type="button" class="iw-npc seen${e.checked ? ' checked' : ''}" data-iw-npc-study="${esc(e.name)}" title="${esc(tip)}">
-        ${npcBadge(badgeInfo(e, e))}
-        <span class="iw-npc-name${nameFit(shortName(e.name))}" title="${esc(e.name)}">${esc(shortName(e.name))}</span>
-        <span class="iw-npc-status" title="${esc(shortStatus(e.who) || '')}">${shortStatus(e.who) ? ce(shortStatus(e.who)) : ''}</span>
-        <span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>
-        <span class="iw-npc-mood">${e.checked ? gw(g, 'не появлялся в сцене', 'не появлялась в сцене', 'не появлялся в сцене') : 'ещё не разобран'}</span>
-      </button>`);
+            + ' Кнопка «разобрать» заведёт карточку: характер, желания, страхи, мечта. Отношение к тебе появится после встречи в сцене.';
+        cards.push(npcTile({
+            tag: 'div', cls: `seen${e.checked ? ' checked' : ''}`, title: tip,
+            face: npcBadge(badgeInfo(e, e)), name: e.name,
+            mood: e.checked ? gw(g, 'не появлялся в сцене', 'не появлялась в сцене', 'не появлялся в сцене') : 'ещё не разобран', moodMark: true, who: e.who,
+            action: `<button type="button" class="iw-npc-study" data-iw-npc-study="${esc(e.name)}" title="Завести карточку: характер, желания, страхи, мечта">${icon('rotate')}<span>разобрать</span></button>`,
+        }));
     }
     const ign = new Set(ignored.map(n => String(n).toLowerCase()));
     const unknown = ((roster && roster.npc) || []).filter(e => !used.has(e.name) && !npcKeys.some(k => roster.find(k) === e) && !ign.has(String(e.name).toLowerCase()));
     // знакомые по карточке и лорбуку (родня, бывшие, друзья) — открыты сразу, их можно разобрать по кнопке
-    const knownBefore = unknown.filter(e => e.relUser || e.rel);
+    const CLOSE_TIE = /сестр|брат|мать|мама|матер|отец|отч|пап|сын|доч|жена|муж|супруг|бывш|племян|дяд|тёт|тет|бабуш|дедуш|внук|внуч|кузен|кузин|друг|подруг|невест|жених|любим|родн|семь/i;
+    const knownBefore = unknown.filter(e => e.relUser || (e.rel && CLOSE_TIE.test(`${e.rel} ${e.who || ''}`)));
     for (const e of knownBefore) {
         const g = genderOf(e.g, e.name, e.who);
         const tie = e.relUser ? `тебе — ${e.relUser}` : `знакомы с героем: ${e.rel}`;
-        cards.push(`
-      <button type="button" class="iw-npc seen known" data-iw-npc-study="${esc(e.name)}" title="${esc(`${e.name}: ${tie}. В сцене ${gw(g, 'ещё не появлялся', 'ещё не появлялась', 'ещё не появлялся')}. Нажми — дневник заведёт карточку.`)}">
-        ${npcBadge(badgeInfo(e, e))}
-        <span class="iw-npc-name${nameFit(shortName(e.name))}" title="${esc(e.name)}">${esc(shortName(e.name))}</span>
-        <span class="iw-npc-status" title="${esc(shortStatus(e.who) || '')}">${shortStatus(e.who) ? ce(shortStatus(e.who)) : ''}</span>
-        <span class="iw-tab-born iw-born-slot" aria-hidden="true"></span>
-        <span class="iw-npc-mood">знакомы по карточке</span>
-      </button>`);
+        cards.push(npcTile({
+            tag: 'div', cls: 'seen known', title: `${e.name}: ${tie}. В сцене ${gw(g, 'ещё не появлялся', 'ещё не появлялась', 'ещё не появлялся')}.`,
+            face: npcBadge(badgeInfo(e, e)), name: e.name, mood: gw(g, 'ещё не появлялся', 'ещё не появлялась', 'ещё не появлялся'), moodMark: true, who: e.who,
+            action: `<button type="button" class="iw-npc-study" data-iw-npc-study="${esc(e.name)}" title="Завести карточку заранее: характер, желания, страхи, мечта">${icon('rotate')}<span>разобрать</span></button>`,
+        }));
     }
-    const unknownTiles = unknown.filter(e => !(e.relUser || e.rel)).map(() => `
+    const unknownTiles = unknown.filter(e => !knownBefore.includes(e)).map(() => `
       <span class="iw-npc-unknown" title="Ещё не было в сцене"><span class="iw-unknown-mark"></span></span>`).join('');
     const known = (roster && roster.npc && roster.npc.length) || 0;
     const studyLabel = known ? 'Изучить заново' : 'Изучить лорбук и карточку';
@@ -1342,7 +1377,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         const hearsay = isHearsay(c);
         const why = dead
             ? `${esc(c.name)} нет в живых, поэтому настроения, желаний и отношения здесь нет — только память о ${gw(g, 'нём', 'ней', 'нём')}.`
-            : `${esc(pName)} с ${gw(g, 'ним', 'ней', 'ним')} лично не ${gw(pg, 'встречался', 'встречалась', 'встречался')}, поэтому настроения, желаний и отношения здесь нет. Когда они познакомятся в сцене, дневник заведёт полную запись.`;
+            : `${esc(pName)} с ${gw(g, 'ним', 'ней', 'ним')} лично не ${gw(pg, 'встречался', 'встречалась', 'встречался')}, поэтому отношения к тебе здесь нет. Когда они познакомятся в сцене, дневник заведёт полную запись — или заведи её сейчас: характер, желания, страхи, мечта.`;
         body = `
 <button type="button" class="iw-back iw-back-npc" data-iw-view="npc">${icon('back')}<span>все НПС</span></button>
 <section class="iw-dossier iw-dossier-tight iw-dossier-heard${dead ? ' iw-dead' : ''}">
@@ -1352,7 +1387,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   <div class="iw-dossier-main">
     <div class="iw-npc-title${nameFit(c.name)}">${esc(c.name)}</div>
     ${aliases.length ? `<div class="iw-npc-aka">ещё зовут: ${esc(aliases.join(', '))}</div>` : ''}
-    <div class="iw-dossier-meta">${dead ? `<span class="iw-heard-chip iw-dead-chip">${icon('feather')}<span>нет в живых</span></span>` : ''}${hearsay ? `<span class="iw-heard-chip">${icon('feather')}<span>знает понаслышке</span></span>` : ''}</div>
+    <div class="iw-dossier-meta">${dead ? `<span class="iw-heard-chip iw-dead-chip">${icon('feather')}<span>нет в живых</span></span>` : ''}${hearsay ? `<span class="iw-heard-chip">${icon('feather')}<span>знает понаслышке</span></span><button type="button" class="iw-mini iw-study-btn" data-iw-npc-study="${esc(c.name)}" title="Дневник заведёт карточку: характер, желания, страхи, мечта. Отношение к тебе появится после встречи">${icon('feather')}<span>завести карточку</span></button>` : ''}</div>
     <div class="iw-whois">
       <span class="iw-whois-tag">${esc(LL.whois)}</span>
       <div class="iw-whois-text">${who ? ce(who) : `<span class="iw-muted">${hearsay ? `${esc(pName)} знает только имя` : 'Пока неизвестно'}</span>`}</div>
@@ -1422,7 +1457,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
         body = `<div class="iw-empty">${esc(L.empty)}</div>`;
     }
     const shopKey = settings.points !== false
-        ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] && !state.characters[current].persona ? current : (mains.find(k => state.characters[k]) || null)))
+        ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] && !state.characters[current].persona && mains.includes(current) ? current : (mains.find(k => state.characters[k]) || null)))
         : null;
     const wallet = settings.points !== false
         ? { current: shopKey, purse: purseOf(state), list: state.order.filter(k => state.characters[k] && !state.characters[k].persona && (mains.includes(k) || (state.characters[k].points || 0) > 0)).map(k => ({ key: k, name: state.characters[k].name, points: state.characters[k].points || 0 })) }

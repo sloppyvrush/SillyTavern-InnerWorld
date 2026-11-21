@@ -258,10 +258,15 @@ const REL_FORMAL_RU = {
     'встречаются': 'dating', 'пара': 'dating', 'помолвлены': 'engaged', 'жених': 'engaged', 'невеста': 'engaged', 'супруги': 'married', 'женаты': 'married', 'муж': 'married', 'жена': 'married',
     'бывшие': 'ex', 'бывшие супруги': 'exspouse', 'разведены': 'exspouse', 'родня': 'kin', 'родственники': 'kin', 'соперники': 'rivals',
 };
+// Шкалы и подписи — как в «Симс 4»: дружба и романтика от −100 до 100
 export const REL_FRIEND_STEPS = [
-    [80, 'лучшие друзья', 'best'], [50, 'близкие друзья', 'close'], [25, 'друзья', 'friend'], [-20, 'знакомые', 'know'], [-60, 'неприязнь', 'dislike'], [-101, 'враги', 'enemy'],
+    [80, 'лучшие друзья', 'best'], [60, 'хорошие друзья', 'close'], [40, 'друзья', 'friend'], [-20, 'знакомые', 'know'], [-70, 'неприязнь', 'dislike'], [-Infinity, 'ненависть', 'enemy'],
 ];
-export const REL_ROMANCE_STEPS = [[75, 'любовь', 'love'], [45, 'влюблённость', 'crush'], [20, 'симпатия', 'spark'], [-1, '', '']];
+export const REL_ROMANCE_STEPS = [
+    [80, 'родственные души', 'soul'], [50, 'влюблённые', 'love'], [25, 'романтический интерес', 'crush'], [10, 'искра', 'spark'], [-10, 'нет романтики', 'none'], [-50, 'неловкость', 'awkward'], [-Infinity, 'отвращение', 'despise'],
+];
+export const friendLevel = f => REL_FRIEND_STEPS.find(([min]) => (f || 0) >= min);
+export const romanceLevel = r => REL_ROMANCE_STEPS.find(([min]) => (r || 0) >= min);
 
 function relNum(v, lo, hi) {
     const n = Math.round(Number(v));
@@ -272,7 +277,7 @@ export function cleanRel(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const out = {};
     const f = relNum(raw.friend ?? raw.friendship, -100, 100);
-    const r = relNum(raw.romance, 0, 100);
+    const r = relNum(raw.romance, -100, 100);
     if (f !== null) out.friend = f;
     if (r !== null) out.romance = r;
     let formal = String(raw.formal || raw.status || '').trim().toLowerCase();
@@ -291,9 +296,9 @@ export function relStatus(rel, met = true) {
     if (!rel) return { key: met ? 'know' : 'strangers', label: met ? 'знакомые' : 'незнакомцы' };
     if (rel.formal && REL_FORMAL[rel.formal]) return { key: rel.formal, label: REL_FORMAL[rel.formal] };
     if (!met || rel.met === false) return { key: 'strangers', label: 'незнакомцы' };
-    const rom = REL_ROMANCE_STEPS.find(([min]) => (rel.romance || 0) > min);
-    const fr = REL_FRIEND_STEPS.find(([min]) => (rel.friend || 0) > min) || REL_FRIEND_STEPS[REL_FRIEND_STEPS.length - 1];
-    if (rom && rom[1] && (rel.friend || 0) > -20) return { key: rom[2], label: rom[1] };
+    const rom = romanceLevel(rel.romance);
+    const fr = friendLevel(rel.friend);
+    if ((rel.romance || 0) >= 25 && (rel.friend || 0) >= -20) return { key: rom[2], label: rom[1] };
     return { key: fr[2], label: fr[1] };
 }
 
@@ -310,7 +315,7 @@ export function mergeRel(old, fresh, cycle = 0) {
     const cap = fresh.changed ? 30 : 15;
     const step = (from, to) => (to === undefined ? from : from + Math.max(-cap, Math.min(cap, to - from)));
     rel.friend = Math.max(-100, Math.min(100, step(old.friend || 0, fresh.friend)));
-    rel.romance = Math.max(0, Math.min(100, step(old.romance || 0, fresh.romance)));
+    rel.romance = Math.max(-100, Math.min(100, step(old.romance || 0, fresh.romance)));
     if (fresh.met !== false && old.met === false) delete rel.met;
     let log = null;
     if (fresh.formal !== undefined && fresh.formal !== (old.formal || '') && fresh.changed && fresh.why) {
@@ -323,15 +328,36 @@ export function mergeRel(old, fresh, cycle = 0) {
     return { rel, log };
 }
 
+// Модель иногда пишет взгляды словами — разбираем по смыслу
+function lifeGuess(f, v) {
+    if (!v || v === 'unknown' || /^не ясно|неизвестн|непонятн/.test(v)) return '';
+    const no = /не хочет|не собира|против|никогда|ни за что|не нужн|не любит|не терпит|терпеть не/;
+    if (f === 'marry') return no.test(v) ? 'no' : (/может|не против|возможн|если|подумал|не уверен/.test(v) ? 'maybe' : (/уже жена|женат|замужем|в браке/.test(v) ? 'yes' : (/хочет|мечта|готов|жени|замуж|да\b|yes/.test(v) ? 'yes' : '')));
+    if (f === 'kids') return /не любит|раздража|терпеть не|не выносит|dislike/.test(v) ? 'dislike' : (/любит|обожа|нравят|рад|нежн|love/.test(v) ? 'love' : (/равнодуш|спокойн|ровно|нейтрал|neutral/.test(v) ? 'neutral' : ''));
+    if (f === 'own') return /уже есть|есть сын|есть доч|есть дет|has/.test(v) ? 'has' : (no.test(v) || v === 'no' ? 'no' : (/может|возможн|не уверен|maybe/.test(v) ? 'maybe' : (/хочет|готов|мечта|yes|want|да\b/.test(v) ? 'want' : '')));
+    if (f === 'when') return /никогда|never/.test(v) ? 'never' : (/сейчас|скорее|поскорее|now/.test(v) ? 'now' : (/потом|позже|будущ|когда|later|не сейчас/.test(v) ? 'later' : ''));
+    return '';
+}
+function lifeCount(raw) {
+    const n = Number(raw);
+    if (Number.isFinite(n)) return n > 0 ? Math.min(6, Math.round(n)) : 0;
+    const t = String(raw || '').toLowerCase();
+    const map = [[/шест/, 6], [/пят/, 5], [/четыр|четвер/, 4], [/тро|три\b|трёх|трех|3/, 3], [/дво|два|двух|2/, 2], [/одн|один|1/, 1]];
+    for (const [re, k] of map) if (re.test(t)) return k;
+    return 0;
+}
+
+export const lifeEmpty = l => !l || !(l.marry || l.kids || l.own || l.when || l.count);
+
 export function cleanLife(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const out = {};
     for (const [f, def] of Object.entries(LIFE_FIELDS)) {
-        const v = String(raw[f] ?? '').toLowerCase().trim();
-        out[f] = def.opts[v] ? v : (LIFE_RU[f][v] || '');
+        const rv = raw[f];
+        const v = rv === true ? 'yes' : (rv === false ? 'no' : String(rv ?? '').toLowerCase().replace(/ё/g, 'е').trim());
+        out[f] = def.opts[v] ? v : (LIFE_RU[f][v] || lifeGuess(f, v));
     }
-    const n = Number(raw.count);
-    out.count = Number.isFinite(n) && n > 0 ? Math.min(6, Math.round(n)) : 0;
+    out.count = lifeCount(raw.count);
     out.why = String(raw.why || '').replace(/\s+/g, ' ').trim().slice(0, 160);
     if (raw.changed === true || raw.changed === 'true') out.changed = true;
     return Object.values(LIFE_FIELDS).length && (out.marry || out.kids || out.own || out.when || out.count) ? out : null;
@@ -882,7 +908,15 @@ export function cleanCharacter(raw, opts = {}) {
     const tags = v => (Array.isArray(v) ? v : []).map(x => lowerWord(typeof x === 'object' && x ? x.tag || x.name : x, 40)).filter(Boolean).slice(0, 8);
     if (raw.turn_ons !== undefined) c.likes = tags(raw.turn_ons);
     if (raw.turn_offs !== undefined) c.dislikes = tags(raw.turn_offs);
-    if (raw.life !== undefined) { const life = cleanLife(raw.life); if (life) c.life = life; }
+    // взгляды на брак и детей: ключ family (старое имя life — только если пришёл объект, а не биография строкой)
+    {
+        let fam = raw.family !== undefined ? raw.family : (raw.life && typeof raw.life === 'object' ? raw.life : undefined);
+        // плоские поля надёжнее для модели: want_marry, kids_attitude, want_kids, kids_when, kids_count, family_why
+        if (raw.want_marry !== undefined || raw.want_kids !== undefined || raw.kids_attitude !== undefined) {
+            fam = Object.assign({}, fam && typeof fam === 'object' ? fam : {}, { marry: raw.want_marry, kids: raw.kids_attitude, own: raw.want_kids, when: raw.kids_when, count: raw.kids_count, why: raw.family_why, changed: raw.family_changed });
+        }
+        if (fam && typeof fam === 'object') { const life = cleanLife(fam); if (life) c.life = life; }
+    }
     if (raw.rel !== undefined) { const rel = cleanRel(raw.rel); if (rel) c.rel = rel; }
     if (raw.unmet === true || raw.unmet === 'true') c.unmet = true;
     if (raw.chem && typeof raw.chem === 'object' && CHEM_LEVELS.includes(String(raw.chem.level || '').toLowerCase().trim())) {
@@ -1422,9 +1456,10 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     if (!out.g) out.g = 'n';
     out.cycle = (old && old.cycle ? old.cycle : 0) + 1;
     // раз познакомились лично — это навсегда; поправку игрока (metManual) модель не перебивает
-    if (fresh.met !== undefined && !out.metManual && out.met !== true) out.met = fresh.met;
+    if (fresh.met !== undefined && !out.metManual && out.met !== true && !(out.unmet && fresh.met === false)) out.met = fresh.met;
     if (fresh.heard && fresh.heard.length) out.heard = mergeHeard(out.heard, fresh.heard, out.heardOff || []);
     // у знакомого понаслышке «кто это» — то, что знает персона, и оно уточняется по мере рассказов
+    if (fresh.unmet && out.met === false) delete out.met; // разобран по кнопке — уже не запись «понаслышке»
     if (out.met === false && fresh.who && !out.whoManual) out.who = fresh.who;
     if (fresh.heardV) out.heardV = fresh.heardV;
     if (fresh.role && !out.roleManual) out.role = fresh.role;
@@ -1512,9 +1547,18 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
         if (!out.attrSet && fresh.likes && fresh.likes.length && !(out.likes && out.likes.length)) out.likes = fresh.likes;
         if (!out.attrSet && fresh.dislikes && fresh.dislikes.length && !(out.dislikes && out.dislikes.length)) out.dislikes = fresh.dislikes;
         // брак и дети: заполняются один раз; потом — только если модель отметила событие (changed + why); правку игрока не трогаем
-        if (fresh.life && !out.persona && !out.lifeSet && !mopts.npc) {
+        if (fresh.life && !out.persona && (!out.lifeSet || lifeEmpty(out.life)) && !mopts.npc) {
             const { changed, ...life } = fresh.life;
-            if (!out.life) out.life = life;
+            if (lifeEmpty(out.life)) { out.life = life; delete out.lifeSet; }
+            else if (!changed) {
+                // пробелы («не ясно») заполняем без события — это не смена взглядов
+                const next = Object.assign({}, out.life);
+                let filled = false;
+                for (const f of Object.keys(LIFE_FIELDS)) if (!next[f] && life[f]) { next[f] = life[f]; filled = true; }
+                if (!next.count && life.count) { next.count = life.count; filled = true; }
+                if (!next.why && life.why) next.why = life.why;
+                if (filled && !out.lifeSet) out.life = next;
+            }
             else if (changed && life.why) {
                 const was = lifeText(out.life);
                 const next = Object.assign({}, out.life);
@@ -1834,11 +1878,17 @@ export function responseTemplate(modules, manualTurns) {
         c.impression = { label: 'каким показался игрок, 1–3 слова', score: 1, why: 'что подумал при встрече', now: 'что думает сейчас', now_score: 1, known: 'если давно знакомы: кто они друг другу', via: 'если связаны через третьего: кто этот персонаж тому, кого знает игрок' };
         c.chem = { level: CHEM_LEVELS.join('|'), why: 'какие черты сходятся или сталкиваются' };
         c.chem_now = { score: 0, why: 'что сейчас тянет друг к другу или отталкивает' };
+        c.rel = { friend: 0, romance: 0, formal: 'none|dating|engaged|married|ex|exspouse|kin|rivals', changed: false, why: '' };
     }
     if (modules.attraction) {
         c.turn_ons = ['что привлекает в других'];
         c.turn_offs = ['что отталкивает'];
-        c.life = { marry: 'yes|maybe|no|unknown', kids: 'love|neutral|dislike|unknown', own: 'want|maybe|no|has|unknown', when: 'now|later|never|unknown', count: 0, why: 'откуда такие взгляды, коротко' };
+        c.want_marry = 'yes|maybe|no|unknown';
+        c.kids_attitude = 'love|neutral|dislike|unknown';
+        c.want_kids = 'want|maybe|no|has|unknown';
+        c.kids_when = 'now|later|never|unknown';
+        c.kids_count = 0;
+        c.family_why = 'откуда такие взгляды, коротко (только при no_family или по событию)';
     }
     return JSON.stringify({ characters: [c] });
 }
@@ -1903,8 +1953,8 @@ export function buildSystemPrompt(settings, ctx) {
     if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова. about — 1–2 предложения, почему эта черта есть у персонажа: для основной — что в его прошлом, воспитании, работе или судьбе (по карточке и лорбуку) её выстроило; для приобретённой — как именно событие её породило. Пиши about только для новых черт и для тех, где стоит no_about: true; у остальных не пиши.');
     if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве — это МНЕНИЕ персонажа, а не описание сцены: label — каким игрок ему показался, 1–3 слова («смелая чудачка», «опасный тип»); why — что персонаж подумал о нём при встрече, его глазами («не полезла к зевакам — уважаю, хоть и дрожит как воробей»), score от -3 до 3. chem — совместимость, как в «Симс»: насколько они подходят друг другу по чертам, типу личности и ценностям; level: amazing (родственные души), good (есть контакт), neutral (ровно), bad (не по душе), awful (как кошка с собакой); why — коротко, какие черты сходятся или сталкиваются. Если по карточке, лорбуку или чату персонаж и игрок уже давно знакомы (родня, друзья, коллеги, пара, супруги, бывшие) — это не первое впечатление: верни impression.known — кто они друг другу, 1–3 слова («супруги», «давние друзья», «бывшие»). known — только про них двоих: что связывает именно этого персонажа и игрока лично и ещё до начала истории. Если они впервые встретились в сообщениях чата или познакомились недавно — known не пиши, это обычное первое впечатление. Если же их связывает третий человек, которого игрок знает (персонаж — лучший друг главного героя, сестра её жениха, коллега её отца), — это не known, а impression.via: кем ЭТОТ персонаж приходится тому третьему, 2–5 слов, с его именем в родительном падеже («лучший друг Вити», «младшая сестра Кирилла»). via описывает самого персонажа, а не игрока («знакомая Кирилла» про игрока — ошибка). Пиши via, только если по карточке, лорбуку или чату персонаж действительно сам связан с этим человеком; не выводи связь через цепочку (если Лёша не знает Кирилла, никакого «через Кирилла» у Лёши быть не может); связи нет — via не пиши.  label и why — каким персонаж видит игрока с учётом их общей истории; chem — сложившаяся совместимость; chem_now — по их нынешним отношениям. Если они незнакомы — known не пиши. chem — это ПЕРВАЯ (или сложившаяся) совместимость, она не меняется: пиши её только при первом знакомстве и для тех, у кого no_chem: true. chem_now — как совместимость складывается сейчас, по событиям чата: score от -3 (сильное отторжение) до 3 (сильное притяжение), why — коротко, что их сейчас сближает или отталкивает. Меняй score постепенно: на 1 за заметное событие (общий риск, забота, флирт, ссора, обман), больше — только после очень сильного; если ничего не случилось — повтори прежний. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3). Каждый разбор честно оцени, сдвинулось ли отношение: помощь, забота, честность, общее переживание, флирт, который зашёл, — повод подняться на 1; грубость, ложь, предательство — опуститься на 1 и больше. Отношения в долгой истории живые: если сближение идёт, отношение должно расти со временем, а не застревать на одном числе. now — переписывай, как только персонаж узнал или понял об игроке что-то новое (характер, привычки, прошлое, поступки), коротко и конкретно.`);
     if (m.attraction) rules.push(`turn_ons и turn_offs — что этого персонажа привлекает в других и что отталкивает (как в «Симс»): по 3–8 коротких тегов во множественном числе — телосложение, внешность, приметы, стиль, голос и запах, характер, образ жизни, увлечения («спортивные», «темноволосые», «со шрамами», «низкий голос», «надёжные», «с тёмным прошлым», «грубые»). Бери теги из этого списка, слово в слово: ${Object.entries(ATTRACT_CATALOG).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')}. Своё — только если в списке совсем нет подходящего. Выводи из характера, вкусов и истории персонажа. Пиши их только для персонажей с no_attraction: true и для новых; у остальных не пиши — они уже сохранены, а игрок мог их поправить. Совместимость (chem) с игроком учитывай и по этим тегам: подходит ли ему игрок внешностью и характером.`);
-    if (m.impression) rules.push(`rel — отношения персонажа с игроком (${user}), как шкалы в «Симс»: friend — дружба от -100 (враги) до 100 (лучшие друзья), 0 — просто знакомы; romance — романтика от 0 до 100 (0 — нет, 20 — симпатия, 45 — влюблённость, 75 — любовь); formal — кто они формально: dating (встречаются), engaged (помолвлены), married (супруги), ex (бывшие), exspouse (бывшие супруги), kin (родня), rivals (соперники) или none; met: false — если лично ещё не встречались. Для тех, у кого no_rel: true, и для новых — задай по карточке, лорбуку и чату (давние супруги — married и высокие шкалы; только познакомились — около 0). Для остальных пришли rel, только если отношения сдвинулись: шкалы — новые значения, двигай постепенно (на 5–15 за заметное событие, до 30 — за очень сильное: признание, предательство, спасение); formal меняй только по событию истории (предложение, свадьба, разрыв, развод) — тогда changed: true и why — что случилось. Ничего не случилось — rel не пиши. Персоне игрока rel не пиши.`);
-    if (m.attraction) rules.push(`life — взгляды персонажа на брак и детей (как в «Симс»): marry — хочет ли в брак (yes / maybe — не против / no); kids — как относится к детям вообще (love / neutral / dislike); own — хочет ли своих детей (want / maybe / no / has — уже есть); when — когда (now / later / never); count — сколько хотел бы, 0 — неизвестно; why — коротко, откуда такие взгляды. Бери из карточки, лорбука и чата; если не ясно — unknown, не выдумывай. Пиши life только для персонажей с no_life: true и для новых; персоне игрока life не пиши; животным, детям и существам, для которых брак и дети не имеют смысла, — тоже. Дальше взгляды меняются только по сильному событию истории (предложение, беременность, рождение, развод, потеря, долгий серьёзный разговор): тогда верни life с новыми значениями, changed: true и why — что случилось. Без такого события life не пиши.`);
+    if (m.impression) rules.push(`rel — отношения персонажа с игроком (${user}), как шкалы в «Симс 4»: friend — дружба от -100 до 100 (≤ -70 ненависть, -70…-20 неприязнь, -20…40 знакомые, 40 друзья, 60 хорошие друзья, 80 лучшие друзья); romance — романтика от -100 до 100 (≤ -50 отвращение, -50…-10 неловкость, около 0 — нет романтики, 10 искра, 25 романтический интерес, 50 влюблённые, 80 родственные души); formal — кто они формально: dating (встречаются), engaged (помолвлены), married (супруги), ex (бывшие), exspouse (бывшие супруги), kin (родня), rivals (соперники) или none; met: false — если лично ещё не встречались. Для тех, у кого no_rel: true, и для новых — задай по карточке, лорбуку и чату (давние супруги — married и высокие шкалы; только познакомились — около 0). Для остальных пришли rel, только если отношения сдвинулись: шкалы — новые значения, двигай постепенно (на 5–15 за заметное событие, до 30 — за очень сильное: признание, предательство, спасение); formal меняй только по событию истории (предложение, свадьба, разрыв, развод) — тогда changed: true и why — что случилось. Ничего не случилось — rel не пиши. Персоне игрока rel не пиши.`);
+    if (m.attraction) rules.push(`Брак и дети (как в «Симс») — плоскими полями персонажа: want_marry — хочет ли в брак: yes / maybe (не против) / no / unknown; kids_attitude — как относится к детям вообще: love / neutral / dislike / unknown; want_kids — хочет ли своих детей: want / maybe / no / has (уже есть) / unknown; kids_when — когда: now / later / never / unknown; kids_count — сколько хотел бы, 0 — неизвестно; family_why — коротко, откуда такие взгляды. Бери из карточки, лорбука и чата; если не ясно — unknown, не выдумывай. Для персонажей с no_family: true и для новых главных эти поля пиши обязательно — даже если всё unknown; персоне игрока, животным и детям — не пиши. Дальше взгляды меняются только по сильному событию истории (предложение, беременность, рождение, развод, потеря, долгий серьёзный разговор): тогда верни эти поля с новыми значениями, family_changed: true и family_why — что случилось. Без такого события не пиши их.`);
     if (ctx.clockNow) rules.push('scene_time — часы сцены, только по сообщениям чата (карточка и лорбук здесь не в счёт, даже если там написана другая дата): в запросе есть [Часы сцены] — какое время сейчас по дневнику. Верни scene_time на верхнем уровне JSON, рядом с characters, только если по последним сообщениям ясно, что время стало другим (прямо названо, наступило утро, прошёл вечер, долгая поездка): {"time":"ЧЧ:ММ","date":"ГГГГ-ММ-ДД" или null,"said":"дословный кусок сообщения, где названа дата, до 8 слов, или null","flashback":false}. Если дата прямо названа в последних сообщениях (в отметке, в повествовании, в письме или газете «сегодня», «наступило 9 мая») и она не совпадает с [Часами сцены] — обязательно верни её с said, даже если дневник сильно отстал или убежал вперёд: дата из чата важнее часов дневника. Без прямо названной даты время только идёт вперёд. Дата в прямой речи о будущем или прошлом («в субботу 9 мая у меня…», «помнишь, в марте…») — не сегодняшняя, её не бери. Если сцена — воспоминание о прошлом, верни flashback: true. Если ничего не ясно — не пиши scene_time.');
     if (settings.achievements !== false && ctx.messages && ctx.messages.length) {
         rules.push(`achievement — достижение, как в Steam. Пиши его на верхнем уровне JSON, рядом с characters, только когда сама ситуация «просится» в ачивку, — редко, не чаще раза в несколько сцен. Поводы: веха сюжета (первая встреча, первый поцелуй, признание, раскрытая тайна, переломный момент); подвиг — кто-то сделал что-то сверх обычного (спас, рискнул, выиграл безнадёжное, провернул дерзкий план); забавная или абсурдная ситуация (нелепый провал, неловкость, комичное совпадение, кто-то уснул на допросе); милый момент (забота, трогательный жест); мрачное (предательство, потеря, жестокий выбор); тайное (герой узнал то, что от него прятали). Обычный разговор, мелкий шаг или повтор того, что уже было, — не повод: тогда achievement не пиши вовсе. Название — как у ачивок в Steam: коротко, остроумно, с характером, можно с иронией, отсылкой или игрой слов («Чай, а не яд», «Мастер неловких пауз», «Не в этот раз, смерть», «Кто здесь?», «Держи дистанцию… не вышло»), а не скучное описание события. desc — что именно случилось, одной фразой, тоже живо, как подпись к ачивке («Пережить ночь в доме, где кто-то ходит по чердаку»). icon — значок ПО СМЫСЛУ события: ${Object.entries({ trophy: 'победа', star: 'первый раз', crown: 'триумф', heart: 'любовь', lips: 'поцелуй', flower: 'ухаживание', gift: 'подарок', cake: 'праздник', cup: 'чай/кофе', potion: 'алкоголь/зелье', shield: 'спасение', flame: 'драка/страсть', key: 'тайна', lock: 'секрет', ghost: 'мистика/страх', eye: 'слежка', letter: 'письмо', scroll: 'договор', book: 'знание', feather: 'стихи', note: 'песня', dice: 'азарт', coin: 'деньги', gem: 'сокровище', sun: 'утро', moon: 'ночь', clock: 'опоздание', chat: 'болтовня', users: 'компания', sparkle: 'чудо', alert: 'опасность', trash: 'провал' }).map(([k, v]) => `${k} — ${v}`).join(', ')}; для смешного, милого и неловкого — лицо: joy, playful, shy, dazed (пьян/оглушён), confused, surprise, tired, angry, sad, fear, love, flirty, guilt, pride, suspicious. kind — характер: story (сюжет), feat (подвиг), funny (забавное), cute (милое), romance (романтика), dark (мрачное), secret (тайное). tier — bronze (обычное), silver (заметное), gold (редкое, меняет историю). Формат: {"title":"","desc":"","icon":"","kind":"","tier":""}.${ctx.achTitles && ctx.achTitles.length ? ` Уже получены (не повторяй и не перефразируй): ${ctx.achTitles.join('; ')}.` : ''}`);
@@ -1944,6 +1994,23 @@ export function buildUserPrompt(ctx, state, modules, onlyKeys) {
     const current = compactState(state, modules, onlyKeys, { recheckBorn: !!(ctx.fromLore || ctx.kind === 'all' || ctx.kind === 'lore'), mains: ctx.mainNames || [ctx.botName], typeHints: ctx.typeHints || null });
     // типы, определённые раньше по тем же карточкам (другой чат, очищенный дневник) — чтобы не скакали от разбора к разбору
     const hintList = ctx.typeHints ? Object.entries(ctx.typeHints).filter(([n]) => !(state && state.order && state.order.some(k => state.characters[k] && state.characters[k].name === n))).slice(0, 12) : [];
+    // чек-лист: у кого в дневнике пусто — чтобы модель не пропустила (тип, отношения, брак и дети, вкусы)
+    {
+        const need = [];
+        const mainsList = ctx.mainNames || [ctx.botName];
+        for (const k of (state && state.order) || []) {
+            const c = state.characters[k];
+            if (!c || c.heard || c.met === false) continue;
+            if (onlyKeys && !onlyKeys.includes(k)) continue;
+            const miss = [];
+            const isMainC = !c.persona && isMain(c.name, mainsList);
+            if (modules.traits && !c.persona && !(c.ptype && c.temper)) miss.push('ptype и temper');
+            if (modules.impression && !c.persona && !c.rel && c.impression) miss.push('rel');
+            if (modules.attraction && isMainC && lifeEmpty(c.life)) miss.push('want_marry, kids_attitude, want_kids, kids_when, kids_count, family_why');
+            if (miss.length) need.push(`${c.name}: ${miss.join(', ')}`);
+        }
+        if (need.length) parts.push(`[Нужно дописать в этом ответе — этого ещё нет в дневнике]\n${need.slice(0, 10).join('\n')}\nВерни этих персонажей с этими полями, даже если в сцене у них ничего не поменялось.`);
+    }
     if (ctx.studyNames && ctx.studyNames.length) parts.push(`[Завести карточку]\n${ctx.studyNames.join(', ')} — игрок попросил завести карточку, даже если лично в сцене этого персонажа ещё не было. Верни его со всем, что можно понять по карточке, лорбуку и чату: g, who, role, mood (его обычное состояние), wants, fears, dream, traits, ptype, temper. Если с игроком (${ctx.userName || 'игрок'}) лично ещё не встречались — impression и rel не пиши, поставь unmet: true.`);
     if (hintList.length && modules.traits) parts.push(`[Ранее определённые типы личности]\n${hintList.map(([n, h]) => `${n}: ${[h.ptype, h.temper].filter(Boolean).join(', ')}`).join('\n')}`);
     const absent = onlyKeys ? (state.order || []).filter(k => !onlyKeys.includes(k)) : [];
@@ -2013,8 +2080,8 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
                 o.turn_offs = c.dislikes || [];
             } else o.no_attraction = true;
             if (!c.persona && !npc) {
-                if (c.life) o.life = { marry: c.life.marry || 'unknown', kids: c.life.kids || 'unknown', own: c.life.own || 'unknown', when: c.life.when || 'unknown', count: c.life.count || 0 };
-                else o.no_life = true;
+                if (!lifeEmpty(c.life)) o.family = { marry: c.life.marry || 'unknown', kids: c.life.kids || 'unknown', own: c.life.own || 'unknown', when: c.life.when || 'unknown', count: c.life.count || 0 };
+                else o.no_family = true;
             }
         }
         return o;
@@ -2106,6 +2173,16 @@ const ATTR_TONE = {
 };
 // mode 'keys' — теги только к месту (по последним сообщениям recent), совместимость — всегда; 'always' — все теги всегда.
 // hits (если передан массив) — сюда пишется, какие теги сработали и на каком слове: для тегов влияния.
+// Упомянут ли персонаж в тексте: по имени или фамилии (основа слова, без падежного окончания)
+export function nameInText(name, text) {
+    if (!name || !text) return false;
+    const low = String(text).toLowerCase().replace(/ё/g, 'е');
+    return String(name).toLowerCase().replace(/ё/g, 'е').split(/[\s\-]+/).filter(w => w.length >= 3).some(w => {
+        const stem = w.length > 4 ? w.slice(0, -1) : w;
+        return new RegExp(`(^|[^а-яa-z])${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(low);
+    });
+}
+
 export function buildAttrInjection(state, userName, level = 'medium', { mode = 'keys', recent = '', hits = null, mains = null } = {}) {
     if (!ATTR_TONE[level] || !state || !state.order) return '';
     const lines = [];
@@ -2114,7 +2191,10 @@ export function buildAttrInjection(state, userName, level = 'medium', { mode = '
         if (!c || c.persona || (userName && sameName(c.name, userName))) continue;
         const bits = [];
         let likes = c.likes || [], dislikes = c.dislikes || [];
-        if (mode === 'keys') {
+        // в режиме «к месту» вкусы НПС подсказываем, только если он сам в последних сообщениях (по имени)
+        const inScene = !mains || isMain(c.name, mains) || nameInText(c.name, recent);
+        if (mode === 'keys' && !inScene) { likes = []; dislikes = []; }
+        else if (mode === 'keys') {
             const act = activeAttr(c, recent);
             likes = act.likes.map(x => x.tag);
             dislikes = act.dislikes.map(x => x.tag);

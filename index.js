@@ -752,7 +752,19 @@ function syncClockFromChat() {
     }
 }
 
-async function detectCalendar({ manual = false } = {}) {
+// Календаря нет — или он собран только по метке времени в сообщении (без страны и праздников): спросить модель один раз
+function calendarNeedsModel() {
+    const m = chatMeta();
+    if (!m.calendar) return !m.calendarTried;
+    return m.calendar.source === 'stamp' && !m.calendarUp;
+}
+function markCalendarTried() {
+    const m = chatMeta();
+    if (m.calendar) m.calendarUp = true;
+    else m.calendarTried = true;
+}
+
+async function detectCalendar({ manual = false, onlyCalendar = false } = {}) {
     if (clockBusy || !hasChat() || settings().clock === false) return;
     const c = ctx();
     clockBusy = true;
@@ -784,8 +796,10 @@ async function detectCalendar({ manual = false } = {}) {
         // время: дата из чата — главнее всего; если часы уже идут (первый разбор был) — карточка и лорбук их не перебивают;
         // и только в новом чате без даты в сообщениях берём то, что модель нашла в карточке и лорбуке
         const last = chat.length - 1;
-        const fromChat = chatStampTime(calendarOf(), { first: !before.t });
-        if (fromChat && last >= 0) {
+        const fromChat = onlyCalendar ? null : chatStampTime(calendarOf(), { first: !before.t });
+        if (onlyCalendar && before.t) {
+            // календарь уточнили (праздники, страна) — часы не трогаем
+        } else if (fromChat && last >= 0) {
             writeClock(last, { t: fromChat.t, prev: before.t || null, why: 'stamp', size: 0 });
             meta.timeSet = true;
         } else if (before.t && (meta.timeSet || before.rec)) {
@@ -1547,10 +1561,10 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
     setLive({ kind: fromLore ? kind : (catchUp ? 'catchup' : 'chat'), stage: 'prep', t0: (live && live.t0) || Date.now(), chars: [], len: 0, hidden: !!(live && live.hidden) });
     // календаря у чата ещё нет — узнаём его одновременно с разбором, а не после: листок не закроется, пока всё не встанет
     let calP = null;
-    if (s.clock !== false && hasChat() && !chatMeta().calendar && !chatMeta().calendarTried && !clockBusy) {
-        chatMeta().calendarTried = true;
+    if (s.clock !== false && hasChat() && calendarNeedsModel() && !clockBusy) {
+        markCalendarTried();
         live.calendar = 'busy';
-        calP = detectCalendar().finally(() => { if (live) { live.calendar = 'done'; renderAll(); } });
+        calP = detectCalendar({ onlyCalendar: !!chatMeta().calendar }).finally(() => { if (live) { live.calendar = 'done'; renderAll(); } });
     }
     renderAll();
     try {
@@ -1751,6 +1765,11 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         // НПС, которого разбирали по кнопке, а модель не вернула, — заводим сами: лично ещё не встречались
         if (study) {
+            // разобранный по кнопке — полная карточка, а не запись «понаслышке»: «лично не встречались» отдельно
+            for (const f of fresh) {
+                if (!study.some(n => namesMatch(f.name, n))) continue;
+                if (f.met === false) { delete f.met; f.unmet = !f.impression; }
+            }
             for (const name of study) {
                 if (base.order.some(k => namesMatch(k, name)) || fresh.some(f => namesMatch(f.name, name))) continue;
                 const e = ros.find ? ros.find(name) : null;
@@ -1861,10 +1880,10 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             const p = pending;
             pending = null;
             if (p.messageId !== messageId || p.manual) analyze(p.messageId, { manual: p.manual });
-        } else if (s.clock !== false && hasChat() && !chatMeta().calendar && !chatMeta().calendarTried) {
-            // первый разбор в чате — заодно узнаём календарь истории (один раз)
-            chatMeta().calendarTried = true;
-            detectCalendar();
+        } else if (s.clock !== false && hasChat() && calendarNeedsModel()) {
+            // первый разбор в чате — заодно узнаём календарь истории (один раз); календарь «по метке времени» — уточняем праздники
+            markCalendarTried();
+            detectCalendar({ onlyCalendar: !!chatMeta().calendar });
         }
     }
 }

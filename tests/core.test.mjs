@@ -1159,7 +1159,16 @@ test('брак и дети: заполняются один раз, меняют
     const k = state.order[0];
     assert.equal(state.characters[k].life.marry, 'yes');
     // повторный разбор без события — взгляды не меняются
-    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'спокоен', life: { marry: 'no', kids: 'dislike' } }), all, {}));
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'спокоен', family: { marry: 'no', kids: 'dislike' } }), all, {}));
+    // плоские поля, как теперь просит подсказка
+    {
+        const flat = applyAnalysis(emptyState(), one({ name: 'Олег', mood: 'спокоен', want_marry: 'maybe', kids_attitude: 'love', want_kids: 'want', kids_when: 'later', kids_count: 2, family_why: 'вырос без отца' }), all, {}).state;
+        assert.equal(flat.characters[flat.order[0]].life.own, 'want');
+        assert.equal(C2.nameInText('Кирилл Вершинин', 'Позвонил Вершинину и ушёл'), true);
+        assert.equal(C2.nameInText('Кирилл Вершинин', 'Он расправил плечи'), false);
+    }
+    // строка-биография в старом ключе life не ломает взгляды
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'спокоен', life: 'Майор милиции, прошёл Афганистан' }), all, {}));
     assert.equal(state.characters[k].life.marry, 'yes');
     // событие — меняются, с историей
     ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'грустен', life: { marry: 'no', changed: true, why: 'невеста сбежала со свадьбы' } }), all, {}));
@@ -1182,9 +1191,11 @@ test('брак и дети: заполняются один раз, меняют
 });
 test('отношения: шкалы двигаются постепенно, формальный статус — только по событию', () => {
     assert.equal(relStatus(null, false).label, 'незнакомцы');
-    assert.equal(relStatus({ friend: 60, romance: 0 }).label, 'близкие друзья');
-    assert.equal(relStatus({ friend: 30, romance: 50 }).label, 'влюблённость');
-    assert.equal(relStatus({ friend: -70, romance: 0 }).label, 'враги');
+    assert.equal(relStatus({ friend: 60, romance: 0 }).label, 'хорошие друзья');
+    assert.equal(relStatus({ friend: 30, romance: 50 }).label, 'влюблённые');
+    assert.equal(relStatus({ friend: -71, romance: 0 }).label, 'ненависть');
+    assert.equal(C2.romanceLevel(-60)[1], 'отвращение');
+    assert.equal(C2.friendLevel(0)[1], 'знакомые');
     assert.equal(relStatus({ friend: 10, romance: 80, formal: 'married' }).label, 'супруги');
     assert.equal(cleanRel({ friend: 250, romance: -4, formal: 'жена' }).formal, 'married');
     let { rel } = mergeRel(null, { friend: 10, romance: 0 });
@@ -1225,6 +1236,10 @@ test('сквозной: лавка, баффы, событие, подарок, 
     const lk = state.order.find(k => state.characters[k].name === 'Лёша');
     assert.ok(lk, 'НПС, заведённый по кнопке, появился, хоть и не встречались');
     assert.ok(state.characters[lk].unmet);
+    // повторный разбор с met:false не превращает заведённого по кнопке в запись «понаслышке»
+    ({ state } = applyAnalysis(state, parseAnalysis(JSON.stringify({ characters: [{ name: 'Лёша', met: false, mood: 'спокоен', wants: [{ text: 'выспаться' }] }] })), all, { mains: ['Марк'] }));
+    assert.ok(state.characters[lk].wants && state.characters[lk].wants.length);
+    assert.notEqual(state.characters[lk].met, false);
     const c = state.characters[mk];
     state.purse = 200;
     const rewards = parseRewards(JSON.stringify({ rewards: [
