@@ -17502,7 +17502,7 @@ ol {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 9px;
+    gap: 6px;
     --rel-c: var(--iw-label-color);
     --rel-rose: color-mix(in srgb, #d9648f 80%, var(--iw-muted));
 }
@@ -17529,13 +17529,17 @@ ol {
     background: color-mix(in srgb, var(--rel-c) 18%, transparent);
 }
 .iw-rel-ico svg { width: 12px; height: 12px; }
-.iw-rel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; }
-.iw-rel-doodle { flex: none; width: 84px; height: 56px; color: var(--rel-c); opacity: .8; transform: rotate(-4deg); }
-/* листок «Отношение к тебе» тянется по высоте соседнего блока — низ занимает набросок */
+.iw-rel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.iw-rel-doodle { flex: none; width: 64px; height: 40px; color: var(--rel-c); opacity: .8; transform: rotate(-4deg); }
+/* листок «Отношение к тебе» тянется по высоте соседнего блока — свободное место внизу занимает набросок */
 .iw-b-impression:has(.iw-rel) { display: flex; flex-direction: column; }
 .iw-b-impression .iw-rel { flex: 1 1 auto; }
-.iw-rel-art { flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; color: var(--rel-c); opacity: .55; overflow: hidden; }
-.iw-rel-art svg { width: 100%; height: 100%; max-height: 150px; min-height: 0; }
+.iw-rel-art { flex: 1 1 auto; min-height: 58px; display: flex; align-items: stretch; justify-content: center; color: var(--rel-c); opacity: .5; overflow: hidden; }
+.iw-rel-art { position: relative; }
+
+.iw-rel-art svg.iw-rel-main { position: relative; width: 100%; height: auto; max-height: 86px; align-self: center; }
+.iw-rel-lines { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .7; }
+.iw-rel-lines path { vector-effect: non-scaling-stroke; }
 .iw-rel-art .t { stroke-width: 1.6; }
 .iw-rel-doodle .t { stroke-width: 1.6; opacity: .7; }
 .iw-rel-bars { display: grid; gap: 8px; }
@@ -17637,3 +17641,7 @@ ol {
 .iw-npc .iw-npc-x { opacity: .75; }
 .iw-npc .iw-npc-x:hover { opacity: 1; }
 .iw-unmet-note { margin: 4px 0 2px; font-style: italic; }
+
+/* Блоки «кирпичиком» (раскладку считает скрипт): короткие встают под короткими, без провалов */
+.iw-grid.iw-masonry { grid-auto-rows: 4px; row-gap: 0; align-items: start; }
+.iw-grid.iw-masonry > .iw-block { align-self: start !important; height: auto !important; }

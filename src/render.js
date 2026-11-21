@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel } from './core.js';
+import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -598,6 +598,17 @@ const REL_DOODLE = {
 };
 
 // Большой набросок под шкалами: заполняет пустое место листка (если места нет — просто сжимается)
+// Тонкие линии на всю свободную высоту — спокойный фон под наброском, свой для каждого вида отношений
+const REL_LINES = {
+    love: '<path d="M0 30 C25 10 40 50 50 30 S75 10 100 30"/><path d="M0 70 C25 50 40 90 50 70 S75 50 100 70" stroke-dasharray="2 4"/>',
+    ring: '<path d="M0 25 C30 35 70 15 100 25"/><path d="M0 75 C30 65 70 85 100 75" stroke-dasharray="2 4"/>',
+    friends: '<path d="M0 30 H100" stroke-dasharray="1 5"/><path d="M0 70 C30 62 70 78 100 70"/>',
+    hello: '<path d="M0 80 C20 60 30 90 50 60 S80 30 100 20" stroke-dasharray="3 5"/>',
+    storm: '<path d="M0 30 L15 40 L30 25 L45 42 L60 28 L75 44 L90 30 L100 36"/><path d="M0 75 H100" stroke-dasharray="1 6"/>',
+    broken: '<path d="M0 50 C20 40 35 60 46 50"/><path d="M54 50 C65 40 80 60 100 50"/><path d="M0 80 H100" stroke-dasharray="1 6"/>',
+    home: '<path d="M0 30 C30 22 70 38 100 30"/><path d="M0 72 H100" stroke-dasharray="2 5"/>',
+};
+
 const REL_ART = {
     love: '<path d="M100 74c-16-10-29-20-29-33 0-8 6-14 14-14 6 0 11 4 15 9 4-5 9-9 15-9 8 0 14 6 14 14 0 13-13 23-29 33z"/><path d="M40 60l112-34" class="t"/><path d="M146 22l8 3-5 7M40 60l-8-4M40 60l-5 7" class="t"/><path d="M30 30c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8zM170 66c-3-2-5-4-5-6 0-1.5 1-2.5 2.5-2.5 1 0 2 .7 2.5 1.6.5-.9 1.5-1.6 2.5-1.6 1.5 0 2.5 1 2.5 2.5 0 2-2 4-5 6z"/><path d="M12 76c8-6 14 4 22-2s10 4 18-2M150 82c8-6 14 4 22-2s10 4 18-2" class="t"/>',
     ring: '<circle cx="84" cy="52" r="20"/><circle cx="116" cy="52" r="20"/><path d="M78 30l6-10 6 10-6 4zM110 30l6-10 6 10-6 4z"/><path d="M40 36l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM160 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" class="t"/><path d="M20 78c14-10 26 6 40-2s22 6 36-2M104 78c14-10 26 6 40-2s22 6 36-2" class="t"/>',
@@ -611,7 +622,7 @@ const REL_ART = {
 // Кто они друг другу + две шкалы, как в «Симс 4»: дружба (зелёная) и романтика (розовая); в минусе — красные, около нуля — серые
 function relPlate(c) {
     const met = !!c.impression && !c.unmet;
-    const rel = c.rel || null;
+    const rel = c.rel || seedRel(c);
     const st = relStatus(rel, met);
     const f = rel ? (rel.friend || 0) : 0;
     const r = rel ? (rel.romance || 0) : 0;
@@ -637,7 +648,7 @@ function relPlate(c) {
           ${bar('iw-rel-fr', 'handshake', 'Дружба', fl[1], f, tone(f, 20), `Дружба: ${signed(f)} — ${fl[1]}. Шкала от −100 до +100`)}
           ${bar('iw-rel-ro', 'heart', 'Романтика', rl[1], r, tone(r, 10), `Романтика: ${signed(r)} — ${rl[1]}. Шкала от −100 до +100`)}
         </div>
-        <div class="iw-rel-art" aria-hidden="true"><svg viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${REL_ART[REL_GROUP[st.key] || 'hello']}</svg></div>
+        <div class="iw-rel-art" aria-hidden="true"><svg class="iw-rel-lines" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">${REL_LINES[REL_GROUP[st.key] || 'hello']}</svg><svg class="iw-rel-main" viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${REL_ART[REL_GROUP[st.key] || 'hello']}</svg></div>
       </div>`;
 }
 
@@ -973,7 +984,7 @@ function renderShowcase({ state, theme, got = [], sel = '' }) {
 // Раскладка блоков без дыр. Блоки остаются в своей части дневника:
 // узкие (настроение, отношение, желания, страхи) — открытые парами, под ними свёрнутые плашками по две;
 // если узкому не хватило пары, он растягивается на всю ширину. Широкий блок сворачивается полоской на своём месте.
-const NARROW_BLOCKS = new Set(['mood', 'impression', 'wants', 'fears']);
+const NARROW_BLOCKS = new Set(['mood', 'impression', 'wants', 'fears', 'life', 'nights', 'rumors']);
 export const BLOCK_ORDER = ['mood', 'impression', 'wants', 'fears', 'dream', 'traits', 'persona', 'attraction', 'life', 'nights', 'rumors', 'chronicle'];
 export function orderOfBlocks(custom) {
     const own = Array.isArray(custom) ? custom.filter(k => BLOCK_ORDER.includes(k)) : [];

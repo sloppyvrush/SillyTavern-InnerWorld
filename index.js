@@ -10,7 +10,7 @@ import {
     purseOf,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
-    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus,
+    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -2219,7 +2219,10 @@ function panelEl() {
         el.addEventListener('pointerdown', onBlockDragStart);
         el.addEventListener('change', onPanelChange);
         el.addEventListener('input', onPanelInput);
-        el.addEventListener('toggle', e => rememberSection('diary', e.target), true);
+        el.addEventListener('toggle', e => { rememberSection('diary', e.target); masonrySoon(); }, true);
+        window.addEventListener('resize', masonrySoon);
+        try { document.fonts && document.fonts.ready.then(masonrySoon); } catch { /* без шрифтов */ }
+        new MutationObserver(() => { if (!el.hidden) masonrySoon(); }).observe(el, { attributes: true, attributeFilter: ['hidden'] });
     }
     return el;
 }
@@ -2345,8 +2348,69 @@ function renderPanelNow() {
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
     el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false });
+    masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
+}
+
+// Блоки дневника «кирпичиком»: у каждого высота в мелких рядах сетки, короткие встают под короткими —
+// без пустых провалов рядом с высокими соседями. Блоки остаются на своих местах в DOM (перетаскивание работает).
+const MASONRY_ROW = 4;
+const MASONRY_GAP = 16;
+// Эти блоки всегда стоят рядом, в одном ряду (вторым вытягивается по высоте первого)
+const MASONRY_PAIRS = [['mood', 'impression'], ['wants', 'fears']];
+function masonry(el) {
+    if (!el) return;
+    for (const grid of el.querySelectorAll('.iw-grid')) {
+        const kids = [...grid.children].filter(k => k.classList.contains('iw-block'));
+        const reset = () => { grid.classList.remove('iw-masonry'); for (const k of kids) { k.style.gridRowStart = ''; k.style.gridRowEnd = ''; k.style.gridColumn = ''; k.style.minHeight = ''; } };
+        if (isPhone() || kids.length < 3 || !grid.getClientRects().length || grid.getBoundingClientRect().width < 500) { reset(); continue; }
+        reset();
+        grid.classList.add('iw-masonry');
+        const kind = k => (k.className.match(/iw-b-([a-z]+)/) || [])[1] || '';
+        const rows = k => Math.max(1, Math.ceil((k.offsetHeight + MASONRY_GAP) / MASONRY_ROW));
+        const col = [1, 1]; // следующая свободная строка в каждой колонке
+        for (let i = 0; i < kids.length; i++) {
+            const k = kids[i];
+            // широкие блоки (во всю ширину по стилю темы или одиночки) так и остаются широкими
+            const cs = getComputedStyle(k);
+            const stackable = ['life', 'nights', 'rumors'].includes(kind(k)) && !k.classList.contains('iw-collapsed');
+            const solo = !stackable && (k.classList.contains('iw-solo') || cs.gridColumnEnd === '-1' || /span\s*2/.test(cs.gridColumnEnd) || cs.gridColumnStart === 'span 2');
+            if (solo) {
+                const at = Math.max(col[0], col[1]);
+                k.style.gridColumn = '1 / -1';
+                k.style.gridRowStart = at;
+                k.style.gridRowEnd = `span ${rows(k)}`;
+                col[0] = col[1] = at + rows(k);
+                continue;
+            }
+            const next = kids[i + 1];
+            const paired = next && !next.classList.contains('iw-solo') && MASONRY_PAIRS.some(([x, y]) => (kind(k) === x && kind(next) === y) || (kind(k) === y && kind(next) === x));
+            if (paired) {
+                const at = Math.max(col[0], col[1]);
+                const span = Math.max(rows(k), rows(next));
+                [k, next].forEach((b, c) => {
+                    b.style.gridColumn = String(c + 1);
+                    b.style.gridRowStart = at;
+                    b.style.gridRowEnd = `span ${span}`;
+                    b.style.minHeight = `${span * MASONRY_ROW - MASONRY_GAP}px`;
+                });
+                col[0] = col[1] = at + span;
+                i++;
+                continue;
+            }
+            const c = col[0] <= col[1] ? 0 : 1;
+            k.style.gridColumn = String(c + 1);
+            k.style.gridRowStart = col[c];
+            k.style.gridRowEnd = `span ${rows(k)}`;
+            col[c] += rows(k);
+        }
+    }
+}
+let masonryTimer = null;
+function masonrySoon() {
+    clearTimeout(masonryTimer);
+    masonryTimer = setTimeout(() => { const el = panelEl(); if (el && !el.hidden) masonry(el); }, 60);
 }
 
 // ---------- Витрина: достижения истории ----------
@@ -2516,7 +2580,7 @@ function infobarModelFor(id) {
             cast.push({
                 key: k, name: c.name, mood: c.mood || '', face, face2, persona,
                 feels: byWeight.slice(0, 3).map(m => ({ e: m.emotion, w: m.weight, why: m.why || '' })),
-                status: !persona ? relStatus(c.rel, !!c.impression).label : '',
+                status: !persona ? relStatus(c.rel || seedRel(c), !!c.impression).label : '',
                 wants, fears,
                 attitude, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
                 night: night && night.text ? { text: night.text, date: night.date || '' } : null,
