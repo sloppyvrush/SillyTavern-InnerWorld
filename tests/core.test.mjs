@@ -8,7 +8,7 @@ import { themeLabels, validTheme } from '../src/themes.js';
 import { renderPanel, renderToast } from '../src/render.js';
 import { parseRoster, rosterFind, isMain, loreText, buildRosterPrompt, namesLookAlike, parseRewards, buyReward, mergeRoster, guessFace, moodFaces, carryOwnEdits, genderOf, restoreTrait, responseBudget, classifyError, looksCut, parseBorn, zodiacOf } from '../src/core.js';
 import { renderNpcList, renderErrorToast, layoutBlocks } from '../src/render.js';
-import { cancelReward, cleanLife, lifeText, lifeHit } from '../src/core.js';
+import { cancelReward, cleanLife, lifeText, lifeHit, cleanRel, mergeRel, relStatus, cleanRumor } from '../src/core.js';
 import * as S from '../src/showcase.js';
 import * as C2 from '../src/core.js';
 
@@ -344,7 +344,7 @@ test('кириллица и латиница, пустой главный, бы�
     assert.ok(emptyMe.includes('Дневник ещё не заполнен'));
     const filled = applyAnalysis(emptyState(), one({ name: 'Иван Соколов', mood: 'спокоен' }), all).state;
     const list = renderPanel({ state: filled, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'npc', mains: ['Иван Соколов'], npcKeys: [], roster, seenOnly: [ros.npc[0]] });
-    assert.ok(list.includes('ждёт разбора'));
+    assert.ok(list.includes('ещё не разобран') && list.includes('data-iw-npc-study'));
     assert.ok(list.includes('iw-npc-badge'), 'у НПС значок вместо фото');
     assert.ok(!list.includes('iw-photo"'), 'фото у НПС нет');
     assert.ok(list.includes('Хромой'));
@@ -611,8 +611,8 @@ test('пол: склонения по лорбуку, описанию и име
     assert.equal(genderOf('n', 'Саша'), 'n');
     const html = renderNpcList({ state: emptyState(), npcKeys: [], roster: { npc: [], find: () => null }, seenOnly: [
         { name: 'Маша', g: 'n', checked: true }, { name: 'Олег', g: 'm', checked: true }] });
-    assert.ok(html.includes('только упоминалась'));
-    assert.ok(html.includes('только упоминался'));
+    assert.ok(html.includes('не появлялась в сцене'));
+    assert.ok(html.includes('не появлялся в сцене'));
     assert.equal(themeLabels('diary', genderOf('n', 'Маша')).moodLead, 'Сейчас она');
     assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('в его роде'));
 });
@@ -1179,5 +1179,88 @@ test('брак и дети: заполняются один раз, меняют
     assert.equal(hits[0].side, 'life');
     const html = renderPanel({ state, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:' + k, mains: [k], npcKeys: [] });
     assert.ok(html.includes('iw-b-life') && html.includes('data-iw-life="marry"'));
+});
+test('отношения: шкалы двигаются постепенно, формальный статус — только по событию', () => {
+    assert.equal(relStatus(null, false).label, 'незнакомцы');
+    assert.equal(relStatus({ friend: 60, romance: 0 }).label, 'близкие друзья');
+    assert.equal(relStatus({ friend: 30, romance: 50 }).label, 'влюблённость');
+    assert.equal(relStatus({ friend: -70, romance: 0 }).label, 'враги');
+    assert.equal(relStatus({ friend: 10, romance: 80, formal: 'married' }).label, 'супруги');
+    assert.equal(cleanRel({ friend: 250, romance: -4, formal: 'жена' }).formal, 'married');
+    let { rel } = mergeRel(null, { friend: 10, romance: 0 });
+    ({ rel } = mergeRel(rel, { friend: 90, romance: 60 }));
+    assert.equal(rel.friend, 25);
+    assert.equal(rel.romance, 15);
+    let r2 = mergeRel(rel, { formal: 'engaged' });
+    assert.equal(r2.rel.formal || '', '');
+    r2 = mergeRel(rel, { formal: 'engaged', changed: true, why: 'сделал предложение' });
+    assert.equal(r2.rel.formal, 'engaged');
+    assert.equal(r2.log.to, 'помолвлены');
+});
+test('тип личности не скачет при повторном разборе; подсказка из прошлых разборов уходит модели', () => {
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'спокоен', ptype: 'INTJ-A', temper: 'melancholic', ptype_note: 'стратег', temper_note: 'сдержан' }), all, {});
+    const k = state.order[0];
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'спокоен', ptype: 'ENFP-T', temper: 'sanguine' }), all, { rebuild: true }));
+    assert.equal(state.characters[k].ptype, 'INTJ-A');
+    assert.equal(state.characters[k].temper, 'melancholic');
+    const u = buildUserPrompt({ botName: 'Марк', userName: 'Ева', typeHints: { 'Лена': { ptype: 'ISFJ-T', temper: 'phlegmatic' } } }, state, all);
+    assert.ok(u.includes('Лена: ISFJ-T, phlegmatic'));
+});
+test('календарь: многодневный праздник идёт несколько дней, однодневный — одна дата', () => {
+    const cal = C.normCalendar({ type: 'greg', source: 'user', holidays: [{ name: 'Святки', month: 1, day: 7, days: 12 }, { name: 'День знаний', month: 9, day: 1 }] });
+    const h = cal.holidays.find(x => x.name === 'Святки');
+    assert.equal(h.len, 12);
+    assert.equal(cal.holidays.find(x => x.name === 'День знаний').len, undefined);
+    const ev = C.upcoming(cal, { y: 1997, m: 1, d: 10, h: 12, mi: 0 }, [], 30);
+    const sv = ev.find(e => e.name === 'Святки');
+    assert.equal(sv.inDays, 0);
+    assert.equal(sv.ongoing, 4);
+});
+test('сквозной: лавка, баффы, событие, подарок, слух, отношения, НПС до встречи', () => {
+    let { state } = applyAnalysis(emptyState(), parseAnalysis(JSON.stringify({ characters: [
+        { name: 'Марк', mood: 'спокоен', impression: { label: 'смелая', score: 1, why: 'не испугалась' }, rel: { friend: 20, romance: 10 } },
+        { name: 'Лёша', mood: 'спокоен', unmet: true, wants: [{ text: 'выспаться' }] },
+    ] })), all, { mains: ['Марк'], force: ['Лёша'] });
+    const mk = state.order.find(k => state.characters[k].name === 'Марк');
+    const lk = state.order.find(k => state.characters[k].name === 'Лёша');
+    assert.ok(lk, 'НПС, заведённый по кнопке, появился, хоть и не встречались');
+    assert.ok(state.characters[lk].unmet);
+    const c = state.characters[mk];
+    state.purse = 200;
+    const rewards = parseRewards(JSON.stringify({ rewards: [
+        { title: 'Амулет храбрости', kind: 'buff', turns: 3, cost: 30, effect: 'смелее с игроком' },
+        { title: 'Письмо от сестры', kind: 'event', cost: 20, effect: 'приходит письмо' },
+        { title: 'Брошь', kind: 'gift', cost: 40, effect: 'брошь с совой' },
+        { title: 'Ракушка', kind: 'collect', cost: 10, for: 'user' },
+    ] }));
+    assert.equal(rewards.find(r => r.title === 'Ракушка').forUser, true);
+    assert.equal(rewards.find(r => r.title === 'Брошь').forUser, false);
+    for (const r of rewards.slice(0, 3)) assert.equal(buyReward(c, r, state), null);
+    assert.equal(state.purse, 110);
+    let inj = buildInjection(state, all, 'Ева', 'medium', { mains: ['Марк'] });
+    assert.ok(inj.includes('сейчас действует: смелее с игроком'));
+    assert.ok(inj.includes('вплети в ближайший ответ это событие: приходит письмо'));
+    assert.ok(inj.includes('сам дарит Ева: Брошь'));
+    assert.ok(inj.includes('кто они друг другу'));
+    // через один ответ событие ушло, бафф ещё держится, подарок ждёт вручения
+    state = decayState(state, 1);
+    const c2 = state.characters[mk];
+    assert.ok(!c2.buffs.some(b => b.kind === 'event'));
+    assert.ok(c2.buffs.some(b => b.kind === 'buff'));
+    assert.ok(c2.buffs.some(b => b.kind === 'gift'));
+    state = decayState(state, 5);
+    assert.ok(!state.characters[mk].buffs.some(b => b.kind === 'buff'));
+    assert.ok(state.characters[mk].buffs.some(b => b.kind === 'gift'));
+    // слух
+    const r = cleanRumor({ who: 'соседка', about: 'Ева', text: 'Ева ночевала у майора', truth: 'half' });
+    assert.ok(r && r.text.includes('майора'));
+    // отношения: встреча снимает «не встречались», шкала двигается не скачком
+    ({ state } = applyAnalysis(state, parseAnalysis(JSON.stringify({ characters: [
+        { name: 'Лёша', mood: 'рад', impression: { label: 'своя', score: 1, why: 'помогла' }, rel: { friend: 80 } },
+        { name: 'Марк', mood: 'рад', rel: { friend: 90, romance: 80 } },
+    ] })), all, { mains: ['Марк'] }));
+    assert.ok(!state.characters[lk].unmet);
+    assert.equal(state.characters[mk].rel.friend, 35);
+    assert.equal(state.characters[mk].rel.romance, 25);
 });
 console.log(`итого: ${passed} проверок`);

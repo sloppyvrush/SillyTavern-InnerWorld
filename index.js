@@ -10,7 +10,7 @@ import {
     purseOf,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
-    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES,
+    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -24,7 +24,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.5';
+const VERSION = '0.6.6';
 const UPDATED = '21.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -837,16 +837,16 @@ function clockView() {
     const { cal, t } = now;
     const people = clockPeople(liveState());
     const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
-    const ev = upcoming(cal, t, people, cal.type === 'custom' ? Math.max(366, cal.months.reduce((x, m) => x + m.days, 0)) : 366).map(e => Object.assign(e, { dateText: `${e.d} ${monthName(cal, e.m, true)}`, inDaysText: e.inDays >= 45 ? fmtSpan(e.inDays * 1440) : `${e.inDays} ${daysWord(e.inDays)}` }));
+    const ev = upcoming(cal, t, people, cal.type === 'custom' ? Math.max(366, cal.months.reduce((x, m) => x + m.days, 0)) : 366).map(e => Object.assign(e, { dateText: evDateText(cal, e), inDaysText: e.inDays >= 45 ? fmtSpan(e.inDays * 1440) : `${e.inDays} ${daysWord(e.inDays)}` }));
     const draft = normTime(cal, clockDraft || t);
     let grid = null;
     if (cal.type !== 'days') {
         const vm = clockMonth || { y: draft.y, m: draft.m };
         grid = monthGrid(cal, vm.y, vm.m, monthMarks(cal, vm.y, vm.m, people));
     }
-    const holDate = h => h.rule
+    const holDate = h => (h.len && !h.rule ? evDateText(cal, { m: h.m, d: h.d, y: t.y, len: h.len }) : null) || (h.rule
         ? ({ easter_o: 'Пасха (правосл.)', easter_w: 'Пасха' }[h.rule] ? `${h.offset ? `${h.offset > 0 ? '+' : ''}${h.offset} дн. от Пасхи` : 'по Пасхе'}` : 'плавающая дата')
-        : `${h.d} ${monthName(cal, h.m, true)}`;
+        : `${h.d} ${monthName(cal, h.m, true)}`);
     return {
         cal, t, draft,
         draftChanged: toMinutes(cal, draft) !== toMinutes(cal, t),
@@ -1526,7 +1526,7 @@ function livePreview(raw, base, s, opts) {
     renderAll();
 }
 
-async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat', keepLive = false } = {}) {
+async function analyze(messageId, { manual = false, catchUp = null, fromLore = null, kind = 'chat', keepLive = false, study = null } = {}) {
     const s = settings();
     const c = ctx();
     if (!MODEL_MODULES.some(m => s.modules[m])) {
@@ -1571,7 +1571,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             }
             const userTurns = chat.slice(0, messageId + 1).filter(m => m && m.is_user).length;
             const missingOk = missing.filter(n => !isIgnored(n));
-            if (missingOk.length && userTurns >= 1 && messageId >= 2) {
+            if (missingOk.length && ((userTurns >= 1 && messageId >= 2) || manual)) {
                 // сначала главные, потом НПС — по важности, сколько влезает в лимит
                 const ph = new Set(placeholders);
                 const have = splitCast(base).npcKeys.length;
@@ -1622,6 +1622,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             trackPersona: s.persona !== false,
             messages: msgs,
             mainNames: mn,
+            typeHints: typeHintsFor(mn),
+            studyNames: study || null,
             catchUp,
             fromLore: !!fromLore,
             kind,
@@ -1747,6 +1749,14 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 f.name = known;
             }
         }
+        // НПС, которого разбирали по кнопке, а модель не вернула, — заводим сами: лично ещё не встречались
+        if (study) {
+            for (const name of study) {
+                if (base.order.some(k => namesMatch(k, name)) || fresh.some(f => namesMatch(f.name, name))) continue;
+                const e = ros.find ? ros.find(name) : null;
+                fresh.push({ name, g: (e && e.g) || 'n', who: (e && e.who) || '', unmet: true });
+            }
+        }
         // знакомые персоны ещё до истории, которых модель всё равно пропустила, — заводим сами: карточка «знакомы лично»
         {
             for (const e of acqEntries) {
@@ -1766,7 +1776,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         evBatch = [];
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length) });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
         fillBornFromCards(state);
         // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
         if (npcCap() !== Infinity) try {
@@ -1787,6 +1797,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         try { pinAges(state, messageId); } catch (e) { console.warn('[Внутренний мир] возраст', e); }
         try { pinMeetings(state, messageId); } catch (e) { console.warn('[Внутренний мир] знакомство', e); }
         writeRecord(messageId, state);
+        rememberTypes(state);
         // день сцены на момент разбора: по нему следующий разбор поймёт, что прошла ночь
         try {
             const nowC = clockNow(messageId + 1);
@@ -1800,12 +1811,19 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             }
         }
         chatMeta().fp = Object.assign({}, chatMeta().fp, { chat: chatFp(messageId) });
-        if (catchUp) {
-            // кого проверили по истории, но в сцене лично не было — не перепроверяем, пока не упомянут снова
+        {
+            // кого проверили по истории, но в сцене лично не было — не перепроверяем, пока не упомянут снова;
+            // в обычном разборе — те, кого упоминали в прочитанных сообщениях, тоже уже проверены
             const meta = chatMeta();
             meta.checked = meta.checked || {};
-            for (const name of catchUp) meta.checked[name] = messageId;
-            ctx().saveMetadataDebounced?.();
+            const hs = historySeen();
+            const done = new Set(catchUp || []);
+            if (!fromLore) for (const e of hs.pending) if ((hs.lastAt[e.name] ?? -1) >= firstInWindow && (hs.lastAt[e.name] ?? -1) <= messageId) done.add(e.name);
+            if (done.size) {
+                for (const name of done) meta.checked[name] = messageId;
+                historyCache.key = '';
+                ctx().saveMetadataDebounced?.();
+            }
         }
         await ctx().saveChat();
         status = fromLore ? 'Дневник дополнен по карточке и лорбуку' : (catchUp ? `Дневник заполнен по истории чата (до сообщения #${messageId})` : `Обновлено после сообщения #${messageId}`);
@@ -2453,7 +2471,7 @@ function infobarModelFor(id) {
                 const st0 = currentState(id + 1);
                 const people = clockPeople(st0);
                 const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
-                const ev = upcoming(cal, t, people, 14).map(e => Object.assign(e, { dateText: `${e.d} ${monthName(cal, e.m, true)}`, inDaysText: `${e.inDays} ${daysWord(e.inDays)}` }));
+                const ev = upcoming(cal, t, people, 14).map(e => Object.assign(e, { dateText: evDateText(cal, e), inDaysText: `${e.inDays} ${daysWord(e.inDays)}` }));
                 clock = { t, time: fmtTime(t), part: partOfDay(t.h), date: fmtDate(cal, t), wx: weatherChip(cal, t, weatherAt(id)), today: ev.filter(e => e.inDays === 0), upcoming: ev };
             }
         } catch (e) { console.warn('[Внутренний мир] инфоблок: часы', e); }
@@ -2479,7 +2497,7 @@ function infobarModelFor(id) {
             cast.push({
                 key: k, name: c.name, mood: c.mood || '', face, face2, persona,
                 feels: byWeight.slice(0, 3).map(m => ({ e: m.emotion, w: m.weight, why: m.why || '' })),
-                status: c.rel && c.rel.label ? c.rel.label : '',
+                status: !persona ? relStatus(c.rel, !!c.impression).label : '',
                 wants, fears,
                 attitude, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
                 night: night && night.text ? { text: night.text, date: night.date || '' } : null,
@@ -2523,6 +2541,55 @@ function infobarModelFor(id) {
     show.clockOn = s.clock !== false;
     show.changes = s.ibChanges !== false;
     return { clock, cast: cast.slice(0, 4), show, changes: changes.slice(0, 8) };
+}
+
+// Разобрать одного НПС по кнопке: карточка заводится, даже если лично в сцене его ещё не было
+async function studyNpc(name) {
+    if (busy) return notice('Дневник уже пишет — подожди немного.');
+    const id = lastBotMessageId();
+    if (id < 0) return notice('В чате ещё нет ответа персонажа.');
+    if (settings().sound !== false) playSound('write', currentTheme);
+    await analyze(id, { manual: true, kind: 'chat', catchUp: [name], study: [name] });
+    if (live && !busy && !rosterBusy && !shopBusy) setLive(null);
+    renderAll();
+}
+
+// Дата события: однодневное — «9 мая», многодневное — «7–13 марта» или «28 дек. – 3 янв.»
+function evDateText(cal, e) {
+    if (!e.len || e.len < 2) return `${e.d} ${monthName(cal, e.m, true)}`;
+    let y = e.y ?? 2000, m = e.m, d = e.d + e.len - 1;
+    while (d > monthDays(cal, y, m)) { d -= monthDays(cal, y, m); m += 1; if (m > monthCount(cal)) { m = 1; y += 1; } }
+    return m === e.m ? `${e.d}–${d} ${monthName(cal, e.m, true)}` : `${e.d} ${monthName(cal, e.m, true)} – ${d} ${monthName(cal, m, true)}`;
+}
+
+// Тип личности и темперамент запоминаются по имени между чатами: повторный разбор той же карточки даёт тот же тип
+function rememberTypes(state) {
+    try {
+        const s = settings();
+        const cache = s.typeCache && typeof s.typeCache === 'object' ? s.typeCache : {};
+        let changed = false;
+        for (const k of state.order || []) {
+            const c = state.characters[k];
+            if (!c || c.persona || !c.ptype) continue;
+            const cur = cache[c.name];
+            if (!cur || cur.ptype !== c.ptype || cur.temper !== c.temper) {
+                cache[c.name] = { ptype: c.ptype, temper: c.temper || '', at: Date.now() };
+                changed = true;
+            }
+        }
+        const names = Object.keys(cache);
+        if (names.length > 300) names.sort((a, b) => (cache[a].at || 0) - (cache[b].at || 0)).slice(0, names.length - 300).forEach(n => delete cache[n]);
+        if (changed) { s.typeCache = cache; saveSettings(); }
+    } catch (e) { console.warn('[Внутренний мир] типы личности', e); }
+}
+
+function typeHintsFor(names) {
+    const cache = settings().typeCache || {};
+    const out = {};
+    const st = currentState();
+    const want = new Set([...(names || []), ...((st && st.order) || []).map(k => st.characters[k] && st.characters[k].name).filter(Boolean), ...((roster().npc || []).map(e => e.name))]);
+    for (const n of want) if (cache[n]) out[n] = { ptype: cache[n].ptype, temper: cache[n].temper };
+    return Object.keys(out).length ? out : null;
 }
 
 // Открыть дневник на странице героя (из инфоблока)
@@ -2963,6 +3030,7 @@ async function onPanelClick(e) {
     if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : '');
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
     if (t.dataset.iwLifePin) return onLifeEdit(null, null);
+    if (t.dataset.iwNpcStudy) return studyNpc(t.dataset.iwNpcStudy);
     if (t.dataset.iwLiveHide !== undefined) {
         if (live) live.hidden = true;
         return renderAll();
@@ -2999,7 +3067,7 @@ async function onPanelClick(e) {
         const kind = t.dataset.iwAnalyze;
         if (kind === 'chat') {
             const id0 = lastBotMessageId();
-            if (id0 >= 0 && recordOf(ctx().chat[id0]) && (chatMeta().fp || {}).chat === chatFp(id0) && !missingPersona()) return nothingNew('сообщения чата');
+            if (id0 >= 0 && recordOf(ctx().chat[id0]) && (chatMeta().fp || {}).chat === chatFp(id0) && !missingPersona() && !(settings().showNpc !== false && historySeen().pending.length)) return nothingNew('сообщения чата');
         }
         // карандаш «пишет» один раз — только на нажатие кнопки, не на автообновления
         if (!busy && s.sound !== false) playSound('write', currentTheme);

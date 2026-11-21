@@ -17493,3 +17493,96 @@ ol {
     color: var(--iw-ink);
     background: color-mix(in srgb, var(--iw-hl-good, var(--iw-label-color)) 55%, transparent);
 }
+
+/* Отношения: кто вы друг другу и шкалы, как в «Симс» */
+.iw-rel {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1.5px dashed color-mix(in srgb, var(--iw-ink) 22%, transparent);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    --rel-c: var(--iw-label-color);
+}
+.iw-rel-best, .iw-rel-close, .iw-rel-friend { --rel-c: var(--iw-wants); }
+.iw-rel-dating, .iw-rel-love, .iw-rel-crush, .iw-rel-spark, .iw-rel-engaged, .iw-rel-married { --rel-c: #e0568f; }
+.iw-rel-dislike, .iw-rel-enemy, .iw-rel-rivals, .iw-rel-ex, .iw-rel-exspouse { --rel-c: var(--iw-fears); }
+.iw-rel-know, .iw-rel-strangers { --rel-c: var(--iw-muted); }
+.iw-rel-badge {
+    align-self: flex-start;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 16px 4px 8px;
+    color: var(--iw-ink);
+    background: color-mix(in srgb, var(--rel-c) 20%, var(--iw-block-bg, transparent));
+    border: 1.5px solid color-mix(in srgb, var(--rel-c) 70%, transparent);
+    border-radius: 6px 3px 3px 6px;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 50%, 100% 100%, 0 100%);
+    transform: rotate(-1.5deg);
+    box-shadow: 1px 2px 0 color-mix(in srgb, var(--rel-c) 25%, transparent);
+}
+.iw-rel-badge b { font-family: var(--iw-title-font); font-size: 1.12em; line-height: 1; letter-spacing: .01em; }
+.iw-rel-ico {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    color: #fff; background: var(--rel-c);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .15);
+}
+.iw-rel-ico svg { width: 13px; height: 13px; }
+.iw-rel-bars { display: grid; gap: 6px; }
+.iw-rel-bar { display: grid; grid-template-columns: 5.6em minmax(0, 1fr) 2.6em; gap: 6px; align-items: center; }
+.iw-rel-cap { font-size: .78em; color: var(--iw-muted); text-transform: lowercase; }
+.iw-rel-track {
+    position: relative; height: 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--iw-ink) 12%, transparent);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .15);
+    overflow: hidden;
+}
+.iw-rel-mid::after { content: ''; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1.5px; background: color-mix(in srgb, var(--iw-ink) 40%, transparent); }
+.iw-rel-fill { position: absolute; top: 0; bottom: 0; border-radius: 999px; background: var(--iw-wants); }
+.iw-rel-fr.neg .iw-rel-fill { background: var(--iw-fears); }
+.iw-rel-ro .iw-rel-fill { background: #e0568f; }
+.iw-rel-num { font-size: .8em; font-weight: 700; text-align: right; color: var(--iw-ink); font-variant-numeric: tabular-nums; }
+
+/* НПС, которых ещё не разбирали, — плитка-кнопка: нажми, и дневник заведёт карточку */
+.iw-npc.seen { cursor: pointer; font: inherit; color: inherit; }
+.iw-npc.seen:hover { border-style: solid; }
+.iw-npc.seen:focus-visible { outline: 2px solid var(--iw-label-color); outline-offset: 2px; }
+.iw-npc.seen.known { opacity: 1; }
+.iw-unmet-note { margin: 4px 0 2px; font-style: italic; }
+
+/* Ближайшие даты: листок отрывного календаря, название крупно, подробности — одной строкой */
+.iw-panel .iw-clock-ev.iw-ev2 {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px dashed color-mix(in srgb, var(--iw-ink) 14%, transparent);
+}
+.iw-panel .iw-clock-ev.iw-ev2:last-child { border-bottom: 0; }
+.iw-ev-date {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 40px; padding: 2px 0;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--iw-label-color) 12%, transparent);
+    border-top: 4px solid color-mix(in srgb, var(--iw-label-color) 70%, transparent);
+    line-height: 1;
+}
+.iw-ev-date b { font-size: 16px; font-weight: 800; color: var(--iw-ink); white-space: nowrap; letter-spacing: -.02em; }
+.iw-ev-date i { font-style: normal; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--iw-muted); margin-top: 2px; }
+.iw-ev-date-text { font-size: 11px; text-align: center; color: var(--iw-muted); }
+.iw-clock-birthday .iw-ev-date { border-top-color: #e86a9a; }
+.iw-clock-canon .iw-ev-date, .iw-clock-anniv .iw-ev-date { border-top-color: var(--iw-muted); }
+.iw-ev2 .iw-ev-body { gap: 1px; }
+.iw-ev2 .iw-ev-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.iw-ev2 .iw-ev-ico { width: 18px; height: 18px; flex: none; font-size: 12px; }
+.iw-ev2 .iw-ev-ico::before { display: none; }
+.iw-ev2 .iw-ev-title { font-weight: 700; font-size: 13.5px; line-height: 1.2; color: var(--iw-ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.iw-ev2 .iw-ev-body > small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 24px; }
+.iw-panel .iw-clock-ev.iw-ev2 > .iw-ev-in { font-style: normal; font-size: 11.5px; color: var(--iw-muted); white-space: nowrap; padding: 0; }
+.iw-ev2.iw-ev-now .iw-ev-in { color: var(--iw-label-color); font-weight: 700; }
+.iw-ev2.iw-ev-now .iw-ev-date { background: color-mix(in srgb, var(--iw-label-color) 26%, transparent); }
