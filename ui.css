@@ -655,11 +655,21 @@ ol {
 .iw-b-dream .iw-block-head { color: var(--iw-dream); }
 .iw-b-traits .iw-block-head { color: var(--iw-traits); }
 .iw-b-life .iw-block-head { color: var(--iw-label-color); }
-.iw-life { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
-.iw-life-row { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.iw-life-cap { color: var(--iw-muted); font-size: .8em; letter-spacing: .02em; }
+.iw-life { display: flex; flex-direction: column; gap: 4px; }
+.iw-life-line { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.iw-life-sub {
+    margin-top: 4px;
+    font-size: .78em; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--iw-label-color);
+    border-top: 1px dashed color-mix(in srgb, var(--iw-ink) 16%, transparent);
+    padding-top: 5px;
+}
+.iw-life-row { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.iw-life-line:first-child .iw-life-cap { font-size: .9em; font-weight: 700; color: var(--iw-ink); text-transform: none; }
+.iw-life-cap { flex: none; color: var(--iw-muted); font-size: .85em; }
 .iw-life-sel {
-    width: 100%;
+    width: auto;
+    max-width: 100%;
     min-width: 0;
     font: inherit;
     font-size: .92em;

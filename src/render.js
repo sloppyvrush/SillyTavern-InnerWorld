@@ -485,11 +485,14 @@ function renderLife(c) {
     <section class="iw-block iw-b-life">
       ${blockHead('life', 'Брак и дети', pin)}
       <div class="iw-life">
-        ${sel('marry', LIFE_FIELDS.marry.opts, 'Брак')}
-        ${sel('kids', LIFE_FIELDS.kids.opts, 'К детям')}
-        ${sel('own', LIFE_FIELDS.own.opts, 'Свои')}
-        ${ownOff ? '' : sel('when', LIFE_FIELDS.when.opts, 'Когда')}
-        ${ownOff ? '' : sel('count', counts, 'Сколько')}
+        <div class="iw-life-line">${sel('marry', LIFE_FIELDS.marry.opts, 'Брак')}</div>
+        <div class="iw-life-sub">Дети</div>
+        <div class="iw-life-line">
+          ${sel('kids', LIFE_FIELDS.kids.opts, 'вообще')}
+          ${sel('own', LIFE_FIELDS.own.opts, 'свои')}
+          ${ownOff ? '' : sel('when', LIFE_FIELDS.when.opts, 'когда')}
+          ${ownOff ? '' : sel('count', counts, 'сколько')}
+        </div>
       </div>
       ${life.why ? `<div class="iw-life-why" title="${esc(life.why)}">${ce(life.why)}</div>` : ''}
       ${log.length ? `<details class="iw-more"><summary>как менялись · ${log.length}</summary><ul class="iw-life-log">${log.map(e => `<li><b>${esc(e.from || 'не ясно')} → ${esc(e.to)}</b>${e.why ? ` — ${ce(e.why)}` : ''}</li>`).join('')}</ul></details>` : ''}
