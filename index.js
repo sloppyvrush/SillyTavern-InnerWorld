@@ -7,7 +7,7 @@ import {
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut, includeBodyWithThinking,
     extractJson, nameScript, parseBorn, zodiacOf, bornText,
     plural,
-    purseOf,
+    purseOf, claimWant,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel,
@@ -24,8 +24,8 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.6';
-const UPDATED = '21.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
+const VERSION = '0.6.7';
+const UPDATED = '22.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
@@ -67,6 +67,7 @@ let clockSetOpen = false;
 let clockDraft = null;     // выбранные в листке дата и время — применяются только кнопкой «Поставить»
 let clockHolMonth = 0;     // месяц для нового праздника
 let clockCalOpen = false;
+let clockEvOpen = false;
 const loadedFonts = new Set();
 
 const ctx = () => SillyTavern.getContext();
@@ -444,6 +445,14 @@ function currentState(beforeId) {
     const st = h.state ? clone(h.state) : emptyState();
     if (!st.order) st.order = Object.keys(st.characters || {});
     return st;
+}
+
+// То же состояние, но только для чтения и без копии: инфоблок под каждым ответом перерисовывается часто,
+// и полная копия дневника на каждое сообщение заметно тормозила длинные чаты. Ничего в нём не меняем!
+function peekState(beforeId) {
+    const h = findHolder(beforeId);
+    const st = h.state || emptyState();
+    return st.order ? st : { ...st, order: Object.keys(st.characters || {}) };
 }
 
 // Сколько ответов бота прошло после сообщения holderIndex (до upTo включительно).
@@ -877,6 +886,7 @@ function clockView() {
         busy: clockBusy,
         open: clockOpen,
         calOpen: clockCalOpen,
+        evOpen: clockEvOpen,
         typeName: CALENDAR_TYPES[cal.type],
         calName: cal.name || '',
         country: cal.country || '',
@@ -1280,7 +1290,7 @@ function fillBornFromCards(state) {
             const b = bornFromText(text);
             if (!b) return;
             if (ch.born && ch.born.d && !b.d) return;
-            ch.born = b;
+            ch.born = b.y || !(ch.born && ch.born.y) ? b : { ...b, y: ch.born.y };
             delete ch.bornChecked;
         };
         const botKey = Object.keys(state.characters || {}).find(k => !state.characters[k].persona && sameName(k, c.name2));
@@ -1795,7 +1805,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         evBatch = [];
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
+        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, claimWants: s.points !== false && s.claimAuto !== true, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
         fillBornFromCards(state);
         // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
         if (npcCap() !== Infinity) try {
@@ -2551,7 +2561,7 @@ function infobarModelFor(id) {
             const now = clockNow(id + 1);
             if (now && now.cal && now.t) {
                 const { cal, t } = now;
-                const st0 = currentState(id + 1);
+                const st0 = peekState(id + 1);
                 const people = clockPeople(st0);
                 const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
                 const ev = upcoming(cal, t, people, 14).map(e => Object.assign(e, { dateText: evDateText(cal, e), inDaysText: `${e.inDays} ${daysWord(e.inDays)}` }));
@@ -2561,7 +2571,7 @@ function infobarModelFor(id) {
     }
     const cast = [];
     try {
-        const st = currentState(id + 1);
+        const st = peekState(id + 1);
         const { mains, personaKey } = splitCast(st);
         const live = arr => (arr || []).filter(x => x && x.text && (!x.status || x.status === 'active'));
         for (const k of [...mains, personaKey].filter(Boolean)) {
@@ -2581,6 +2591,7 @@ function infobarModelFor(id) {
                 key: k, name: c.name, mood: c.mood || '', face, face2, persona,
                 feels: byWeight.slice(0, 3).map(m => ({ e: m.emotion, w: m.weight, why: m.why || '' })),
                 status: !persona ? relStatus(c.rel || seedRel(c), !!c.impression).label : '',
+                rel: !persona && c.impression && !c.unmet ? (c.rel || seedRel(c)) : null,
                 wants, fears,
                 attitude, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
                 night: night && night.text ? { text: night.text, date: night.date || '' } : null,
@@ -2590,8 +2601,8 @@ function infobarModelFor(id) {
     // что изменилось в дневнике после этого ответа (сравнение с записью до него)
     const changes = [];
     try {
-        const st = currentState(id + 1);
-        const was = currentState(id);
+        const st = peekState(id + 1);
+        const was = peekState(id);
         if (st !== was && st.order) {
             const { mains, personaKey } = splitCast(st);
             const txt = arr => new Map((arr || []).filter(x => x && x.text).map(x => [x.text, x.status || 'active']));
@@ -2623,6 +2634,7 @@ function infobarModelFor(id) {
     if (s.dreams === false) show.night = false;
     show.clockOn = s.clock !== false;
     show.changes = s.ibChanges !== false;
+    show.rel = s.ibRel !== false && s.ibMoods !== false;
     return { clock, cast: cast.slice(0, 4), show, changes: changes.slice(0, 8) };
 }
 
@@ -2686,6 +2698,7 @@ function openDiaryAt(key) {
     openPanel();
 }
 
+const ibSigs = new WeakMap();
 function renderInfobar() {
     const s = settings();
     const chatEl = document.getElementById('chat');
@@ -2695,6 +2708,11 @@ function renderInfobar() {
     if (!on) { chatEl.querySelectorAll('.iw-ib-host').forEach(el => el.remove()); return; }
     const chat = ctx().chat || [];
     const lastBot = lastBotMessageId();
+    // общая часть подписи: если у сообщения не поменялись ни записи дневника до него, ни часы, ни настройки —
+    // его инфоблок не пересчитываем (на длинном чате это сотни лишних проходов при каждой подгрузке)
+    const ibSet = Object.keys(s).filter(k => /^ib|^clock$|^infobar|^animations$/.test(k)).map(k => `${k}=${s[k]}`).join(',');
+    const common = `${currentTheme}|${ibSet}|${mainNames().join(',')}|${ctx().name1 || ''}`;
+    const cal = calendarOf();
     for (const el of chatEl.querySelectorAll('.mes[mesid]')) {
         const id = Number(el.getAttribute('mesid'));
         const mes = chat[id];
@@ -2743,6 +2761,12 @@ function renderInfobar() {
             wrap.addEventListener('keydown', toggle);
         }
         if (host.nextElementSibling !== anchor) anchor.before(host);
+        const ck = s.clock !== false ? findClock(id + 1) : null;
+        const sig = [common, ibOpen.has(id), ibTab.get(id) || '', findHolder(id + 1).state, findHolder(id).state,
+            ck && (ck.rec || JSON.stringify(ck.t)), cal, weatherAt(id)];
+        const old = ibSigs.get(host);
+        if (old && old.length === sig.length && old.every((v, i) => v === sig[i])) continue;
+        ibSigs.set(host, sig);
         const html = renderInfobarHtml(infobarModelFor(id), currentTheme, ibOpen.has(id), ibTab.get(id) || '');
         const wrap = host.shadowRoot.querySelector('.iw-ib-wrap');
         wrap.className = `iw-ib-wrap iw-ib-in iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
@@ -3188,6 +3212,7 @@ async function onPanelClick(e) {
         return regenShop();
     }
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
+    if (t.dataset.iwWantClaim !== undefined) return claimWantReward(Number(t.dataset.iwWantClaim));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
     if (t.dataset.iwCheat) return enterCheat();
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
@@ -3236,6 +3261,11 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwCase) {
         caseSel = caseSel === t.dataset.iwCase ? '' : t.dataset.iwCase;
+        return renderPanelNow();
+    }
+    if (t.dataset.iwClock === 'evmore') {
+        e.preventDefault();
+        clockEvOpen = !clockEvOpen;
         return renderPanelNow();
     }
     if (t.dataset.iwClock) {
@@ -3653,6 +3683,19 @@ async function onTraitAction(spec) {
 }
 
 // Закрепить желание: не изменится и не пропадёт, пока не исполнится (как в «Симс»).
+async function claimWantReward(i) {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    const text = ch && ch.wants && ch.wants[i] ? ch.wants[i].text : '';
+    const got = claimWant(st, key, i);
+    if (!got) return;
+    await saveEditedState(st);
+    updateInjection();
+    renderAll();
+    showEvent({ type: 'reward', who: ch.name, text: `«${text}» — награда получена: +${got.toLocaleString('ru-RU')}`, icon: 'coin' });
+}
+
 async function toggleWantPin(i) {
     const key = viewKey();
     const st = currentState();
@@ -4265,7 +4308,13 @@ function init() {
     c.eventSource.on(ev.MESSAGE_SWIPED, () => { updateInjection(); renderAll(); });
     c.eventSource.on(ev.MESSAGE_DELETED, () => { updateInjection(); renderAll(); });
     // теги влияния и инфоблок живут рядом с сообщениями: перерисовываем, когда таверна дорисовала чат
-    const redrawChatBits = () => setTimeout(() => { try { renderDiagAll(); renderInfobar(); } catch { /* без тегов */ } }, 60);
+    // таверна шлёт событие на каждое дорисованное сообщение (при подгрузке истории — десятки подряд):
+    // собираем их в одну перерисовку, иначе на длинном чате прокрутка вверх подлагивает
+    let chatBitsTimer = 0;
+    const redrawChatBits = () => {
+        clearTimeout(chatBitsTimer);
+        chatBitsTimer = setTimeout(() => { try { renderDiagAll(); renderInfobar(); } catch { /* без тегов */ } }, 80);
+    };
     for (const name of ['CHARACTER_MESSAGE_RENDERED', 'USER_MESSAGE_RENDERED', 'MORE_MESSAGES_LOADED', 'MESSAGE_EDITED', 'MESSAGE_UPDATED', 'CHAT_LOADED']) {
         if (ev[name]) c.eventSource.on(ev[name], redrawChatBits);
     }

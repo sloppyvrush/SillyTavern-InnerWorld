@@ -586,37 +586,37 @@ const REL_GROUP = {
     best: 'friends', close: 'friends', friend: 'friends', know: 'hello', strangers: 'hello', kin: 'home',
     dislike: 'storm', enemy: 'storm', rivals: 'storm', ex: 'broken', exspouse: 'broken',
 };
-// Рисованные зарисовки рядом с плашкой статуса — штрихом, цветом темы
+// Рисованные зарисовки по схемам автора: в шапке линия с петелькой приходит слева к мотиву (viewBox 150×48)
 const REL_DOODLE = {
-    love: '<path d="M22 30c-6-4-11-8-11-13 0-3 2.4-5 5-5 2.4 0 4.6 1.6 6 4 1.4-2.4 3.6-4 6-4 2.6 0 5 2 5 5 0 5-5 9-11 13z"/><path d="M47 22c-3.6-2.4-6.6-4.8-6.6-7.8 0-1.8 1.4-3 3-3 1.4 0 2.8 1 3.6 2.4.8-1.4 2.2-2.4 3.6-2.4 1.6 0 3 1.2 3 3 0 3-3 5.4-6.6 7.8z"/><path d="M34 10l2-4M40 8l3-2M58 26c3 1 6 0 8-3M60 33l4 1" class="t"/>',
-    ring: '<circle cx="24" cy="24" r="9"/><path d="M19 13l5-6 5 6-5 3z"/><circle cx="44" cy="26" r="8"/><path d="M33 8l1-3M37 10l3-2M54 14l2 3 3 1-3 1-2 3-1-3-3-1 3-1z" class="t"/>',
-    friends: '<path d="M10 16h14v9a7 7 0 0 1-14 0z"/><path d="M24 18h3a3 3 0 0 1 0 6h-3"/><path d="M38 16h14v9a7 7 0 0 1-14 0z"/><path d="M38 18h-3a3 3 0 0 0 0 6h3"/><path d="M14 11c0-2 2-2 2-4M45 11c0-2 2-2 2-4M30 33h4" class="t"/>',
-    hello: '<path d="M8 26l40-14-12 22-6-8z"/><path d="M30 26l18-14"/><path d="M52 30c3 0 5 2 5 4s-2 3-3 4M54 42v1" class="t"/>',
-    storm: '<path d="M14 22a7 7 0 0 1 12-6 8 8 0 0 1 15 3 5 5 0 0 1-1 10H17a5 5 0 0 1-3-7z"/><path d="M28 30l-4 7h6l-4 7" class="t"/>',
-    broken: '<path d="M30 36c-8-5-15-10-15-17 0-4 3-7 7-7 3.2 0 6 2 8 5 2-3 4.8-5 8-5 4 0 7 3 7 7 0 7-7 12-15 17z"/><path d="M30 17l-3 6 5 3-3 6" class="t"/>',
-    home: '<path d="M12 22l16-12 16 12"/><path d="M16 20v14h24V20"/><path d="M25 34v-8h6v8M50 14c2-1 4 0 5 2M52 22h4" class="t"/>',
+    love: '<path class="t" d="M2 40C14 42 18 30 28 32S40 44 50 36 58 18 70 20 84 34 92 26C98 20 94 12 89 15S88 26 98 24 108 14 112 12"/><path d="M128.0 36.7C123.3 33.0 115.0 26.4 115.0 21.3C115.0 13.8 125.9 12.4 128.0 19.9C130.1 12.4 141.0 13.8 141.0 21.3C141.0 26.4 133.2 32.5 128.8 37.4"/><path class="t" d="M44.0 18.9C42.0 17.4 38.5 14.6 38.5 12.4C38.5 9.2 43.1 8.7 44.0 11.8C44.9 8.7 49.5 9.2 49.5 12.4C49.5 14.6 46.2 17.2 44.3 19.2"/><path class="t" d="M110 6l2-3M146 12l3-1M144 40l3 2"/>',
+    ring: '<path class="t" d="M2 38C16 40 22 26 34 30S48 42 58 32C64 26 60 18 54 21S54 34 66 33 86 22 98 26 108 30 110 26"/><circle cx="120" cy="26" r="11"/><circle cx="134" cy="24" r="11"/><path class="t" d="M106.0 5.0Q107.1 7.9 110.0 9.0Q107.1 10.1 106.0 13.0Q104.9 10.1 102.0 9.0Q104.9 7.9 106.0 5.0z"/>',
+    friends: '<path class="t" d="M2 36C14 38 20 26 32 28S46 40 58 32C64 28 61 20 56 23S56 34 68 34 88 26 100 30"/><path d="M119.0 16.2A10 10 0 1 0 126.7 24.5A10 10 0 0 0 122.5 18.0"/><path d="M113.7 23.8v.1M120.3 23.8v.1" stroke-width="2.6"/><path d="M112.8 28.2Q117.0 32.2 121.2 27.8"/><path d="M141.8 15.2A9 9 0 1 0 148.7 22.6A9 9 0 0 0 144.9 16.8"/><path d="M136.6 22.2h1.8M143.0 22.0v.1" stroke-width="2.6"/><path d="M136.2 26.0Q140.0 29.6 143.8 25.6"/><path class="t" d="M103.0 6.0Q104.1 8.9 107.0 10.0Q104.1 11.1 103.0 14.0Q101.9 11.1 99.0 10.0Q101.9 8.9 103.0 6.0z"/>',
+    hello: '<path class="t" stroke-dasharray="3 4" d="M2 40C16 42 22 28 36 30S52 42 64 34C70 30 67 22 62 25S62 36 74 36 94 28 108 26"/><path d="M112 26L146 10 134 40 126 31z"/><path d="M126 31L146 10"/><path class="t" d="M98.0 8.0Q99.1 10.9 102.0 12.0Q99.1 13.1 98.0 16.0Q96.9 13.1 94.0 12.0Q96.9 10.9 98.0 8.0z"/>',
+    storm: '<path class="t" d="M2 34C12 30 16 40 26 38S36 26 46 30 52 42 62 36C68 32 65 24 60 27S60 38 72 38 92 34 102 36"/><path d="M105.8 34.0h32.3a6.6 6.6 0 0 0 0.9 -13.3a9.5 9.5 0 0 0 -17.1 -5.7a7.6 7.6 0 0 0 -13.3 4.8a7.1 7.1 0 0 0 -2.8 14.2z"/><path class="t" d="M122.0 36.0l-2.8 5.0h3.9l-3.3 6.1"/><path class="t" d="M96 10c4-2 8 2 12 0M92 18c3-1 5 1 8 0"/>',
+    broken: '<path class="t" d="M2 38C14 40 20 28 32 30S46 42 58 34C64 30 61 22 56 25S56 36 68 36 88 28 100 32"/><g transform="rotate(-6 122 27)"><path d="M124.0 38.7C119.3 35.0 111.0 28.4 111.0 23.3C111.0 15.8 121.9 14.4 124.0 21.9C126.1 14.4 137.0 15.8 137.0 23.3C137.0 28.4 129.2 34.5 124.8 39.4"/></g><path class="t" d="M124 15l-4 6 5 4-4 6 3 5"/><path class="t" d="M104 12l3 3M146 40l2 3"/>',
+    home: '<path class="t" d="M2 40C14 42 20 30 32 32S46 44 58 36C64 32 61 24 56 27S56 38 68 38 88 32 104 38"/><path d="M108 26l18-15 18 15"/><path d="M112 23v19h28V23"/><path d="M122 42v-9h8v9"/><path d="M134 14v-6h4v9"/><path class="t" d="M136 6c-3-3 2-4 0-7"/>',
 };
 
-// Большой набросок под шкалами: заполняет пустое место листка (если места нет — просто сжимается)
-// Тонкие линии на всю свободную высоту — спокойный фон под наброском, свой для каждого вида отношений
+// Фон под наброском: длинные линии с петлями тянутся на всю свободную высоту листка
 const REL_LINES = {
-    love: '<path d="M0 30 C25 10 40 50 50 30 S75 10 100 30"/><path d="M0 70 C25 50 40 90 50 70 S75 50 100 70" stroke-dasharray="2 4"/>',
-    ring: '<path d="M0 25 C30 35 70 15 100 25"/><path d="M0 75 C30 65 70 85 100 75" stroke-dasharray="2 4"/>',
-    friends: '<path d="M0 30 H100" stroke-dasharray="1 5"/><path d="M0 70 C30 62 70 78 100 70"/>',
-    hello: '<path d="M0 80 C20 60 30 90 50 60 S80 30 100 20" stroke-dasharray="3 5"/>',
-    storm: '<path d="M0 30 L15 40 L30 25 L45 42 L60 28 L75 44 L90 30 L100 36"/><path d="M0 75 H100" stroke-dasharray="1 6"/>',
-    broken: '<path d="M0 50 C20 40 35 60 46 50"/><path d="M54 50 C65 40 80 60 100 50"/><path d="M0 80 H100" stroke-dasharray="1 6"/>',
-    home: '<path d="M0 30 C30 22 70 38 100 30"/><path d="M0 72 H100" stroke-dasharray="2 5"/>',
+    love: '<path d="M0 88C9 76 12 52 22 44S34 46 40 32 54 12 64 12 76 4 86 6 96 16 100 14"/><path d="M0 98C10 97 13 86 22 87S32 98 42 84 58 92 68 80C76 70 78 58 87 55 97 56 94 68 88 66 83 62 88 46 100 34"/>',
+    ring: '<path d="M70 0C54 2 30 2 14 10 2 18 4 36 12 38S22 30 16 26 8 38 14 52 18 80 10 92 2 100 0 100"/><path d="M4 100C12 82 22 74 40 76S66 84 76 64 92 62 94 50 100 22 96 16 88 14 90 22 100 18 100 10 100 8"/>',
+    friends: '<path d="M0 30C8 18 18 14 30 16S48 22 56 0"/><path d="M42 98C56 88 66 80 76 66 82 56 86 44 84 44S78 52 82 54 92 48 94 30 96 10 100 6"/>',
+    hello: '<path stroke-dasharray="2 4" d="M0 80C14 70 20 88 34 76S44 50 58 54 70 76 82 60 92 30 100 22"/>',
+    storm: '<path d="M6 14C10 22 22 24 30 22 40 20 42 8 36 12S36 24 48 22 60 18 70 14"/><path d="M12 62C20 56 28 60 34 50 38 42 34 36 30 40S32 54 40 52"/><path d="M64 58C70 60 76 52 78 40S80 26 74 28 72 38 82 36 92 26 96 14"/>',
+    broken: '<path d="M6 4C12 8 16 16 12 22S2 30 6 40 16 56 6 66 2 80 8 92"/><path d="M84 6C90 10 92 18 88 26S86 40 94 50 100 64 98 80 100 92 100 96"/><path d="M22 26C28 30 30 36 34 40M26 64C32 62 36 60 40 62"/><path d="M76 40C72 34 70 28 72 22M62 60C68 64 72 64 76 60"/>',
+    home: '<path d="M0 26C12 18 22 30 34 24S46 6 58 12 74 30 86 22 96 10 100 14"/><path d="M0 84C14 78 22 90 36 84S52 72 66 80 84 92 100 82" stroke-dasharray="2 4"/>',
 };
 
+// Центральный мотив под шкалами (viewBox 200×92), не тянется
 const REL_ART = {
-    love: '<path d="M100 74c-16-10-29-20-29-33 0-8 6-14 14-14 6 0 11 4 15 9 4-5 9-9 15-9 8 0 14 6 14 14 0 13-13 23-29 33z"/><path d="M40 60l112-34" class="t"/><path d="M146 22l8 3-5 7M40 60l-8-4M40 60l-5 7" class="t"/><path d="M30 30c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8zM170 66c-3-2-5-4-5-6 0-1.5 1-2.5 2.5-2.5 1 0 2 .7 2.5 1.6.5-.9 1.5-1.6 2.5-1.6 1.5 0 2.5 1 2.5 2.5 0 2-2 4-5 6z"/><path d="M12 76c8-6 14 4 22-2s10 4 18-2M150 82c8-6 14 4 22-2s10 4 18-2" class="t"/>',
-    ring: '<circle cx="84" cy="52" r="20"/><circle cx="116" cy="52" r="20"/><path d="M78 30l6-10 6 10-6 4zM110 30l6-10 6 10-6 4z"/><path d="M40 36l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM160 30l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" class="t"/><path d="M20 78c14-10 26 6 40-2s22 6 36-2M104 78c14-10 26 6 40-2s22 6 36-2" class="t"/>',
-    friends: '<path d="M58 34h30v22a15 15 0 0 1-30 0z"/><path d="M88 38h6a7 7 0 0 1 0 14h-6"/><path d="M112 34h30v22a15 15 0 0 1-30 0z"/><path d="M112 38h-6a7 7 0 0 0 0 14h6"/><path d="M66 26c-3-4 3-6 0-11M80 26c-3-4 3-6 0-11M122 26c-3-4 3-6 0-11M136 26c-3-4 3-6 0-11" class="t"/><path d="M30 40l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM170 46l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" class="t"/><path d="M40 82c20-6 40 6 60 0s40-6 60 0" class="t"/>',
-    hello: '<path d="M120 30l50-16-16 40-10-12z"/><path d="M144 42l26-28"/><path d="M120 30c-30 6-48 22-70 20s-26-18-12-22 22 12 8 26-30 10-36 6" class="t" stroke-dasharray="3 5"/><path d="M60 20l1.6 4 4 1.6-4 1.6L60 31l-1.6-4-4-1.6 4-1.6z" class="t"/>',
-    storm: '<path d="M60 44a14 14 0 0 1 24-12 18 18 0 0 1 34 6 11 11 0 0 1-2 22H66a11 11 0 0 1-6-16z"/><path d="M92 60l-8 14h12l-8 14" class="t"/><path d="M30 30c6 4 2 10 8 14s8-2 12 4M150 30c6 4 2 10 8 14s8-2 12 4" class="t"/><path d="M20 78l10-6 6 8 10-6M154 78l10-6 6 8 10-6" class="t"/>',
-    broken: '<path d="M100 80c-18-11-32-22-32-36 0-9 7-15 15-15 7 0 12 4 17 10 5-6 10-10 17-10 8 0 15 6 15 15 0 14-14 25-32 36z"/><path d="M100 39l-6 12 9 6-6 12" class="t"/><path d="M40 70c4-8 10-8 14 0M146 70c4-8 10-8 14 0M30 40l12 4M158 40l12-4" class="t"/>',
-    home: '<path d="M70 50l30-24 30 24"/><path d="M78 46v32h44V46"/><path d="M94 78V62h12v16"/><path d="M114 30v-8h6v12" /><path d="M118 18c-3-4 3-6 0-10" class="t"/><path d="M40 60c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8zM160 60c-4-3-7-5-7-8 0-2 1.5-3.5 3.5-3.5 1.5 0 2.8 1 3.5 2.2.7-1.2 2-2.2 3.5-2.2 2 0 3.5 1.5 3.5 3.5 0 3-3 5-7 8z"/><path d="M20 84c20-6 40 4 60-2M120 82c20-6 40 4 60-2" class="t"/>',
+    love: '<path class="t" d="M40 76L78 57M124 34L156 18M40 76l9 .5M40 76l5-7.5M154.2 18.9l6.7 2.2M154.2 18.9l2.2-6.7M149.7 21.1l6.7 2.2M149.7 21.1l2.2-6.7"/><path d="M100.0 67.6C91.4 60.7 76.0 48.6 76.0 39.1C76.0 25.3 96.2 22.7 100.0 36.5C103.8 22.7 124.0 25.3 124.0 39.1C124.0 48.6 109.6 59.8 101.4 68.9"/><path d="M38.0 28.8C35.3 26.6 30.5 22.8 30.5 19.8C30.5 15.5 36.8 14.7 38.0 19.0C39.2 14.7 45.5 15.5 45.5 19.8C45.5 22.8 41.0 26.3 38.5 29.2"/><path class="t" d="M162.0 75.4C159.8 73.7 156.0 70.6 156.0 68.3C156.0 64.8 161.0 64.2 162.0 67.6C163.0 64.2 168.0 64.8 168.0 68.3C168.0 70.6 164.4 73.5 162.4 75.7"/><path class="t" d="M30 46v.1M172 38v.1M60 14l2-3"/>',
+    ring: '<circle cx="88" cy="48" r="19"/><circle cx="113" cy="44" r="19"/><path class="t" d="M52.0 45.0Q54.0 50.0 59.0 52.0Q54.0 54.0 52.0 59.0Q50.0 54.0 45.0 52.0Q50.0 50.0 52.0 45.0z"/><path class="t" d="M150.0 34.0Q151.7 38.3 156.0 40.0Q151.7 41.7 150.0 46.0Q148.3 41.7 144.0 40.0Q148.3 38.3 150.0 34.0z"/><path class="t" d="M120 18l3-4M127 22l4-2"/>',
+    friends: '<path d="M83.4 31.3A17 17 0 1 0 96.5 45.5A17 17 0 0 0 89.3 34.4"/><path d="M74.4 44.3v.1M85.6 44.3v.1" stroke-width="2.6"/><path d="M72.9 51.7Q80.0 58.5 87.1 51.1"/><path d="M124.4 29.3A17 17 0 1 0 137.5 43.5A17 17 0 0 0 130.3 32.4"/><path d="M114.5 42.6h3.4M126.6 42.3v.1" stroke-width="2.6"/><path d="M113.9 49.7Q121.0 56.5 128.1 49.1"/><path class="t" d="M46.0 38.0Q48.2 43.8 54.0 46.0Q48.2 48.2 46.0 54.0Q43.8 48.2 38.0 46.0Q43.8 43.8 46.0 38.0z"/><path class="t" d="M156.0 23.0Q158.0 28.0 163.0 30.0Q158.0 32.0 156.0 37.0Q154.0 32.0 149.0 30.0Q154.0 28.0 156.0 23.0z"/>',
+    hello: '<path d="M86 50L150 22 128 72 116 58z"/><path d="M116 58L150 22"/><path class="t" stroke-dasharray="3 5" d="M84 52C64 58 52 70 40 62S36 42 48 44 52 64 30 74"/><path class="t" d="M160.0 56.0Q161.7 60.3 166.0 62.0Q161.7 63.7 160.0 68.0Q158.3 63.7 154.0 62.0Q158.3 60.3 160.0 56.0z"/><path class="t" d="M62.0 19.0Q63.4 22.6 67.0 24.0Q63.4 25.4 62.0 29.0Q60.6 25.4 57.0 24.0Q60.6 22.6 62.0 19.0z"/>',
+    storm: '<path d="M74.2 56.0h52.7a10.8 10.8 0 0 0 1.6 -21.7a15.5 15.5 0 0 0 -27.9 -9.3a12.4 12.4 0 0 0 -21.7 7.8a11.6 11.6 0 0 0 -4.7 23.2z"/><path class="t" d="M94.0 60.0l-6.2 11.2h8.8l-7.5 13.8"/><path class="t" d="M122.0 58.0l-5.5 9.9h7.7l-6.6 12.1"/><path class="t" d="M30 70c6 2 10-2 14 0M150 70c6 2 10-2 14 0"/>',
+    broken: '<g transform="translate(-3 1) rotate(-4 100 46)"><path d="M100.0 68.5C91.0 61.3 75.0 48.7 75.0 38.8C75.0 24.4 96.0 21.7 100.0 36.1C104.0 21.7 125.0 24.4 125.0 38.8C125.0 48.7 110.0 60.4 101.5 69.8"/></g><path class="t" d="M99 26l-6 9 8 6-7 9 6 8 -3 7"/><path class="t" d="M48 32c4 3 8 4 12 8M150 32c-4 3-8 4-12 8M54 70c6-3 10-3 16-1M146 70c-6-3-10-3-16-1"/>',
+    home: '<path d="M72 48l28-24 28 24"/><path d="M78 44v34h44V44"/><path d="M93 78V62h14v16"/><path d="M114 30v-8h6v12"/><path class="t" d="M117 18c-4-4 3-6 0-10"/><path d="M44.0 59.2C41.1 56.9 36.0 52.9 36.0 49.7C36.0 45.1 42.7 44.2 44.0 48.8C45.3 44.2 52.0 45.1 52.0 49.7C52.0 52.9 47.2 56.6 44.5 59.6"/><path class="t" d="M158.0 56.3C155.5 54.3 151.0 50.8 151.0 48.0C151.0 44.0 156.9 43.2 158.0 47.2C159.1 43.2 165.0 44.0 165.0 48.0C165.0 50.8 160.8 54.0 158.4 56.7"/><path class="t" d="M150.0 17.0Q151.4 20.6 155.0 22.0Q151.4 23.4 150.0 27.0Q148.6 23.4 145.0 22.0Q148.6 20.6 150.0 17.0z"/>',
 };
 
 // Кто они друг другу + две шкалы, как в «Симс 4»: дружба (зелёная) и романтика (розовая); в минусе — красные, около нуля — серые
@@ -632,8 +632,8 @@ function relPlate(c) {
     const log = (c.relLog || []).slice(-1)[0];
     const bar = (cls, ic, cap, lvl, v, t, tip) => `
           <div class="iw-rel-bar ${cls} iw-rel-${t}" title="${esc(tip)}">
-            <span class="iw-rel-cap">${icon(ic)}<span>${cap}</span><em>${esc(lvl)}</em></span><span class="iw-rel-num">${signed(v)}</span>
-            <span class="iw-rel-track"><span class="iw-rel-fill" style="width:${Math.round((v + 100) / 2)}%"></span></span>
+            <span class="iw-rel-cap">${icon(ic)}<span>${cap}</span><em>${esc(lvl)}</em></span>
+            <span class="iw-rel-track"><span class="iw-rel-fill" style="left:${v < 0 ? 50 + v / 2 : 50}%;width:${Math.abs(v) / 2}%"></span><span class="iw-rel-ends"><i>−100</i><b>${v > 0 ? '+' + v : (v < 0 ? '−' + -v : '0')}</b><i>100</i></span></span>
           </div>`;
     const doodle = REL_DOODLE[REL_GROUP[st.key] || 'hello'];
     return `
@@ -642,11 +642,11 @@ function relPlate(c) {
           <div class="iw-rel-badge" title="${esc(log && log.why ? `${log.from ? log.from + ' → ' : ''}${log.to}: ${log.why}` : 'Кто вы друг другу')}">
             <span class="iw-rel-ico">${icon(REL_ICON[st.key] || 'heart')}</span><b>${esc(st.label)}</b>
           </div>
-          <svg class="iw-rel-doodle" viewBox="0 0 66 46" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${doodle}</svg>
+          <svg class="iw-rel-doodle" viewBox="0 0 150 48" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${doodle}</svg>
         </div>
         <div class="iw-rel-bars">
-          ${bar('iw-rel-fr', 'handshake', 'Дружба', fl[1], f, tone(f, 20), `Дружба: ${signed(f)} — ${fl[1]}. Шкала от −100 до +100`)}
-          ${bar('iw-rel-ro', 'heart', 'Романтика', rl[1], r, tone(r, 10), `Романтика: ${signed(r)} — ${rl[1]}. Шкала от −100 до +100`)}
+          ${bar('iw-rel-fr', 'handshake', 'Дружба', fl[1], f, tone(f, 20), `Дружба: ${signed(f)} — ${fl[1]}. Как в «Симс»: ноль посередине, вправо — теплее, влево — хуже`)}
+          ${bar('iw-rel-ro', 'heart', 'Романтика', rl[1], r, tone(r, 10), `Романтика: ${signed(r)} — ${rl[1]}. Ноль — романтики нет; вправо — симпатия и любовь, влево — неловкость и отвращение`)}
         </div>
         <div class="iw-rel-art" aria-hidden="true"><svg class="iw-rel-lines" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">${REL_LINES[REL_GROUP[st.key] || 'hello']}</svg><svg class="iw-rel-main" viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${REL_ART[REL_GROUP[st.key] || 'hello']}</svg></div>
       </div>`;
@@ -666,8 +666,8 @@ function renderWants(c, L) {
         return `
       <li class="iw-want${done ? ' done' : ''}${dropped ? ' dropped' : ''}${w.pinned && !done ? ' pinned' : ''}">
         <span class="iw-box">${done ? ICON_CHECK : ''}</span>
-        <span class="iw-want-text">${ce(w.text)}${done ? ' <b class="iw-tag">Сбылось</b>' : ''}${dropped ? ' <b class="iw-tag">Уже неважно</b>' : ''}</span>
-        <span class="iw-row-tools">${pin}${delBtn('wants', i)}</span>
+        <span class="iw-want-text">${ce(w.text)}${done && !w.unclaimed ? ' <b class="iw-tag">Сбылось</b>' : ''}${dropped ? ' <b class="iw-tag">Уже неважно</b>' : ''}${done && w.unclaimed ? `<br><button type="button" class="iw-claim" data-iw-want-claim="${i}" title="Желание сбылось! Забрать награду — монеты придут в кошелёк, желание уйдёт из списка">${icon('gift')}<span>Забрать награду</span><b>+${Number(w.unclaimed)}${icon('coin')}</b></button>` : ''}</span>
+        <span class="iw-row-tools">${pin}${done && w.unclaimed ? '' : delBtn('wants', i)}</span>
       </li>`;
     }).join('');
     return `
@@ -1269,7 +1269,10 @@ export function renderClock(clock) {
     // ближайшие праздники и личные даты: первые четыре видны сразу, остальные — «ещё»
     const evRow = e => `<li class="iw-clock-ev iw-ev2 iw-clock-${e.kind}${e.inDays === 0 ? ' iw-ev-now' : ''}" title="${esc([e.dateText, e.about].filter(Boolean).join(' — '))}">${evDateBox(e)}<span class="iw-ev-body"><span class="iw-ev-name"><span class="iw-ev-ico">${calIcon(e.kind)}</span><span class="iw-ev-title">${esc(clockEventText(e))}</span></span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em class="iw-ev-in">${esc(clockWhen(e))}</em></li>`;
     const evAll = clock.upcoming || [];
-    const events = evAll.length ? `<ul class="iw-clock-events">${evAll.slice(0, 3).map(evRow).join('')}</ul>${evAll.length > 3 ? `<details class="iw-clock-evmore"><summary>${icon('chevron')}<span>Ещё ${evAll.length - 3}</span></summary><ul class="iw-clock-events">${evAll.slice(3).map(evRow).join('')}</ul></details>` : ''}` : '<p class="iw-muted iw-clock-noev">В ближайший год ничего не отмечено</p>';
+    // справа — ближайшие; «ещё» раскрывается под календарём и часами двумя столбиками: правый продолжает список, слева добавляется
+    const SHOWN = 3;
+    const events = evAll.length ? `<ul class="iw-clock-events">${evAll.slice(0, SHOWN).map(evRow).join('')}</ul>${evAll.length > SHOWN ? `<button type="button" class="iw-clock-evtoggle${clock.evOpen ? ' on' : ''}" data-iw-clock="evmore" aria-expanded="${!!clock.evOpen}">${icon('chevron')}<span>${clock.evOpen ? 'Свернуть' : `Ещё ${evAll.length - SHOWN}`}</span></button>` : ''}` : '<p class="iw-muted iw-clock-noev">В ближайший год ничего не отмечено</p>';
+    const evMore = evAll.length > SHOWN && clock.evOpen ? `<ul class="iw-clock-events iw-clock-evrest">${evAll.slice(SHOWN).map(evRow).join('')}</ul>` : '';
     const hols = (clock.holidays || []).map((h, i) => `<li class="iw-clock-${h.kind}"><span>${esc(h.dateText)} — ${esc(h.kind === 'canon' && h.who ? `${h.who}: ${h.name}` : h.name)}</span><button type="button" class="iw-mini iw-clock-x" data-iw-clock="hol-del:${h.idx ?? i}" title="Убрать" aria-label="Убрать">${icon('x')}</button></li>`).join('');
     return `
 <details class="iw-clock"${clock.open ? ' open' : ''}>
@@ -1303,25 +1306,8 @@ export function renderClock(clock) {
         <div class="iw-clock-sub iw-clock-evhead"><span class="iw-doodle-mark" aria-hidden="true"></span>Праздники и личные даты</div>
         ${events}
       </div>
+      ${evMore}
     </div>
-    <details class="iw-clock-cal"${clock.calOpen ? ' open' : ''}>
-      <summary>${icon('calendar')}<span>Календарь: ${esc(clock.typeName)}${clock.calName ? ` «${esc(clock.calName)}»` : ''}${clock.country ? ` · ${esc(clock.country)}` : ''}</span>${icon('chevron')}</summary>
-      ${clock.why ? `<p class="iw-muted">${esc(clock.why)}</p>` : ''}
-      ${clock.monthsText ? `<p class="iw-clock-months"><b>Месяцы:</b> ${esc(clock.monthsText)}</p>` : ''}
-      ${clock.weekdaysText ? `<p class="iw-clock-months"><b>Дни недели:</b> ${esc(clock.weekdaysText)}</p>` : ''}
-      ${cal.type !== 'days' ? `<div class="iw-clock-sub">Праздники и личные даты</div><ul class="iw-clock-hols">${hols || '<li class="iw-muted">пока нет</li>'}</ul>
-      <div class="iw-clock-row iw-clock-holadd">
-        <input type="text" class="iw-input" data-iw-clock-in="hname" placeholder="Название (или «Виктор: годовщина»)" maxlength="70">
-        <input type="number" class="iw-input iw-clock-num" data-iw-clock-in="hd" placeholder="число" min="1" max="99">
-        ${clockPick('hm', clock.monthNames[(clock.holMonth || 1) - 1] || '', (clock.monthNames || []).map((n, i) => [i + 1, n, i + 1 === clock.holMonth]), 'iw-pick-month')}
-        <button type="button" class="iw-btn iw-mini-btn" data-iw-clock="hol-add">${icon('plus')}<span>Добавить</span></button>
-      </div>` : ''}
-      <div class="iw-clock-row">
-        <button type="button" class="iw-btn iw-mini-btn" data-iw-clock="detect"${clock.busy ? ' disabled' : ''}>${icon('sparkle')}<span>${clock.busy ? 'Определяю…' : 'Определить заново по истории'}</span></button>
-        ${cal.type !== 'greg' ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="type:greg">Обычный календарь</button>` : ''}
-        ${cal.type !== 'days' ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="type:days">Просто считать дни</button>` : ''}
-      </div>
-    </details>
   </div>
 </details>`;
 }
@@ -1559,6 +1545,7 @@ export function renderToast(ev, theme) {
     <div class="iw-toast-who">${esc(ev.who)}</div>
     <div class="iw-toast-text">${ce(eventText(ev))}</div>
     ${ev.points ? `<div class="iw-toast-points">+${esc(String(ev.points))} ${icon(currencyIcon(theme))}<span>${esc(themeLabels(theme, 'm').currency || '')}</span></div>` : ''}
+    ${ev.claim ? `<div class="iw-toast-points iw-toast-claim">${icon('gift')}<span>Награда ждёт в дневнике: +${esc(String(ev.claim))}</span> ${icon(currencyIcon(theme))}</div>` : ''}
   </div>
   <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
 </div>`;
@@ -1569,52 +1556,67 @@ export function renderToast(ev, theme) {
 export function renderInfobarHtml(model, theme, open = false, tab = '') {
     setIconTheme(theme);
     const { clock, cast = [], show = {}, changes = [] } = model || {};
+    // листочек: сверху крупно время (и значки справа), ниже мелко дата, погода и праздник, ещё ниже — герои по строке
+    let top = '';
     const parts = [];
     if (!(clock && clock.t) && show.clockOn !== false && (show.time !== false || show.date !== false)) {
-        parts.push(`<span class="iw-ib-time iw-ib-notime" title="Дневник пока не понял, когда идёт сцена. Время появится, когда в истории прозвучит дата или время — или задай его в дневнике, над блоками.">${icon('clock')}<em>время сцены не определено</em></span>`);
+        top = `<span class="iw-ib-time iw-ib-notime" title="Дневник пока не понял, когда идёт сцена. Время появится, когда в истории прозвучит дата или время — или задай его в дневнике, над блоками.">${icon('clock')}<em>время сцены не определено</em></span>`;
     }
     if (clock && clock.t) {
-        if (show.time !== false) parts.push(`<span class="iw-ib-time">${icon('clock')}<b>${esc(clock.time)}</b><em>${esc(clock.part)}</em></span>`);
+        if (show.time !== false) top = `<span class="iw-ib-time">${icon('clock')}<b>${esc(clock.time)}</b><em>${esc(clock.part)}</em></span>`;
         if (show.date !== false) parts.push(`<span class="iw-ib-date">${esc(clock.date)}</span>`);
         if (show.weather !== false && clock.wx) parts.push(`<span class="iw-ib-wx"${clock.wx.title ? ` title="${esc(clock.wx.title)}"` : ''}>${icon(clock.wx.icon)}<span>${esc(clock.wx.text)}</span></span>`);
         if (show.events !== false && clock.today && clock.today.length) parts.push(`<span class="iw-ib-today">${calIcon(clock.today[0].kind)}<span>${esc(clockEventText(clock.today[0]))}${clock.today.length > 1 ? ` +${clock.today.length - 1}` : ''}</span></span>`);
     }
-    const faces = show.moods !== false ? cast.filter(p => p.mood).map(p => {
+    const faces = show.moods !== false ? cast.filter(p => p.mood || p.rel).map(p => {
         const style = p.face2 ? ` style="--face-bg2: var(--fb-${p.face2}); --face-ink2: var(--fi-${p.face2})"` : '';
-        return `<span class="iw-ib-who iw-face-${esc(p.face || 'neutral')}${p.persona ? ' iw-ib-me' : ''}" title="${esc(`${p.name} — ${p.mood}`)}"${style}>${faceIcon(p.face || 'neutral', '', true)}<span class="iw-ib-name">${esc(ibShortName(p.name))}</span><span class="iw-ib-mood">${esc(p.mood)}</span></span>`;
-    }).join('') : '';
-    if (!parts.length && !faces) return '';
+        const chip = `<span class="iw-ib-who iw-face-${esc(p.face || 'neutral')}${p.persona ? ' iw-ib-me' : ''}" title="${esc(`${p.name} — ${p.mood}`)}"${style}>${faceIcon(p.face || 'neutral', '', true)}<span class="iw-ib-name">${esc(ibShortName(p.name))}</span><span class="iw-ib-mood">${esc(p.mood)}</span></span>`;
+        // справа от героя — его шкалы дружбы и романтики к тебе (ноль посередине, как в дневнике)
+        const mini = (cls, ic, label, v) => {
+            const n = Math.max(-100, Math.min(100, Math.round(Number(v) || 0)));
+            const tone = n <= -10 ? 'neg' : (n < 10 ? 'mid' : 'pos');
+            return `<span class="iw-ib-rel ${cls} iw-rel-${tone}" title="${esc(`${label}: ${n > 0 ? '+' + n : n}`)}">${icon(ic)}<span class="iw-ib-rlabel">${label}</span><span class="iw-ib-rtrack"><span class="iw-ib-rfill" style="left:${n < 0 ? 50 + n / 2 : 50}%;width:${Math.abs(n) / 2}%"></span></span><b>${n > 0 ? '+' + n : (n < 0 ? '−' + -n : '0')}</b></span>`;
+        };
+        const rel = show.rel !== false && p.rel ? `<span class="iw-ib-rels" data-who="${esc(ibShortName(p.name))}">${p.status ? `<span class="iw-ib-rstatus">${icon('heart')}<span>${esc(p.status)}</span></span>` : ''}${mini('iw-ib-rfr', 'handshake', 'Дружба', p.rel.friend)}${mini('iw-ib-rro', 'heart', 'Романтика', p.rel.romance)}</span>` : '';
+        return { chip, rel };
+    }) : [];
+    // слева столбиком — кто как себя чувствует, справа столбиком — шкалы; оба столбика по центру друг друга
+    const relCol = faces.map(x => x.rel).filter(Boolean);
+    const castHtml = faces.length ? `<span class="iw-ib-cast${relCol.length ? ' iw-ib-cast2' : ''}"><span class="iw-ib-chips">${faces.map(x => x.chip).join('')}</span>${relCol.length ? `<span class="iw-ib-relcol${relCol.length > 1 ? ' iw-ib-relmany' : ''}">${relCol.join('')}</span>` : ''}</span>` : '';
+    if (!top && !parts.length && !faces.length) return '';
     // подробности: то, что есть в дневнике, коротко — настроение уже видно в строке, здесь не повторяем
     // развёрнуто: герои вкладками, у выбранного — по строке на раздел
-    const people = cast.map(p => ({ p, rows: ibRows(p, show) })).filter(x => x.rows.length);
+    const chg = show.changes !== false ? changes : [];
+    const CHG = { want: 'хочет', fear: 'боится', att: 'к тебе', trait: 'черта', life: 'брак и дети' };
+    const chgLi = x => `<li class="iw-ib-chg-${esc(x.kind)}${x.sign === '−' || x.sign === '✓' ? ' iw-ib-chg-off' : ''}"><b class="iw-ib-sign">${esc(x.sign)}</b><span class="iw-ib-chg-kind">${esc(x.sign === '✓' ? 'сбылось' : (x.sign === '−' && x.kind === 'fear' ? 'страх ушёл' : CHG[x.kind] || ''))}</span><span class="iw-ib-txt" title="${esc(x.text)}">${esc(x.text)}</span></li>`;
+    // «новое после ответа» — у каждого героя своё, во вкладке героя
+    const people = cast.map(p => ({ p, rows: ibRows(p, show), chg: chg.filter(x => x.who === ibShortName(p.name)) })).filter(x => x.rows.length || x.chg.length);
     const cur = people.find(x => x.p.key === tab) || people[0];
     const soon = show.soon !== false && show.events !== false && clock && clock.upcoming ? clock.upcoming.filter(e => e.inDays > 0).slice(0, 3) : [];
     const evs = soon.map(e => `<span class="iw-ib-ev">${calIcon(e.kind)}<b>${esc(e.dateText)}</b> ${esc(clockEventText(e))} <em>${esc(clockWhen(e))}</em></span>`).join('');
-    const chg = show.changes !== false ? changes : [];
-    const CHG = { want: 'хочет', fear: 'боится', att: 'к тебе', trait: 'черта', life: 'брак и дети' };
-    const chgHtml = chg.map(x => `<li class="iw-ib-chg-${esc(x.kind)}${x.sign === '−' || x.sign === '✓' ? ' iw-ib-chg-off' : ''}"><b class="iw-ib-sign">${esc(x.sign)}</b><span class="iw-ib-chg-who">${esc(x.who)}</span><span class="iw-ib-chg-kind">${esc(x.sign === '✓' ? 'сбылось' : (x.sign === '−' && x.kind === 'fear' ? 'страх ушёл' : CHG[x.kind] || ''))}</span><span class="iw-ib-txt" title="${esc(x.text)}">${esc(x.text)}</span></li>`).join('');
-    const more = people.length || evs || chgHtml;
+    const more = people.length || evs;
     let body = '';
     if (more && open) {
-        const tabs = people.map(({ p }) => {
+        const tabs = people.map(({ p, chg: pc }) => {
             const on = cur && p.key === cur.p.key;
-            return `<button type="button" class="iw-ib-tab${on ? ' on' : ''}${people.length > 1 ? '' : ' solo'}" data-iw-ib-tab="${esc(p.key)}" aria-pressed="${on}">${faceIcon(p.face || 'neutral', '', true)}<span>${esc(ibShortName(p.name))}</span>${p.status ? `<em>${esc(p.status)}</em>` : ''}</button>`;
-        }).join('');
+            return `<button type="button" class="iw-ib-tab${on ? ' on' : ''}${people.length > 1 ? '' : ' solo'}${p.persona ? ' iw-ib-tab-me' : ''}" data-iw-ib-tab="${esc(p.key)}" aria-pressed="${on}"><span>${esc(ibShortName(p.name))}</span>${pc.length ? `<i class="iw-ib-tabnew" title="Новое после ответа: ${pc.length}">${pc.length}</i>` : ''}</button>`;
+        }).join('<span class="iw-ib-tabsep" aria-hidden="true"></span>');
         body = `
 <div class="iw-ib-more">
-  ${chgHtml ? `<div class="iw-ib-chg"><span class="iw-ib-cap" title="Что изменилось в дневнике после этого ответа">Новое</span><ul>${chgHtml}</ul></div>` : ''}
-  ${cur ? `<div class="iw-ib-tabs">${tabs}<button type="button" class="iw-ib-open" data-iw-ib-open="${esc(cur.p.key)}">в дневник ${icon('arrowright')}</button></div>
-  <dl class="iw-ib-rows">${cur.rows.join('')}</dl>` : ''}
-  ${evs ? `<div class="iw-ib-soon"><span class="iw-ib-cap">Скоро</span><span class="iw-ib-evs">${evs}</span></div>` : ''}
+  ${cur ? `<div class="iw-ib-tabs${people.length === 2 ? ' iw-ib-tabs2' : ''}">${tabs}</div>
+  ${cur.rows.length ? `<dl class="iw-ib-rows">${cur.rows.join('')}</dl>` : ''}
+  ${cur.chg.length ? `<div class="iw-ib-sec iw-ib-chg"><span class="iw-ib-sec-cap" title="Что изменилось у ${esc(ibShortName(cur.p.name))} в дневнике после этого ответа">${icon('sparkle')}Новое после ответа</span><ul>${cur.chg.map(chgLi).join('')}</ul></div>` : ''}` : ''}
+  ${evs ? `<div class="iw-ib-sec iw-ib-soon"><span class="iw-ib-sec-cap">${icon('calendar')}Скоро</span><span class="iw-ib-evs">${evs}</span></div>` : ''}
+  ${cur ? `<div class="iw-ib-foot"><button type="button" class="iw-ib-open" data-iw-ib-open="${esc(cur.p.key)}">подробнее в дневнике ${icon('arrowright')}</button></div>` : ''}
 </div>`;
     }
-    return `
+    const end = chg.length || more ? `<span class="iw-ib-end">${chg.length ? `<span class="iw-ib-chgcount" title="Изменилось в дневнике после этого ответа: ${chg.length}">${icon('sparkle')}${chg.length}</span>` : ''}${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}</span>` : '';
+    return `<div class="iw-ib-note${open && body ? ' iw-open' : ''}">
 <div class="iw-ib-bar${open ? ' iw-open' : ''}" role="button" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" title="Внутренний мир: нажми — подробности">
-  <span class="iw-ib-line">${parts.join('<span class="iw-ib-sep" aria-hidden="true"></span>')}</span>
-  ${faces ? `<span class="iw-ib-cast">${faces}</span>` : ''}
-  ${chg.length ? `<span class="iw-ib-chgcount" title="Изменилось в дневнике после этого ответа: ${chg.length}">${icon('sparkle')}${chg.length}</span>` : ''}
-  ${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}
-</div>${body}`;
+  <span class="iw-ib-top">${top || '<span></span>'}${end}</span>
+  ${parts.length ? `<span class="iw-ib-line">${parts.join('<span class="iw-ib-sep" aria-hidden="true"></span>')}</span>` : ''}
+  ${castHtml}
+</div>${body}</div>`;
 }
 
 // «пятница, 15 августа 1997» → «15 августа»
@@ -1626,13 +1628,13 @@ function ibDay(d) {
 // Строки раздела: подпись слева, одна запись справа в одну строку (целиком — в подсказке и в дневнике), остальные — «+N»
 function ibRows(p, show) {
     const rows = [];
-    const row = (cls, cap, items, lead = '') => {
+    const row = (cls, cap, items, lead = '', capTag = '') => {
         const list = (Array.isArray(items) ? items : [items]).map(t => String(t || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
-        if (!list.length && !lead) return;
+        if (!list.length && !lead && !capTag) return;
         const extra = list.length > 1 ? `<span class="iw-ib-plus" title="${esc(list.slice(1).join('\n'))}">+${list.length - 1}</span>` : '';
-        rows.push(`<div class="iw-ib-row ${cls}"><dt class="iw-ib-cap">${esc(cap)}</dt><dd class="iw-ib-val"${list[0] ? ` title="${esc(list[0])}"` : ''}>${lead}<span class="iw-ib-txt">${esc(list[0] || '')}</span>${extra}</dd></div>`);
+        rows.push(`<div class="iw-ib-row ${cls}"><dt class="iw-ib-cap"><span>${esc(cap)}</span>${capTag}</dt>${list[0] ? `<dd class="iw-ib-val" title="${esc(list[0])}">${lead}<span class="iw-ib-txt">${esc(list[0])}</span>${extra}</dd>` : ''}</div>`);
     };
-    if (show.attitude && !p.persona) row('iw-ib-r-att', 'К тебе', p.attitude, p.chem ? `<b class="iw-ib-chem iw-ib-chem-${esc(p.chemTone || 'mid')}">${esc(p.chem)}</b>` : '');
+    if (show.attitude && !p.persona) row('iw-ib-r-att', 'К тебе', p.attitude, '', p.chem ? `<b class="iw-ib-chem iw-ib-chem-${esc(p.chemTone || 'mid')}">${esc(p.chem)}</b>` : '');
     if (show.wants) row('iw-ib-r-wants', 'Хочет', p.wants);
     if (show.fears) row('iw-ib-r-fears', 'Боится', p.fears);
     if (show.night && p.night) row('iw-ib-r-night', 'Сон', p.night.text, p.night.date ? `<em class="iw-ib-when">${esc(ibDay(p.night.date))}</em>` : '');

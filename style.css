@@ -466,3 +466,19 @@
 /* хозяин инфоблока «Внутреннего мира» в сообщении: сам блок в теневом DOM */
 .iw-ib-host { display: block; margin: 2px 0 0; }
 .iw-ib-host[hidden] { display: none; }
+
+/* тетрадь в клетку: школьная тетрадка — клетка, красное поле, синяя обложка-корешок, сердечко ручкой */
+#iw_fab.iw-theme-grid {
+    --iwf-bg: #fbfcff;
+    --iwf-paper: linear-gradient(90deg, transparent 12px, #ef6b6b 12px 13.5px, transparent 13.5px), repeating-linear-gradient(0deg, transparent 0 6px, #c9d6f0 6px 7px), repeating-linear-gradient(90deg, transparent 0 6px, #c9d6f0 6px 7px);
+    --iwf-ink: #1f3a93;
+    --iwf-spine: #1f3a93;
+    --iwf-accent: #ff8fb1;
+}
+#iw_fab.iw-theme-grid .iw-fab-cover { border-radius: 3px 7px 7px 3px; padding-left: 10px; }
+#iw_fab.iw-theme-grid .iw-fab-heart { stroke: #1f3a93; stroke-width: 1.8; }
+#iw_fab.iw-theme-grid .iw-fab-ribbon { background: #ef6b6b; }
+/* телеграм: голубая обложка с белым сердечком */
+#iw_fab.iw-theme-telegram { --iwf-bg: #5ea2ee; --iwf-paper: linear-gradient(160deg, #7cb8f5, #3d86d8); --iwf-ink: #ffffff; --iwf-spine: #2f6fc0; --iwf-accent: #ffffff; }
+#iw_fab.iw-theme-telegram .iw-fab-cover { border-radius: 6px 12px 12px 6px; }
+#iw_fab.iw-theme-telegram .iw-fab-heart { stroke: #2f6fc0; }

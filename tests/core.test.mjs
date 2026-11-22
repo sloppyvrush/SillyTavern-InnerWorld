@@ -1278,4 +1278,42 @@ test('сквозной: лавка, баффы, событие, подарок, 
     assert.equal(state.characters[mk].rel.friend, 35);
     assert.equal(state.characters[mk].rel.romance, 25);
 });
+test('дата рождения из карточки: «Birthday: January 9th (Capricorn)» после «born and raised»', () => {
+    const b = C2.bornFromText;
+    assert.deepEqual(b('- Age: 24\n- Birthday: January 9th (Capricorn)\n- Height: 185 cm'), { d: 9, m: 1 });
+    assert.deepEqual(b('Eva was born and raised in Leningrad.\n- Birthday: January 9th (Capricorn)'), { d: 9, m: 1 });
+    assert.deepEqual(b('**Birthday:** 9th of January'), { d: 9, m: 1 });
+    assert.deepEqual(b('Born in 1990. Birthday: Jan 9'), { d: 9, m: 1, y: 1990 });
+    assert.deepEqual(b('Родилась в Ленинграде. День рождения: 9 января'), { d: 9, m: 1 });
+    assert.deepEqual(b('Date of birth: 1975'), { y: 1975 });
+    assert.equal(b('ничего такого'), null);
+});
+test('желание сбылось: награду забирают кнопкой, повторный разбор не даёт её второй раз', () => {
+    const all = { ...DEFAULT_SETTINGS.modules };
+    const one = (st, wants, o = {}) => applyAnalysis(st, parseAnalysis(JSON.stringify({ characters: [{ name: 'Марк', mood: 'рад', wants }] })), all, { mains: ['Марк'], points: true, ...o });
+    let { state } = one(emptyState(), [{ text: 'выпить кофе', status: 'active' }]);
+    const before = JSON.parse(JSON.stringify(state));
+    const r = one(state, [{ text: 'выпить кофе', status: 'done' }], { claimWants: true, mesId: 5 });
+    state = r.state;
+    const w = state.characters['Марк'].wants.find(x => x.text === 'выпить кофе');
+    assert.equal(w.unclaimed, 10);
+    assert.equal(C2.purseOf(state), 0);
+    assert.ok(r.events.some(e => e.type === 'want_done' && e.claim === 10 && !e.points));
+    // ещё несколько разборов — желание с наградой не исчезает
+    for (let k = 0; k < 5; k++) state = one(state, [{ text: 'новое желание ' + k, status: 'active' }], { claimWants: true }).state;
+    const i = state.characters['Марк'].wants.findIndex(x => x.text === 'выпить кофе');
+    assert.ok(i >= 0);
+    assert.equal(C2.claimWant(state, 'Марк', i), 10);
+    assert.equal(C2.purseOf(state), 10);
+    assert.ok(!state.characters['Марк'].wants.some(x => x.text === 'выпить кофе'));
+    assert.equal(C2.claimWant(state, 'Марк', 0), 0);
+    // повторный разбор того же ответа от состояния «до»: награду уже забрали — второй раз не появится
+    const base = C2.carryOwnEdits(before, state, 5);
+    const again = one(base, [{ text: 'выпить кофе', status: 'done' }], { claimWants: true, mesId: 5 }).state;
+    assert.ok(!again.characters['Марк'].wants.some(x => x.text === 'выпить кофе' && x.unclaimed));
+    assert.equal(C2.purseOf(again), 10);
+    // автоматически: монеты сразу
+    const auto = one(before, [{ text: 'выпить кофе', status: 'done' }], { mesId: 6 }).state;
+    assert.equal(C2.purseOf(auto), 10);
+});
 console.log(`итого: ${passed} проверок`);

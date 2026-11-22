@@ -55,6 +55,7 @@ export const DEFAULT_SETTINGS = {
     ibAttitude: true,
     ibNight: true,
     ibSoon: true,
+    ibRel: true,
     ibFeels: false,
     persona: true,           // вести дневник персоны игрока (только для информации, на ответы бота не влияет)
     maxChars: 12,
@@ -87,6 +88,7 @@ export const DEFAULT_SETTINGS = {
     clockInject: true,       // подсказывать модели время сцены
     achievements: true,      // достижения появляются сами по ходу истории
     points: true,            // очки за желания и мечту + награды
+    claimAuto: false,        // награду за сбывшееся желание забирать сразу (иначе — кнопкой «Забрать награду»)
 };
 
 // Как выглядит лицо персонажа на вкладке: смайлик и цвет по настроению.
@@ -596,19 +598,26 @@ export function parseBorn(v) {
 export function bornFromText(text) {
     const t = String(text || '');
     const pats = [
-        /\b(?:born|date of birth|birth ?date|birthday|b-day|d\.?o\.?b\.?)\s*(?:on|in|:|-|—|–)?\s*([^\n;()\[\]|]{3,40})/i,
-        /(?:родил(?:ся|ась|ось)|дата рождения|день рождения|д\.\s?р\.)\s*(?:в|:|-|—|–)?\s*([^\n;()\[\]|]{3,40})/i,
+        /\b(?:born|date of birth|birth ?date|birthday|b-day|d\.?o\.?b\.?)\s*(?:on|in|:|-|—|–)?\s*([^\n;()\[\]|]{3,40})/gi,
+        /(?:родил(?:ся|ась|ось)|дата рождения|день рождения|д\.\s?р\.)\s*(?:в|:|-|—|–)?\s*([^\n;()\[\]|]{3,40})/gi,
     ];
+    // Ищем по всем совпадениям: «born and raised in Leningrad» выше «Birthday: January 9th» не должно глушить дату.
+    let yearOnly = null, withDay = null;
     for (const re of pats) {
-        const m = t.match(re);
-        if (!m) continue;
-        const raw = m[1].replace(/^(on|in|the|в)\s+/i, '').replace(/\s+(года|г\.|год)\b.*$/i, '').trim();
-        const b = parseBorn(raw) || parseBorn(raw.split(/[,.](?=\s*[^\d\s])/)[0]);
-        if (b && (b.d || b.y)) return b;
-        const ym = raw.match(/^(\d{4})(?!\d)/);
-        if (ym && +ym[1] >= 100) return { y: +ym[1] };
+        re.lastIndex = 0;
+        for (let m; (m = re.exec(t));) {
+            // следующий поиск — сразу после ключевого слова: «Born in 1990. Birthday: Jan 9» даёт оба куска
+            re.lastIndex = m.index + Math.max(1, m[0].length - m[1].length);
+            const raw = m[1].split(/[.!?]\s+(?=\p{Lu})/u)[0].replace(/^[*_\s]+/, '').replace(/^(on|in|the|в)\s+/i, '').replace(/\s+(года|г\.|год)\b.*$/i, '').trim();
+            const b = parseBorn(raw) || parseBorn(raw.split(/[,.](?=\s*[^\d\s])/)[0]);
+            if (b && b.d) { if (b.y) return b; if (!withDay) withDay = b; continue; }
+            if (b && b.y && !yearOnly) { yearOnly = b; continue; }
+            const ym = raw.match(/^(\d{4})(?!\d)/);
+            if (ym && +ym[1] >= 100 && !yearOnly) yearOnly = { y: +ym[1] };
+        }
     }
-    return null;
+    if (withDay) return yearOnly ? { ...withDay, y: yearOnly.y } : withDay;
+    return yearOnly;
 }
 
 export function bornText(b) {
@@ -1422,7 +1431,8 @@ export function mergeGoals(oldList, freshList, { done, dropped, cycle = 0, maxNe
         if (o.status !== 'active') {
             const at = o.closedAt ?? -99;
             const linger = o.status === done ? GOAL_LINGER : 1;
-            if (cycle - at < linger) out.push(Object.assign({}, o));
+            // за сбывшееся желание ещё не забрали награду — держим его, пока игрок не заберёт
+            if (o.unclaimed || cycle - at < linger) out.push(Object.assign({}, o));
             continue;
         }
         const i = fresh.findIndex((f, j) => !used.has(j) && sameGoal(f.text, o.text));
@@ -1674,14 +1684,27 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         const evs = diffCharacter(old, merged, modules);
         if (merged.dream) delete merged.dream.event;
         if (opts.points) {
-            const got = evs.reduce((sum, e) => sum + (POINTS[e.type] || 0), 0);
+            let got = 0;
+            for (const e of evs) {
+                const p = POINTS[e.type] || 0;
+                if (!p) continue;
+                // «Забрать награду» вручную: за сбывшееся желание монеты не капают сами — желание ждёт с кнопкой
+                if (opts.claimWants && e.type === 'want_done') {
+                    const w = findByText(merged.wants, e.text);
+                    if (!w) continue;
+                    if ((merged.claimed || []).some(t => sameGoal(t, e.text))) merged.wants = merged.wants.filter(x => x !== w); // уже забирали (повторный разбор)
+                    else { w.unclaimed = p; e.claim = p; }
+                    continue;
+                }
+                got += p;
+                e.points = p;
+            }
             if (got) {
                 purseGot += got;
                 merged.points = (merged.points || 0) + got;
                 // запоминаем, сколько дал этот ответ: при повторном разборе того же ответа очки не удвоятся
                 merged.earned = got;
                 merged.earnedAt = opts.mesId ?? null;
-                for (const e of evs) if (POINTS[e.type]) e.points = POINTS[e.type];
             }
         }
         if (evs.length) {
@@ -1718,6 +1741,7 @@ export function carryOwnEdits(base, own, mesId) {
             if (!out.order.includes(key)) out.order.push(key);
         }
         for (const f of ['shop', 'buffs', 'collection']) if (mine[f]) c[f] = JSON.parse(JSON.stringify(mine[f]));
+        if (mine.claimed) c.claimed = mine.claimed.slice(-30);
         if (mine.points !== undefined) c.points = Math.max(0, (mine.points || 0) - (mine.earnedAt === mesId ? (mine.earned || 0) : 0));
         if (mine.dream && (mine.dream.pinned || mine.dream.manual)) {
             c.dream = JSON.parse(JSON.stringify(mine.dream));
@@ -1744,6 +1768,20 @@ export function carryOwnEdits(base, own, mesId) {
         }
     }
     return out;
+}
+
+// Забрать награду за сбывшееся желание: монеты в общий кошелёк, желание уходит из списка.
+// Текст запоминаем, чтобы повторный разбор того же ответа не выдал награду второй раз.
+export function claimWant(state, key, i) {
+    const c = state && state.characters && state.characters[key];
+    const w = c && c.wants && c.wants[i];
+    if (!w || w.status !== 'done' || !w.unclaimed) return 0;
+    const got = Number(w.unclaimed) || 0;
+    state.purse = purseOf(state) + got;
+    c.points = (c.points || 0) + got;
+    c.claimed = [...(c.claimed || []), w.text].slice(-30);
+    c.wants.splice(i, 1);
+    return got;
 }
 
 export function diffCharacter(old, now, modules) {
