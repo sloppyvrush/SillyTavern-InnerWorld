@@ -10,7 +10,7 @@ import {
     purseOf, claimWant,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
-    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel,
+    eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -2585,7 +2585,10 @@ function infobarModelFor(id) {
             const fears = live(c.fears).sort((a, b) => (b.strength || 1) - (a.strength || 1)).slice(0, 2).map(f => f.text);
             const imp = c.impression || {};
             const now = c.chemNow ? c.chemNow.score : null;
-            const attitude = persona ? '' : (imp.now || imp.why || imp.label || '');
+            const attitude = imp.now || imp.why || imp.label || '';
+            // у твоего героя — как он(а) относится к персонажу: «К нему» / «К ней»
+            const bot = mains[0] && st.characters[mains[0]];
+            const attCap = persona && bot ? `К ${gw(genderOf(bot.g, bot.name, bot.who), 'нему', 'ней', 'нему')}` : '';
             const chem = !persona && now !== null && CHEM_NOW_NAMES[now] ? CHEM_NOW_NAMES[now] : '';
             const night = (c.dreams || [])[(c.dreams || []).length - 1];
             cast.push({
@@ -2594,7 +2597,7 @@ function infobarModelFor(id) {
                 status: !persona ? relStatus(c.rel || seedRel(c), !!c.impression).label : '',
                 rel: !persona && c.impression && !c.unmet ? (c.rel || seedRel(c)) : null,
                 wants, fears,
-                attitude, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
+                attitude, attCap, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
                 night: night && night.text ? { text: night.text, date: night.date || '' } : null,
             });
         }
@@ -3796,6 +3799,15 @@ function onPanelInput(e) {
 async function onPanelChange(e) {
     const el = e.target;
     if (el && el.matches && el.matches('[data-iw-life]')) return onLifeEdit(el.dataset.iwLife, el.value);
+    if (el && el.matches && el.matches('[data-iw-orient]')) {
+        const state = currentState();
+        const ch = state.characters[el.dataset.iwOrient];
+        if (!ch) return;
+        if (el.value) ch.orient = el.value; else delete ch.orient;
+        ch.orientManual = true;
+        await saveEditedState(state);
+        return renderAll();
+    }
     if (el && el.matches && el.matches('[data-iw-clock="lock"]')) return onClockAction('lock');
     if (el && el.matches && el.matches('[data-iw-clock-in="vy"]')) {
         const now = clockNow();

@@ -18229,3 +18229,21 @@ ol {
     /* печать в китайской теме — сразу за названием, а не у края шапки */
     .iw-panel.iw-theme-china .iw-head > .iw-titlebox { justify-self: start; }
 }
+
+/* Ориентация — карточка рядом со знаком зодиака */
+.iw-persona-card[class*="iw-or-"] { --pt: #c0608f; }
+.iw-persona-card.iw-or-none { --pt: var(--iw-muted); }
+.iw-persona-card.iw-or-ace, .iw-persona-card.iw-or-aro, .iw-persona-card.iw-or-demi, .iw-persona-card.iw-or-gray { --pt: #7d6bb0; }
+.iw-persona-card.iw-or-hetero { --pt: #c77a54; }
+.iw-orient-glyph svg { width: 1em; height: 1em; }
+.iw-orient-pick {
+    position: relative; display: inline-flex; align-items: center; gap: 3px;
+    margin-left: 4px; padding: 0 6px; border: 1px dashed currentColor; border-radius: 999px;
+    font-size: .92em; cursor: pointer; opacity: .8;
+}
+.iw-orient-pick:hover, .iw-orient-pick:focus-within { opacity: 1; }
+.iw-orient-pick svg { width: 10px; height: 10px; }
+/* выпадающий список невидимо лежит поверх кнопки — открывается родной список системы */
+.iw-orient-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+/* четыре карточки (тип, темперамент, знак, ориентация) — квадратом 2×2, а не тройкой с хвостом */
+.iw-persona-grid:has(> :nth-child(4)) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }

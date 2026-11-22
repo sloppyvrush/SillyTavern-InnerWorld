@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel } from './core.js';
+import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -553,7 +553,18 @@ function renderAttitude(c, L, opts = {}) {
       ${relPlate(c)}
     </section>`;
     }
-    if (!c.impression) return '';
+    // у твоего героя — те же шкалы и статус, что у персонажа: отношения одни на двоих
+    const relOf = opts.persona ? opts.relOf : c;
+    const plate = relOf ? relPlate(relOf) : '';
+    if (!c.impression) {
+        if (!opts.persona || !plate) return '';
+        return `
+    <section class="iw-block iw-b-impression">
+      <span class="iw-tape iw-tape-blue"></span>
+      ${blockHead('impression', esc(L.attitude))}
+      ${plate}
+    </section>`;
+    }
     const im = c.impression;
     const love = !opts.persona && loveFor(LOVE, c.name);
     // если стоит соседнее расширение со счётом отношений — «сейчас» тихо сверяется с ним
@@ -575,7 +586,7 @@ function renderAttitude(c, L, opts = {}) {
           <div class="iw-imp-row">${scoreBadge(nowScore)}<span class="iw-imp-now">${ce(im.now || '')}</span></div>
         </div>` : ''}
       </div>
-      ${opts.persona ? attitudeChart(c.attitude, L.chartMark) : relPlate(c)}
+      ${opts.persona ? (plate || attitudeChart(c.attitude, L.chartMark)) : plate}
     </section>`;
 }
 
@@ -831,6 +842,21 @@ function renderPersona(c, L, opts = {}) {
           ${z ? `<p class="iw-persona-general">${esc(z.text)}</p>` : ''}
         </div>`);
     }
+    {
+        // ориентация — из карточки, лорбука или описания персоны; если не названа, можно выбрать самой
+        const ok = ORIENTS[c.orient] ? c.orient : '';
+        const opts2 = ['<option value="">не указана</option>'].concat(Object.keys(ORIENTS).map(k => `<option value="${k}"${k === ok ? ' selected' : ''}>${esc(orientName(k, g))}</option>`)).join('');
+        const pick = opts.key ? `<label class="iw-orient-pick" title="Выбрать ориентацию вручную — модель её больше не поменяет">${icon('feather')}<span>${ok ? 'поправить' : 'выбрать'}</span><select data-iw-orient="${esc(opts.key)}" aria-label="Ориентация">${opts2}</select></label>` : '';
+        const src = ok ? (c.orientManual ? 'выбрано вручную' : 'из карточки и лорбука') : 'в карточке не указана';
+        cards.push(`
+        <div class="iw-persona-card iw-or-${ok || 'none'}">
+          <div class="iw-persona-top">
+            <span class="iw-persona-code iw-orient-glyph">${icon('heart')}</span>
+            <span class="iw-persona-name">${esc(ok ? orientName(ok, g) : 'ориентация не ясна')}<small>ориентация · ${src} ${pick}</small></span>
+          </div>
+          ${ok ? `<p class="iw-persona-general">${esc(ORIENTS[ok].text)}</p>` : ''}
+        </div>`);
+    }
     return `
     <section class="iw-block iw-b-persona">
       ${blockHead('persona', esc(L.persona || 'Тип личности'))}
@@ -924,7 +950,7 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
             : '';
         return `
     <div class="iw-rw-group iw-rg-${g.kind}">
-      <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(g.icon)}${g.kind === 'gift' ? `Подарок ${esc(personaName ? `для ${personaName}` : 'тебе')}` : g.name}</span><span class="iw-rw-cat-hint">${g.kind === 'gift' ? `${esc(c.name)} сам подарит это в ближайшей сцене — как умеет и как сейчас относится` : (own && g.kind === 'collect' ? `вещи для ${esc(c.name)}, лягут в ${gw(genderOf(c.g, c.name, c.who), 'его', 'её', 'его')} коллекцию` : g.hint)}</span></div>${gift}
+      <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(g.icon)}${g.kind === 'gift' ? `Подарок ${esc(personaName ? `для ${personaName}` : 'тебе')}` : g.name}</span><span class="iw-rw-cat-hint">${g.kind === 'gift' ? `${esc(c.name)} ${gw(genderOf(c.g, c.name, c.who), "сам", "сама", "сам")} подарит это в ближайшей сцене — как умеет и как сейчас относится` : (own && g.kind === 'collect' ? `вещи для ${esc(c.name)}, лягут в ${gw(genderOf(c.g, c.name, c.who), 'его', 'её', 'его')} коллекцию` : g.hint)}</span></div>${gift}
       <ul class="iw-list iw-rewards">${list.map(row).join('')}</ul>
     </div>`;
     }).join('');
@@ -1047,7 +1073,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     FOLD = { collapsed: opts.collapsed || {}, drag: true };
     const blocks = [];
     if (modules.mood) blocks.push(renderMood(c, L, opts));
-    if (modules.impression) blocks.push(renderAttitude(c, L, { attrBlock: !!modules.attraction, persona: !!opts.persona }));
+    if (modules.impression) blocks.push(renderAttitude(c, L, { attrBlock: !!modules.attraction, persona: !!opts.persona, relOf: opts.relOf }));
     if (modules.wants) blocks.push(renderWants(c, L));
     if (modules.fears) blocks.push(renderFears(c, L));
     if (modules.dream) blocks.push(renderDream(c, L, opts));
@@ -1449,7 +1475,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
         if (pc) {
             current = key;
             personaNote = true;
-            body = `${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG, rumors, nights }, opts))}`;
+            body = `${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG, rumors, nights, relOf: bot || null }, opts))}`;
         } else {
             body = `<div class="iw-waiting"><div class="iw-waiting-text"><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
         }
@@ -1647,7 +1673,7 @@ function ibRows(p, show) {
         const extra = list.length > 1 ? `<span class="iw-ib-plus" title="${esc(list.slice(1).join('\n'))}">+${list.length - 1}</span>` : '';
         rows.push(`<div class="iw-ib-row ${cls}"><dt class="iw-ib-cap"><span>${esc(cap)}</span>${capTag}</dt>${list[0] ? `<dd class="iw-ib-val" title="${esc(list[0])}">${lead}<span class="iw-ib-txt">${esc(list[0])}</span>${extra}</dd>` : ''}</div>`);
     };
-    if (show.attitude && !p.persona) row('iw-ib-r-att', 'К тебе', p.attitude, '', p.chem ? `<b class="iw-ib-chem iw-ib-chem-${esc(p.chemTone || 'mid')}">${esc(p.chem)}</b>` : '');
+    if (show.attitude && (!p.persona || p.attCap)) row('iw-ib-r-att', p.persona ? p.attCap : 'К тебе', p.attitude, '', p.chem ? `<b class="iw-ib-chem iw-ib-chem-${esc(p.chemTone || 'mid')}">${esc(p.chem)}</b>` : '');
     if (show.wants) row('iw-ib-r-wants', 'Хочет', p.wants);
     if (show.fears) row('iw-ib-r-fears', 'Боится', p.fears);
     if (show.night && p.night) row('iw-ib-r-night', 'Сон', p.night.text, p.night.date ? `<em class="iw-ib-when">${esc(ibDay(p.night.date))}</em>` : '');

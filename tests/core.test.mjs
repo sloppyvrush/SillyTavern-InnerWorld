@@ -1326,4 +1326,36 @@ test('текст сообщения для разбора: скрытый <plan>
     const sp = C2.buildSystemPrompt({ ...DEFAULT_SETTINGS, modules: { ...DEFAULT_SETTINGS.modules } }, { userName: 'Евэй', botName: 'Кассиан', mainNames: ['Кассиан'], trackNames: ['Кассиан'], trackPersona: true, npcRoom: 3 });
     assert.ok(/Новые НПС: заведи каждого, кто назван по имени/.test(sp));
 });
+test('ориентация: из карточки, «нет» не выдумывает, ручная не перебивается; у персоны — общие шкалы', () => {
+    const all = { ...DEFAULT_SETTINGS.modules };
+    assert.equal(C2.cleanOrient('лесбиянка'), 'homo');
+    assert.equal(C2.cleanOrient('гей'), 'homo');
+    assert.equal(C2.cleanOrient('bisexual'), 'bi');
+    assert.equal(C2.cleanOrient('нет'), '');
+    assert.equal(C2.orientName('homo', 'f'), 'лесбиянка');
+    assert.equal(C2.orientName('homo', 'm'), 'гей');
+    const run = (st, o, opts = {}) => applyAnalysis(st, parseAnalysis(JSON.stringify({ characters: [Object.assign({ name: 'Марк', g: 'm', mood: 'спокоен' }, o)] })), all, { mains: ['Марк'], ...opts }).state;
+    let st = run(emptyState(), { orient: 'нет' });
+    assert.ok(!st.characters['Марк'].orient);
+    assert.ok(st.characters['Марк'].orientChecked);
+    st = run(st, { orient: 'bi' });
+    assert.equal(st.characters['Марк'].orient, 'bi');
+    // выбрала вручную — следующий разбор не перебивает
+    const before = JSON.parse(JSON.stringify(st));
+    st.characters['Марк'].orient = 'pan'; st.characters['Марк'].orientManual = true;
+    const carried = C2.carryOwnEdits(before, st, 3);
+    const again = run(carried, { orient: 'hetero' }, { mesId: 3 });
+    assert.equal(again.characters['Марк'].orient, 'pan');
+    // у персоны — тот же блок «кто вы друг другу» со шкалами персонажа
+    const s2 = JSON.parse(JSON.stringify(again));
+    s2.characters['Марк'].rel = { friend: 40, romance: 30, formal: '' };
+    s2.characters['Марк'].impression = { label: 'интерес', score: 1, now: 'тянется', nowScore: 1 };
+    s2.characters['Ева'] = { name: 'Ева', g: 'f', persona: true, mood: 'нежна', impression: { label: 'интерес', score: 1, now: 'тепло', nowScore: 1 }, orient: 'homo' };
+    s2.order = ['Марк', 'Ева'];
+    const html = renderPanel({ state: s2, settings: DEFAULT_SETTINGS, theme: 'china', view: 'me:Ева', busy: false, status: '', mains: ['Марк'], npcKeys: [], roster: null, persona: { key: 'Ева', name: 'Ева' } });
+    assert.ok(html.includes('iw-rel-bars'));
+    assert.ok(/Как она относится к нему/.test(html));
+    assert.ok(html.includes('лесбиянка'));
+    assert.ok(html.includes('+40'));
+});
 console.log(`итого: ${passed} проверок`);
