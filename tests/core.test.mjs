@@ -1316,4 +1316,14 @@ test('желание сбылось: награду забирают кнопк�
     const auto = one(before, [{ text: 'выпить кофе', status: 'done' }], { mesId: 6 }).state;
     assert.equal(C2.purseOf(auto), 10);
 });
+test('текст сообщения для разбора: скрытый <plan> не съедает окно, середина длинного ответа видна', () => {
+    const plan = '<plan>\n<plan>\nHaru: Config check! ' + 'план '.repeat(300) + '</plan>\n';
+    const scene = 'Начало сцены в зале. ' + 'Придворные шептались. '.repeat(120) + 'Леди Кэтрин Торн подошла с кубком вина. ' + 'Я перехватил её руку. '.repeat(60) + 'Конец.';
+    const out = C2.cleanMessageText(plan + '<details><summary>✦ 23/08/812&nbsp;|&nbsp;19:15</summary>шапка</details>' + scene, 5000);
+    assert.ok(!/Haru|план план/.test(out));
+    assert.ok(out.includes('Кэтрин Торн'));
+    assert.ok(out.includes('23/08/812 | 19:15'));
+    const sp = C2.buildSystemPrompt({ ...DEFAULT_SETTINGS, modules: { ...DEFAULT_SETTINGS.modules } }, { userName: 'Евэй', botName: 'Кассиан', mainNames: ['Кассиан'], trackNames: ['Кассиан'], trackPersona: true, npcRoom: 3 });
+    assert.ok(/Новые НПС: заведи каждого, кто назван по имени/.test(sp));
+});
 console.log(`итого: ${passed} проверок`);

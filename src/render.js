@@ -3,6 +3,7 @@ import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor,
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
+import { REL_THEMED } from './rel-themes.js';
 import { collectionOf, TIER_NAMES_RU, ACH_FACES, ACH_KINDS } from './showcase.js';
 
 // Всё, что стоит отдельной строкой или плашкой, — с заглавной буквы (модель пишет со строчной).
@@ -351,9 +352,11 @@ function renderMood(c, L, opts) {
 // Вкладки «Витрина | Фотоальбом» — альбом живёт рядом с витриной, чтобы не теснить шапку
 
 // Сны и мысли перед сном — свой блок: последний сон крупно, прошлые — списком
-function renderNights(c) {
+function renderNights(c, persona = false) {
     const d = (c.dreams || [])[(c.dreams || []).length - 1];
-    const body = d ? dreamNote(c) : '<div class="iw-muted">Пока не спал. Когда герой ляжет спать или в истории наступит утро, здесь появится, о чём он думал, засыпая, и что ему снилось.</div>';
+    const g = genderOf(c.g, c.name, c.who);
+    const who = persona ? gw(g, 'твой герой', 'твоя героиня', 'твой герой') : gw(g, 'герой', 'героиня', 'герой');
+    const body = d ? dreamNote(c) : `<div class="iw-muted">Пока не ${gw(g, 'спал', 'спала', 'спал')}. Когда ${who} ляжет спать или в истории наступит утро, здесь появится, о чём ${gw(g, 'он', 'она', 'он')} ${gw(g, 'думал', 'думала', 'думал')}, засыпая, и что ${gw(g, 'ему', 'ей', 'ему')} снилось.${persona ? ' Сон только для тебя — на ответы бота не влияет.' : ''}</div>`;
     return `
     <section class="iw-block iw-b-nights">
       ${blockHead('nights', 'Сны и мысли перед сном')}
@@ -620,6 +623,7 @@ const REL_ART = {
 };
 
 // Кто они друг другу + две шкалы, как в «Симс 4»: дружба (зелёная) и романтика (розовая); в минусе — красные, около нуля — серые
+let REL_THEME = '';
 function relPlate(c) {
     const met = !!c.impression && !c.unmet;
     const rel = c.rel || seedRel(c);
@@ -635,20 +639,25 @@ function relPlate(c) {
             <span class="iw-rel-cap">${icon(ic)}<span>${cap}</span><em>${esc(lvl)}</em></span>
             <span class="iw-rel-track"><span class="iw-rel-fill" style="left:${v < 0 ? 50 + v / 2 : 50}%;width:${Math.abs(v) / 2}%"></span><span class="iw-rel-ends"><i>−100</i><b>${v > 0 ? '+' + v : (v < 0 ? '−' + -v : '0')}</b><i>100</i></span></span>
           </div>`;
-    const doodle = REL_DOODLE[REL_GROUP[st.key] || 'hello'];
+    const grp = REL_GROUP[st.key] || 'hello';
+    // в «классических» темах — рисунки от руки; в остальных — свой набор под стиль темы
+    const th = REL_THEMED[REL_THEME];
+    const doodle = th ? `${th.link}<g transform="translate(104 2) scale(.9)">${th.m[grp]}</g>` : REL_DOODLE[grp];
+    const lines = th ? th.lines : REL_LINES[grp];
+    const art = th ? `${th.acc}<g transform="translate(64 10) scale(1.5)">${th.m[grp]}</g>` : REL_ART[grp];
     return `
       <div class="iw-rel iw-rel-${esc(st.key)}">
         <div class="iw-rel-head">
           <div class="iw-rel-badge" title="${esc(log && log.why ? `${log.from ? log.from + ' → ' : ''}${log.to}: ${log.why}` : 'Кто вы друг другу')}">
             <span class="iw-rel-ico">${icon(REL_ICON[st.key] || 'heart')}</span><b>${esc(st.label)}</b>
           </div>
-          <svg class="iw-rel-doodle" viewBox="0 0 150 48" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${doodle}</svg>
+          <svg class="iw-rel-doodle${th ? ' iw-rel-th' : ''}" viewBox="0 0 150 48" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${doodle}</svg>
         </div>
         <div class="iw-rel-bars">
           ${bar('iw-rel-fr', 'handshake', 'Дружба', fl[1], f, tone(f, 20), `Дружба: ${signed(f)} — ${fl[1]}. Как в «Симс»: ноль посередине, вправо — теплее, влево — хуже`)}
           ${bar('iw-rel-ro', 'heart', 'Романтика', rl[1], r, tone(r, 10), `Романтика: ${signed(r)} — ${rl[1]}. Ноль — романтики нет; вправо — симпатия и любовь, влево — неловкость и отвращение`)}
         </div>
-        <div class="iw-rel-art" aria-hidden="true"><svg class="iw-rel-lines" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">${REL_LINES[REL_GROUP[st.key] || 'hello']}</svg><svg class="iw-rel-main" viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${REL_ART[REL_GROUP[st.key] || 'hello']}</svg></div>
+        <div class="iw-rel-art${th ? ' iw-rel-th' : ''}" aria-hidden="true"><svg class="iw-rel-lines" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">${lines}</svg><svg class="iw-rel-main" viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${art}</svg></div>
       </div>`;
 }
 
@@ -1029,6 +1038,7 @@ export function layoutBlocks(blocks, collapsed = {}) {
 }
 
 export function renderCharacter(c, modules, theme, opts = {}) {
+    REL_THEME = theme;
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who), bimboNicks(c.name, !!opts.first));
     if (opts.persona) {
         const pg = genderOf(c.g, c.name, c.who);
@@ -1046,7 +1056,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     if (modules.attraction) blocks.push(renderAttraction(c, L, opts));
     if (modules.attraction && !opts.persona && !opts.npc) blocks.push(renderLife(c));
     if (modules.chronicle) blocks.push(renderChronicle(c, L));
-    if (opts.nights && !opts.npc) blocks.push(renderNights(c));
+    if (opts.nights && !opts.npc) blocks.push(renderNights(c, !!opts.persona));
     if (Array.isArray(opts.rumors) && !opts.npc) blocks.push(renderRumors(opts.rumors, c.name, !!opts.persona));
     // порядок блоков: свой (перетащила игрок) или обычный; хроника — в самом низу
     const order = orderOfBlocks(opts.blockOrder);
@@ -1325,6 +1335,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     if (view === 'settings') {
         return `
 <div class="iw-book">
+  <div class="iw-float-close"><button type="button" class="iw-close iw-close-float" title="Закрыть дневник" aria-label="Закрыть дневник">${icon('x')}</button></div>
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, busy, true)}
   <div class="iw-settings-head"><span class="iw-label">${esc(L.settings)}</span><button type="button" class="iw-back iw-gear">${icon('back')}<span>к дневнику</span></button></div>
@@ -1334,6 +1345,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     if (noChat) {
         return `
 <div class="iw-book">
+  <div class="iw-float-close"><button type="button" class="iw-close iw-close-float" title="Закрыть дневник" aria-label="Закрыть дневник">${icon('x')}</button></div>
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, false)}
   <div class="iw-body"><div class="iw-empty">${esc(L.noChat)}</div></div>
@@ -1437,7 +1449,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
         if (pc) {
             current = key;
             personaNote = true;
-            body = `${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG, rumors }, opts))}`;
+            body = `${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG, rumors, nights }, opts))}`;
         } else {
             body = `<div class="iw-waiting"><div class="iw-waiting-text"><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
         }
@@ -1462,6 +1474,7 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
     const npcInfo = showNpc ? { met: npcKeys.length, known: (roster && roster.npc && roster.npc.length) || 0 } : null;
     return `
 <div class="iw-book">
+  <div class="iw-float-close"><button type="button" class="iw-close iw-close-float" title="Закрыть дневник" aria-label="Закрыть дневник">${icon('x')}</button></div>
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, busy, false, wallet, shopKey ? { key: shopKey, on: view.startsWith('shop:') } : null, mobile ? analyzeButtons(busyKind, L, books, picked, linked, working || !!busyKind, off, !!persona) : '')}
   ${ROUGH_FILTER}

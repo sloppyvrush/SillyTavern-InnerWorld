@@ -18155,6 +18155,77 @@ ol {
 @media (min-width: 761px) {
     .iw-panel .iw-head { grid-template-columns: minmax(0, max-content) minmax(max-content, 1fr) auto; }
     .iw-panel .iw-head > .iw-shopbar { min-width: max-content; }
-    .iw-panel .iw-head > .iw-titlebox { overflow: hidden; }
 }
 .iw-panel .iw-shopbar .iw-wallet > summary { padding-right: 14px; white-space: nowrap; }
+
+
+/* Телефон: дневник листается целиком, поэтому крестик всегда «плывёт» в правом верхнем углу —
+   закрыть можно с любого места, не листая наверх. На компьютере его нет: там шапка и так на месте */
+.iw-float-close { display: none; }
+@media (max-width: 760px) {
+    .iw-panel .iw-float-close {
+        display: flex;
+        justify-content: flex-end;
+        position: sticky;
+        top: 8px;
+        z-index: 80;
+        height: 0;
+        margin: 0 0 -12px;
+        pointer-events: none;
+    }
+    .iw-panel .iw-close-float {
+        pointer-events: auto;
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 38px; height: 38px;
+        margin: -6px -10px 0 0;
+        padding: 0;
+        border-radius: 50%;
+        border: 1.5px solid color-mix(in srgb, var(--iw-ink) 35%, transparent);
+        background: color-mix(in srgb, var(--iw-block-bg, var(--iw-bg, #fff)) 92%, transparent);
+        color: var(--iw-ink);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, .25);
+        cursor: pointer;
+    }
+    .iw-panel .iw-close-float svg { width: 18px; height: 18px; }
+    /* в шапке второй крестик не нужен */
+    .iw-panel .iw-head .iw-tools > .iw-close { display: none; }
+    .iw-theme-cyber .iw-close-float, .iw-theme-logbook .iw-close-float { border-radius: 0; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); border-color: var(--iw-label-color); color: var(--iw-label-color); }
+    .iw-theme-pixel .iw-close-float { border-radius: 0; border: 0; box-shadow: 0 -3px 0 0 var(--iw-ink), 0 3px 0 0 var(--iw-ink), -3px 0 0 0 var(--iw-ink), 3px 0 0 0 var(--iw-ink); }
+    .iw-theme-china .iw-close-float { background: #8c1f1c; color: #f3e6c8; border-color: #d4a64a; }
+    .iw-theme-bimbo .iw-close-float { background: #ff7ab8; color: #fff; border-color: #fff; }
+}
+
+/* Инфоблок на телефоне: листок во всю ширину, герои в ряд, ниже — статус и шкалы во всю ширину (полоски тянутся) */
+@media (max-width: 760px) {
+    .iw-ib-wrap { padding-left: 2px; padding-right: 2px; }
+    .iw-ib-note, .iw-ib-note.iw-open { width: 100%; min-width: 0; max-width: 100%; }
+    .iw-ib-note .iw-ib-bar { padding: 9px 11px 10px 12px; }
+    .iw-theme-grid .iw-ib-note .iw-ib-bar, .iw-theme-dossier .iw-ib-note .iw-ib-bar { padding-left: 24px; }
+    .iw-ib-note .iw-ib-cast.iw-ib-cast2 { flex-direction: column; align-items: stretch; gap: 8px; }
+    .iw-ib-note .iw-ib-chips { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 5px 6px; }
+    .iw-ib-note .iw-ib-relcol {
+        padding: 8px 0 0; border-left: 0;
+        border-top: 1px dashed color-mix(in srgb, var(--iw-ink) 18%, transparent);
+        gap: 8px;
+    }
+    .iw-ib-note .iw-ib-relcol .iw-ib-rels { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .iw-ib-note .iw-ib-rstatus { justify-self: start; }
+    .iw-ib-note .iw-ib-rel { display: grid; grid-template-columns: 14px 5.8em minmax(0, 1fr) 2.8em; align-items: center; gap: 6px; }
+    .iw-ib-note .iw-ib-rtrack { width: auto; height: 8px; }
+    .iw-ib-relmany .iw-ib-rels::before { margin-top: 2px; }
+    .iw-ib-note .iw-ib-tabs.iw-ib-tabs2 { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+    .iw-ib-note .iw-ib-tabsep { width: 40px; }
+}
+
+
+/* Рисунки отношений под тему: толщина линии одна и та же при любом размере, точки — круглые */
+.iw-rel-th :is(path, circle, ellipse, rect) { vector-effect: non-scaling-stroke; }
+.iw-rel-th .f { fill: currentColor; fill-opacity: .2; }
+.iw-rel-th .d { stroke-width: 4; }
+.iw-rel-art.iw-rel-th .iw-rel-lines .d { stroke-width: 3.5; }
+.iw-rel-art.iw-rel-th .t { stroke-width: 1.4; }
+.iw-rel-doodle.iw-rel-th .t { stroke-width: 1.4; }
+@media (max-width: 760px) {
+    /* печать в китайской теме — сразу за названием, а не у края шапки */
+    .iw-panel.iw-theme-china .iw-head > .iw-titlebox { justify-self: start; }
+}

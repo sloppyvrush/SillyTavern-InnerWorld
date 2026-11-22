@@ -1615,7 +1615,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         for (let i = messageId; kind !== 'lore' && i >= 0 && msgs.length < count; i--) {
             const m = chat[i];
             if (!m || m.is_system || !m.mes) continue;
-            msgs.unshift(`#${i} ${m.name}: ${cleanMessageText(m.mes, catchUp ? CATCHUP_MSG_CHARS : 1500)}`);
+            // самое свежее сообщение — почти целиком: в середине длинного ответа бывают новые лица (раньше видели только начало и конец)
+            msgs.unshift(`#${i} ${m.name}: ${cleanMessageText(m.mes, catchUp ? CATCHUP_MSG_CHARS : (i === messageId ? 5000 : 1500))}`);
             firstInWindow = i;
         }
         const history = [];
