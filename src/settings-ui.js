@@ -1,5 +1,5 @@
 // Настройки «Внутреннего мира» — одна схема, два вида: в панели расширений таверны и внутри дневника.
-import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS } from './core.js';
+import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS } from './core.js';
 import { THEMES, THEME_IDS, THEME_SWATCHES } from './themes.js';
 import { API_KINDS } from './api.js';
 
@@ -48,8 +48,10 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
                 { type: 'toggle', key: 'claimAuto', label: 'Забирать награду за желания сразу', show: s => s.points !== false, hint: s => (s.claimAuto ? 'Монеты за сбывшееся желание приходят сами, а желание вычёркивается.' : 'Сбывшееся желание остаётся в списке с кнопкой «Забрать награду» — монеты придут, когда нажмёшь, и желание уйдёт из списка.') },
                 { type: 'toggle', key: 'achievements', label: 'Достижения на витрине', hint: 'Когда в истории случается что-то крупное, дневник сам выдаёт достижение и ставит его на полку витрины. Почти не тратит токенов: строчка в ответе только в важные моменты.' },
+                { type: 'range', key: 'achRate', label: 'Как часто выпадают достижения', min: 1, max: 5, step: 1, fmt: v => ACH_RATE_NAMES[v] || '', show: s => s.achievements !== false, hint: 'Влево — реже: только по-настоящему важные события (признание, смерть, свадьба, раскрытая тайна). Вправо — чаще: смешные и трогательные мелочи тоже становятся ачивками. «Обычно» — как было.' },
+                { type: 'toggle', key: 'caseArt', label: 'Рисовать памятные вещи на витрине', hint: 'Покупаешь вещицу «в коллекцию» — модель рисует её маленькой картинкой по смыслу и по истории: засушенная роза, письмо с сургучом, часы. Одна короткая просьба к модели на покупку. Выключено — обычные значки.' },
                 { type: 'toggle', key: 'dreams', label: 'Сны героев', hint: 'Когда герой ложится спать или наступает утро, дневник записывает, о чём он думал, засыпая, и что ему снилось. Сон мягко отзывается в его утре.' },
-                { type: 'toggle', key: 'rumors', label: 'Слухи о твоём герое', hint: 'Изредка, после заметных событий, НПС начинают судачить. Слухи собираются на странице твоего героя: кто болтает и правда ли это.' },
+                { type: 'toggle', key: 'rumors', label: 'Слухи и сплетни', hint: 'Время от времени — после заметных событий или когда в округе что-то случается — начинают судачить: о вас, о важных персонах, о новостях города. Слухи видны на странице твоего героя (и у персонажа — те, что о нём), а свежий слух мягко подсказывается модели, чтобы мир вокруг жил.' },
                 { type: 'toggle', key: 'weather', label: 'Погода и время года', hint: 'В полоске часов — погода и время года. Только для красоты, на настроение не влияет.' },
 
                 { type: 'toggle', key: 'sound', label: 'Звуки', hint: 'Свой звук на каждое событие, а на кнопки разбора — карандаш по бумаге.' },
@@ -167,8 +169,9 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<select class="${st ? 'text_pole' : 'iw-select'}" data-iw-set="${f.key}">${opts}</select></label>${hintHtml}</div>`;
             }
             if (f.type === 'range') {
-                const v = Number(s[f.key]) || 0;
-                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)} <output class="iw-range-val">${v}%</output><input type="range" class="iw-range" data-iw-set="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}"></label>${hintHtml}</div>`;
+                const v = Number(s[f.key] ?? DEFAULT_SETTINGS[f.key]) || 0;
+                const shown = f.fmt ? f.fmt(v) : `${v}%`;
+                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)} <output class="iw-range-val">${esc(shown)}</output><input type="range" class="iw-range${f.fmt ? ' iw-range-steps' : ''}" data-iw-set="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}"${f.fmt ? ` data-iw-fmt="${f.key}"` : ''}></label>${hintHtml}</div>`;
             }
             if (f.type === 'text') {
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<input type="${f.input === 'password' ? 'password' : 'text'}" class="${st ? 'text_pole' : 'iw-input'}" data-iw-set="${f.key}" value="${esc(fieldValue(s, f.key))}" placeholder="${esc(f.placeholder || '')}" autocomplete="off" spellcheck="false"></label>${hintHtml}</div>`;

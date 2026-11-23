@@ -513,9 +513,16 @@ test('главное настроение, как в «Симс»: очки, р�
     d = dominantMood([{ emotion: 'радость', weight: 'medium' }, { emotion: 'кокетство', weight: 'light' }]);
     assert.equal(d.key, 'happy');
     // при равенстве держится прошлое настроение
-    const two = [{ emotion: 'злость', weight: 'medium', left: 5 }, { emotion: 'страх', weight: 'medium', left: 1 }];
+    const two = [{ emotion: 'злость', weight: 'medium', left: 5 }, { emotion: 'страх', weight: 'medium', left: 3 }];
     assert.equal(dominantMood(two).key, 'angry');
     assert.equal(dominantMood(two, 'scared').key, 'scared');
+    // сильный стыд перекрывает несколько средних радостей — под ним не «счастлив»
+    d = dominantMood([{ face: 'guilt', weight: 'deep', left: 4 }, { face: 'joy', weight: 'medium', left: 3 }, { face: 'hope', weight: 'medium', left: 3 }, { face: 'grateful', weight: 'medium', left: 3 }, { face: 'love', weight: 'medium', left: 3 }]);
+    assert.equal(d.key, 'embarrassed');
+    // а сильная радость рядом с лёгким смущением остаётся радостью
+    assert.equal(dominantMood([{ face: 'joy', weight: 'deep', left: 4 }, { face: 'shy', weight: 'light', left: 3 }]).key, 'happy');
+    // то, что вот-вот пройдёт, держит настроение слабее
+    assert.equal(dominantMood([{ emotion: 'злость', weight: 'medium', left: 1 }, { emotion: 'страх', weight: 'medium', left: 4 }]).key, 'scared');
     // сила: одна сильная — «очень», две сильные — предел
     assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep' }]).level, 2);
     assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep' }, { emotion: 'ужас', weight: 'deep' }]).level, 3);
@@ -1192,16 +1199,28 @@ test('брак и дети: заполняются один раз, меняют
 test('отношения: шкалы двигаются постепенно, формальный статус — только по событию', () => {
     assert.equal(relStatus(null, false).label, 'незнакомцы');
     assert.equal(relStatus({ friend: 60, romance: 0 }).label, 'хорошие друзья');
-    assert.equal(relStatus({ friend: 30, romance: 50 }).label, 'влюблённые');
-    assert.equal(relStatus({ friend: -71, romance: 0 }).label, 'ненависть');
-    assert.equal(C2.romanceLevel(-60)[1], 'отвращение');
+    assert.equal(relStatus({ friend: 30, romance: 55 }).label, 'влюблённость');
+    assert.equal(relStatus({ friend: 20, romance: 0 }).label, 'приятели');
+    assert.equal(relStatus({ friend: 80, romance: 22 }).label, 'близкие друзья');
+    assert.equal(relStatus({ friend: 30, romance: 22 }).label, 'симпатия');
+    assert.equal(relStatus({ friend: -50, romance: 0 }).label, 'неприязнь');
+    assert.equal(relStatus({ friend: -71, romance: 0 }).label, 'враги');
+    assert.equal(relStatus({ friend: -90, romance: 0 }).label, 'заклятые враги');
+    assert.equal(C2.romanceLevel(-70)[1], 'отвращение');
     assert.equal(C2.friendLevel(0)[1], 'знакомые');
     assert.equal(relStatus({ friend: 10, romance: 80, formal: 'married' }).label, 'супруги');
     assert.equal(cleanRel({ friend: 250, romance: -4, formal: 'жена' }).formal, 'married');
     let { rel } = mergeRel(null, { friend: 10, romance: 0 });
     ({ rel } = mergeRel(rel, { friend: 90, romance: 60 }));
-    assert.equal(rel.friend, 25);
-    assert.equal(rel.romance, 15);
+    // за один разбор — немного, и чем выше, тем медленнее
+    assert.equal(rel.romance, 8);
+    assert.ok(rel.friend > 10 && rel.friend <= 18);
+    let hi = { friend: 85, romance: 0 };
+    ({ rel: hi } = mergeRel(hi, { friend: 100 }));
+    assert.ok(hi.friend - 85 <= 2, 'у самого верха шкала почти не растёт');
+    // а предательство роняет быстро
+    ({ rel: hi } = mergeRel(hi, { friend: 20, changed: true, why: 'предал' }));
+    assert.ok(hi.friend <= 66);
     let r2 = mergeRel(rel, { formal: 'engaged' });
     assert.equal(r2.rel.formal || '', '');
     r2 = mergeRel(rel, { formal: 'engaged', changed: true, why: 'сделал предложение' });
@@ -1275,8 +1294,8 @@ test('сквозной: лавка, баффы, событие, подарок, 
         { name: 'Марк', mood: 'рад', rel: { friend: 90, romance: 80 } },
     ] })), all, { mains: ['Марк'] }));
     assert.ok(!state.characters[lk].unmet);
-    assert.equal(state.characters[mk].rel.friend, 35);
-    assert.equal(state.characters[mk].rel.romance, 25);
+    assert.ok(state.characters[mk].rel.friend > 20 && state.characters[mk].rel.friend < 40, 'дружба растёт понемногу');
+    assert.ok(state.characters[mk].rel.romance > 10 && state.characters[mk].rel.romance < 30);
 });
 test('дата рождения из карточки: «Birthday: January 9th (Capricorn)» после «born and raised»', () => {
     const b = C2.bornFromText;
@@ -1357,5 +1376,57 @@ test('ориентация: из карточки, «нет» не выдумы�
     assert.ok(/Как она относится к нему/.test(html));
     assert.ok(html.includes('лесбиянка'));
     assert.ok(html.includes('+40'));
+});
+test('мультибот: плашка выбора главных, «сделать главным» у НПС и «в НПС» у главного', () => {
+    const st = emptyState();
+    st.characters['Adrian Vale'] = { name: 'Adrian Vale', g: 'm', mood: 'спокоен' };
+    st.characters['Diana Cross'] = { name: 'Diana Cross', g: 'f', mood: 'увлечена', impression: { label: 'x', score: 1 } };
+    st.order = ['Adrian Vale', 'Diana Cross'];
+    const r = { multi: true, at: 1, picked: false, main: ['Adrian Vale', 'Ethan Rowe'], npc: [{ name: 'Diana Cross', who: 'учёная', role: 'key' }, { name: 'Lena Arden', who: 'техник станции', role: 'minor' }], find: () => null };
+    const base = { state: st, settings: DEFAULT_SETTINGS, theme: 'logbook', busy: false, status: '', mains: ['Adrian Vale'], npcKeys: ['Diana Cross'], roster: r };
+    const html = renderPanel(Object.assign({}, base, { view: 'main:Adrian Vale' }));
+    assert.ok(html.includes('Кто здесь главные герои?'));
+    assert.ok(html.includes('data-iw-mainpick="Ethan Rowe"'));
+    assert.ok(html.includes('data-iw-demote="Adrian Vale"'));
+    const npc = renderPanel(Object.assign({}, base, { view: 'npc:Diana Cross', roster: Object.assign({}, r, { picked: true }) }));
+    assert.ok(npc.includes('data-iw-promote="Diana Cross"'));
+    assert.ok(!npc.includes('Кто здесь главные герои?'));
+    const single = renderPanel(Object.assign({}, base, { view: 'npc:Diana Cross', roster: Object.assign({}, r, { multi: false }) }));
+    assert.ok(!single.includes('data-iw-promote'));
+    const sp = C2.buildRosterPrompt([{ title: 'Карточка', text: 'x' }], 'Ева', 'русском', { multi: true }).system;
+    assert.ok(/мультибот/.test(sp));
+});
+
+test('частота ачивок: на «эпохальных» — только золото и с паузой; на «обычно» — как раньше', () => {
+    const list = [{ mes: 10 }];
+    assert.equal(C2.achGate({ tier: 'bronze' }, list, 40, { achRate: 1 }), false);
+    assert.equal(C2.achGate({ tier: 'silver' }, list, 40, { achRate: 1 }), false);
+    assert.equal(C2.achGate({ tier: 'gold' }, list, 40, { achRate: 1 }), true);
+    assert.equal(C2.achGate({ tier: 'silver' }, list, 15, { achRate: 2 }), false);
+    assert.equal(C2.achGate({ tier: 'silver' }, list, 30, { achRate: 2 }), true);
+    assert.equal(C2.achGate({ tier: 'bronze' }, list, 11, {}), true);
+    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achRate: 1 }), { messages: ['x'] }).includes('эпохальное'));
+});
+test('картинка памятной вещи: только безопасный SVG, свои id', () => {
+    const svg = C2.cleanArt('вот: <svg viewBox="0 0 64 64" onload="x()"><script>alert(1)</script><defs><radialGradient id="g"><stop offset="0" stop-color="#f00"/></radialGradient></defs><circle cx="32" cy="32" r="20" fill="url(#g)" onclick="y"/><image href="http://evil"/><a href="javascript:1"><path d="M0 0"/></a><foreignObject><div>x</div></foreignObject></svg> готово', 'k1');
+    assert.ok(svg.startsWith('<svg') && svg.endsWith('</svg>'));
+    assert.ok(!/script|onload|onclick|image|href|foreignObject|alert/i.test(svg));
+    assert.ok(svg.includes('url(#iwak1-g)') && svg.includes('id="iwak1-g"'));
+    assert.equal(C2.cleanArt('<svg><text>нет фигур</text></svg>'), '');
+    assert.equal(C2.cleanArt('без картинки'), '');
+});
+test('слухи: общие «по городу» видны у всех; желания и страхи заново — разбираются', () => {
+    const r = cleanRumor({ who: 'торговки', about: 'город', text: 'В порт пришёл корабль с чумой', truth: 'half' });
+    assert.ok(r.town && !r.about);
+    const w = C2.parseWishes('{"wants":[{"text":"Поговорить с Евэй наедине"}],"fears":[{"text":"Что её увезут","strength":3}]}');
+    assert.equal(w.wants[0].status, 'active');
+    assert.equal(w.fears[0].strength, 3);
+    assert.throws(() => C2.parseWishes('{"wants":[],"fears":[]}'));
+});
+test('повторный разбор того же сообщения не стирает уже записанный сон', () => {
+    const base = { order: ['m'], characters: { m: { name: 'Марк', dreams: [{ text: 'старый сон', at: 1 }] } } };
+    const own = { order: ['m'], characters: { m: { name: 'Марк', dreams: [{ text: 'старый сон', at: 1 }, { text: 'сон этой ночи', at: 5 }] } } };
+    const out = C2.carryOwnEdits(base, own, 3);
+    assert.deepEqual(out.characters.m.dreams.map(d => d.text), ['старый сон', 'сон этой ночи']);
 });
 console.log(`итого: ${passed} проверок`);

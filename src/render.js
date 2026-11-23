@@ -175,6 +175,9 @@ function faceBadge(c, npc = false) {
 // Меню у кнопки «Лорбук»: галочками отмечается, что разбирать в этом чате —
 // его берут и «Лорбук», и «Всё сразу». Карточка, описание персоны и привязанные лорбуки
 // (персонажа, чата, персоны) отмечены сами, но их тоже можно снять.
+let MULTI_NOW = false;
+let WISH_BUSY = ''; // кому сейчас придумываются новые желания и страхи
+
 const LINK_TAG = { char: 'персонажа', chat: 'чата', persona: 'персоны' };
 function booksMenu(books = [], picked = [], linked = [], busy = false, off = [], hasPersona = false, wide = false) {
     const on = new Set(picked);
@@ -372,7 +375,7 @@ function dreamNote(c) {
       <div class="iw-night-head">${icon('moon')}<span>Сон${d.date ? ` · ${esc(d.date)}` : ''}</span>${d.tone ? `<em>${esc(d.tone)}</em>` : ''}</div>
       ${d.thought ? `<div class="iw-night-thought">Засыпая: «${ce(d.thought)}»</div>` : ''}
       <div class="iw-night-text">${ce(d.text)}</div>
-      ${older.length ? `<details class="iw-more"><summary>прошлые сны · ${older.length}</summary><ul class="iw-night-old">${older.map(o => `<li><b>${esc(o.date || '')}</b> ${ce(o.text)}</li>`).join('')}</ul></details>` : ''}
+      ${older.length ? `<div class="iw-night-prev">прошлые сны · ${older.length}</div><ul class="iw-night-old">${older.slice(0, 3).map(o => `<li><b>${esc(o.date || '')}</b> ${ce(o.text)}</li>`).join('')}</ul>${older.length > 3 ? `<details class="iw-more"><summary>ещё ${older.length - 3}</summary><ul class="iw-night-old">${older.slice(3).map(o => `<li><b>${esc(o.date || '')}</b> ${ce(o.text)}</li>`).join('')}</ul></details>` : ''}` : ''}
     </div>`;
 }
 
@@ -380,9 +383,11 @@ function dreamNote(c) {
 const RUMOR_TRUTH = { true: 'правда', half: 'полуправда', false: 'выдумка' };
 const nameKey = v => String(v || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9 ]/g, '').trim();
 function aboutHim(r, name, persona) {
+    // на странице твоего героя — все слухи; у персонажа — о нём и общие, «по городу»
+    if (persona || r.town) return true;
     const a = nameKey(r.about);
     const n = nameKey(name);
-    if (!a) return !!persona;
+    if (!a) return false;
     return a === n || a.split(' ')[0] === n.split(' ')[0];
 }
 function renderRumors(list, name, persona) {
@@ -391,7 +396,7 @@ function renderRumors(list, name, persona) {
         return `
     <section class="iw-block iw-b-rumors">
       ${blockHead('rumors', 'Слухи')}
-      <div class="iw-muted">Пока никто не судачит. Слухи пойдут по ходу истории — после скандала, подвига, странного поступка или если вас увидят вместе.</div>
+      <div class="iw-muted">Пока никто не судачит. Слухи пойдут по ходу истории — время от времени: после скандала, подвига, странного поступка, если вас увидят вместе или если в округе что-то случится.</div>
     </section>`;
     }
     const list2 = mine;
@@ -400,7 +405,7 @@ function renderRumors(list, name, persona) {
       ${blockHead('rumors', `Слухи · ${list2.length}`)}
       <ul class="iw-rumors">${list2.slice().reverse().map(r => `<li class="iw-rumor iw-rumor-${esc(r.truth)}">
         <div class="iw-rumor-text">«${ce(r.text)}»</div>
-        <div class="iw-rumor-meta">${r.who ? `<b>${esc(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
+        <div class="iw-rumor-meta">${r.town ? '<span class="iw-rumor-town">по городу</span>' : (r.about && persona && nameKey(r.about) !== nameKey(name) ? `<span class="iw-rumor-about">о ${esc(r.about)}</span>` : '')}${r.who ? `<b>${esc(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
       </li>`).join('')}</ul>
     </section>`;
 }
@@ -529,7 +534,7 @@ function renderAttraction(c, L, opts = {}) {
       ${row('dislikes', 'Отталкивает', dislikes)}
       </div>
       <details class="iw-attr-pick"${opts.attrOpen ? ' open' : ''}>
-        <summary class="iw-btn iw-attr-add">${icon('plus')}<span>Выбрать из списка</span></summary>
+        <summary class="iw-btn iw-attr-add"><span class="iw-pm-plus">${icon('plus')}</span><span class="iw-pm-minus">${icon('minus')}</span><span>Выбрать из списка</span></summary>
         <div class="iw-attr-panel">
           <div class="iw-attr-modes">
             <button type="button" class="iw-qopt${mode === 'likes' ? ' on' : ''}" data-iw-attr="mode:likes" aria-pressed="${mode === 'likes'}">Привлекает</button>
@@ -591,14 +596,16 @@ function renderAttitude(c, L, opts = {}) {
 }
 
 const REL_ICON = {
-    married: 'ring', engaged: 'ring', dating: 'heart', soul: 'heart', love: 'heart', crush: 'heart',
-    best: 'handshake', close: 'handshake', friend: 'handshake', know: 'smile', strangers: 'user',
-    dislike: 'wx_cloud', enemy: 'swords', rivals: 'swords', ex: 'heartbreak', exspouse: 'heartbreak', kin: 'users',
+    married: 'ring', engaged: 'ring', dating: 'heart', soul: 'heart', love: 'heart', smitten: 'heart', crush: 'heart', fond: 'heart', spark: 'sparkle',
+    best: 'handshake', close: 'handshake', good: 'handshake', friend: 'handshake', pal: 'smile', know: 'smile', strangers: 'user',
+    cool: 'wx_cloud', dislike: 'wx_cloud', enemy: 'swords', nemesis: 'swords', rivals: 'swords', ex: 'heartbreak', exspouse: 'heartbreak', kin: 'users',
+    awkward: 'wx_cloud', repel: 'wx_cloud', despise: 'swords',
 };
 const REL_GROUP = {
-    married: 'ring', engaged: 'ring', dating: 'love', soul: 'love', love: 'love', crush: 'love',
-    best: 'friends', close: 'friends', friend: 'friends', know: 'hello', strangers: 'hello', kin: 'home',
-    dislike: 'storm', enemy: 'storm', rivals: 'storm', ex: 'broken', exspouse: 'broken',
+    married: 'ring', engaged: 'ring', dating: 'love', soul: 'love', love: 'love', smitten: 'love', crush: 'love', fond: 'love', spark: 'love',
+    best: 'friends', close: 'friends', good: 'friends', friend: 'friends', pal: 'hello', know: 'hello', strangers: 'hello', kin: 'home',
+    cool: 'storm', dislike: 'storm', enemy: 'storm', nemesis: 'storm', rivals: 'storm', ex: 'broken', exspouse: 'broken',
+    awkward: 'storm', repel: 'storm', despise: 'storm',
 };
 // Рисованные зарисовки по схемам автора: в шапке линия с петелькой приходит слева к мотиву (viewBox 150×48)
 const REL_DOODLE = {
@@ -614,7 +621,7 @@ const REL_DOODLE = {
 // Фон под наброском: длинные линии с петлями тянутся на всю свободную высоту листка
 const REL_LINES = {
     love: '<path d="M0 88C9 76 12 52 22 44S34 46 40 32 54 12 64 12 76 4 86 6 96 16 100 14"/><path d="M0 98C10 97 13 86 22 87S32 98 42 84 58 92 68 80C76 70 78 58 87 55 97 56 94 68 88 66 83 62 88 46 100 34"/>',
-    ring: '<path d="M70 0C54 2 30 2 14 10 2 18 4 36 12 38S22 30 16 26 8 38 14 52 18 80 10 92 2 100 0 100"/><path d="M4 100C12 82 22 74 40 76S66 84 76 64 92 62 94 50 100 22 96 16 88 14 90 22 100 18 100 10 100 8"/>',
+    ring: '<path d="M70 0C54 2 30 2 14 10 2 18 4 36 12 38S22 30 16 26 8 38 14 52 18 80 10 92 2 100 0 100"/><path d="M4 100C12 82 22 74 40 76S66 84 76 64 92 62 94 50 100 22 96 16 88 14 90 22 100 18 100 10"/>',
     friends: '<path d="M0 30C8 18 18 14 30 16S48 22 56 0"/><path d="M42 98C56 88 66 80 76 66 82 56 86 44 84 44S78 52 82 54 92 48 94 30 96 10 100 6"/>',
     hello: '<path stroke-dasharray="2 4" d="M0 80C14 70 20 88 34 76S44 50 58 54 70 76 82 60 92 30 100 22"/>',
     storm: '<path d="M6 14C10 22 22 24 30 22 40 20 42 8 36 12S36 24 48 22 60 18 70 14"/><path d="M12 62C20 56 28 60 34 50 38 42 34 36 30 40S32 54 40 52"/><path d="M64 58C70 60 76 52 78 40S80 26 74 28 72 38 82 36 92 26 96 14"/>',
@@ -692,23 +699,26 @@ function renderWants(c, L) {
     }).join('');
     return `
     <section class="iw-block iw-b-wants">
-      ${blockHead('wants', esc(L.wants))}
+      ${blockHead('wants', esc(L.wants), wishTools('wants'))}
       ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">Ничего особенного</div>'}
     </section>`;
 }
 
+const wishTools = (kind) => (WISH_BUSY
+    ? `<span class="iw-dream-tools"><button type="button" class="iw-mini iw-mini-stop" data-iw-stop="wishes" title="Остановить: желания и страхи останутся прежними" aria-label="Остановить">${icon('stop')}</button></span>`
+    : `<span class="iw-dream-tools"><button type="button" class="iw-mini" data-iw-wishes="regen" title="Придумать желания и страхи заново (закреплённые желания останутся)">${icon('dice')}</button></span>`);
 const FEAR_POWER = { 1: 'слабый', 2: 'сильный', 3: 'очень сильный' };
 
 function renderFears(c, L) {
     const items = (c.fears || []).map((f, i) => `
       <li class="iw-fear iw-fs-${f.strength}${f.status !== 'active' ? ' ' + f.status : ''}">
         <span class="iw-fear-mark" aria-hidden="true">${icon('ghost')}</span>
-        <span class="iw-fear-text">${ce(f.text)}${f.status === 'realized' ? ' <b class="iw-tag">Сбылся</b>' : ''}${f.status === 'gone' ? ' <b class="iw-tag">Прошёл</b>' : ''}</span>
+        <span class="iw-fear-text">${ce(f.text)}${f.status === 'realized' ? ' <b class="iw-tag">Сбылся</b>' : ''}${f.status === 'gone' ? ' <b class="iw-tag">Прошёл</b>' : ''}${f.status !== 'active' ? `<br><button type="button" class="iw-claim iw-fear-cross" data-iw-fear-cross="${i}" title="${f.status === 'realized' ? 'Страх сбылся — вычеркнуть его из списка' : 'Страх прошёл — вычеркнуть его из списка'}">${icon('check')}<span>Вычеркнуть</span></button>` : ''}</span>
         <span class="iw-row-tools"><span class="iw-fear-power">${ce(f.level || FEAR_POWER[f.strength])}</span>${delBtn('fears', i)}</span>
       </li>`).join('');
     return `
     <section class="iw-block iw-b-fears">
-      ${blockHead('fears', esc(L.fears))}
+      ${blockHead('fears', esc(L.fears), wishTools('fears'))}
       ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">Ничего не пугает</div>'}
     </section>`;
 }
@@ -981,37 +991,53 @@ const TIER_STARS = { bronze: 1, silver: 2, gold: 3 };
 export function achIcon(name) {
     return ACH_FACES.includes(name) ? faceIcon(name, 'iw-ach-face') : pictIcon(name || 'trophy');
 }
-function renderShowcase({ state, theme, got = [], sel = '' }) {
+// Витрина: два сворачиваемых раздела — достижения (внутри по золоту, серебру, бронзе) и памятные вещи.
+// Что открыто, а что свёрнуто — запоминается. Памятные вещи могут быть нарисованы моделью (настройка «Рисовать…»).
+const CASE_FOLD_DEFAULT = { ach: true, items: true, gold: true, silver: false, bronze: false };
+function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = true, artBusy = '' }) {
     const items = collectionOf(state);
-    // сверху золото, потом серебро, потом бронза; внутри — новые выше
-    const RANK = { gold: 0, silver: 1, bronze: 2 };
-    const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (RANK[a.tier] ?? 3) - (RANK[b.tier] ?? 3) || (b.at || 0) - (a.at || 0));
+    const isOpen = k => (fold && fold[k] !== undefined ? !!fold[k] : CASE_FOLD_DEFAULT[k]);
+    const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
     const stars = t => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}<em>${esc(TIER_NAMES_RU[t] || '')}</em></span>`;
-    const itemRow = x => `
-      <li class="iw-reward iw-rk-collect iw-case-row">
-        <span class="iw-case-ico">${pictIcon(x.icon || 'gift')}</span>
+    const itemRow = x => {
+        const busyHere = artBusy === `${x.key}:${x.i}`;
+        const pic = art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : `<span class="iw-case-ico">${pictIcon(x.icon || 'gift')}</span>`;
+        const draw = art ? `<button type="button" class="iw-mini iw-case-draw${busyHere ? ' iw-spin' : ''}" data-iw-art="${esc(x.key)}:${x.i}"${artBusy ? ' disabled' : ''} title="${x.art ? 'Перерисовать картинку' : 'Нарисовать картинку по смыслу вещи и истории'}" aria-label="${x.art ? 'Перерисовать' : 'Нарисовать'}">${icon(busyHere ? 'sparkle' : 'feather')}</button>` : '';
+        return `
+      <li class="iw-reward iw-rk-collect iw-case-row${art && x.art ? ' iw-has-art' : ''}">
+        ${pic}
         <span class="iw-rw-body"><b class="iw-rw-title">${ce(x.title)}</b>${x.desc ? `<span class="iw-rw-desc">${ce(x.desc)}</span>` : ''}<span class="iw-rw-kind">в коллекции: ${esc(x.owner)}</span></span>
+        ${draw}
       </li>`;
+    };
     const achRow = a => `
       <li class="iw-reward iw-case-row iw-case-ach iw-tier-${a.tier}${sel === `a:${a.id}` ? ' on' : ''}">
         <span class="iw-case-ico">${achIcon(a.icon)}</span>
         <span class="iw-rw-body"><b class="iw-rw-title">${ce(a.title)}</b>${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-rw-kind">${stars(a.tier)}${a.kind && ACH_KINDS[a.kind] ? `<span class="iw-ach-kind iw-ach-${a.kind}">${esc(ACH_KINDS[a.kind])}</span>` : ''}${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}</span></span>
         <button type="button" class="iw-mini iw-case-x" data-iw-achdel="${esc(a.id)}" title="Убрать с витрины" aria-label="Убрать с витрины">${icon('x')}</button>
       </li>`;
+    const tiers = ['gold', 'silver', 'bronze'].map(tier => {
+        const rows = list.filter(a => (a.tier || 'bronze') === tier);
+        if (!rows.length) return '';
+        return `
+    <details class="iw-case-tier iw-tier-${tier}" data-iw-case="${tier}"${isOpen(tier) ? ' open' : ''}>
+      <summary class="iw-case-tier-head">${stars(tier)}<span class="iw-case-n">${rows.length}</span><span class="iw-case-pm" aria-hidden="true">${icon('plus')}${icon('minus')}</span></summary>
+      <ul class="iw-list iw-rewards">${rows.map(achRow).join('')}</ul>
+    </details>`;
+    }).join('');
+    const sec = (k, ico, name, hint, body) => `
+  <details class="iw-rw-group iw-case-sec iw-rg-${k === 'ach' ? 'ach' : 'collect'}" data-iw-case="${k}"${isOpen(k) ? ' open' : ''}>
+    <summary class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(ico)}${name}</span><span class="iw-rw-cat-hint">${hint}</span><span class="iw-case-pm" aria-hidden="true">${icon('plus')}${icon('minus')}</span></summary>
+    ${body}
+  </details>`;
     const doodles = '<div class="iw-cal-doodles iw-case-doodles" aria-hidden="true"><i class="iw-dd iw-dd-a"></i><i class="iw-dd iw-dd-b"></i><i class="iw-dd iw-dd-c"></i></div>';
     return `
 <button type="button" class="iw-back" data-iw-view="back">${icon('back')}<span>к дневнику</span></button>
 <section class="iw-block iw-b-shop iw-b-showcase">
   ${blockHead('rewards', 'Витрина', `<span class="iw-points iw-case-count" title="Достижений: ${list.length}">${icon('trophy')}<b>${list.length}</b></span>`)}
   <div class="iw-muted">Памятные вещи из лавки и достижения истории. Достижения появляются сами, когда случается что-то по-настоящему важное.</div>
-  <div class="iw-rw-group iw-rg-ach">
-    <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon('trophy')}Достижения</span><span class="iw-rw-cat-hint">${list.length ? `получено: ${list.length}` : 'появятся по ходу истории'}</span></div>
-    ${list.length ? `<ul class="iw-list iw-rewards">${list.map(achRow).join('')}</ul>` : '<p class="iw-case-empty-text">Пока пусто. Признание, спасение, предательство, большая победа — и здесь появится первая запись.</p>'}
-  </div>
-  <div class="iw-rw-group iw-rg-collect">
-    <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon('gem')}Памятные вещи</span><span class="iw-rw-cat-hint">${items.length ? `${items.length} ${plural(items.length, 'вещь', 'вещи', 'вещей')}` : 'покупаются в лавке «в коллекцию»'}</span></div>
-    ${items.length ? `<ul class="iw-list iw-rewards">${items.map(itemRow).join('')}</ul>` : '<p class="iw-case-empty-text">Пока пусто. Загляни в лавку — там есть вещицы «в коллекцию».</p>'}
-  </div>
+  ${sec('ach', 'trophy', 'Достижения', list.length ? `получено: ${list.length}` : 'появятся по ходу истории', list.length ? tiers : '<p class="iw-case-empty-text">Пока пусто. Признание, спасение, предательство, большая победа — и здесь появится первая запись.</p>')}
+  ${sec('items', 'gem', 'Памятные вещи', items.length ? `${items.length} ${plural(items.length, 'вещь', 'вещи', 'вещей')}` : 'покупаются в лавке «в коллекцию»', items.length ? `<ul class="iw-list iw-rewards">${items.map(itemRow).join('')}</ul>` : '<p class="iw-case-empty-text">Пока пусто. Загляни в лавку — там есть вещицы «в коллекцию».</p>')}
   ${doodles}
 </section>`;
 }
@@ -1303,7 +1329,7 @@ export function renderClock(clock) {
     const mins = Array.from({ length: 12 }, (_, i) => [i * 5, pad2(i * 5), i * 5 === d.mi - (d.mi % 5)]);
     const changed = clock.draftChanged;
     // ближайшие праздники и личные даты: первые четыре видны сразу, остальные — «ещё»
-    const evRow = e => `<li class="iw-clock-ev iw-ev2 iw-clock-${e.kind}${e.inDays === 0 ? ' iw-ev-now' : ''}" title="${esc([e.dateText, e.about].filter(Boolean).join(' — '))}">${evDateBox(e)}<span class="iw-ev-body"><span class="iw-ev-name"><span class="iw-ev-ico">${calIcon(e.kind)}</span><span class="iw-ev-title">${esc(clockEventText(e))}</span></span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em class="iw-ev-in">${esc(clockWhen(e))}</em></li>`;
+    const evRow = e => `<li class="iw-clock-ev iw-ev2 iw-clock-${e.kind}${e.inDays === 0 ? ' iw-ev-now' : ''}" title="${esc([e.dateText, e.about].filter(Boolean).join(' — '))}">${evDateBox(e)}<span class="iw-ev-body"><span class="iw-ev-name"><span class="iw-ev-ico">${calIcon(e.kind)}</span><span class="iw-ev-title">${esc(clockEventText(e))}</span></span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em class="iw-ev-in">${esc(clockWhen(e))}</em>${e.key ? `<button type="button" class="iw-mini iw-clock-x iw-ev-del" data-iw-clock="ev-del:${esc(encodeURIComponent(e.key))}" title="Убрать эту дату" aria-label="Убрать">${icon('x')}</button>` : ''}</li>`;
     const evAll = clock.upcoming || [];
     // справа — ближайшие; «ещё» раскрывается под календарём и часами двумя столбиками: правый продолжает список, слева добавляется
     const SHOWN = 3;
@@ -1339,7 +1365,12 @@ export function renderClock(clock) {
           ${changed ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="reset">${icon('back')}<span>Как сейчас</span></button>` : ''}
         </div>
         <label class="iw-clock-lock"><input type="checkbox" data-iw-clock="lock"${clock.locked ? ' checked' : ''}> <span>Часы стоят — сами не двигаются</span></label>
-        <div class="iw-clock-sub iw-clock-evhead"><span class="iw-doodle-mark" aria-hidden="true"></span>Праздники и личные даты</div>
+        <div class="iw-clock-sub iw-clock-evhead"><span class="iw-doodle-mark" aria-hidden="true"></span>Праздники и личные даты<button type="button" class="iw-mini iw-clock-addbtn${clock.addOpen ? ' on' : ''}" data-iw-clock="add-open" title="${clock.addOpen ? 'Свернуть' : 'Добавить свою дату'}" aria-expanded="${!!clock.addOpen}">${icon(clock.addOpen ? 'minus' : 'plus')}</button></div>
+        ${clock.addOpen ? `<div class="iw-clock-add">
+          <input type="text" class="iw-input" data-iw-clock-in="hname" maxlength="60" placeholder="Название — или «Кассиан: годовщина»">
+          <div class="iw-clock-add-row"><input type="number" class="iw-input iw-clock-add-d" data-iw-clock-in="hd" min="1" max="31" placeholder="число">${(clock.monthNames && clock.monthNames.length) ? `<select class="iw-input" data-iw-clock-in="hm">${clock.monthNames.map((n, i) => `<option value="${i + 1}"${i + 1 === Number(clock.holMonth) ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>` : ''}<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="hol-add">${icon('plus')}<span>Добавить</span></button></div>
+          <div class="iw-muted iw-clock-add-hint">Праздник для всех — просто название. Личная дата героя — «Имя: что за дата».</div>
+        </div>` : ''}
         ${events}
       </div>
       ${evMore}
@@ -1348,7 +1379,9 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, nights = true }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, nights = true, wishBusy = '' }) {
+    MULTI_NOW = !!(roster && roster.multi);
+    WISH_BUSY = wishBusy || '';
     LOVE = love;
     NEXT_IN = nextIn;
     // showcase: { got, sel, fresh } — витрина этого чата
@@ -1386,7 +1419,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
     const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
     if (view === 'showcase' && showcase) {
-        body = renderShowcase({ state, theme, got: showcase.got || [], sel: showcase.sel || '' });
+        body = renderShowcase({ state, theme, got: showcase.got || [], sel: showcase.sel || '', fold: showcase.fold || {}, art: showcase.art !== false, artBusy: showcase.artBusy || '' });
     } else if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
@@ -1462,7 +1495,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
       <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
       ${loreTraits.length ? `<div class="iw-whois-traits"><span class="iw-muted">${esc(LL.whoisTraits)}:</span> ${esc(loreTraits.join(', '))}</div>` : ''}
     </div>
-    <div class="iw-dossier-acts"><button type="button" class="iw-heard-toggle" data-iw-dead="${esc(key)}:1" title="Отметить, что ${esc(c.name)} нет в живых: карточка станет серой, настроение и желания уберутся">нет в живых?</button>${persona ? `<button type="button" class="iw-heard-toggle" data-iw-met="${esc(key)}:0" title="Если ${esc(persona.name)} и ${esc(c.name)} лично не встречались — дневник оставит только то, что о ${esc(c.name)} слышно">не знакомы лично?</button>` : ''}</div>
+    <div class="iw-dossier-acts">${roster && roster.multi ? `<button type="button" class="iw-heard-toggle iw-promote" data-iw-promote="${esc(key)}" title="Мультибот: ${esc(c.name)} станет главным героем — вкладкой наверху, с полным дневником">${icon('star')}<span>сделать главным</span></button>` : ''}<button type="button" class="iw-heard-toggle" data-iw-dead="${esc(key)}:1" title="Отметить, что ${esc(c.name)} нет в живых: карточка станет серой, настроение и желания уберутся">нет в живых?</button>${persona ? `<button type="button" class="iw-heard-toggle" data-iw-met="${esc(key)}:0" title="Если ${esc(persona.name)} и ${esc(c.name)} лично не встречались — дневник оставит только то, что о ${esc(c.name)} слышно">не знакомы лично?</button>` : ''}</div>
   </div>
 </section>
 ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, opts))}`;
@@ -1486,11 +1519,13 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0], rumors, nights }, opts));
+        if (roster && roster.multi) body = `<div class="iw-multi-bar">${icon('users')}<span>Главный герой мультибота</span><button type="button" class="iw-mini-btn iw-btn" data-iw-demote="${esc(current)}" title="Перенести ${esc(state.characters[current].name)} в НПС: вкладка уйдёт, дневник сохранится">в НПС</button></div>${body}`;
     } else if (view.startsWith('main:')) {
         body = renderWaiting(view.slice(5), settings, theme, roster);
     } else {
         body = `<div class="iw-empty">${esc(L.empty)}</div>`;
     }
+    if (roster && roster.multi && roster.at && !roster.picked && /^(main:|npc)/.test(view)) body = renderMainsPick(state, roster, mains) + body;
     const shopKey = settings.points !== false
         ? (view.startsWith('shop:') ? view.slice(5) : (current && state.characters[current] && !state.characters[current].persona && mains.includes(current) ? current : (mains.find(k => state.characters[k]) || null)))
         : null;
@@ -1725,6 +1760,27 @@ function sketchArrow(theme, cls = '') {
     return `<svg class="iw-sketch-arrow ${cls}" viewBox="0 0 38 36" width="38" height="36" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
 }
 
+// Мультибот: кто из героев карточки главный. Отмеченные — вкладками наверху, остальные — в НПС.
+function renderMainsPick(state, roster, mains) {
+    const picked = Array.isArray(roster.pickedMain) ? roster.pickedMain : mains;
+    const isOn = n => picked.some(x => String(x).toLowerCase() === String(n).toLowerCase());
+    const seen = new Set();
+    const list = [];
+    const add = (name, who = '') => { const k = String(name || '').toLowerCase(); if (!name || seen.has(k)) return; seen.add(k); list.push({ name, who }); };
+    for (const n of roster.main || []) add(n, 'главный по карточке');
+    const rank = { key: 0, major: 1, minor: 2 };
+    for (const e of (roster.npc || []).slice().sort((a, b) => (rank[a.role] ?? 1) - (rank[b.role] ?? 1)).slice(0, 18)) if (!e.dead) add(e.name, e.who || '');
+    for (const k of state.order || []) { const c = state.characters[k]; if (c && !c.persona) add(k, c.who || ''); }
+    return `
+<section class="iw-block iw-mains-pick">
+  <span class="iw-tape" aria-hidden="true"></span>
+  <div class="iw-mains-head">${icon('users')}<b>Кто здесь главные герои?</b></div>
+  <div class="iw-muted">Это мультибот: отметь героев, которых ведёт карточка. Они встанут вкладками наверху, остальные будут в НПС. Поменять можно в любой момент — кнопками «сделать главным» и «в НПС».</div>
+  <div class="iw-mains-list">${list.map(x => `<button type="button" class="iw-qopt${isOn(x.name) ? ' on' : ''}" data-iw-mainpick="${esc(x.name)}" aria-pressed="${isOn(x.name)}" title="${esc(x.who)}">${isOn(x.name) ? icon('star') : ''}<span>${esc(x.name)}</span></button>`).join('')}</div>
+  <div class="iw-mains-foot"><span class="iw-muted">Главных: ${picked.length}</span><button type="button" class="iw-btn iw-btn-main" data-iw-mainsave>${icon('check')}<span>Готово</span></button></div>
+</section>`;
+}
+
 function quickOpt(key, value, label, on) {
     const l = String(label);
     return `<button type="button" class="iw-qopt${on ? ' on' : ''}" data-iw-quick="${esc(key)}:${esc(value)}" aria-pressed="${on}">${esc(l ? l[0].toUpperCase() + l.slice(1) : l)}</button>`;
@@ -1753,6 +1809,14 @@ function renderWaiting(name, s, theme, roster) {
   </div>
   <section class="iw-quick">
     <div class="iw-quick-head"><span class="iw-label">Перед первым разбором</span><span class="iw-muted">Можно настроить прямо здесь</span></div>
+    <div class="iw-quick-step iw-quick-multi">
+      <span class="iw-quick-num">${icon('users')}</span>
+      <div class="iw-quick-body">
+        <div class="iw-quick-title">Какая это карточка</div>
+        <div class="iw-qrow"><button type="button" class="iw-qopt${roster && roster.multi ? '' : ' on'}" data-iw-multi="0" aria-pressed="${!(roster && roster.multi)}">Обычный бот</button><button type="button" class="iw-qopt${roster && roster.multi ? ' on' : ''}" data-iw-multi="1" aria-pressed="${!!(roster && roster.multi)}">Мультибот</button></div>
+        <div class="iw-quick-hint"><span>${roster && roster.multi ? 'Мультибот: в карточке несколько главных героев (команда, экипаж, семья). После «Лорбука» выберешь, кто из них главный, а кто НПС, — и сможешь переносить их туда и обратно.' : 'Обычный бот: главный — персонаж карточки, остальные люди мира — НПС. Если в карточке целая команда героев, выбери «Мультибот».'}</span></div>
+      </div>
+    </div>
     <div class="iw-quick-step">
       <span class="iw-quick-num">1</span>
       <div class="iw-quick-body">

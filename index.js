@@ -11,6 +11,7 @@ import {
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
+    achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -42,6 +43,7 @@ const SKIP_TYPES = ['first_message', 'command', 'extension', 'impersonate', 'qui
 let busy = false;
 let busyKind = '';         // какая кнопка разбора сейчас крутится: chat | lore | all
 let dreamBusy = false;
+let wishBusy = '';   // кому сейчас придумываются новые желания и страхи
 let shopBusy = false;
 let pending = null;
 let view = '';
@@ -66,6 +68,9 @@ let clockBusy = false;
 let clockSetOpen = false;
 let clockDraft = null;     // выбранные в листке дата и время — применяются только кнопкой «Поставить»
 let clockHolMonth = 0;     // месяц для нового праздника
+let clockAddOpen = false;  // открыта ли форма «своя дата»
+// ключ даты в списке: чтобы убрать её из «Праздники и личные даты»
+const evKey = e => [e.kind || '', e.who || '', e.name || '', e.m || 0, e.d || 0, e.months ? 'm' : (e.years ? 'y' : '')].join('|');
 let clockCalOpen = false;
 let clockEvOpen = false;
 const loadedFonts = new Set();
@@ -166,6 +171,13 @@ function mainNames() {
     const c = ctx();
     if (!hasChat()) return [];
     const r = roster();
+    // мультибот: главные — те, кого выбрала игрок (или кого назвал разбор карточки); сама карточка — рассказчик
+    if (r.multi && !c.groupId) {
+        const picked = Array.isArray(r.pickedMain) ? r.pickedMain : (r.main || []);
+        const outM = [];
+        for (const n of picked) if (n && !sameName(n, c.name1) && !outM.some(x => namesMatch(x, n) || namesLookAlike(x, n))) outM.push(n);
+        if (outM.length) return outM;
+    }
     const names = [...(r.main || [])];
     if (c.groupId) {
         const g = (c.groups || []).find(x => x.id === c.groupId);
@@ -354,7 +366,7 @@ async function studyLore({ mode = 'lore', book = '', keepLive = false } = {}) {
         }
         const rosterOld = !settings().rosters[key] || (settings().rosters[key].v || 0) < ROSTER_V;
         if ((!sameLore || rosterOld) && (settings().showNpc !== false || !(settings().rosters[key] && settings().rosters[key].at))) {
-            const { system, user } = buildRosterPrompt(sources, c.name1, settings().language);
+            const { system, user } = buildRosterPrompt(sources, c.name1, settings().language, { multi: !!(settings().rosters[key] && settings().rosters[key].multi) });
             const rAsk = withBudget('roster');
             if (live) live.est = tokenEstimate(system, user, rAsk.responseLength);
             liveStage('think');
@@ -367,7 +379,9 @@ async function studyLore({ mode = 'lore', book = '', keepLive = false } = {}) {
             const merged = old && old.at ? mergeRoster(old, fresh) : { main: fresh.main, npc: fresh.npc };
             const books = new Set((old && old.books) || []);
             if (book) books.add(book);
-            settings().rosters[key] = { main: merged.main, npc: merged.npc, at: Date.now(), books: [...books], v: ROSTER_V };
+            settings().rosters[key] = Object.assign({ main: merged.main, npc: merged.npc, at: Date.now(), books: [...books], v: ROSTER_V },
+                // выбор «мультибот» и главных героев переживает повторный разбор карточки
+                old && old.multi ? { multi: true, pickedMain: old.pickedMain, picked: old.picked } : {});
             saveSettings();
             rememberKnowledge(sources);
             status = `Знаю персонажей мира: ${merged.npc.length}`;
@@ -633,7 +647,8 @@ function clockPeople(state) {
     const list = Object.entries((state && state.characters) || {}).filter(([, c]) => c && (c.born || c.ageAt || c.metOn) && c.dead !== true);
     const mains = new Set(splitCast(state || emptyState()).mains);
     list.sort((a, b) => (mains.has(b[0]) || b[1].persona ? 1 : 0) - (mains.has(a[0]) || a[1].persona ? 1 : 0));
-    return list.map(([, c]) => ({ name: c.name, born: c.born, ageAt: c.ageAt, met: c.metOn }));
+    // «месяц / год со дня знакомства» — только между главными героями и твоим героем, у НПС не отмечаем
+    return list.map(([k, c]) => ({ name: c.name, born: c.born, ageAt: c.ageAt, met: mains.has(k) ? c.metOn : undefined }));
 }
 
 // День знакомства с героем: ставим дату сцены, когда у персонажа впервые появилось впечатление
@@ -860,7 +875,10 @@ function clockView() {
     const { cal, t } = now;
     const people = clockPeople(liveState());
     const daysWord = n => { const x = n % 100, y = n % 10; return x > 10 && x < 20 ? 'дней' : (y === 1 ? 'день' : (y >= 2 && y <= 4 ? 'дня' : 'дней')); };
-    const ev = upcoming(cal, t, people, cal.type === 'custom' ? Math.max(366, cal.months.reduce((x, m) => x + m.days, 0)) : 366).map(e => Object.assign(e, { dateText: evDateText(cal, e), inDaysText: e.inDays >= 45 ? fmtSpan(e.inDays * 1440) : `${e.inDays} ${daysWord(e.inDays)}` }));
+    const hidden = new Set(meta.evHidden || []);
+    const ev = upcoming(cal, t, people, cal.type === 'custom' ? Math.max(366, cal.months.reduce((x, m) => x + m.days, 0)) : 366)
+        .filter(e => !hidden.has(evKey(e)))
+        .map(e => Object.assign(e, { key: evKey(e), dateText: evDateText(cal, e), inDaysText: e.inDays >= 45 ? fmtSpan(e.inDays * 1440) : `${e.inDays} ${daysWord(e.inDays)}` }));
     const draft = normTime(cal, clockDraft || t);
     let grid = null;
     if (cal.type !== 'days') {
@@ -893,6 +911,7 @@ function clockView() {
         why: cal.why || '',
         monthNames: cal.type === 'custom' ? cal.months.map(x => x.name) : MONTHS_RU,
         holMonth: clockHolMonth || draft.m || 1,
+        addOpen: clockAddOpen,
         monthsText: cal.type === 'custom' ? cal.months.map(x => `${x.name} (${x.days})`).join(', ') : '',
         weekdaysText: cal.type === 'custom' && cal.weekdays ? cal.weekdays.join(', ') : '',
         // в списке — только праздники, которые уже (и ещё) отмечают в год сцены; годы появления не показываем
@@ -976,7 +995,7 @@ async function onClockAction(spec) {
         const v = clockInputs();
         let name = String(v('hname') || '').trim();
         const d = Number(v('hd'));
-        const m = clockHolMonth || draft.m || 1;
+        const m = Number(v('hm')) || clockHolMonth || draft.m || 1;
         if (!name || !d) return notice('Напиши название и число.');
         if (d > monthDays(cal, 2000, m)) return notice('В этом месяце нет такого числа.');
         // «Виктор: годовщина» — личная дата персонажа
@@ -984,6 +1003,20 @@ async function onClockAction(spec) {
         const who = name.match(/^([^:]{2,40}):\s*(.+)$/);
         if (who) Object.assign(h, { kind: 'canon', who: who[1].trim(), name: who[2].trim() });
         meta.calendar = Object.assign({}, cal, { holidays: [...(cal.holidays || []), h] });
+        clockAddOpen = false;
+        ctx().saveMetadataDebounced?.();
+        updateInjection();
+        return renderAll();
+    }
+    if (cmd === 'add-open') { clockAddOpen = !clockAddOpen; return renderAll(); }
+    if (cmd === 'ev-del') {
+        const key = decodeURIComponent(arg || '');
+        const [kind, who, name, m, d] = key.split('|');
+        const list = (cal.holidays || []).slice();
+        const i = list.findIndex(h => h.name === name && Number(h.m) === Number(m) && Number(h.d) === Number(d) && (kind !== 'canon' || !who || h.who === who));
+        if (!(await confirmDelete(name, i >= 0 ? 'Дата уйдёт из календаря.' : 'Дата больше не будет показываться в списке.'))) return;
+        if (i >= 0 && (kind === 'holiday' || kind === 'canon')) { list.splice(i, 1); meta.calendar = Object.assign({}, cal, { holidays: list }); }
+        else meta.evHidden = [...new Set([...(meta.evHidden || []), key])].slice(-200);
         ctx().saveMetadataDebounced?.();
         updateInjection();
         return renderAll();
@@ -1083,6 +1116,12 @@ function updateInjection(beforeId) {
                 .filter(x => x.d && x.d.mes !== undefined && last - x.d.mes <= 4);
             if (fresh.length) clockText += `${clockText ? ' ' : ''}[${fresh.map(x => `Прошлой ночью ${x.c.name} снилось: ${x.d.text}${x.d.tone ? ` (${x.d.tone} сон)` : ''}`).join('. ')}. Можно мимоходом отразить это в настроении утром, но не пересказывать сон дословно.]`;
         } catch { /* без сна */ }
+        // свежий слух — чтобы мир вокруг жил: персонажи могут его услышать или упомянуть
+        try {
+            const last = c.chat.length - 1;
+            const rs = s.rumors !== false ? (chatMeta().rumors || []).filter(r => r.mes !== undefined && last - r.mes <= 6).slice(-2) : [];
+            if (rs.length) clockText += `${clockText ? ' ' : ''}[Слухи вокруг: ${rs.map(r => `«${r.text}»${r.who ? ` (болтает ${r.who})` : ''}`).join('; ')}. Если к месту, кто-то из персонажей может это услышать, обсудить или отреагировать; не вставляй дословно и не делай главным в сцене.]`;
+        } catch { /* без слухов */ }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
     lastInjected = { mood: text, attr, clock: clockText, moodDepth: Number(s.injectDepth) || 0, attrDepth: Number(s.attrDepth) || 4, moodLevel: s.moodInfluence, attrLevel: s.attrInfluence, attrHits: attrHits.slice(0, 20), attrMode: s.attrKeys === 'always' ? 'always' : 'keys' };
@@ -1372,7 +1411,73 @@ async function callModel(system, user, s, onText = null) {
     return res;
 }
 
+// Мультибот: одна карточка — несколько главных героев. Игрок сам решает, кто главный, а кто НПС.
+// «Какая это карточка» — один раз на карточку, при первом нажатии «Чат», «Лорбук» или «Всё сразу»
+async function askCardMode() {
+    const key = rosterKey();
+    if (!key) return true;
+    const rs = settings().rosters;
+    const r0 = rs[key];
+    if (r0 && r0.modeSet) return true;
+    const res = await iwDialog({
+        title: 'Какая это карточка?',
+        html: '<p class="iw-modal-text"><b>Обычный бот</b> — главный герой один: персонаж карточки. Остальные люди мира — НПС.</p><p class="iw-modal-text"><b>Мультибот</b> — в карточке несколько главных героев (экипаж, команда, семья). После разбора лорбука выберешь, кто из них главный, — и сможешь переносить героев из НПС в главные и обратно.</p>',
+        buttons: [{ text: 'Обычный бот', value: 'single', kind: 'main' }, { text: 'Мультибот', value: 'multi', kind: 'main' }, { text: 'Отмена', value: null }],
+    });
+    if (res !== 'single' && res !== 'multi') return false;
+    const r = rs[key] = Object.assign(emptyRoster(), rs[key] || {});
+    r.modeSet = true;
+    if (res === 'multi' && !r.multi) { r.multi = true; r.picked = false; if (!Array.isArray(r.pickedMain)) r.pickedMain = (r.main || []).slice(); }
+    if (res === 'single') r.multi = false;
+    saveSettings();
+    renderAll();
+    return true;
+}
+
+function onMultiAction(d) {
+    const key = rosterKey();
+    if (!key) return;
+    const rs = settings().rosters;
+    const r = rs[key] = Object.assign(emptyRoster(), rs[key] || {});
+    const cur = () => (Array.isArray(r.pickedMain) ? r.pickedMain.slice() : mainNames());
+    const has = (list, n) => list.some(x => namesMatch(x, n));
+    if (d.iwMulti !== undefined) {
+        r.multi = d.iwMulti === '1';
+        r.modeSet = true;
+        if (r.multi) { r.picked = false; if (!Array.isArray(r.pickedMain)) r.pickedMain = (r.main || []).slice(); }
+        notice(r.multi ? (r.at ? 'Мультибот включён: отметь в плашке, кто здесь главные герои. НПС можно сделать главными и обратно.' : 'Мультибот: после разбора лорбука выбери, кто здесь главные герои. НПС можно сделать главными и обратно.') : 'Обычный бот: главный — персонаж карточки, остальные — НПС.');
+    } else if (d.iwMainpick !== undefined) {
+        const list = cur();
+        const n = d.iwMainpick;
+        r.pickedMain = has(list, n) ? list.filter(x => !namesMatch(x, n)) : list.concat(n);
+    } else if (d.iwMainsave !== undefined) {
+        if (!cur().length) return notice('Отметь хотя бы одного главного героя.');
+        r.pickedMain = cur();
+        r.picked = true;
+    } else if (d.iwPromote !== undefined) {
+        const list = cur();
+        if (!has(list, d.iwPromote)) list.push(d.iwPromote);
+        r.pickedMain = list; r.picked = true;
+        view = 'main:' + d.iwPromote;
+        notice(`${d.iwPromote} — теперь главный герой`);
+    } else if (d.iwDemote !== undefined) {
+        const list = cur().filter(x => !namesMatch(x, d.iwDemote));
+        if (!list.length) return notice('Должен остаться хотя бы один главный герой.');
+        r.pickedMain = list; r.picked = true;
+        view = 'npc';
+        notice(`${d.iwDemote} — теперь в НПС`);
+    }
+    historyCache.key = '';
+    saveSettings();
+    updateInjection();
+    renderAll();
+}
+
 function stopAnalysis(msg = '') {
+    // остановили вручную — следующее нажатие «Чат», «Лорбук» или «Всё сразу» разбирает заново,
+    // а не отвечает «ничего нового» (часть разбора могла успеть записаться до остановки)
+    const wasRunning = busy || rosterBusy || !!live;
+    try { if (wasRunning && hasChat()) { chatMeta().fp = {}; ctx().saveMetadataDebounced?.(); } } catch { /* нет чата */ }
     runId++;
     setLive(null);
     if (abortCtl) abortCtl.abort();
@@ -1380,6 +1485,7 @@ function stopAnalysis(msg = '') {
     busy = false;
     rosterBusy = false;
     dreamBusy = false;
+    wishBusy = '';
     shopBusy = false;
     busyKind = '';
     pending = null;
@@ -1733,6 +1839,12 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 }
             } catch { /* без подсказки */ }
             info.rumorTexts = (meta.rumors || []).slice(-6).map(r => r.text);
+            // слухи — время от времени: давно не было — пора, только что был — не надо
+            {
+                const lastR = (meta.rumors || []).reduce((m, r) => Math.max(m, Number(r.mes) || 0), -1);
+                const since = lastR < 0 ? (meta.rumorSkip ? messageId - meta.rumorSkip : messageId) : messageId - lastR;
+                info.rumorDue = since >= 14 ? 'now' : (since >= 7 ? 'maybe' : 'no');
+            }
             // слухи и сны — только по ходу ролевой: при первом разборе (дневник ещё пуст) их не просим
             info.firstRun = !(base.order || []).some(k => base.characters && base.characters[k]) || !(msgs && msgs.length);
         } catch { /* без подсказок */ }
@@ -2230,7 +2342,13 @@ function panelEl() {
         el.addEventListener('pointerdown', onBlockDragStart);
         el.addEventListener('change', onPanelChange);
         el.addEventListener('input', onPanelInput);
-        el.addEventListener('toggle', e => { rememberSection('diary', e.target); masonrySoon(); }, true);
+        el.addEventListener('toggle', e => {
+            rememberSection('diary', e.target);
+            // витрина: какие разделы свёрнуты — запоминаем
+            const d = e.target;
+            if (d && d.matches && d.matches('details[data-iw-case]')) { const s = settings(); s.caseFold = Object.assign({}, s.caseFold || {}, { [d.dataset.iwCase]: d.open }); saveSettings(); }
+            masonrySoon();
+        }, true);
         window.addEventListener('resize', masonrySoon);
         try { document.fonts && document.fonts.ready.then(masonrySoon); } catch { /* без шрифтов */ }
         new MutationObserver(() => { if (!el.hidden) masonrySoon(); }).observe(el, { attributes: true, attributeFilter: ['hidden'] });
@@ -2338,6 +2456,7 @@ function renderPanelNow() {
     if (!hasChat() && view !== 'settings') {
         el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
         el.innerHTML = renderPanel({ state: emptyState(), settings: s, theme: currentTheme, view: '', busy: false, status: '', mains: [], npcKeys: [], roster: null, noChat: true });
+        watchHead(el);
         return;
     }
     const state = (live && live.preview) || liveState();
@@ -2358,10 +2477,23 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy, mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false });
     masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
+    watchHead(el);
+}
+
+// Телефон: плавающий крестик показываем, только когда шапка с настройками уехала вверх
+let headObs = null;
+function watchHead(el) {
+    if (headObs) { headObs.disconnect(); headObs = null; }
+    const head = el && el.querySelector('.iw-head');
+    if (!head || typeof IntersectionObserver === 'undefined') { if (el) el.classList.remove('iw-head-gone'); return; }
+    headObs = new IntersectionObserver(es => {
+        for (const e of es) el.classList.toggle('iw-head-gone', !e.isIntersecting);
+    }, { threshold: 0 });
+    headObs.observe(head);
 }
 
 // Блоки дневника «кирпичиком»: у каждого высота в мелких рядах сетки, короткие встают под короткими —
@@ -2429,7 +2561,47 @@ function masonrySoon() {
 function showcaseModel() {
     if (!hasChat()) return null;
     const meta = chatMeta();
-    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length };
+    const s = settings();
+    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy };
+}
+
+// ---------- Картинки памятных вещей ----------
+let artBusy = '';
+async function drawItemArt(key, i, { quiet = false } = {}) {
+    if (artBusy || settings().caseArt === false) return;
+    const st0 = currentState();
+    const ch0 = st0.characters[key];
+    const item0 = ch0 && (ch0.collection || [])[i];
+    if (!item0) return;
+    const my = runId;
+    artBusy = `${key}:${i}`;
+    renderAll();
+    try {
+        const story = (ctx().chat || []).filter(m => m && !m.is_system).slice(-4).map(m => `${m.name}: ${cleanMessageText(m.mes || '', 500)}`).join('\n');
+        const { system, user } = buildArtPrompt(item0, ch0.name, story, settings().language);
+        const raw = await callModel(system, user, withBudget('art'));
+        const svg = cleanArt(raw, `${Date.now().toString(36)}${i}`);
+        if (!svg) throw new Error('модель не прислала картинку');
+        const st = currentState();
+        const ch = st.characters[key];
+        const item = ch && (ch.collection || [])[i];
+        if (!item || item.title !== item0.title) return;
+        item.art = svg;
+        await saveEditedState(st);
+    } catch (err) {
+        if (err && err.cancelled) return;
+        console.warn('[Внутренний мир] картинка вещи', err);
+        if (!quiet) notice('Картинка не нарисовалась — попробуй ещё раз');
+    } finally {
+        if (my === runId || artBusy) { artBusy = ''; renderAll(); }
+    }
+}
+// после покупки или подарка: рисуем новую вещь, если включено
+function drawNewItem(target) {
+    if (settings().caseArt === false || !target || !Array.isArray(target.collection)) return;
+    const st = currentState();
+    const key = Object.keys(st.characters).find(k => st.characters[k] === target || (st.characters[k] && st.characters[k].name === target.name));
+    if (key) setTimeout(() => drawItemArt(key, target.collection.length - 1, { quiet: true }), 300);
 }
 
 function seenAchievements() {
@@ -2455,7 +2627,7 @@ function takeGifts(raw, state) {
             const b = ch && (ch.buffs || []).find(x => x.kind === 'gift' && (norm(x.title) === norm(g && g.title) || norm(g && g.title).includes(norm(x.title)) || norm(x.title).includes(norm(g && g.title))));
             if (!b) continue;
             ch.buffs = ch.buffs.filter(x => x !== b);
-            if (pc) pc.collection = (pc.collection || []).concat([{ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }]).slice(-30);
+            if (pc) { pc.collection = (pc.collection || []).concat([{ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }]).slice(-30); drawNewItem(pc); }
             showEvent({ type: 'reward', who: ch.name, text: `«${b.title}» — подарено${pc ? `, теперь в коллекции ${pc.name}` : ''}`, icon: b.icon }, 300);
             break;
         }
@@ -2520,6 +2692,9 @@ function takeAchievement(raw, messageId) {
     const a = cleanAchievement(data && !Array.isArray(data) ? data.achievement : null);
     if (!a) return;
     const meta = chatMeta();
+    // подарок вручён — ачивка всегда; остальное — по частоте из настроек
+    const giftMoment = !!(data && Array.isArray(data.gift_given) && data.gift_given.length);
+    if (!giftMoment && !achGate(a, meta.achList, messageId, settings())) return;
     const now = clockNow(messageId + 1);
     const scene = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
     const { list, added } = addAchievement(meta.achList, a, { mes: messageId, scene });
@@ -3138,7 +3313,7 @@ async function onPanelClick(e) {
         notice('Блоки вернулись на свои места');
         return renderAll();
     }
-    if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : '');
+    if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : t.dataset.iwStop === 'wishes' ? 'Остановлено: желания и страхи остались прежними' : '');
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
     if (t.dataset.iwLifePin) return onLifeEdit(null, null);
     if (t.dataset.iwNpcStudy) return studyNpc(t.dataset.iwNpcStudy);
@@ -3171,11 +3346,16 @@ async function onPanelClick(e) {
         updateBooksCount(t);
         return;
     }
+    if (t.dataset.iwMulti !== undefined || t.dataset.iwMainpick !== undefined || t.dataset.iwMainsave !== undefined || t.dataset.iwPromote !== undefined || t.dataset.iwDemote !== undefined) {
+        return onMultiAction(t.dataset);
+    }
     if (t.dataset.iwAnalyze) {
         if (!hasChat()) return notice('Сначала открой чат с персонажем.');
         const menu = t.closest('details');
         if (menu) menu.open = false;
         const kind = t.dataset.iwAnalyze;
+        // первая генерация для этой карточки — сначала спрашиваем: обычный бот или мультибот
+        if (!(await askCardMode())) return;
         if (kind === 'chat') {
             const id0 = lastBotMessageId();
             if (id0 >= 0 && recordOf(ctx().chat[id0]) && (chatMeta().fp || {}).chat === chatFp(id0) && !missingPersona() && !(settings().showNpc !== false && historySeen().pending.length)) return nothingNew('сообщения чата');
@@ -3207,6 +3387,10 @@ async function onPanelClick(e) {
         syncSettingsForm();
         return renderAll();
     }
+    if (t.dataset.iwWishes) {
+        if (!wishBusy) writeSound();
+        return regenWishes();
+    }
     if (t.dataset.iwDream) {
         if (t.dataset.iwDream === 'regen' && !dreamBusy) writeSound();
         return onDreamAction(t.dataset.iwDream);
@@ -3217,6 +3401,7 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
     if (t.dataset.iwWantClaim !== undefined) return claimWantReward(Number(t.dataset.iwWantClaim));
+    if (t.dataset.iwFearCross !== undefined) return crossFear(Number(t.dataset.iwFearCross));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
     if (t.dataset.iwCheat) return enterCheat();
     if (t.dataset.iwBuy) return buy(t.dataset.iwBuy);
@@ -3249,11 +3434,17 @@ async function onPanelClick(e) {
         return renderPanelNow();
     }
     if (t.dataset.iwStudy) {
+        if (!(await askCardMode())) return;
         if (!rosterBusy && !busy) writeSound();
         return studyLore({ mode: 'lore' });
     }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
+    if (t.dataset.iwArt) {
+        const [k, i] = t.dataset.iwArt.split(':');
+        drawItemArt(k, Number(i));
+        return;
+    }
     if (t.dataset.iwAchdel) {
         const meta = chatMeta();
         const a0 = (meta.achList || []).find(x => x.id === t.dataset.iwAchdel);
@@ -3562,6 +3753,51 @@ async function onDreamAction(action) {
     }
 }
 
+// Желания и страхи заново — как кнопка у мечты. Закреплённые желания остаются.
+async function regenWishes() {
+    const key = viewKey();
+    const state = currentState();
+    const ch = key && state.characters[key];
+    if (!ch || wishBusy) return;
+    const my = runId;
+    wishBusy = key;
+    renderAll();
+    try {
+        const info = analysisInfo(6);
+        const c0 = ctx();
+        if (key === personaKeyOf(state)) {
+            const pdesc = c0.powerUserSettings && c0.powerUserSettings.persona_description;
+            info.persona = true;
+            info.card = cleanMessageText(pdesc || '', 4000);
+            info.botName = ch.name || c0.name1;
+            info.userName = c0.name2;
+        } else {
+            const cached = knowledgeLore(3);
+            if (cached) info.loreMain = cached;
+        }
+        const { system, user } = buildWishesPrompt(info, ch, settings().language);
+        const raw = await callModel(system, user, withBudget('wishes'));
+        if (my !== runId) return;
+        const fresh = parseWishes(raw);
+        const st = currentState();
+        const c2 = st.characters[key];
+        if (!c2) return;
+        const keep = (c2.wants || []).filter(w => (w.pinned && w.status === 'active') || (w.status === 'done' && w.unclaimed));
+        const same = (a, b) => String(a).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '') === String(b).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+        c2.wants = keep.concat(fresh.wants.filter(w => !keep.some(k => same(k.text, w.text)))).slice(0, 6);
+        if (fresh.fears.length) c2.fears = fresh.fears.slice(0, 6);
+        c2.log = [{ type: 'note', text: 'желания и страхи придуманы заново', m: null }].concat(c2.log || []).slice(0, 40);
+        await saveEditedState(st);
+        updateInjection();
+    } catch (err) {
+        if (err && err.cancelled) return;
+        console.error('[Внутренний мир]', err);
+        showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw), thinking: settings().thinking }), { manual: true, what: 'Желания и страхи не придумались' });
+    } finally {
+        if (my === runId) { wishBusy = ''; renderAll(); }
+    }
+}
+
 async function regenShop(forKey = null, { quiet = false } = {}) {
     const key = forKey || viewKey();
     if (!key || shopBusy) return;
@@ -3700,6 +3936,22 @@ async function claimWantReward(i) {
     showEvent({ type: 'reward', who: ch.name, text: `«${text}» — награда получена: +${got.toLocaleString('ru-RU')}`, icon: 'coin' });
 }
 
+// Сбывшийся или прошедший страх вычёркивается рукой — как желание, только без награды
+async function crossFear(i) {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    const f = ch && ch.fears && ch.fears[i];
+    if (!f || f.status === 'active') return;
+    ch.fears.splice(i, 1);
+    ch.fearsCrossed = [...(ch.fearsCrossed || []), f.text].slice(-20);
+    markEdited(ch, 'fears');
+    await saveEditedState(st);
+    updateInjection();
+    renderAll();
+    showEvent({ type: 'fear_gone', who: ch.name, text: f.text, icon: f.status === 'realized' ? 'ghost' : 'sun' });
+}
+
 async function toggleWantPin(i) {
     const key = viewKey();
     const st = currentState();
@@ -3764,13 +4016,15 @@ async function buy(id) {
         ch.shop = (ch.shop || []).filter(r => r.id !== reward.id);
         await saveEditedState(st);
         showEvent({ type: 'reward', who: target.name, text: `«${reward.title}» — в твоей коллекции, загляни на витрину`, icon: reward.icon });
-        return renderAll();
+        renderAll();
+        return drawNewItem(target);
     }
     const err = buyReward(target, reward, st);
     if (err) return notice(err);
     await saveEditedState(st);
     updateInjection();
     const persName = ctx().name1 || 'тебе';
+    if (reward.kind === 'collect') drawNewItem(target);
     showEvent({ type: 'reward', who: target.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции, загляни на витрину` : reward.kind === 'gift' ? `«${reward.title}» — ${target.name} подарит это ${persName} в ближайшей сцене` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : `действует ${reward.turns} ${plural(reward.turns, 'ответ', 'ответа', 'ответов')}`}`, icon: reward.icon });
     renderAll();
 }
@@ -3787,6 +4041,12 @@ function setLanguage(lang) {
 // Ползунок громкости: двигаешь — громкость меняется сразу, отпустил — слышно, как звучит.
 function onPanelInput(e) {
     const el = e.target;
+    // ползунки со словами (частота ачивок): подпись меняется сразу
+    if (el && el.matches && el.matches('[data-iw-fmt="achRate"]')) {
+        const out = el.closest('label') && el.closest('label').querySelector('.iw-range-val');
+        if (out) out.textContent = ACH_RATE_NAMES[Number(el.value)] || '';
+        return;
+    }
     if (!el || !(el.matches('[data-iw-volume]') || el.dataset.iwSet === 'volume')) return;
     const v = Number(el.value) || 0;
     settings().volume = v;
@@ -4082,7 +4342,7 @@ function settingsHtml() {
 <div class="iw-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>Внутренний мир</b>
+      <b>📔 Внутренний мир</b>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
