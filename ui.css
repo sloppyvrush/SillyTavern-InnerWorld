@@ -18442,3 +18442,123 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-hist > .iw-hist-list { margin-top: 8px; }
 :is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-pixel, .iw-theme-dossier) .iw-hist > .iw-hist-sum { border-radius: 0; }
 .iw-hist > .iw-hist-sum .iw-ico { display: inline-block; overflow: visible; flex: none; }
+
+
+/* «Брак и дети»: пункт, поменянный руками, — с замочком; модель его не трогает, остальные меняются по истории */
+.iw-life-row { position: relative; }
+.iw-life-lock {
+    flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 4px; padding: 0;
+    border: 0; border-radius: 50%; background: none; color: var(--iw-label-color, var(--iw-ink)); cursor: pointer; opacity: .75;
+}
+.iw-life-lock .iw-ico { width: 13px; height: 13px; }
+.iw-life-lock:hover { opacity: 1; }
+.iw-life-locked .iw-life-sel { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 45%, transparent); }
+
+/* ===================== Витрина: панель вида, плитки, «нарисовать» ===================== */
+.iw-case-titleline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.iw-case-titleline .iw-ach-kind { font-size: 11px; }
+/* панель: «Столбиком / Сеткой» слева, «Нарисовать все сразу» справа */
+.iw-case-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 12px 0 4px; }
+.iw-case-views { display: inline-flex; padding: 3px; gap: 3px; border-radius: 12px; background: color-mix(in srgb, var(--iw-ink) 7%, transparent); }
+.iw-case-vbtn {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px;
+    border: 0; border-radius: 9px; background: none; cursor: pointer;
+    font: inherit; font-size: .86em; font-weight: 700; color: var(--iw-muted);
+}
+.iw-case-vbtn .iw-ico { width: 17px; height: 17px; flex: none; }
+.iw-case-views .iw-case-vbtn.on { background: var(--iw-block-bg, #fff); color: var(--iw-label-color, var(--iw-ink)); box-shadow: 0 1px 4px rgba(0, 0, 0, .18), inset 0 0 0 1px color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 35%, transparent); }
+.iw-case-vbtn.iw-case-drawall { color: var(--iw-ink); border: 1.5px dashed color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 55%, transparent); border-radius: 999px; }
+.iw-case-vbtn:disabled { opacity: .5; cursor: default; }
+.iw-theme-cyber .iw-case-views .iw-case-vbtn.on { background: #0c1019; }
+
+/* кнопка «нарисовать» у вещи — перо и слово */
+.iw-case-draw {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px; margin-top: 6px; width: fit-content;
+    padding: 4px 11px 4px 9px; border-radius: 999px; cursor: pointer;
+    font: inherit; font-size: .78em; font-weight: 700; line-height: 1.1; color: var(--rk, var(--iw-ink));
+    background: color-mix(in srgb, var(--rk, var(--iw-ink)) 12%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--rk, var(--iw-ink)) 55%, transparent);
+}
+.iw-case-draw .iw-ico { width: 13px; height: 13px; }
+.iw-case-draw:disabled { opacity: .5; cursor: default; }
+.iw-case-draw.iw-spin .iw-ico { animation: iw-spin 1.2s linear infinite; }
+.iw-case-pending { opacity: .8; }
+.iw-case-pending .iw-rw-kind { font-style: italic; }
+
+/* сетка: ровные плитки, ничего не наслаивается */
+.iw-b-showcase .iw-rewards.iw-case-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; margin-top: 10px; grid-auto-flow: row dense; }
+.iw-b-showcase .iw-case-grid > li.iw-case-cell { list-style: none; display: flex; flex-direction: column; min-width: 0; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+.iw-case-cell > .iw-case-draw { align-self: center; margin-top: 6px; }
+.iw-case-tile {
+    flex: 1; display: flex; flex-direction: column; min-width: 0;
+    border-radius: 12px; background: var(--rk-bg, color-mix(in srgb, var(--iw-ink) 5%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rk, var(--iw-ink)) 40%, transparent);
+}
+.iw-case-ach .iw-case-tile { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rk) 40%, transparent), inset 0 3px 0 var(--rk); }
+.iw-case-tile > .iw-case-tile-sum {
+    flex: 1; list-style: none; cursor: pointer; user-select: none;
+    display: grid; grid-template-rows: auto 1fr auto; justify-items: center; align-items: start; text-align: center; row-gap: 6px;
+    padding: 12px 10px 10px; min-height: 128px;
+}
+.iw-case-tile > .iw-case-tile-sum::-webkit-details-marker { display: none; }
+.iw-case-tile-sum .iw-case-ico { width: 46px; height: 42px; margin: 0; }
+.iw-case-tile-sum .iw-case-art { width: 52px; height: 52px; }
+.iw-case-tile-name {
+    font-weight: 700; font-size: .86em; line-height: 1.25; color: var(--rk, var(--iw-ink));
+    overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    text-decoration: none; letter-spacing: 0;
+}
+.iw-case-tile-sum .iw-case-stars { display: inline-flex; gap: 1px; color: var(--rk); }
+.iw-case-tile-sum .iw-case-stars .iw-ico { width: 12px; height: 12px; }
+.iw-case-tile-sum .iw-case-stars em { display: none; }
+/* раскрытая — во всю строку, шапка строкой: значок · название · звёзды */
+.iw-b-showcase .iw-case-grid > li.iw-case-cell:has(> .iw-case-tile[open]) { grid-column: 1 / -1; }
+.iw-case-tile[open] > .iw-case-tile-sum { display: flex; flex-direction: row; align-items: center; text-align: left; gap: 10px; min-height: 0; padding: 10px 12px 4px; }
+.iw-case-tile[open] .iw-case-tile-name { -webkit-line-clamp: unset; font-size: 1em; flex: 1; }
+.iw-case-tile[open] .iw-case-tile-sum .iw-case-stars { display: none; }
+.iw-case-tile-more { display: grid; gap: 8px; padding: 4px 12px 12px; }
+.iw-case-tile-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.iw-case-tile-tags .iw-case-stars { color: var(--rk); display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.iw-case-tile-tags .iw-case-stars em { font-style: normal; margin-left: 4px; font-size: .85em; }
+.iw-case-tile-desc { margin: 0; line-height: 1.4; }
+.iw-case-tile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: .82em; font-weight: 700; color: var(--rk, var(--iw-muted)); }
+.iw-case-tile-meta .iw-case-x { margin-left: auto; position: static; }
+.iw-case-grid .iw-rk-collect .iw-case-tile, .iw-case-grid .iw-rk-gift .iw-case-tile { --rk-bg: color-mix(in srgb, var(--rk) 12%, transparent); }
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-pixel, .iw-theme-dossier) :is(.iw-case-tile, .iw-case-draw, .iw-case-vbtn, .iw-case-views) { border-radius: 0; }
+/* в плитках и строках витрины волнистое подчёркивание темы не налезает на соседние строки */
+.iw-b-showcase .iw-case-tile .iw-rw-title, .iw-b-showcase .iw-case-tile-name { text-decoration: none !important; background: none !important; padding: 0 !important; }
+.iw-b-showcase .iw-case-row .iw-rw-title { line-height: 1.35; text-underline-offset: 3px; }
+@media (max-width: 760px) {
+    .iw-b-showcase .iw-rewards.iw-case-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+    .iw-case-tile > .iw-case-tile-sum { min-height: 116px; padding: 10px 6px 8px; }
+    .iw-case-vbtn { padding: 6px 10px; }
+}
+
+/* Нейроинтерфейс (и другие темы с уголками-рамкой): рамки вокруг значков наград ровные, без поворота */
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-dossier) .iw-case-ico::before,
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-dossier) .iw-case-ach:nth-child(odd) .iw-case-ico::before,
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-dossier) .iw-rg-collect .iw-case-row:nth-child(odd) .iw-case-ico::before,
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-dossier) .iw-case-cell .iw-case-ico::before,
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-dossier) .iw-ach-toast .iw-ach-medal::before { transform: none !important; inset: 0; }
+.iw-case-sectools { display: flex; justify-content: flex-end; margin: 8px 0 0; }
+.iw-rg-gift .iw-case-drawall { border-color: color-mix(in srgb, var(--rk, #d9487a) 55%, transparent); }
+
+/* Бортовой журнал: без тёмного затемнения низа портрета — на светлых аватарках оно выглядело как полукруглая тень */
+.iw-theme-logbook .iw-tab .iw-photo-wrap::after {
+    background: linear-gradient(#f2a93f, #f2a93f) 0 0 / 16px 2px no-repeat !important;
+}
+
+/* Настройки «Главное»: группы-карточки с заголовком, а не сплошной список */
+.iw-f-group {
+    margin: 12px 0 4px; padding: 10px 12px 6px; border-radius: 12px;
+    background: color-mix(in srgb, var(--iw-ink) 4%, transparent);
+    border: 1px solid color-mix(in srgb, var(--iw-ink) 14%, transparent);
+}
+.iw-f-group:first-child { margin-top: 4px; }
+.iw-f-group-head { display: grid; gap: 2px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px dashed color-mix(in srgb, var(--iw-ink) 22%, transparent); }
+.iw-f-group-head b { font-size: .86em; letter-spacing: .06em; text-transform: uppercase; color: var(--iw-label-color, var(--iw-ink)); }
+.iw-f-group-head small { font-size: .82em; color: var(--iw-muted); }
+.iw-f-group-body > .iw-f:first-child { margin-top: 0; }
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-pixel, .iw-theme-dossier) .iw-f-group { border-radius: 0; }
+.iw-theme-cyber .iw-f-group { background: rgba(62, 240, 255, .04); border-color: rgba(62, 240, 255, .25); }
+.iw-f-group-body { display: grid; gap: 12px; } .iw-f-group-body > .iw-f { margin: 0; }

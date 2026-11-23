@@ -44,7 +44,7 @@ test('JSON достаётся из ```json и размышлений', () => {
 test('эмоции и настроение — со строчной, без точки', () => {
     assert.equal(lowerWord('Усталость.'), 'усталость');
     assert.equal(lowerWord('НКВД'), 'НКВД');
-    const [m] = one({ name: 'Марк', mood: 'Встревожен', moodlets: [{ emotion: 'Досада', weight: 'light', turns: 9 }] });
+    const [m] = one({ name: 'Марк', mood: 'Встревожен', moodlets: [{ emotion: 'Досада', weight: 'light', turns: 9, why: 'тест' }] });
     assert.equal(m.mood, 'встревожен');
     assert.equal(m.moodlets[0].emotion, 'досада');
     assert.equal(m.moodlets[0].left, 2, 'мимолётная эмоция живёт не дольше 2 ответов');
@@ -52,9 +52,9 @@ test('эмоции и настроение — со строчной, без т�
 
 test('сила эмоции ограничивает срок', () => {
     const [m] = one({ name: 'Марк', moodlets: [
-        { emotion: 'горе', weight: 'deep', turns: 2 },
-        { emotion: 'тревога', weight: 'medium', turns: 40 },
-        { emotion: 'скука' },
+        { emotion: 'горе', weight: 'deep', turns: 2, why: 'тест' },
+        { emotion: 'тревога', weight: 'medium', turns: 40, why: 'тест' },
+        { emotion: 'скука', why: 'тест' },
     ] });
     assert.equal(m.moodlets[0].left, 6);
     assert.equal(m.moodlets[1].left, 6);
@@ -69,7 +69,7 @@ test('сила эмоции ограничивает срок', () => {
 test('ручная длительность эмоций', () => {
     const manual = { light: 1, medium: 3, deep: 30 };
     const list = parseAnalysis(JSON.stringify({ characters: [{ name: 'Марк', moodlets: [
-        { emotion: 'горе', weight: 'deep', turns: 6 }, { emotion: 'скука', weight: 'light', turns: 2 },
+        { emotion: 'горе', weight: 'deep', turns: 6, why: 'тест' }, { emotion: 'скука', weight: 'light', turns: 2, why: 'тест' },
     ] }] }), { manualTurns: manual });
     assert.deepEqual(list[0].moodlets.map(m => m.left), [30, 1]);
     const sys = buildSystemPrompt({ ...DEFAULT_SETTINGS, moodMode: 'manual' }, { userName: 'Ева', botName: 'Марк', trackNames: [] });
@@ -78,22 +78,25 @@ test('ручная длительность эмоций', () => {
 
 test('эмоции угасают сами и освежаются без дублей', () => {
     let { state } = applyAnalysis(emptyState(), one({ name: 'Марк', mood: 'весел', moodlets: [
-        { emotion: 'радость', weight: 'medium', turns: 3, tone: 'good' },
-        { emotion: 'смущение', weight: 'light', turns: 1 },
-        { emotion: 'влюблённость', weight: 'deep', turns: 15, tone: 'good' },
+        { emotion: 'радость', weight: 'medium', turns: 3, tone: 'good', why: 'тест' },
+        { emotion: 'смущение', weight: 'light', turns: 1, why: 'тест' },
+        { emotion: 'влюблённость', weight: 'deep', turns: 15, tone: 'good', why: 'тест' },
     ] }), all, {});
     state = decayState(state, 2);
     assert.deepEqual(state.characters['Марк'].moodlets.map(m => [m.emotion, m.left]), [['влюблённость', 13], ['радость', 1]]);
     // модель вернула ту же радость снова и сняла влюблённость
-    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'рад', moodlets: [{ emotion: 'Радость', weight: 'medium', turns: 4 }], ended: ['влюблённость'] }), all, {}));
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'рад', moodlets: [{ emotion: 'Радость', weight: 'medium', turns: 4, why: 'тест' }], ended: ['влюблённость'] }), all, {}));
     assert.deepEqual(state.characters['Марк'].moodlets.map(m => [m.emotion, m.left]), [['радость', 4]]);
     // без новых эмоций старые остаются как были
     ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'рад' }), all, {}));
     assert.equal(state.characters['Марк'].moodlets.length, 1);
     assert.equal(state.characters['Марк'].mood, 'рад');
     // состояние без эмоции за ним: эмоция добавляется сама
-    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'сосредоточен' }), all, {}));
-    assert.ok(state.characters['Марк'].moodlets.some(m => m.emotion === 'сосредоточенность' && m.face === 'focus'));
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'сосредоточен', mood_why: 'разбирает донесения' }), all, {}));
+    assert.ok(state.characters['Марк'].moodlets.some(m => m.emotion === 'сосредоточенность' && m.face === 'focus' && m.why === 'разбирает донесения'));
+    // без объяснения пустую эмоцию не заводим
+    ({ state } = applyAnalysis(state, one({ name: 'Марк', mood: 'напуган' }), all, {}));
+    assert.ok(!state.characters['Марк'].moodlets.some(m => m.face === 'fear' && !m.why && !m.feel));
 });
 
 test('черты: при знакомстве все исходные, потом одно изменение и пауза', () => {
@@ -197,7 +200,7 @@ test('выключенные блоки не просятся у модели', 
 test('подсказка основной модели без мимолётных эмоций', () => {
     const { state } = applyAnalysis(emptyState(), one({
         name: 'Марк', mood: 'напряжён',
-        moodlets: [{ emotion: 'тревога', why: 'письмо', weight: 'medium' }, { emotion: 'скука', weight: 'light' }, { emotion: 'горе', weight: 'deep', why: 'смерть отца' }],
+        moodlets: [{ emotion: 'тревога', why: 'письмо', weight: 'medium' }, { emotion: 'скука', weight: 'light', why: 'тест' }, { emotion: 'горе', weight: 'deep', why: 'смерть отца' }],
         wants: [{ text: 'Уехать' }], fears: [{ text: 'Одиночества' }],
         impression: { label: 'Интерес', score: 1, now: 'доверяет' },
     }), all, {});
@@ -482,7 +485,7 @@ test('у каждой эмоции своё лицо и цвет', () => {
     assert.equal(guessFace('одиночество'), 'melancholy');
     assert.equal(guessFace('сосредоточен'), 'focus');
     assert.equal(guessFace('что-то странное', 'good'), 'joy');
-    const st = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'встревожен', moodlets: [{ emotion: 'ревность', why: 'она ушла с другим' }, { emotion: 'нежность', face: 'love' }] }), all).state;
+    const st = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'встревожен', moodlets: [{ emotion: 'ревность', why: 'она ушла с другим' }, { emotion: 'нежность', face: 'love', why: 'тест' }] }), all).state;
     const ml = st.characters['Роберт'].moodlets;
     assert.equal(ml[0].face, 'envy');
     assert.equal(ml[1].face, 'love');
@@ -493,27 +496,27 @@ test('у каждой эмоции своё лицо и цвет', () => {
 
 test('общее состояние: цвет из эмоций, смешанное — два цвета', () => {
     assert.deepEqual(moodFaces({ mood: 'встревожен', moodlets: [] }), ['anxious']);
-    assert.deepEqual(moodFaces({ mood: 'странно', moodlets: [{ emotion: 'горе', weight: 'deep', left: 5 }, { emotion: 'радость', weight: 'light', left: 1 }] }), ['sad']);
+    assert.deepEqual(moodFaces({ mood: 'странно', moodlets: [{ emotion: 'горе', weight: 'deep', left: 5, why: 'тест' }, { emotion: 'радость', weight: 'light', left: 1, why: 'тест' }] }), ['sad']);
     // равные по очкам настроения разного цвета — смешанное; слово модели лицо не перебивает
-    assert.deepEqual(moodFaces({ mood: 'растерян', face: 'surprise', moodlets: [{ emotion: 'нежность', weight: 'medium', left: 3 }, { emotion: 'тревога', weight: 'medium', left: 2 }] }), ['love', 'anxious']);
+    assert.deepEqual(moodFaces({ mood: 'растерян', face: 'surprise', moodlets: [{ emotion: 'нежность', weight: 'medium', left: 3, why: 'тест' }, { emotion: 'тревога', weight: 'medium', left: 2, why: 'тест' }] }), ['love', 'anxious']);
     assert.deepEqual(moodFaces({}), []);
 });
 
 test('главное настроение, как в «Симс»: очки, радость-подпитка, сила и «держится при равенстве»', () => {
     // грусть, тоска и обида складываются в одно настроение и перевешивают одну злость
-    let d = dominantMood([{ emotion: 'грусть', weight: 'medium' }, { emotion: 'тоска', weight: 'light' }, { emotion: 'злость', weight: 'medium' }]);
+    let d = dominantMood([{ emotion: 'грусть', weight: 'medium', why: 'тест' }, { emotion: 'тоска', weight: 'light', why: 'тест' }, { emotion: 'злость', weight: 'medium', why: 'тест' }]);
     assert.equal(d.key, 'sad');
     assert.equal(d.score, 3);
     assert.equal(d.level, 1);
     // радость подпитывает уверенность (у которой есть своя средняя эмоция) — получается «очень уверен»
-    d = dominantMood([{ emotion: 'радость', weight: 'medium' }, { emotion: 'гордость', weight: 'light' }, { emotion: 'уверенность', weight: 'medium' }, { emotion: 'облегчение', weight: 'light' }]);
+    d = dominantMood([{ emotion: 'радость', weight: 'medium', why: 'тест' }, { emotion: 'гордость', weight: 'light', why: 'тест' }, { emotion: 'уверенность', weight: 'medium', why: 'тест' }, { emotion: 'облегчение', weight: 'light', why: 'тест' }]);
     assert.equal(d.key, 'confident');
     assert.equal(d.level, 2);
     // слабая искорка флирта рядом с радостью радость не перебивает
-    d = dominantMood([{ emotion: 'радость', weight: 'medium' }, { emotion: 'кокетство', weight: 'light' }]);
+    d = dominantMood([{ emotion: 'радость', weight: 'medium', why: 'тест' }, { emotion: 'кокетство', weight: 'light', why: 'тест' }]);
     assert.equal(d.key, 'happy');
     // при равенстве держится прошлое настроение
-    const two = [{ emotion: 'злость', weight: 'medium', left: 5 }, { emotion: 'страх', weight: 'medium', left: 3 }];
+    const two = [{ emotion: 'злость', weight: 'medium', left: 5, why: 'тест' }, { emotion: 'страх', weight: 'medium', left: 3, why: 'тест' }];
     assert.equal(dominantMood(two).key, 'angry');
     assert.equal(dominantMood(two, 'scared').key, 'scared');
     // сильный стыд перекрывает несколько средних радостей — под ним не «счастлив»
@@ -522,17 +525,17 @@ test('главное настроение, как в «Симс»: очки, р�
     // а сильная радость рядом с лёгким смущением остаётся радостью
     assert.equal(dominantMood([{ face: 'joy', weight: 'deep', left: 4 }, { face: 'shy', weight: 'light', left: 3 }]).key, 'happy');
     // то, что вот-вот пройдёт, держит настроение слабее
-    assert.equal(dominantMood([{ emotion: 'злость', weight: 'medium', left: 1 }, { emotion: 'страх', weight: 'medium', left: 4 }]).key, 'scared');
+    assert.equal(dominantMood([{ emotion: 'злость', weight: 'medium', left: 1, why: 'тест' }, { emotion: 'страх', weight: 'medium', left: 4, why: 'тест' }]).key, 'scared');
     // сила: одна сильная — «очень», две сильные — предел
-    assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep' }]).level, 2);
-    assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep' }, { emotion: 'ужас', weight: 'deep' }]).level, 3);
+    assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep', why: 'тест' }]).level, 2);
+    assert.equal(dominantMood([{ emotion: 'страх', weight: 'deep', why: 'тест' }, { emotion: 'ужас', weight: 'deep', why: 'тест' }]).level, 3);
     // слова: на первой силе — слово модели, если оно про то же настроение; дальше — общие слова, по роду
-    const c = settleMood({ g: 'f', mood: 'насторожена', face: 'suspicious', moodlets: [{ emotion: 'тревога', weight: 'medium', left: 3 }] });
+    const c = settleMood({ g: 'f', mood: 'насторожена', face: 'suspicious', moodlets: [{ emotion: 'тревога', weight: 'medium', left: 3, why: 'тест' }] });
     assert.equal(c.mood, 'насторожена');
-    c.moodlets.push({ emotion: 'беспокойство', weight: 'deep', left: 6 });
+    c.moodlets.push({ emotion: 'беспокойство', weight: 'deep', left: 6, why: 'тест' });
     settleMood(c);
     assert.equal(c.mood, 'на взводе');
-    c.moodlets = [{ emotion: 'страх', weight: 'deep', left: 2 }, { emotion: 'паника', weight: 'deep', left: 2 }];
+    c.moodlets = [{ emotion: 'страх', weight: 'deep', left: 2, why: 'тест' }, { emotion: 'паника', weight: 'deep', left: 2, why: 'тест' }];
     settleMood(c);
     assert.equal(c.mood, 'в ужасе');
     assert.equal(c.face, 'fear');
@@ -786,7 +789,7 @@ test('совместимость: первая не меняется, «сейч
 });
 
 test('блоки сворачиваются: у свёрнутого только заголовок', () => {
-    const st = applyAnalysis(emptyState(), one({ name: 'Марк', g: 'm', mood: 'насторожен', moodlets: [{ emotion: 'тревога', weight: 'medium', tone: 'bad' }], wants: [{ text: 'найти убийцу' }], turn_ons: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }), all, {}).state;
+    const st = applyAnalysis(emptyState(), one({ name: 'Марк', g: 'm', mood: 'насторожен', moodlets: [{ emotion: 'тревога', weight: 'medium', tone: 'bad', why: 'тест' }], wants: [{ text: 'найти убийцу' }], turn_ons: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] }), all, {}).state;
     const s2 = Object.assign({}, DEFAULT_SETTINGS, { collapsed: { mood: true, wants: true } });
     const h = renderPanel({ state: st, settings: s2, theme: 'diary', view: 'main:Марк', mains: ['Марк'], npcKeys: [] });
     assert.ok(h.includes('iw-b-mood iw-collapsed') && h.includes('iw-b-wants iw-collapsed') && !h.includes('iw-fold-sum'));
@@ -915,7 +918,7 @@ test('НПС понаслышке: без настроения, только к�
     const mains = ['Роберт'];
     let { state } = applyAnalysis(emptyState(), one({ name: 'Роберт', mood: 'устал', met: false }), all, { mains, persona: true, userName: 'Эвелин' });
     assert.equal(state.characters['Роберт'].met, undefined);
-    ({ state } = applyAnalysis(state, one({ name: 'Хильда', g: 'f', who: 'дочь Роберта', met: false, mood: 'грустна', moodlets: [{ emotion: 'грусть', weight: 'deep' }], heard: [{ fact: 'умерла в детстве', from: 'рассказал Роберт' }] }), all, { mains, persona: true, userName: 'Эвелин' }));
+    ({ state } = applyAnalysis(state, one({ name: 'Хильда', g: 'f', who: 'дочь Роберта', met: false, mood: 'грустна', moodlets: [{ emotion: 'грусть', weight: 'deep', why: 'тест' }], heard: [{ fact: 'умерла в детстве', from: 'рассказал Роберт' }] }), all, { mains, persona: true, userName: 'Эвелин' }));
     const h = state.characters['Хильда'];
     assert.equal(h.met, false);
     assert.equal(h.mood, undefined);
@@ -943,7 +946,7 @@ test('НПС понаслышке: без настроения, только к�
 
 test('нет в живых: серая карточка, без настроения, главного и персону не трогаем', () => {
     const mains = ['Роберт'];
-    let { state } = applyAnalysis(emptyState(), one({ name: 'Сорель', mood: 'весел', moodlets: [{ emotion: 'радость' }] }), all, { mains });
+    let { state } = applyAnalysis(emptyState(), one({ name: 'Сорель', mood: 'весел', moodlets: [{ emotion: 'радость', why: 'тест' }] }), all, { mains });
     ({ state } = applyAnalysis(state, one({ name: 'Сорель', dead: true, heard: [{ fact: 'погиб на войне', from: 'Роберт' }] }), all, { mains }));
     const c = state.characters['Сорель'];
     assert.equal(c.dead, true);
@@ -1434,5 +1437,29 @@ test('этапы мечты не дублируются, даже перефра
         { title: 'Сохранить империю', steps: [{ text: 'Найти способ укрепить истончающиеся Договоры', done: false }, { text: 'Заключить брак', done: false }] }, 5);
     assert.equal(d.steps.length, 2);
     assert.ok(d.steps[0].done);
+});
+test('брак и дети: закреплён только пункт, поменянный руками, остальные меняются по истории', () => {
+    const one = C2.parseAnalysis(JSON.stringify({ characters: [{ name: 'Марк', mood: 'спокоен', life: { marry: 'yes', kids: 'love', own: 'want', why: 'хочет семью' } }] }));
+    let { state } = C2.applyAnalysis(C2.emptyState(), one, C2.DEFAULT_SETTINGS.modules, { mains: ['Марк'] });
+    const k = state.order[0];
+    state.characters[k].life.marry = 'no';
+    state.characters[k].lifeLock = { marry: true };
+    const two = C2.parseAnalysis(JSON.stringify({ characters: [{ name: 'Марк', mood: 'спокоен', life: { marry: 'yes', kids: 'dislike', own: 'no', changed: true, why: 'после ссоры' } }] }));
+    ({ state } = C2.applyAnalysis(state, two, C2.DEFAULT_SETTINGS.modules, { mains: ['Марк'] }));
+    assert.equal(state.characters[k].life.marry, 'no');
+    assert.equal(state.characters[k].life.kids, 'dislike');
+    assert.equal(state.characters[k].life.own, 'no');
+});
+test('лавка: за раз один подарок, одно событие и один эффект', () => {
+    const st = { purse: 500, order: ['m'], characters: { m: { name: 'Марк', buffs: [] } } };
+    const c = st.characters.m;
+    assert.equal(C2.buyReward(c, { id: 'g1', kind: 'gift', title: 'Кольцо', cost: 10 }, st), null);
+    assert.ok(/вручит/.test(C2.buyReward(c, { id: 'g2', kind: 'gift', title: 'Брошь', cost: 10 }, st)));
+    assert.equal(C2.buyReward(c, { id: 'e1', kind: 'event', title: 'Гроза', cost: 10 }, st), null);
+    assert.ok(C2.buyReward(c, { id: 'e2', kind: 'event', title: 'Бал', cost: 10 }, st));
+    assert.equal(C2.buyReward(c, { id: 'b1', kind: 'buff', title: 'Смелость', cost: 10, turns: 3 }, st), null);
+    assert.ok(C2.buyReward(c, { id: 'b2', kind: 'buff', title: 'Удача', cost: 10, turns: 3 }, st));
+    assert.equal(C2.buyReward(c, { id: 'c1', kind: 'collect', title: 'Перо', cost: 10 }, st), null);
+    assert.equal(c.buffs.length, 3);
 });
 console.log(`итого: ${passed} проверок`);

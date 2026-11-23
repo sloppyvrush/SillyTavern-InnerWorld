@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { dedupeSteps, settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName } from './core.js';
+import { buyBlock, dedupeSteps, settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -496,13 +496,14 @@ function renderLife(c) {
     const sel = (f, opts, cap) => {
         const cur = f === 'count' ? String(life.count || '') : (life[f] || '');
         const list = Object.entries(opts).map(([v, t]) => `<option value="${esc(v)}"${String(v) === cur ? ' selected' : ''}>${esc(t)}</option>`).join('');
-        return `<label class="iw-life-row"><span class="iw-life-cap">${esc(cap)}</span><select class="iw-life-sel${cur ? '' : ' iw-unk'}" data-iw-life="${f}"><option value=""${cur ? '' : ' selected'}>не ясно</option>${list}</select></label>`;
+        const locked = !!(c.lifeLock && c.lifeLock[f]) && !c.lifeSet;
+        return `<label class="iw-life-row${locked ? ' iw-life-locked' : ''}"><span class="iw-life-cap">${esc(cap)}</span><select class="iw-life-sel${cur ? '' : ' iw-unk'}" data-iw-life="${f}"><option value=""${cur ? '' : ' selected'}>не ясно</option>${list}</select>${locked ? `<button type="button" class="iw-life-lock" data-iw-life-unlock="${f}" title="Ты поменяла это сама — модель этот пункт не трогает. Нажми, чтобы снова отдать его истории" aria-label="Снять замок">${icon('lock')}</button>` : ''}</label>`;
     };
     const counts = Object.fromEntries(COUNT_WORDS.slice(1).map((w, i) => [String(i + 1), w]));
     const ownOff = life.own === 'no' || life.own === 'has';
     const log = (c.lifeLog || []).slice().reverse();
     const pinned = !!c.lifeSet;
-    const pin = `<button type="button" class="iw-life-pin${pinned ? ' on' : ''}" data-iw-life-pin="1" aria-pressed="${pinned}" title="${pinned ? 'Закреплено: модель не меняет эти взгляды. Нажми, чтобы открепить' : 'Закрепить: модель не будет менять эти взгляды'}" aria-label="${pinned ? 'Открепить' : 'Закрепить'}">${icon('pin')}</button>`;
+    const pin = `<button type="button" class="iw-life-pin${pinned ? ' on' : ''}" data-iw-life-pin="1" aria-pressed="${pinned}" title="${pinned ? 'Весь блок закреплён: модель не меняет ни один пункт. Нажми, чтобы открепить' : 'Закрепить весь блок: модель не будет менять ни один пункт. Отдельный пункт закрепляется сам, когда меняешь его руками'}" aria-label="${pinned ? 'Открепить' : 'Закрепить'}">${icon('pin')}</button>`;
     return `
     <section class="iw-block iw-b-life">
       ${blockHead('life', 'Брак и дети', pin)}
@@ -854,7 +855,7 @@ function renderPersona(c, L, opts = {}) {
     }
     const z = ZODIAC[c.zodiac];
     // дату рождения можно вписать или поправить руками — она же попадает в календарь и на карточку
-    const bornBtn = opts.key ? `<button type="button" class="iw-born-edit" data-iw-born="${esc(opts.key)}" title="${c.born ? 'Поправить дату рождения' : 'Вписать дату рождения'}">${icon('feather')}<span>${c.born ? 'поправить' : 'вписать дату'}</span></button>` : '';
+    const bornBtn = opts.key ? `<button type="button" class="iw-born-edit" data-iw-born="${esc(opts.key)}" title="${c.born ? 'Поправить дату рождения или знак зодиака' : 'Вписать дату рождения или выбрать знак зодиака'}">${icon('feather')}<span>${c.born ? 'поправить' : 'вписать дату'}</span></button>` : '';
     {
         const born = c.born ? `${gw(g, 'родился', 'родилась', 'день рождения:')} ${esc(bornText(c.born))}` : 'дата рождения не указана';
         cards.push(`
@@ -955,10 +956,10 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who));
     const pts = purse ?? (c.points || 0);
     const row = r => `
-      <li class="iw-reward iw-rk-${r.kind}${pts < r.cost ? ' locked' : ''}">
+      <li class="iw-reward iw-rk-${r.kind}${pts < r.cost || buyBlock(c, r.kind) ? ' locked' : ''}">
         <span class="iw-rw-ico iw-rw-big">${icon(r.icon || 'gift')}</span>
         <span class="iw-rw-body"><b class="iw-rw-title">${ce(r.title)}</b>${r.forUser ? `<span class="iw-rw-for">для ${esc(personaName || 'тебя')}</span>` : ''}<span class="iw-rw-desc">${ce(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
-        <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost ? ' disabled' : ''} title="${pts < r.cost ? 'Не хватает очков' : 'Купить'}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
+        <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost || buyBlock(c, r.kind) ? ' disabled' : ''} title="${esc(buyBlock(c, r.kind) || (pts < r.cost ? 'Не хватает очков' : 'Купить'))}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
       </li>`;
     // купленное уходит с полки: действующее висит листочком, памятная вещь — уже на витрине
     const active = new Set((c.buffs || []).map(b => b.id));
@@ -973,7 +974,7 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
             ? `<div class="iw-gift-to" role="group" aria-label="Кому купить"><span class="iw-muted">Кому:</span><button type="button" class="iw-gift-opt${forPersona ? '' : ' on'}" data-iw-giftto="owner" aria-pressed="${!forPersona}">${esc(c.name)}</button><button type="button" class="iw-gift-opt${forPersona ? ' on' : ''}" data-iw-giftto="persona" aria-pressed="${forPersona}">${esc(persona.name)}</button></div>`
             : '';
         return `
-    <div class="iw-rw-group iw-rg-${g.kind}">
+    <div class="iw-rw-group iw-rg-${g.kind}${buyBlock(c, g.kind) ? ' iw-rg-wait' : ''}">
       <div class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(g.icon)}${g.kind === 'gift' ? `Подарок ${esc(personaName ? `для ${personaName}` : 'тебе')}` : g.name}</span><span class="iw-rw-cat-hint">${g.kind === 'gift' ? `${esc(c.name)} ${gw(genderOf(c.g, c.name, c.who), "сам", "сама", "сам")} подарит это в ближайшей сцене — как умеет и как сейчас относится` : (own && g.kind === 'collect' ? `вещи для ${esc(c.name)}, лягут в ${gw(genderOf(c.g, c.name, c.who), 'его', 'её', 'его')} коллекцию` : g.hint)}</span></div>${gift}
       <ul class="iw-list iw-rewards">${list.map(row).join('')}</ul>
     </div>`;
@@ -1007,51 +1008,88 @@ export function achIcon(name) {
 }
 // Витрина: два сворачиваемых раздела — достижения (внутри по золоту, серебру, бронзе) и памятные вещи.
 // Что открыто, а что свёрнуто — запоминается. Памятные вещи могут быть нарисованы моделью (настройка «Рисовать…»).
-const CASE_FOLD_DEFAULT = { ach: true, items: true, gold: true, silver: false, bronze: false };
-function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = true, artBusy = '' }) {
-    const items = collectionOf(state);
+const CASE_FOLD_DEFAULT = { ach: true, items: true, gifts: true, gold: true, silver: false, bronze: false };
+// «Нарисовать» — перо и подпись словом, чтобы было понятно без подсказки
+function drawBtn(x, art, artBusy) {
+    if (!art) return '';
+    const id = `${x.key}:${x.pending ? 'b' + x.bi : x.i}`;
+    const busyHere = artBusy === id;
+    const label = busyHere ? 'рисую…' : (x.art ? 'перерисовать' : 'нарисовать');
+    return `<button type="button" class="iw-case-draw${busyHere ? ' iw-spin' : ''}" data-iw-art="${esc(id)}"${artBusy ? ' disabled' : ''} title="${x.art ? 'Перерисовать картинку' : 'Нарисовать картинку по смыслу вещи и истории'}">${icon('feather')}<span>${label}</span></button>`;
+}
+function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = true, artBusy = '', view = 'list' }) {
+    const all = collectionOf(state);
+    // подарки персонажа (и те, что ещё ждут вручения) — отдельной розовой полкой
+    const pending = [];
+    for (const [k, c] of Object.entries((state && state.characters) || {})) ((c && c.buffs) || []).forEach((b, bi) => { if (b && b.kind === 'gift') pending.push({ title: b.title, icon: b.icon, desc: b.desc || '', owner: c.name, key: k, pending: true, bi, art: b.art || '' }); });
+    const gifts = all.filter(x => x.gift).concat(pending);
+    const items = all.filter(x => !x.gift);
+    const grid = view === 'grid';
     const isOpen = k => (fold && fold[k] !== undefined ? !!fold[k] : CASE_FOLD_DEFAULT[k]);
     const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
-    const stars = t => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}<em>${esc(TIER_NAMES_RU[t] || '')}</em></span>`;
-    const itemRow = x => {
-        const busyHere = artBusy === `${x.key}:${x.i}`;
-        const pic = art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : `<span class="iw-case-ico">${pictIcon(x.icon || 'gift')}</span>`;
-        const draw = art ? `<button type="button" class="iw-mini iw-case-draw${busyHere ? ' iw-spin' : ''}" data-iw-art="${esc(x.key)}:${x.i}"${artBusy ? ' disabled' : ''} title="${x.art ? 'Перерисовать картинку' : 'Нарисовать картинку по смыслу вещи и истории'}" aria-label="${x.art ? 'Перерисовать' : 'Нарисовать'}">${icon(busyHere ? 'sparkle' : 'feather')}</button>` : '';
-        return `
-      <li class="iw-reward iw-rk-collect iw-case-row${art && x.art ? ' iw-has-art' : ''}">
-        ${pic}
-        <span class="iw-rw-body"><b class="iw-rw-title">${ce(x.title)}</b>${x.desc ? `<span class="iw-rw-desc">${ce(x.desc)}</span>` : ''}<span class="iw-rw-kind">в коллекции: ${esc(x.owner)}</span></span>
-        ${draw}
-      </li>`;
-    };
+    const stars = (t, word = true) => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}${word ? `<em>${esc(TIER_NAMES_RU[t] || '')}</em>` : ''}</span>`;
+    const kindTag = a => (a.kind && ACH_KINDS[a.kind] ? `<span class="iw-ach-kind iw-ach-${a.kind}">${esc(ACH_KINDS[a.kind])}</span>` : '');
+    const pic = x => (art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : `<span class="iw-case-ico">${pictIcon(x.icon || 'gift')}</span>`);
+    const achDel = a => `<button type="button" class="iw-mini iw-case-x" data-iw-achdel="${esc(a.id)}" title="Убрать с витрины" aria-label="Убрать с витрины">${icon('x')}</button>`;
+    const achMeta = a => `${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}`;
+    const owner = x => (x.pending ? `${esc(x.owner)} подарит в ближайшей сцене` : (x.gift ? `подарок · ${esc(x.desc && /^Подарок от ([^:]+)/.test(x.desc) ? x.desc.match(/^Подарок от ([^:]+)/)[1] : x.owner)}` : `в коллекции: ${esc(x.owner)}`));
+    const itemDesc = x => (x.gift && x.desc ? x.desc.replace(/^Подарок от [^:]+:?\s*/, '') : x.desc);
+    // столбиком: тег — сразу у названия
     const achRow = a => `
       <li class="iw-reward iw-case-row iw-case-ach iw-tier-${a.tier}${sel === `a:${a.id}` ? ' on' : ''}">
         <span class="iw-case-ico">${achIcon(a.icon)}</span>
-        <span class="iw-rw-body"><b class="iw-rw-title">${ce(a.title)}</b>${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-rw-kind">${stars(a.tier)}${a.kind && ACH_KINDS[a.kind] ? `<span class="iw-ach-kind iw-ach-${a.kind}">${esc(ACH_KINDS[a.kind])}</span>` : ''}${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}</span></span>
-        <button type="button" class="iw-mini iw-case-x" data-iw-achdel="${esc(a.id)}" title="Убрать с витрины" aria-label="Убрать с витрины">${icon('x')}</button>
+        <span class="iw-rw-body"><span class="iw-case-titleline"><b class="iw-rw-title">${ce(a.title)}</b>${kindTag(a)}</span>${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-rw-kind">${stars(a.tier)}${achMeta(a)}</span></span>
+        ${achDel(a)}
       </li>`;
+    const itemRow = (x, cls) => `
+      <li class="iw-reward ${cls} iw-case-row${art && x.art ? ' iw-has-art' : ''}${x.pending ? ' iw-case-pending' : ''}">
+        ${pic(x)}
+        <span class="iw-rw-body"><b class="iw-rw-title">${ce(x.title)}</b>${itemDesc(x) ? `<span class="iw-rw-desc">${ce(itemDesc(x))}</span>` : ''}<span class="iw-rw-kind">${owner(x)}</span>${drawBtn(x, art, artBusy)}</span>
+      </li>`;
+    // сеткой: значок, название и ранг; нажала — плитка раскрывается во всю строку
+    const achTile = a => `
+      <li class="iw-case-cell iw-case-ach iw-tier-${a.tier}"><details class="iw-case-tile" data-iw-tile="a:${esc(a.id)}"${sel === `a:${a.id}` ? ' open' : ''}>
+        <summary class="iw-case-tile-sum"><span class="iw-case-ico">${achIcon(a.icon)}</span><span class="iw-case-tile-name">${ce(a.title)}</span>${stars(a.tier, false)}</summary>
+        <div class="iw-case-tile-more"><div class="iw-case-tile-tags">${stars(a.tier)}${kindTag(a)}</div>${a.desc ? `<p class="iw-case-tile-desc">${ce(a.desc)}</p>` : ''}<div class="iw-case-tile-meta">${achMeta(a)}${achDel(a)}</div></div>
+      </details></li>`;
+    const itemTile = (x, cls) => `
+      <li class="iw-case-cell ${cls}${x.pending ? ' iw-case-pending' : ''}"><details class="iw-case-tile" data-iw-tile="i:${esc(x.key)}:${x.i ?? 'p'}:${esc(x.title)}"${sel === `i:${x.key}:${x.i ?? 'p'}:${x.title}` ? ' open' : ''}>
+        <summary class="iw-case-tile-sum">${pic(x)}<span class="iw-case-tile-name">${ce(x.title)}</span></summary>
+        <div class="iw-case-tile-more">${itemDesc(x) ? `<p class="iw-case-tile-desc">${ce(itemDesc(x))}</p>` : ''}<div class="iw-case-tile-meta"><span>${owner(x)}</span></div></div>
+      </details>${drawBtn(x, art, artBusy)}</li>`;
+    const ul = (rows, f, cls = '') => `<ul class="iw-list iw-rewards${grid ? ' iw-case-grid' : ''}">${rows.map(x => f(x, cls)).join('')}</ul>`;
     const tiers = ['gold', 'silver', 'bronze'].map(tier => {
         const rows = list.filter(a => (a.tier || 'bronze') === tier);
         if (!rows.length) return '';
         return `
     <details class="iw-case-tier iw-tier-${tier}" data-iw-case="${tier}"${isOpen(tier) ? ' open' : ''}>
       <summary class="iw-case-tier-head">${stars(tier)}<span class="iw-case-n">${rows.length}</span><span class="iw-case-pm" aria-hidden="true">${icon('plus')}${icon('minus')}</span></summary>
-      <ul class="iw-list iw-rewards">${rows.map(achRow).join('')}</ul>
+      ${ul(rows, grid ? achTile : achRow)}
     </details>`;
     }).join('');
-    const sec = (k, ico, name, hint, body) => `
-  <details class="iw-rw-group iw-case-sec iw-rg-${k === 'ach' ? 'ach' : 'collect'}" data-iw-case="${k}"${isOpen(k) ? ' open' : ''}>
+    const sec = (k, cls, ico, name, hint, body) => `
+  <details class="iw-rw-group iw-case-sec ${cls}" data-iw-case="${k}"${isOpen(k) ? ' open' : ''}>
     <summary class="iw-rw-cat"><span class="iw-rw-cat-name">${icon(ico)}${name}</span><span class="iw-rw-cat-hint">${hint}</span><span class="iw-case-pm" aria-hidden="true">${icon('plus')}${icon('minus')}</span></summary>
     ${body}
   </details>`;
+    // «Нарисовать все сразу» — у своей полки: памятные вещи и подарки рисуются отдельно
+    const drawAll = (which, rows) => (art && rows.length ? `<div class="iw-case-sectools"><button type="button" class="iw-case-vbtn iw-case-drawall" data-iw-art-all="${which}"${artBusy ? ' disabled' : ''} title="Нарисовать картинки всем ${which === 'gifts' ? 'подаркам' : 'памятным вещам'} без картинки (если все уже нарисованы — перерисовать все). По одной короткой просьбе к модели на каждую">${icon('feather')}<span>${artBusy ? 'рисую…' : 'Нарисовать все сразу'}</span></button></div>` : '');
     const doodles = '<div class="iw-cal-doodles iw-case-doodles" aria-hidden="true"><i class="iw-dd iw-dd-a"></i><i class="iw-dd iw-dd-b"></i><i class="iw-dd iw-dd-c"></i></div>';
+    const toolbar = `<div class="iw-case-bar">
+    <div class="iw-case-views" role="group" aria-label="Как показывать витрину">
+      <button type="button" class="iw-case-vbtn${grid ? '' : ' on'}" data-iw-caseview="list" aria-pressed="${!grid}" title="Столбиком: всё сразу подробно">${icon('list')}<span>Столбиком</span></button>
+      <button type="button" class="iw-case-vbtn${grid ? ' on' : ''}" data-iw-caseview="grid" aria-pressed="${grid}" title="Сеткой: значок, название и ранг; нажми на плитку, чтобы раскрыть">${icon('grid')}<span>Сеткой</span></button>
+    </div>
+  </div>`;
     return `
 <button type="button" class="iw-back" data-iw-view="back">${icon('back')}<span>к дневнику</span></button>
-<section class="iw-block iw-b-shop iw-b-showcase">
+<section class="iw-block iw-b-shop iw-b-showcase${grid ? ' iw-case-gridview' : ''}">
   ${blockHead('rewards', 'Витрина', `<span class="iw-points iw-case-count" title="Достижений: ${list.length}">${icon('trophy')}<b>${list.length}</b></span>`)}
-  <div class="iw-muted">Памятные вещи из лавки и достижения истории. Достижения появляются сами, когда случается что-то по-настоящему важное.</div>
-  ${sec('ach', 'trophy', 'Достижения', list.length ? `получено: ${list.length}` : 'появятся по ходу истории', list.length ? tiers : '<p class="iw-case-empty-text">Пока пусто. Признание, спасение, предательство, большая победа — и здесь появится первая запись.</p>')}
-  ${sec('items', 'gem', 'Памятные вещи', items.length ? `${items.length} ${plural(items.length, 'вещь', 'вещи', 'вещей')}` : 'покупаются в лавке «в коллекцию»', items.length ? `<ul class="iw-list iw-rewards">${items.map(itemRow).join('')}</ul>` : '<p class="iw-case-empty-text">Пока пусто. Загляни в лавку — там есть вещицы «в коллекцию».</p>')}
+  <div class="iw-muted">Памятные вещи, подарки и достижения истории. Достижения появляются сами, когда случается что-то по-настоящему важное.</div>
+  ${toolbar}
+  ${sec('ach', 'iw-rg-ach', 'trophy', 'Достижения', list.length ? `получено: ${list.length}` : 'появятся по ходу истории', list.length ? tiers : '<p class="iw-case-empty-text">Пока пусто. Признание, спасение, предательство, большая победа — и здесь появится первая запись.</p>')}
+  ${sec('items', 'iw-rg-collect', 'gem', 'Памятные вещи', items.length ? `${items.length} ${plural(items.length, 'вещь', 'вещи', 'вещей')}` : 'покупаются в лавке «в коллекцию»', items.length ? drawAll('items', items) + ul(items, grid ? itemTile : itemRow, 'iw-rk-collect') : '<p class="iw-case-empty-text">Пока пусто. Загляни в лавку — там есть вещицы «в коллекцию».</p>')}
+  ${sec('gifts', 'iw-rg-gift', 'gift', 'Подарки', gifts.length ? `${gifts.length} ${plural(gifts.length, 'подарок', 'подарка', 'подарков')}` : 'покупаются в лавке персонажа «в подарок»', gifts.length ? drawAll('gifts', gifts) + ul(gifts, grid ? itemTile : itemRow, 'iw-rk-gift') : '<p class="iw-case-empty-text">Пока пусто. В лавке персонажа можно купить подарок — он вручит его сам, и подарок ляжет сюда.</p>')}
   ${doodles}
 </section>`;
 }
@@ -1434,7 +1472,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
     const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
     if (view === 'showcase' && showcase) {
-        body = renderShowcase({ state, theme, got: showcase.got || [], sel: showcase.sel || '', fold: showcase.fold || {}, art: showcase.art !== false, artBusy: showcase.artBusy || '' });
+        body = renderShowcase({ state, theme, got: showcase.got || [], sel: showcase.sel || '', fold: showcase.fold || {}, art: showcase.art !== false, artBusy: showcase.artBusy || '', view: showcase.view || 'list' });
     } else if (diaryEmpty && /^(main:|npc|me:)/.test(view)) {
         body = renderWaiting(mains[0] || '', settings, theme, roster);
     } else if (view === 'npc' && showNpc) {
@@ -1470,7 +1508,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   <div class="iw-dossier-main">
     <div class="iw-npc-title${nameFit(c.name)}">${esc(c.name)}</div>
     ${aliases.length ? `<div class="iw-npc-aka">ещё зовут: ${esc(aliases.join(', '))}</div>` : ''}
-    <div class="iw-dossier-meta">${dead ? `<span class="iw-heard-chip iw-dead-chip">${icon('feather')}<span>нет в живых</span></span>` : ''}${hearsay ? `<span class="iw-heard-chip">${icon('feather')}<span>знает понаслышке</span></span><button type="button" class="iw-mini iw-study-btn" data-iw-npc-study="${esc(c.name)}" title="Дневник заведёт карточку: характер, желания, страхи, мечта. Отношение к тебе появится после встречи">${icon('feather')}<span>завести карточку</span></button>` : ''}</div>
+    <div class="iw-dossier-meta">${dead ? `<span class="iw-heard-chip iw-dead-chip">${icon('feather')}<span>нет в живых</span></span>` : ''}${hearsay ? `<span class="iw-heard-chip" title="${esc(pName)} и ${esc(c.name)} лично не встречались: ${esc(pName)} знает о ${gw(g, 'нём', 'ней', 'нём')} только по рассказам">${icon('feather')}<span>лично не знакомы — ${esc(pName)} знает понаслышке</span></span>` : ''}</div>
     <div class="iw-whois">
       <span class="iw-whois-tag">${esc(LL.whois)}</span>
       <div class="iw-whois-text">${who ? ce(who) : `<span class="iw-muted">${hearsay ? `${esc(pName)} знает только имя` : 'Пока неизвестно'}</span>`}</div>
@@ -1483,7 +1521,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
   ${heard.length ? `<ul class="iw-heard-list">${heard.map((h, i) => `<li><span>${ce(h.fact)}</span>${h.from ? `<small class="iw-muted">${esc(h.from)}</small>` : ''}<button type="button" class="iw-mini iw-heard-x" data-iw-del="heard:${i}" title="Убрать: ${esc(pName)} этого не знает" aria-label="Убрать">${icon('x')}</button></li>`).join('')}</ul>` : `<p class="iw-muted">Пока только имя: подробностей ${esc(pName)} не ${gw(pg, 'слышал', 'слышала', 'слышал')}.</p>`}
   <p class="iw-muted iw-heard-note">${why}</p>
   <div class="iw-heard-acts">
-    ${hearsay ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-met="${esc(key)}:1">${icon('tick')}<span>Они знакомы лично</span></button>` : ''}
+    ${hearsay ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-npc-study="${esc(c.name)}" title="Дневник прочитает карточку, лорбук и чат и заполнит полную запись: характер, желания, страхи, мечта. Отношение к тебе появится после встречи">${icon('feather')}<span>Заполнить ${gw(g, 'его', 'её', 'его')} дневник</span></button><button type="button" class="iw-btn iw-mini-btn" data-iw-met="${esc(key)}:1" title="${esc(pName)} и ${esc(c.name)} уже встречались — дневник станет обычным, с отношением к тебе">${icon('tick')}<span>Они знакомы лично</span></button>` : ''}
     ${dead ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-dead="${esc(key)}:0">${icon('back')}<span>${gw(g, 'Он жив', 'Она жива', 'Жив')}</span></button>` : ''}
   </div>
 </section></div>`;

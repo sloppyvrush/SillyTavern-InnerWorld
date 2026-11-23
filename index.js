@@ -5,13 +5,14 @@ import {
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut, includeBodyWithThinking,
-    extractJson, nameScript, parseBorn, zodiacOf, bornText,
+    extractJson, nameScript, parseBorn, zodiacOf, bornText, ZODIAC, ZODIAC_MID,
     plural,
     purseOf, claimWant,
     cancelReward,
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
-    achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes,
+    orientFromText, textAbout,
+    achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -25,7 +26,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.8';
+const VERSION = '0.6.14';
 const UPDATED = '22.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1340,6 +1341,36 @@ function fillBornFromCards(state) {
     } catch (e) { console.warn('[Внутренний мир] дата рождения из карточки', e); }
 }
 
+// Ориентация из карточки, описания персоны и разобранного лорбука: если там прямо написано (на любом языке,
+// любым словом из списка — «Orientation: bi», «гетеросексуален», «openly gay»), подтягиваем в дневник.
+// Руками выбранную не трогаем. В карточке на несколько героев читаем кусок про каждого.
+function fillOrientFromCards(state) {
+    try {
+        const c = ctx();
+        const chars = state.characters || {};
+        const keys = Object.keys(chars);
+        const names = keys.map(k => chars[k].name || k);
+        const card = cardDescription(c) || '';
+        const lore = (knowledgeLore(6) || []).join('\n\n');
+        const set = (ch, text) => {
+            if (!ch || ch.orientManual || ch.orient) return;
+            const o = orientFromText(text);
+            if (o) { ch.orient = o; delete ch.noOrient; }
+        };
+        for (const k of keys) {
+            const ch = chars[k];
+            if (!ch || ch.orient || ch.orientManual) continue;
+            if (ch.persona) { set(ch, (c.powerUserSettings && c.powerUserSettings.persona_description) || ''); continue; }
+            const others = names.filter(n => n !== (ch.name || k));
+            const isBot = sameName(k, c.name2) || sameName(ch.name || '', c.name2);
+            // одна карточка — один герой: читаем её целиком; иначе — только кусок о нём
+            if (isBot) set(ch, card);
+            if (!ch.orient) set(ch, textAbout(card, ch.name || k, others));
+            if (!ch.orient && lore) set(ch, textAbout(lore, ch.name || k, others));
+        }
+    } catch (e) { console.warn('[Внутренний мир] ориентация из карточки', e); }
+}
+
 function cardText(c) {
     return cleanMessageText(cardDescription(c), 2500);
 }
@@ -1668,6 +1699,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         pending = { messageId, manual };
         return;
     }
+    // самый первый разбор этой карточки (даже автоматический после ответа бота) — сначала спросить, какая это карточка
+    if (!manual && !fromLore && !(await askCardMode())) return;
     const chatId = c.getCurrentChatId && c.getCurrentChatId();
     const my = runId;
     let raw = '';
@@ -1921,6 +1954,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         evBatch = [];
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, claimWants: s.points !== false && s.claimAuto !== true, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
         fillBornFromCards(state);
+        fillOrientFromCards(state);
         // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
         if (npcCap() !== Infinity) try {
             const was = new Set(base.order);
@@ -2000,6 +2034,8 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (manual && kind === 'chat') busyKind = '';
         updateInjection();
         renderAll();
+        // пустые «привлекает / отталкивает» у главных — дозаполним отдельной короткой просьбой
+        if (!pending && !fromLore) setTimeout(() => { if (!busy && !rosterBusy) fillAttractionGaps(); }, 1500);
         if (pending) {
             const p = pending;
             pending = null;
@@ -2348,6 +2384,7 @@ function panelEl() {
             // витрина: какие разделы свёрнуты — запоминаем
             const d = e.target;
             if (d && d.matches && d.matches('details[data-iw-hist]')) histOpen[d.dataset.iwHist] = d.open;
+            if (d && d.matches && d.matches('details[data-iw-tile]')) { if (d.open) caseSel = d.dataset.iwTile; else if (caseSel === d.dataset.iwTile) caseSel = ''; }
             if (d && d.matches && d.matches('details[data-iw-case]')) { const s = settings(); s.caseFold = Object.assign({}, s.caseFold || {}, { [d.dataset.iwCase]: d.open }); saveSettings(); }
             masonrySoon();
         }, true);
@@ -2462,6 +2499,8 @@ function renderPanelNow() {
         return;
     }
     const state = (live && live.preview) || liveState();
+    // ориентация из карточки видна сразу, даже до следующего разбора (запишется при нём)
+    if (!(live && live.preview)) fillOrientFromCards(state);
     const { mains, npcKeys, personaKey } = splitCast(state);
     const showNpc = s.showNpc !== false;
     const personaOn = s.persona !== false && hasChat();
@@ -2564,7 +2603,7 @@ function showcaseModel() {
     if (!hasChat()) return null;
     const meta = chatMeta();
     const s = settings();
-    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy };
+    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy, view: s.caseView === 'grid' ? 'grid' : 'list' };
 }
 
 // ---------- Картинки памятных вещей ----------
@@ -2573,7 +2612,10 @@ async function drawItemArt(key, i, { quiet = false } = {}) {
     if (artBusy || settings().caseArt === false) return;
     const st0 = currentState();
     const ch0 = st0.characters[key];
-    const item0 = ch0 && (ch0.collection || [])[i];
+    // подарок, который ещё не вручён, живёт в buffs: номер вида «b3»
+    const isBuff = typeof i === 'string' && i.startsWith('b');
+    const bi = isBuff ? Number(i.slice(1)) : -1;
+    const item0 = ch0 && (isBuff ? (ch0.buffs || [])[bi] : (ch0.collection || [])[i]);
     if (!item0) return;
     const my = runId;
     artBusy = `${key}:${i}`;
@@ -2586,7 +2628,7 @@ async function drawItemArt(key, i, { quiet = false } = {}) {
         if (!svg) throw new Error('модель не прислала картинку');
         const st = currentState();
         const ch = st.characters[key];
-        const item = ch && (ch.collection || [])[i];
+        const item = ch && (isBuff ? (ch.buffs || [])[bi] : (ch.collection || [])[i]);
         if (!item || item.title !== item0.title) return;
         item.art = svg;
         await saveEditedState(st);
@@ -2598,6 +2640,31 @@ async function drawItemArt(key, i, { quiet = false } = {}) {
         if (my === runId || artBusy) { artBusy = ''; renderAll(); }
     }
 }
+// «Нарисовать все»: по очереди, по одной просьбе на вещь; остановить можно кнопкой стоп
+async function drawAllArt(which = 'items') {
+    const fits = x => (which === 'gifts' ? !!x.gift : !x.gift);
+    if (artBusy || settings().caseArt === false) return;
+    const my = runId;
+    const st = currentState();
+    const todo = [];
+    for (const k of st.order || []) (st.characters[k] && st.characters[k].collection || []).forEach((x, i) => { if (fits(x) && !x.art) todo.push([k, i]); });
+    if (which === 'gifts') for (const k of st.order || []) (st.characters[k] && st.characters[k].buffs || []).forEach((b, bi) => { if (b && b.kind === 'gift' && !b.art) todo.push([k, 'b' + bi]); });
+    // всё уже нарисовано — перерисовать всё заново (после вопроса)
+    if (!todo.length) {
+        for (const k of st.order || []) (st.characters[k] && st.characters[k].collection || []).forEach((x, i) => { if (fits(x)) todo.push([k, i]); });
+        if (!todo.length) return;
+        const ok = await iwDialog({ title: 'Перерисовать все?', text: `Все вещи уже нарисованы. Нарисовать заново все ${todo.length}? Это ${todo.length} коротких просьб к модели.`, buttons: [{ text: 'Перерисовать', value: true, kind: 'main' }, { text: 'Отмена', value: null }] });
+        if (!ok) return;
+    }
+    let n = 0;
+    for (const [k, i] of todo) {
+        if (my !== runId) break;
+        await drawItemArt(k, i, { quiet: true });
+        { const cc = currentState().characters[k]; const it = cc && (String(i).startsWith('b') ? (cc.buffs || [])[Number(String(i).slice(1))] : (cc.collection || [])[i]); if (it && it.art) n++; }
+    }
+    if (todo.length) notice(n === todo.length ? `Нарисовано: ${n}` : `Нарисовано ${n} из ${todo.length} — остальные можно дорисовать ещё раз`);
+}
+
 // после покупки или подарка: рисуем новую вещь, если включено
 function drawNewItem(target) {
     if (settings().caseArt === false || !target || !Array.isArray(target.collection)) return;
@@ -2629,7 +2696,7 @@ function takeGifts(raw, state) {
             const b = ch && (ch.buffs || []).find(x => x.kind === 'gift' && (norm(x.title) === norm(g && g.title) || norm(g && g.title).includes(norm(x.title)) || norm(x.title).includes(norm(g && g.title))));
             if (!b) continue;
             ch.buffs = ch.buffs.filter(x => x !== b);
-            if (pc) { pc.collection = (pc.collection || []).concat([{ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }]).slice(-30); drawNewItem(pc); }
+            if (pc) { pc.collection = (pc.collection || []).concat([Object.assign({ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }, b.art ? { art: b.art } : {})]).slice(-30); if (!b.art) drawNewItem(pc); }
             showEvent({ type: 'reward', who: ch.name, text: `«${b.title}» — подарено${pc ? `, теперь в коллекции ${pc.name}` : ''}`, icon: b.icon }, 300);
             break;
         }
@@ -3035,7 +3102,7 @@ async function confirmDelete(what, note = '') {
     return !!ok;
 }
 
-function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{ text: 'Хорошо', value: true, kind: 'main' }, { text: 'Отмена', value: null }] } = {}) {
+function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{ text: 'Хорошо', value: true, kind: 'main' }, { text: 'Отмена', value: null }], onReady = null } = {}) {
     return new Promise(resolve => {
         const root = ui();
         const wrap = document.createElement('div');
@@ -3052,7 +3119,7 @@ function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{
         const panelOpen = isOpen();
         raiseLayer(true);
         root.appendChild(wrap);
-        const field = wrap.querySelector('.iw-modal-input');
+        const field = wrap.querySelector('input.iw-modal-input');
         const done = v => {
             document.removeEventListener('keydown', onKey, true);
             wrap.remove();
@@ -3062,7 +3129,9 @@ function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{
         const pick = i => {
             const b = buttons[i];
             if (!b) return done(null);
-            done(input ? (b.value === null || b.value === undefined ? null : { value: b.value, input: field ? field.value : '' }) : b.value);
+            const extra = {};
+            for (const x of wrap.querySelectorAll('[data-iw-dlg]')) extra[x.dataset.iwDlg] = x.value;
+            done(input ? (b.value === null || b.value === undefined ? null : { value: b.value, input: field ? field.value : '', extra }) : b.value);
         };
         const onKey = ev => {
             if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); done(null); }
@@ -3074,6 +3143,7 @@ function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{
             if (b) return pick(Number(b.dataset.i));
             if (ev.target.classList.contains('iw-modal-back')) done(null);
         });
+        if (typeof onReady === 'function') try { onReady(wrap, field); } catch { /* без доп. полей */ }
         setTimeout(() => (field || wrap.querySelector('.iw-modal-main') || wrap.querySelector('.iw-modal-btn')).focus(), 30);
     });
 }
@@ -3318,6 +3388,7 @@ async function onPanelClick(e) {
     if (t.dataset.iwStop !== undefined) return stopAnalysis(t.dataset.iwStop === 'dream' ? 'Остановлено: мечта осталась прежней' : t.dataset.iwStop === 'wishes' ? 'Остановлено: желания и страхи остались прежними' : '');
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
     if (t.dataset.iwLifePin) return onLifeEdit(null, null);
+    if (t.dataset.iwLifeUnlock) return onLifeEdit('unlock:' + t.dataset.iwLifeUnlock, null);
     if (t.dataset.iwNpcStudy) return studyNpc(t.dataset.iwNpcStudy);
     if (t.dataset.iwLiveHide !== undefined) {
         if (live) live.hidden = true;
@@ -3442,6 +3513,12 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
+    if (t.dataset.iwCaseview) {
+        settings().caseView = t.dataset.iwCaseview === 'grid' ? 'grid' : 'list';
+        saveSettings();
+        return renderPanelNow();
+    }
+    if (t.dataset.iwArtAll) return drawAllArt(t.dataset.iwArtAll);
     if (t.dataset.iwRumorDel) {
         const id = decodeURIComponent(t.dataset.iwRumorDel);
         const meta = chatMeta();
@@ -3453,8 +3530,9 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwArt) {
-        const [k, i] = t.dataset.iwArt.split(':');
-        drawItemArt(k, Number(i));
+        const at = t.dataset.iwArt.lastIndexOf(':');
+        const k = t.dataset.iwArt.slice(0, at), i = t.dataset.iwArt.slice(at + 1);
+        drawItemArt(k, i.startsWith('b') ? i : Number(i));
         return;
     }
     if (t.dataset.iwAchdel) {
@@ -3487,8 +3565,26 @@ async function onPanelClick(e) {
         const c0 = ctx();
         const p2 = n => String(n).padStart(2, '0');
         const cur = ch.born ? (ch.born.d && ch.born.m ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : String(ch.born.y || '')) : '';
-        const got = await iwDialog({ title: `День рождения: ${ch.name}`, text: 'Дата — 20.08.1969, просто 20.08 или только год рождения — 1969. Или возраст на сегодня по часам сцены — например 27, дальше он будет расти сам. Оставь пустым, чтобы убрать.', input: { label: 'Дата или возраст', value: cur, placeholder: '20.08.1969' }, buttons: [{ text: 'Сохранить', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }] });
+        const zNow = ch.zodiac || (ch.born && ch.born.d && ch.born.m ? zodiacOf(ch.born.d, ch.born.m) : '');
+        const zSel = `<label class="iw-modal-field"><span class="iw-muted">Знак зодиака — если точной даты нет, дата встанет примерно, по середине знака</span><select class="iw-modal-input iw-modal-select" data-iw-dlg="zodiac"><option value="">— по дате —</option>${Object.entries(ZODIAC).map(([k, z]) => `<option value="${k}"${k === zNow ? ' selected' : ''}>${z.glyph} ${esc(z.name)}</option>`).join('')}</select></label>`;
+        const got = await iwDialog({ title: `День рождения: ${ch.name}`, text: 'Дата — 20.08.1969, просто 20.08 или только год рождения — 1969. Или возраст на сегодня по часам сцены — например 27, дальше он будет расти сам. Оставь пустым, чтобы убрать.', html: zSel, input: { label: 'Дата или возраст', value: cur, placeholder: '20.08.1969' }, buttons: [{ text: 'Сохранить', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }],
+            onReady: (wrap, field) => {
+                // выбрала знак — дата подстраивается: середина знака, год сохраняется
+                const sel = wrap.querySelector('[data-iw-dlg="zodiac"]');
+                if (!sel || !field) return;
+                sel.addEventListener('change', () => {
+                    const mid = ZODIAC_MID[sel.value];
+                    if (!mid) return;
+                    const b = parseBorn(field.value.trim()) || {};
+                    if (b.d && b.m && zodiacOf(b.d, b.m) === sel.value) return;
+                    const y = b.y || (/^\d{3,4}$/.test(field.value.trim()) ? field.value.trim() : '');
+                    field.value = `${p2(mid[0])}.${p2(mid[1])}${y ? '.' + y : ''}`;
+                    field.dataset.approx = '1';
+                });
+                field.addEventListener('input', () => { delete field.dataset.approx; });
+            } });
         const val = got ? got.input : null;
+        const pickedZ = got && got.extra ? got.extra.zodiac : '';
         if (val === null || val === undefined || val === false) return;
         const txt = String(val).trim();
         const ageOnly = txt.match(/^(\d{1,3})\s*(год|года|лет|г\.?)?$/i);
@@ -3511,12 +3607,21 @@ async function onPanelClick(e) {
             notice(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')}${now && now.cal && now.t ? ' — дальше по часам сцены' : ''}`);
             return renderAll();
         }
-        if (!txt) {
+        if (!txt && pickedZ && ZODIAC_MID[pickedZ]) {
+            const [d, m] = ZODIAC_MID[pickedZ];
+            ch.born = { d, m, approx: true };
+            ch.zodiac = pickedZ;
+        } else if (!txt) {
             delete ch.born;
             delete ch.ageAt;
         } else {
-            const b = parseBorn(txt);
+            let b = parseBorn(txt);
             if (!b) return notice('Не поняла дату. Пример: 20.08.1969, 20.08 или 1969');
+            // знак выбран, а даты нет или она из другого знака — ставим примерную дату по знаку
+            if (pickedZ && ZODIAC_MID[pickedZ] && (!(b.d && b.m) || zodiacOf(b.d, b.m) !== pickedZ)) {
+                const [d, m] = ZODIAC_MID[pickedZ];
+                b = Object.assign({}, b, { d, m, approx: true });
+            } else if (pickedZ && ZODIAC_MID[pickedZ] && b.d === ZODIAC_MID[pickedZ][0] && b.m === ZODIAC_MID[pickedZ][1]) b.approx = true; // дата — подставленная по знаку
             ch.born = b;
             if (b.d && b.m) ch.zodiac = zodiacOf(b.d, b.m) || ch.zodiac;
         }
@@ -3669,6 +3774,8 @@ function missingPersona() {
 // Ответ обрезан: JSON не закрыт (кончились токены, часто у думающих моделей).
 function nothingNew(what) {
     notice(`Ничего нового: ${what} не менялись с прошлого разбора. Мечту и награды можно придумать заново — кубиком у мечты и в магазине.`);
+    // но если у главных пусто «что привлекает / отталкивает» — дозаполним
+    fillAttractionGaps();
 }
 
 // Сведения из карточки и лорбуков запоминаются после разбора кнопками «Лорбук» / «Всё сразу».
@@ -3763,6 +3870,47 @@ async function onDreamAction(action) {
             }
         }
     }
+}
+
+// Разбор не дал «что привлекает / отталкивает» главным героям и персоне — одна короткая просьба, чтобы заполнить.
+// Один раз на героя (attrAsked), чтобы не дёргать модель снова, если она опять промолчит.
+let attrFilling = false;
+async function fillAttractionGaps() {
+    const s = settings();
+    if (attrFilling || busy || !hasChat() || s.modules.attraction === false) return;
+    const st0 = currentState();
+    const { mains, personaKey } = splitCast(st0);
+    const keys = mains.concat(s.persona !== false && personaKey ? [personaKey] : []).filter(k => {
+        const c = st0.characters[k];
+        return c && !c.attrSet && !c.attrAsked && !c.dead && !((c.likes || []).length || (c.dislikes || []).length);
+    });
+    if (!keys.length) return;
+    attrFilling = true;
+    const my = runId;
+    try {
+        const info = analysisInfo(6);
+        const c0 = ctx();
+        info.personaText = cleanMessageText((c0.powerUserSettings && c0.powerUserSettings.persona_description) || '', 2000);
+        const cached = knowledgeLore(3);
+        if (cached) info.loreMain = cached;
+        const { system, user } = buildAttractionPrompt(info, keys.map(k => st0.characters[k]), s.language);
+        const raw = await callModel(system, user, withBudget('wishes'));
+        if (my !== runId) return;
+        const got = parseAttraction(raw);
+        const st = currentState();
+        for (const k of keys) {
+            const c = st.characters[k];
+            if (!c) continue;
+            c.attrAsked = true;
+            const g = got.find(x => sameName(x.name, c.name) || namesMatch(x.name, c.name));
+            if (g && !((c.likes || []).length || (c.dislikes || []).length)) { c.likes = g.likes || []; c.dislikes = g.dislikes || []; }
+        }
+        await saveEditedState(st);
+        updateInjection();
+        renderAll();
+    } catch (err) {
+        console.warn('[Внутренний мир] что привлекает', err);
+    } finally { attrFilling = false; }
 }
 
 // Желания и страхи заново — как кнопка у мечты. Закреплённые желания остаются.
@@ -3900,11 +4048,19 @@ async function onLifeEdit(field, value) {
         if (ch.lifeSet) delete ch.lifeSet;
         else ch.lifeSet = true;
     }
+    else if (String(field).startsWith('unlock:')) {
+        // снять замок с одного пункта — модель снова ведёт его сама
+        const f = String(field).slice(7);
+        if (ch.lifeLock) { delete ch.lifeLock[f]; if (!Object.keys(ch.lifeLock).length) delete ch.lifeLock; }
+    }
     else {
         const life = Object.assign({ marry: '', kids: '', own: '', when: '', count: 0, why: '' }, ch.life);
         life[field] = field === 'count' ? (Number(value) || 0) : String(value || '');
         ch.life = life;
-        ch.lifeSet = true;
+        // закрепляется только то, что поменяли руками; «не ясно» — отдать пункт модели
+        ch.lifeLock = Object.assign({}, ch.lifeLock);
+        if (life[field]) ch.lifeLock[field] = true; else delete ch.lifeLock[field];
+        if (!Object.keys(ch.lifeLock).length) delete ch.lifeLock;
     }
     await saveEditedState(st);
     renderAll();
@@ -4037,6 +4193,11 @@ async function buy(id) {
     updateInjection();
     const persName = ctx().name1 || 'тебе';
     if (reward.kind === 'collect') drawNewItem(target);
+    // подарок рисуется сразу, пока ждёт вручения; при вручении картинка переходит на витрину
+    if (reward.kind === 'gift' && settings().caseArt !== false) {
+        const gi = (target.buffs || []).findIndex(b => b && b.kind === 'gift' && b.id === reward.id);
+        if (gi >= 0) setTimeout(() => drawItemArt(key, 'b' + gi, { quiet: true }), 300);
+    }
     showEvent({ type: 'reward', who: target.name, text: reward.kind === 'collect' ? `«${reward.title}» — в коллекции, загляни на витрину` : reward.kind === 'gift' ? `«${reward.title}» — ${target.name} подарит это ${persName} в ближайшей сцене` : `«${reward.title}» — ${reward.kind === 'event' ? 'случится в следующем ответе' : `действует ${reward.turns} ${plural(reward.turns, 'ответ', 'ответа', 'ответов')}`}`, icon: reward.icon });
     renderAll();
 }
