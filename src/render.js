@@ -178,6 +178,7 @@ function faceBadge(c, npc = false) {
 let MULTI_NOW = false;
 let WISH_BUSY = ''; // кому сейчас придумываются новые желания и страхи
 let HIST_OPEN = {}; // раскрыты ли «прошлые сны» и «прошлые слухи»
+let CAL_NOW = null; // календарь истории — чтобы дата рождения писалась его месяцами
 
 const LINK_TAG = { char: 'персонажа', chat: 'чата', persona: 'персоны' };
 function booksMenu(books = [], picked = [], linked = [], busy = false, off = [], hasPersona = false, wide = false) {
@@ -275,8 +276,10 @@ function tabBorn(c, clock, key = '') {
         if (age !== null) return `<span class="iw-tab-born"${edit} title="Возраст на дату сцены${c.born && c.born.y ? `, год рождения ${c.born.y}` : ''}. Нажми, чтобы вписать день рождения">${icon('cake')}<span>${c.born && c.born.y ? `${c.born.y} · ` : ''}${age} ${plural(age, 'год', 'года', 'лет')}</span></span>`;
         return key ? `<span class="iw-tab-born iw-born-none"${edit} title="День рождения не указан — нажми, чтобы вписать">${icon('cake')}<span>д.р.?</span></span>` : '';
     }
-    const today = clock && clock.t && clock.cal && clock.cal.type === 'greg' && clock.t.m === c.born.m && clock.t.d === c.born.d;
-    return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}"${edit} title="Нажми, чтобы поправить. День рождения: ${esc(bornText(c.born))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${MONTH_SHORT[c.born.m - 1]}${age !== null ? ` · ${age}` : ''}</span></span>`;
+    const today = clock && clock.t && clock.cal && clock.cal.type !== 'days' && clock.t.m === c.born.m && clock.t.d === c.born.d;
+    const cm = CAL_NOW && CAL_NOW.type === 'custom' && Array.isArray(CAL_NOW.months) ? CAL_NOW.months[c.born.m - 1] : null;
+    const mShort = cm && cm.name ? cm.name.slice(0, 4).toLowerCase() : MONTH_SHORT[c.born.m - 1];
+    return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}"${edit} title="Нажми, чтобы поправить. День рождения: ${esc(bornText(c.born, CAL_NOW))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${mShort}${age !== null ? ` · ${age}` : ''}</span></span>`;
 }
 
 export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null, customOrder = false }) {
@@ -857,7 +860,7 @@ function renderPersona(c, L, opts = {}) {
     // дату рождения можно вписать или поправить руками — она же попадает в календарь и на карточку
     const bornBtn = opts.key ? `<button type="button" class="iw-born-edit" data-iw-born="${esc(opts.key)}" title="${c.born ? 'Поправить дату рождения или знак зодиака' : 'Вписать дату рождения или выбрать знак зодиака'}">${icon('feather')}<span>${c.born ? 'поправить' : 'вписать дату'}</span></button>` : '';
     {
-        const born = c.born ? `${gw(g, 'родился', 'родилась', 'день рождения:')} ${esc(bornText(c.born))}` : 'дата рождения не указана';
+        const born = c.born ? `${gw(g, 'родился', 'родилась', 'день рождения:')} ${esc(bornText(c.born, CAL_NOW))}` : 'дата рождения не указана';
         cards.push(`
         <div class="iw-persona-card iw-zd-${z ? z.el : 'none'}">
           <div class="iw-persona-top">
@@ -1073,7 +1076,7 @@ function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = tru
     ${body}
   </details>`;
     // «Нарисовать все сразу» — у своей полки: памятные вещи и подарки рисуются отдельно
-    const drawAll = (which, rows) => (art && rows.length ? `<div class="iw-case-sectools"><button type="button" class="iw-case-vbtn iw-case-drawall" data-iw-art-all="${which}"${artBusy ? ' disabled' : ''} title="Нарисовать картинки всем ${which === 'gifts' ? 'подаркам' : 'памятным вещам'} без картинки (если все уже нарисованы — перерисовать все). По одной короткой просьбе к модели на каждую">${icon('feather')}<span>${artBusy ? 'рисую…' : 'Нарисовать все сразу'}</span></button></div>` : '');
+    const drawAll = (which, rows) => (art && rows.length ? `<div class="iw-case-sectools"><button type="button" class="iw-case-vbtn iw-case-drawall" data-iw-art-all="${which}"${artBusy || !rows.some(x => !x.art) ? ' disabled' : ''} title="${rows.some(x => !x.art) ? `Нарисовать ${which === 'gifts' ? 'подарки' : 'памятные вещи'} без картинки: ${rows.filter(x => !x.art).length}. Уже нарисованные не трогаются — перерисовать можно кнопкой у самой вещи` : 'Всё уже нарисовано. Перерисовать можно кнопкой у самой вещи'}">${icon('feather')}<span>${artBusy ? 'рисую…' : 'Нарисовать все сразу'}</span></button></div>` : '');
     const doodles = '<div class="iw-cal-doodles iw-case-doodles" aria-hidden="true"><i class="iw-dd iw-dd-a"></i><i class="iw-dd iw-dd-b"></i><i class="iw-dd iw-dd-c"></i></div>';
     const toolbar = `<div class="iw-case-bar">
     <div class="iw-case-views" role="group" aria-label="Как показывать витрину">
@@ -1433,6 +1436,7 @@ export function renderClock(clock) {
 
 export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, nights = true, wishBusy = '', histOpen = {} }) {
     HIST_OPEN = histOpen || {};
+    CAL_NOW = clock && clock.cal ? clock.cal : null;
     MULTI_NOW = !!(roster && roster.multi);
     WISH_BUSY = wishBusy || '';
     LOVE = love;

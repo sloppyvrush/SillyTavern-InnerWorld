@@ -576,6 +576,41 @@ export function zodiacOf(d, m) {
     if (!e || !(d >= 1 && d <= 31)) return '';
     return d < e[0] ? e[1] : e[2];
 }
+// Свой (выдуманный) календарь: знак считается по месту дня в году — первый месяц календаря ≈ январь,
+// длина года своя. Так у «7 Медовика» будет тот же знак, что у дня на том же месте обычного года.
+const GREG_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const customMonths = cal => (cal && cal.type === 'custom' && Array.isArray(cal.months) && cal.months.length ? cal.months : null);
+export function zodiacOn(cal, d, m) {
+    const ms = customMonths(cal);
+    if (!ms) return zodiacOf(d, m);
+    if (!(m >= 1 && m <= ms.length) || !(d >= 1)) return '';
+    const len = x => Math.max(1, Number(x && x.days) || 30);
+    const total = ms.reduce((s, x) => s + len(x), 0);
+    let idx = 0;
+    for (let i = 0; i < m - 1; i++) idx += len(ms[i]);
+    idx += Math.min(d, len(ms[m - 1])) - 1;
+    let g = Math.min(364, Math.floor((idx + 0.5) / total * 365));
+    let mm = 0;
+    while (g >= GREG_DAYS[mm]) { g -= GREG_DAYS[mm]; mm++; }
+    return zodiacOf(g + 1, mm + 1);
+}
+// Середина знака в этом календаре — для «выбрала знак, дату не знаю»
+export function zodiacMidOn(cal, z) {
+    const mid = ZODIAC_MID[z];
+    if (!mid) return null;
+    const ms = customMonths(cal);
+    if (!ms) return { d: mid[0], m: mid[1] };
+    let g = mid[0] - 1;
+    for (let i = 0; i < mid[1] - 1; i++) g += GREG_DAYS[i];
+    const len = x => Math.max(1, Number(x && x.days) || 30);
+    const total = ms.reduce((s, x) => s + len(x), 0);
+    let idx = Math.min(total - 1, Math.floor((g + 0.5) / 365 * total));
+    for (let i = 0; i < ms.length; i++) {
+        if (idx < len(ms[i])) return { d: idx + 1, m: i + 1 };
+        idx -= len(ms[i]);
+    }
+    return { d: 1, m: ms.length };
+}
 // Ориентация: только если прямо названа в карточке, лорбуке, описании персоны или самим героем в чате
 export const ORIENTS = {
     hetero: { name: 'гетеросексуальность', short: 'гетеро', text: 'Влечёт к людям противоположного пола.' },
@@ -734,10 +769,12 @@ export function bornFromText(text) {
     return yearOnly;
 }
 
-export function bornText(b) {
+export function bornText(b, cal = null) {
     if (!b) return '';
     if (!b.d || !b.m) return b.y ? `${b.y} г. (день неизвестен)` : '';
-    return `${b.approx ? 'около ' : ''}${b.d} ${MONTH_GEN[b.m - 1]}${b.y ? ' ' + b.y : ''}`;
+    const ms = customMonths(cal);
+    const mon = ms ? ((ms[b.m - 1] && (ms[b.m - 1].gen || ms[b.m - 1].name)) || MONTH_GEN[b.m - 1]) : MONTH_GEN[b.m - 1];
+    return `${b.approx ? 'около ' : ''}${b.d} ${mon}${b.y ? ' ' + b.y : ''}`;
 }
 
 // Тип личности (16 типов, как в тесте 16personalities) и темперамент — из характера по карточке и лорбуку.

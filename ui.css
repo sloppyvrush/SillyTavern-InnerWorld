@@ -18562,3 +18562,8 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 :is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-pixel, .iw-theme-dossier) .iw-f-group { border-radius: 0; }
 .iw-theme-cyber .iw-f-group { background: rgba(62, 240, 255, .04); border-color: rgba(62, 240, 255, .25); }
 .iw-f-group-body { display: grid; gap: 12px; } .iw-f-group-body > .iw-f { margin: 0; }
+
+/* «Хочет» и «Боится»: кубик перегенерации — в углу рядом с плюсом/минусом, а не посередине шапки */
+.iw-panel :is(.iw-b-wants, .iw-b-fears) > .iw-block-head > .iw-dream-tools { margin-left: auto; margin-right: 6px; flex: none; }
+.iw-panel :is(.iw-b-wants, .iw-b-fears) > .iw-block-head > .iw-dream-tools + .iw-fold { margin-left: 0; }
+.iw-panel :is(.iw-b-wants, .iw-b-fears) > .iw-block-head > .iw-label { min-width: 0; }

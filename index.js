@@ -5,7 +5,7 @@ import {
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
     mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut, includeBodyWithThinking,
-    extractJson, nameScript, parseBorn, zodiacOf, bornText, ZODIAC, ZODIAC_MID,
+    extractJson, nameScript, parseBorn, zodiacOf, bornText, ZODIAC, ZODIAC_MID, zodiacOn, zodiacMidOn,
     plural,
     purseOf, claimWant,
     cancelReward,
@@ -26,7 +26,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.14';
+const VERSION = '0.6.16';
 const UPDATED = '22.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1344,6 +1344,20 @@ function fillBornFromCards(state) {
 // Ориентация из карточки, описания персоны и разобранного лорбука: если там прямо написано (на любом языке,
 // любым словом из списка — «Orientation: bi», «гетеросексуален», «openly gay»), подтягиваем в дневник.
 // Руками выбранную не трогаем. В карточке на несколько героев читаем кусок про каждого.
+// Знак зодиака по дате рождения — в календаре этой истории (свои месяцы — своя раскладка знаков)
+function fixZodiacs(state) {
+    try {
+        const n = clockNow();
+        const cal = n && n.cal;
+        if (!cal || cal.type !== 'custom') return;
+        for (const ch of Object.values(state.characters || {})) {
+            if (!ch || !ch.born || !ch.born.d || !ch.born.m) continue;
+            const z = zodiacOn(cal, ch.born.d, ch.born.m);
+            if (z) ch.zodiac = z;
+        }
+    } catch { /* без календаря */ }
+}
+
 function fillOrientFromCards(state) {
     try {
         const c = ctx();
@@ -1955,6 +1969,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, claimWants: s.points !== false && s.claimAuto !== true, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
         fillBornFromCards(state);
         fillOrientFromCards(state);
+        fixZodiacs(state);
         // сверх лимита НПС: новых второстепенных не берём (уже записанных не трогаем)
         if (npcCap() !== Infinity) try {
             const was = new Set(base.order);
@@ -2500,7 +2515,7 @@ function renderPanelNow() {
     }
     const state = (live && live.preview) || liveState();
     // ориентация из карточки видна сразу, даже до следующего разбора (запишется при нём)
-    if (!(live && live.preview)) fillOrientFromCards(state);
+    if (!(live && live.preview)) { fillOrientFromCards(state); fixZodiacs(state); }
     const { mains, npcKeys, personaKey } = splitCast(state);
     const showNpc = s.showNpc !== false;
     const personaOn = s.persona !== false && hasChat();
@@ -2649,13 +2664,8 @@ async function drawAllArt(which = 'items') {
     const todo = [];
     for (const k of st.order || []) (st.characters[k] && st.characters[k].collection || []).forEach((x, i) => { if (fits(x) && !x.art) todo.push([k, i]); });
     if (which === 'gifts') for (const k of st.order || []) (st.characters[k] && st.characters[k].buffs || []).forEach((b, bi) => { if (b && b.kind === 'gift' && !b.art) todo.push([k, 'b' + bi]); });
-    // всё уже нарисовано — перерисовать всё заново (после вопроса)
-    if (!todo.length) {
-        for (const k of st.order || []) (st.characters[k] && st.characters[k].collection || []).forEach((x, i) => { if (fits(x)) todo.push([k, i]); });
-        if (!todo.length) return;
-        const ok = await iwDialog({ title: 'Перерисовать все?', text: `Все вещи уже нарисованы. Нарисовать заново все ${todo.length}? Это ${todo.length} коротких просьб к модели.`, buttons: [{ text: 'Перерисовать', value: true, kind: 'main' }, { text: 'Отмена', value: null }] });
-        if (!ok) return;
-    }
+    // рисуем только ненарисованные; перерисовать — кнопкой у самой вещи
+    if (!todo.length) return notice('Всё уже нарисовано. Перерисовать можно кнопкой у самой вещи.');
     let n = 0;
     for (const [k, i] of todo) {
         if (my !== runId) break;
@@ -3565,7 +3575,9 @@ async function onPanelClick(e) {
         const c0 = ctx();
         const p2 = n => String(n).padStart(2, '0');
         const cur = ch.born ? (ch.born.d && ch.born.m ? `${p2(ch.born.d)}.${p2(ch.born.m)}${ch.born.y ? '.' + ch.born.y : ''}` : String(ch.born.y || '')) : '';
-        const zNow = ch.zodiac || (ch.born && ch.born.d && ch.born.m ? zodiacOf(ch.born.d, ch.born.m) : '');
+        const calNow = (() => { try { const n = clockNow(); return n && n.cal ? n.cal : null; } catch { return null; } })();
+        const zOf = (d, m) => zodiacOn(calNow, d, m);
+        const zNow = ch.zodiac || (ch.born && ch.born.d && ch.born.m ? zOf(ch.born.d, ch.born.m) : '');
         const zSel = `<label class="iw-modal-field"><span class="iw-muted">Знак зодиака — если точной даты нет, дата встанет примерно, по середине знака</span><select class="iw-modal-input iw-modal-select" data-iw-dlg="zodiac"><option value="">— по дате —</option>${Object.entries(ZODIAC).map(([k, z]) => `<option value="${k}"${k === zNow ? ' selected' : ''}>${z.glyph} ${esc(z.name)}</option>`).join('')}</select></label>`;
         const got = await iwDialog({ title: `День рождения: ${ch.name}`, text: 'Дата — 20.08.1969, просто 20.08 или только год рождения — 1969. Или возраст на сегодня по часам сцены — например 27, дальше он будет расти сам. Оставь пустым, чтобы убрать.', html: zSel, input: { label: 'Дата или возраст', value: cur, placeholder: '20.08.1969' }, buttons: [{ text: 'Сохранить', value: 'ok', kind: 'main' }, { text: 'Отмена', value: null }],
             onReady: (wrap, field) => {
@@ -3573,12 +3585,12 @@ async function onPanelClick(e) {
                 const sel = wrap.querySelector('[data-iw-dlg="zodiac"]');
                 if (!sel || !field) return;
                 sel.addEventListener('change', () => {
-                    const mid = ZODIAC_MID[sel.value];
+                    const mid = zodiacMidOn(calNow, sel.value);
                     if (!mid) return;
                     const b = parseBorn(field.value.trim()) || {};
-                    if (b.d && b.m && zodiacOf(b.d, b.m) === sel.value) return;
+                    if (b.d && b.m && zOf(b.d, b.m) === sel.value) return;
                     const y = b.y || (/^\d{3,4}$/.test(field.value.trim()) ? field.value.trim() : '');
-                    field.value = `${p2(mid[0])}.${p2(mid[1])}${y ? '.' + y : ''}`;
+                    field.value = `${p2(mid.d)}.${p2(mid.m)}${y ? '.' + y : ''}`;
                     field.dataset.approx = '1';
                 });
                 field.addEventListener('input', () => { delete field.dataset.approx; });
@@ -3607,9 +3619,9 @@ async function onPanelClick(e) {
             notice(`${ch.name}: ${age} ${plural(age, 'год', 'года', 'лет')}${now && now.cal && now.t ? ' — дальше по часам сцены' : ''}`);
             return renderAll();
         }
-        if (!txt && pickedZ && ZODIAC_MID[pickedZ]) {
-            const [d, m] = ZODIAC_MID[pickedZ];
-            ch.born = { d, m, approx: true };
+        if (!txt && pickedZ && zodiacMidOn(calNow, pickedZ)) {
+            const mz = zodiacMidOn(calNow, pickedZ);
+            ch.born = { d: mz.d, m: mz.m, approx: true };
             ch.zodiac = pickedZ;
         } else if (!txt) {
             delete ch.born;
@@ -3618,17 +3630,17 @@ async function onPanelClick(e) {
             let b = parseBorn(txt);
             if (!b) return notice('Не поняла дату. Пример: 20.08.1969, 20.08 или 1969');
             // знак выбран, а даты нет или она из другого знака — ставим примерную дату по знаку
-            if (pickedZ && ZODIAC_MID[pickedZ] && (!(b.d && b.m) || zodiacOf(b.d, b.m) !== pickedZ)) {
-                const [d, m] = ZODIAC_MID[pickedZ];
-                b = Object.assign({}, b, { d, m, approx: true });
-            } else if (pickedZ && ZODIAC_MID[pickedZ] && b.d === ZODIAC_MID[pickedZ][0] && b.m === ZODIAC_MID[pickedZ][1]) b.approx = true; // дата — подставленная по знаку
+            const midZ = pickedZ ? zodiacMidOn(calNow, pickedZ) : null;
+            if (midZ && (!(b.d && b.m) || zOf(b.d, b.m) !== pickedZ)) {
+                b = Object.assign({}, b, { d: midZ.d, m: midZ.m, approx: true });
+            } else if (midZ && b.d === midZ.d && b.m === midZ.m) b.approx = true; // дата — подставленная по знаку
             ch.born = b;
-            if (b.d && b.m) ch.zodiac = zodiacOf(b.d, b.m) || ch.zodiac;
+            if (b.d && b.m) ch.zodiac = zOf(b.d, b.m) || ch.zodiac;
         }
         ch.bornManual = true;
         await saveEditedState(state);
         updateInjection();
-        notice(ch.born ? `${ch.name}: ${bornText(ch.born)}` : `${ch.name}: дата рождения убрана`);
+        notice(ch.born ? `${ch.name}: ${bornText(ch.born, calNow)}` : `${ch.name}: дата рождения убрана`);
         return renderAll();
     }
     if (t.dataset.iwDead) {

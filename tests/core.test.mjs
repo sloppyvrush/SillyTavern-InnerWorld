@@ -1462,4 +1462,14 @@ test('лавка: за раз один подарок, одно событие �
     assert.equal(C2.buyReward(c, { id: 'c1', kind: 'collect', title: 'Перо', cost: 10 }, st), null);
     assert.equal(c.buffs.length, 3);
 });
+test('знак зодиака в выдуманном календаре — по месту дня в году', () => {
+    const cal = { type: 'custom', months: Array.from({ length: 10 }, (_, i) => ({ name: 'Месяц' + (i + 1), gen: 'Месяца' + (i + 1), days: 36 })) };
+    // середина года — лето: в обычном году там Рак/Лев
+    assert.ok(['cancer', 'leo'].includes(C2.zodiacOn(cal, 18, 6)));
+    const mid = C2.zodiacMidOn(cal, 'leo');
+    assert.equal(C2.zodiacOn(cal, mid.d, mid.m), 'leo');
+    for (const z of Object.keys(C2.ZODIAC)) { const m = C2.zodiacMidOn(cal, z); assert.equal(C2.zodiacOn(cal, m.d, m.m), z, z); }
+    assert.equal(C2.zodiacOn(null, 8, 8), 'leo');
+    assert.equal(C2.bornText({ d: 7, m: 8, approx: true }, cal), 'около 7 Месяца8');
+});
 console.log(`итого: ${passed} проверок`);
