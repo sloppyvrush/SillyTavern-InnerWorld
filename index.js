@@ -25,7 +25,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.7';
+const VERSION = '0.6.8';
 const UPDATED = '22.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -44,6 +44,7 @@ let busy = false;
 let busyKind = '';         // какая кнопка разбора сейчас крутится: chat | lore | all
 let dreamBusy = false;
 let wishBusy = '';   // кому сейчас придумываются новые желания и страхи
+const histOpen = {}; // раскрыты ли «прошлые сны / слухи»
 let shopBusy = false;
 let pending = null;
 let view = '';
@@ -2346,6 +2347,7 @@ function panelEl() {
             rememberSection('diary', e.target);
             // витрина: какие разделы свёрнуты — запоминаем
             const d = e.target;
+            if (d && d.matches && d.matches('details[data-iw-hist]')) histOpen[d.dataset.iwHist] = d.open;
             if (d && d.matches && d.matches('details[data-iw-case]')) { const s = settings(); s.caseFold = Object.assign({}, s.caseFold || {}, { [d.dataset.iwCase]: d.open }); saveSettings(); }
             masonrySoon();
         }, true);
@@ -2477,7 +2479,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false, histOpen });
     masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
@@ -3440,6 +3442,16 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
+    if (t.dataset.iwRumorDel) {
+        const id = decodeURIComponent(t.dataset.iwRumorDel);
+        const meta = chatMeta();
+        const r = (meta.rumors || []).find(x => String(x.at || x.text) === id);
+        if (!r || !(await confirmDelete(r.text))) return;
+        meta.rumors = (meta.rumors || []).filter(x => x !== r);
+        ctx().saveMetadataDebounced?.();
+        updateInjection();
+        return renderAll();
+    }
     if (t.dataset.iwArt) {
         const [k, i] = t.dataset.iwArt.split(':');
         drawItemArt(k, Number(i));
@@ -4212,7 +4224,7 @@ function addButtons() {
         item.id = 'iw_menu_item';
         item.className = 'list-group-item flex-container flexGap5 interactable';
         item.tabIndex = 0;
-        item.innerHTML = '<div class="fa-solid fa-book-open extensionsMenuExtensionButton"></div>Внутренний мир';
+        item.innerHTML = '<div class="fa-solid fa-book-open extensionsMenuExtensionButton"></div>💭 Внутренний мир';
         item.addEventListener('click', openPanel);
         menu.appendChild(item);
     }
@@ -4342,7 +4354,7 @@ function settingsHtml() {
 <div class="iw-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>📔 Внутренний мир</b>
+      <b>💭 Внутренний мир</b>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">

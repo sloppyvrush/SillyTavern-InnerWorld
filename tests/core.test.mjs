@@ -1429,4 +1429,10 @@ test('повторный разбор того же сообщения не ст
     const out = C2.carryOwnEdits(base, own, 3);
     assert.deepEqual(out.characters.m.dreams.map(d => d.text), ['старый сон', 'сон этой ночи']);
 });
+test('этапы мечты не дублируются, даже перефразированные', () => {
+    const d = C2.mergeDream({ dream: { title: 'Сохранить империю', steps: [{ text: 'Найти способ укрепить Договоры', done: false }, { text: 'Найти способ укрепить Договоры', done: true }] } },
+        { title: 'Сохранить империю', steps: [{ text: 'Найти способ укрепить истончающиеся Договоры', done: false }, { text: 'Заключить брак', done: false }] }, 5);
+    assert.equal(d.steps.length, 2);
+    assert.ok(d.steps[0].done);
+});
 console.log(`итого: ${passed} проверок`);

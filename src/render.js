@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName } from './core.js';
+import { dedupeSteps, settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -177,6 +177,7 @@ function faceBadge(c, npc = false) {
 // (персонажа, чата, персоны) отмечены сами, но их тоже можно снять.
 let MULTI_NOW = false;
 let WISH_BUSY = ''; // кому сейчас придумываются новые желания и страхи
+let HIST_OPEN = {}; // раскрыты ли «прошлые сны» и «прошлые слухи»
 
 const LINK_TAG = { char: 'персонажа', chat: 'чата', persona: 'персоны' };
 function booksMenu(books = [], picked = [], linked = [], busy = false, off = [], hasPersona = false, wide = false) {
@@ -367,16 +368,22 @@ function renderNights(c, persona = false) {
     </section>`;
 }
 
-function dreamNote(c) {
-    const d = (c.dreams || [])[(c.dreams || []).length - 1];
-    if (!d) return '';
-    const older = (c.dreams || []).slice(0, -1).reverse();
-    return `<div class="iw-night iw-night-${esc(String(d.tone || '').replace(/\s+/g, '-'))}">
-      <div class="iw-night-head">${icon('moon')}<span>Сон${d.date ? ` · ${esc(d.date)}` : ''}</span>${d.tone ? `<em>${esc(d.tone)}</em>` : ''}</div>
+// Один сон — карточкой; i — его номер в c.dreams (для кнопки «убрать»)
+function nightCard(d, i, big = false) {
+    return `<li class="iw-night${big ? ' iw-night-big' : ''} iw-night-${esc(String(d.tone || '').replace(/\s+/g, '-'))}">
+      <div class="iw-night-head">${icon('moon')}<span>Сон${d.date ? ` · ${esc(d.date)}` : ''}</span>${d.tone ? `<em>${esc(d.tone)}</em>` : ''}<button type="button" class="iw-del iw-hist-x" data-iw-del="dreams:${i}" title="Убрать этот сон" aria-label="Убрать сон">${icon('x')}</button></div>
       ${d.thought ? `<div class="iw-night-thought">Засыпая: «${ce(d.thought)}»</div>` : ''}
       <div class="iw-night-text">${ce(d.text)}</div>
-      ${older.length ? `<div class="iw-night-prev">прошлые сны · ${older.length}</div><ul class="iw-night-old">${older.slice(0, 3).map(o => `<li><b>${esc(o.date || '')}</b> ${ce(o.text)}</li>`).join('')}</ul>${older.length > 3 ? `<details class="iw-more"><summary>ещё ${older.length - 3}</summary><ul class="iw-night-old">${older.slice(3).map(o => `<li><b>${esc(o.date || '')}</b> ${ce(o.text)}</li>`).join('')}</ul></details>` : ''}` : ''}
-    </div>`;
+    </li>`;
+}
+// В блоке — последний сон; «все сны» раскрывает прошлые тем же видом, новые сверху
+function dreamNote(c) {
+    const list = c.dreams || [];
+    if (!list.length) return '';
+    const last = list.length - 1;
+    const older = list.map((d, i) => ({ d, i })).slice(0, -1).reverse();
+    return `<ul class="iw-hist-list">${nightCard(list[last], last, true)}</ul>
+      ${older.length ? `<details class="iw-hist" data-iw-hist="nights"${HIST_OPEN.nights ? ' open' : ''}><summary class="iw-hist-sum"><span>прошлые сны</span><b>${older.length}</b>${icon('chevron')}</summary><ul class="iw-hist-list">${older.map(x => nightCard(x.d, x.i)).join('')}</ul></details>` : ''}`;
 }
 
 // Слухи о герое (персоне или боте): кто болтает, что говорят и насколько это правда
@@ -390,6 +397,14 @@ function aboutHim(r, name, persona) {
     if (!a) return false;
     return a === n || a.split(' ')[0] === n.split(' ')[0];
 }
+function rumorCard(r, name, persona) {
+    const id = r.at || r.text;
+    return `<li class="iw-rumor iw-rumor-${esc(r.truth)}">
+        <div class="iw-rumor-text">«${ce(r.text)}»</div>
+        <div class="iw-rumor-meta">${r.town ? '<span class="iw-rumor-town">по городу</span>' : (r.about && persona && nameKey(r.about) !== nameKey(name) ? `<span class="iw-rumor-about">о ${esc(r.about)}</span>` : '')}${r.who ? `<b>${esc(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
+        <button type="button" class="iw-del iw-hist-x" data-iw-rumor-del="${esc(encodeURIComponent(String(id)))}" title="Убрать этот слух" aria-label="Убрать слух">${icon('x')}</button>
+      </li>`;
+}
 function renderRumors(list, name, persona) {
     const mine = (list || []).filter(r => aboutHim(r, name, persona));
     if (!mine.length) {
@@ -399,14 +414,13 @@ function renderRumors(list, name, persona) {
       <div class="iw-muted">Пока никто не судачит. Слухи пойдут по ходу истории — время от времени: после скандала, подвига, странного поступка, если вас увидят вместе или если в округе что-то случится.</div>
     </section>`;
     }
-    const list2 = mine;
+    const newest = mine.slice().reverse();
+    const older = newest.slice(1);
     return `
     <section class="iw-block iw-b-rumors">
-      ${blockHead('rumors', `Слухи · ${list2.length}`)}
-      <ul class="iw-rumors">${list2.slice().reverse().map(r => `<li class="iw-rumor iw-rumor-${esc(r.truth)}">
-        <div class="iw-rumor-text">«${ce(r.text)}»</div>
-        <div class="iw-rumor-meta">${r.town ? '<span class="iw-rumor-town">по городу</span>' : (r.about && persona && nameKey(r.about) !== nameKey(name) ? `<span class="iw-rumor-about">о ${esc(r.about)}</span>` : '')}${r.who ? `<b>${esc(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
-      </li>`).join('')}</ul>
+      ${blockHead('rumors', 'Слухи')}
+      <ul class="iw-rumors iw-hist-list">${rumorCard(newest[0], name, persona)}</ul>
+      ${older.length ? `<details class="iw-hist" data-iw-hist="rumors"${HIST_OPEN.rumors ? ' open' : ''}><summary class="iw-hist-sum"><span>прошлые слухи</span><b>${older.length}</b>${icon('chevron')}</summary><ul class="iw-rumors iw-hist-list">${older.map(r => rumorCard(r, name, persona)).join('')}</ul></details>` : ''}
     </section>`;
 }
 
@@ -737,7 +751,7 @@ function renderDream(c, L, opts = {}) {
     if (!c.dream) {
         return `<section class="iw-block iw-b-dream">${blockHead('dream', esc(L.dream), dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key)))}<div class="iw-muted">Ещё не ясна</div></section>`;
     }
-    const steps = c.dream.steps;
+    const steps = dedupeSteps(c.dream.steps); // старые дневники могли записать один этап дважды
     const done = steps.filter(s => s.done).length;
     return `
     <section class="iw-block iw-b-dream${c.dream.pinned ? ' pinned' : ''}">
@@ -1379,7 +1393,8 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, nights = true, wishBusy = '' }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, nights = true, wishBusy = '', histOpen = {} }) {
+    HIST_OPEN = histOpen || {};
     MULTI_NOW = !!(roster && roster.multi);
     WISH_BUSY = wishBusy || '';
     LOVE = love;

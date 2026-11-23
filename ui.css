@@ -18413,4 +18413,32 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 }
 .iw-toasts.iw-theme-cyber .iw-toast-card { background-color: #0c1019; }
 /* прошлые сны видны сразу под новым — новый сон не «затирает» старые */
-.iw-night-prev { margin-top: 10px; padding-top: 6px; border-top: 1px dashed color-mix(in srgb, var(--iw-ink) 25%, transparent); font-size: .8em; font-weight: 700; color: var(--iw-muted); text-transform: lowercase; }
+
+/* Сны и слухи: в блоке — последний, «прошлые» раскрываются тем же видом, новые сверху; каждый можно убрать */
+.iw-hist-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.iw-hist-list > .iw-night { margin: 0; position: relative; }
+.iw-hist-list > .iw-rumor { position: relative; padding-right: 34px; }
+.iw-night-head .iw-hist-x { margin-left: 4px; }
+.iw-night-head em + .iw-hist-x { margin-left: 6px; }
+.iw-night-head > span { min-width: 0; }
+.iw-night-head:not(:has(em)) .iw-hist-x { margin-left: auto; }
+.iw-rumor > .iw-hist-x { position: absolute; top: 6px; right: 6px; }
+.iw-hist-x { opacity: .4; flex: none; }
+.iw-hist-x:hover, .iw-hist-x:focus-visible { opacity: 1; }
+@media (hover: none) { .iw-hist-x { opacity: .65; } }
+.iw-hist-list .iw-night:not(.iw-night-big) .iw-night-text { font-size: .94em; }
+.iw-hist { margin-top: 10px; }
+.iw-hist > .iw-hist-sum {
+    list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; border-radius: 999px; width: fit-content;
+    font-size: .82em; font-weight: 700; color: var(--iw-muted);
+    border: 1px dashed color-mix(in srgb, var(--iw-ink) 30%, transparent);
+}
+.iw-hist > .iw-hist-sum::-webkit-details-marker { display: none; }
+.iw-hist > .iw-hist-sum b { color: var(--iw-ink); }
+.iw-hist > .iw-hist-sum .iw-ico { width: 14px; height: 14px; transition: transform .15s ease; }
+.iw-hist[open] > .iw-hist-sum .iw-ico { transform: rotate(180deg); }
+.iw-hist > .iw-hist-list { margin-top: 8px; }
+:is(.iw-theme-cyber, .iw-theme-logbook, .iw-theme-pixel, .iw-theme-dossier) .iw-hist > .iw-hist-sum { border-radius: 0; }
+.iw-hist > .iw-hist-sum .iw-ico { display: inline-block; overflow: visible; flex: none; }

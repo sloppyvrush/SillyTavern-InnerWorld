@@ -1448,11 +1448,11 @@ export function restoreTrait(t) {
 // change — модель предлагает новую мечту после потрясения; add — мечта дополняется («…вместе с ней»).
 export function mergeDream(old, fresh, cycle) {
     const prev = old && old.dream && old.dream.title ? old.dream : null;
-    const clean = d => ({ title: d.title, steps: (d.steps || []).map(s => ({ text: s.text, done: !!s.done })), plus: d.plus || '' });
+    const clean = d => ({ title: d.title, steps: dedupeSteps(d.steps), plus: d.plus || '' });
     if (!prev) return Object.assign(clean(fresh), { changedAt: cycle });
     const cooling = old.dreamChangedAt !== undefined && cycle - old.dreamChangedAt < DREAM_COOLDOWN;
-    const steps = prev.steps.map(s => {
-        const n = findByText(fresh.steps, s.text);
+    const steps = dedupeSteps(prev.steps).map(s => {
+        const n = findByText(fresh.steps, s.text) || (fresh.steps || []).find(f => sameGoal(f.text, s.text));
         return { text: s.text, done: s.done || !!(n && n.done) };
     });
     const out = { title: prev.title, steps, plus: prev.plus || '', pinned: !!prev.pinned };
@@ -1476,7 +1476,20 @@ export function mergeDream(old, fresh, cycle) {
         }
     }
     for (const s of fresh.steps || []) {
-        if (!findByText(out.steps, s.text) && out.steps.length < 7 && !cooling) out.steps.push({ text: s.text, done: !!s.done });
+        if (!out.steps.some(x => sameGoal(x.text, s.text)) && out.steps.length < 7 && !cooling) out.steps.push({ text: s.text, done: !!s.done });
+    }
+    out.steps = dedupeSteps(out.steps);
+    return out;
+}
+
+// Этапы мечты без повторов: одинаковые и перефразированные склеиваются (выполнен, если выполнен хоть один)
+export function dedupeSteps(steps) {
+    const out = [];
+    for (const s of steps || []) {
+        if (!s || !s.text) continue;
+        const same = out.find(x => sameGoal(x.text, s.text));
+        if (same) { same.done = same.done || !!s.done; continue; }
+        out.push({ text: s.text, done: !!s.done });
     }
     return out;
 }
@@ -2667,7 +2680,7 @@ export function parseDream(text) {
     const raw = data.dream || data;
     const c = cleanCharacter({ name: 'x', dream: raw });
     if (!c || !c.dream) throw new Error('модель не вернула мечту');
-    return { title: c.dream.title, plus: c.dream.plus || '', steps: c.dream.steps };
+    return { title: c.dream.title, plus: c.dream.plus || '', steps: dedupeSteps(c.dream.steps) };
 }
 
 // ---------- Желания и страхи заново ----------
