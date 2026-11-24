@@ -16,6 +16,29 @@ export const MODULE_NAMES = {
     chronicle: 'Хроника',
 };
 
+// Какие всплывашки показывать: группа → типы событий. Выключенная группа молчит, но событие всё равно записано.
+export const TOAST_KINDS = {
+    achievement: { label: 'Достижения', types: ['achievement'] },
+    wants: { label: 'Желания', types: ['want_done'] },
+    dream: { label: 'Мечта жизни', types: ['dream_done', 'dream_change', 'dream_step', 'dream_grow'] },
+    fears: { label: 'Страхи', types: ['fear_real', 'fear_gone'] },
+    traits: { label: 'Черты', types: ['trait_new', 'trait_gone', 'trait_up', 'trait_down'] },
+    relation: { label: 'Отношение', types: ['impression', 'attitude'] },
+    rumor: { label: 'Слухи', types: ['rumor'] },
+    night: { label: 'Сны', types: ['night'] },
+    reward: { label: 'Покупки и подарки', types: ['reward'] },
+    note: { label: 'Подсказки дневника', types: ['note'] },
+};
+export function toastKindOf(type) {
+    for (const [k, v] of Object.entries(TOAST_KINDS)) if (v.types.includes(type)) return k;
+    return '';
+}
+// показывать ли всплывашку этого типа (общий выключатель проверяется отдельно)
+export function toastAllowed(s, type) {
+    const k = toastKindOf(type);
+    return !k || !s || !s.toastKinds || s.toastKinds[k] !== false;
+}
+
 export const DEFAULT_SETTINGS = {
     enabled: true,
     npcLimit: 12,            // сколько НПС вести в дневнике (99 — все)
@@ -23,6 +46,7 @@ export const DEFAULT_SETTINGS = {
     rumors: true,
     weather: true,
     modules: { mood: true, wants: true, fears: true, dream: true, traits: true, impression: true, attraction: true, chronicle: true },
+    toastKinds: {},          // группа → false, если такие всплывашки не показывать
     theme: 'diary',
     track: 'scene',          // scene | bot | list
     trackList: '',
@@ -843,6 +867,7 @@ export function mergeSettings(saved) {
     const s = Object.assign({}, DEFAULT_SETTINGS, saved || {});
     s.modules = Object.assign({}, DEFAULT_SETTINGS.modules, (saved && saved.modules) || {});
     s.moodTurns = Object.assign({}, DEFAULT_SETTINGS.moodTurns, (saved && saved.moodTurns) || {});
+    s.toastKinds = Object.assign({}, (saved && saved.toastKinds && typeof saved.toastKinds === 'object') ? saved.toastKinds : {});
     s.rosters = Object.assign({}, (saved && saved.rosters) || {});
     s.collapsed = Object.assign({}, (saved && saved.collapsed) || {});
     if (s.theme === 'auto') s.theme = 'diary';
@@ -910,10 +935,27 @@ export function lowerWord(s, max = 40) {
 
 // Эмоция — это чувство, а не поступок: «нежность», «облегчение». Если модель вписала
 // действие («укрыл её плащом…»), берём только первое слово-существительное не длиннее трёх слов.
+// служебные слова, на которых название обрываться не должно: «тревога за» → «тревога»
+const EMO_TAIL = new Set(['за', 'о', 'об', 'обо', 'к', 'ко', 'с', 'со', 'и', 'в', 'во', 'на', 'по', 'для', 'от', 'до', 'из', 'у', 'перед', 'пред', 'над', 'под', 'при', 'без', 'через', 'про', 'а', 'но', 'или', 'что', 'чтобы', 'из-за', 'of', 'for', 'about', 'to', 'and', 'with', 'at', 'in', 'on', 'the', 'a', 'an', 'toward', 'towards']);
 export function emotionWord(s) {
-    const t = lowerWord(s, 60);
-    const words = t.split(' ');
-    return words.length > 3 ? words.slice(0, 2).join(' ') : t;
+    // длинное — режем по целым словам, а не посреди слова
+    const full = str(s, 200).replace(/[.!…,;:]+$/u, '');
+    let words = full.split(' ').filter(Boolean);
+    const long = words.length > 3;
+    // «тревога за неё» — уточнение после предлога выбрасываем, остаётся само чувство
+    const cut = words.findIndex((w, i) => i > 0 && EMO_TAIL.has(w.toLowerCase()) && !/^(не|ни|not)$/i.test(words[i - 1]));
+    if (cut > 0) words = words.slice(0, cut);
+    if (long && words.length > 2) words = words.slice(0, 2);
+    while (words.length > 1 && EMO_TAIL.has(words[words.length - 1].toLowerCase())) words.pop();
+    while (words.length > 1 && words.join(' ').length > 40) words.pop();
+    return lowerWord(words.join(' '), 40);
+}
+// настроение одной фразой: только не обрываем на предлоге («встревожен за» → «встревожен»)
+export function moodPhrase(s) {
+    const words = str(s, 200).replace(/[.!…,;:]+$/u, '').split(' ').filter(Boolean);
+    while (words.length > 1 && words.join(' ').length > 40) words.pop();
+    while (words.length > 1 && EMO_TAIL.has(words[words.length - 1].toLowerCase())) words.pop();
+    return lowerWord(words.join(' '), 40);
 }
 
 // manual — объект {light, medium, deep} из настроек: тогда срок задан жёстко.
@@ -1034,7 +1076,7 @@ export function cleanCharacter(raw, opts = {}) {
     if (NPC_ROLES.includes(raw.role)) c.role = raw.role;
     if (Array.isArray(raw.heard)) c.heard = cleanHeard(raw.heard);
 
-    if (raw.mood !== undefined) c.mood = lowerWord(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
+    if (raw.mood !== undefined) c.mood = moodPhrase(typeof raw.mood === 'object' ? raw.mood.label : raw.mood);
     if (raw.face !== undefined) c.face = oneOf(raw.face, FACES, 'neutral');
     if (raw.mood_why !== undefined || (raw.mood && typeof raw.mood === 'object' && raw.mood.why)) c.moodWhy = str(raw.mood_why || raw.mood.why, 160);
     if (Array.isArray(raw.moodlets)) {
@@ -2094,20 +2136,56 @@ export function cleanNightDream(raw) {
     if (!who || !text) return null;
     return { who, text, thought: cut(raw.thought, 200), tone: DREAM_TONES.includes(raw.tone) ? raw.tone : 'странный' };
 }
+// Формы слуха: болтовня, подслушанный разговор, газета, глашатай, пост в сети, записка/листовка.
+export const RUMOR_FORMS = ['talk', 'dialog', 'news', 'herald', 'post', 'note'];
+export const RUMOR_FORM_NAMES = { talk: 'сплетня', dialog: 'подслушано', news: 'газета', herald: 'глашатай', post: 'пост', note: 'записка' };
+const RUMOR_FORM_RU = { 'сплетня': 'talk', 'болтовня': 'talk', 'разговор': 'dialog', 'диалог': 'dialog', 'шепот': 'dialog', 'шёпот': 'dialog', 'газета': 'news', 'новость': 'news', 'статья': 'news', 'news': 'news', 'article': 'news', 'глашатай': 'herald', 'указ': 'herald', 'объявление': 'herald', 'пост': 'post', 'твит': 'post', 'tweet': 'post', 'репост': 'post', 'ретвит': 'post', 'инстаграм': 'post', 'instagram': 'post', 'сторис': 'post', 'чат': 'post', 'форум': 'post', 'записка': 'note', 'листовка': 'note', 'письмо': 'note', 'надпись': 'note', 'граффити': 'note', 'letter': 'note' };
+
 export function cleanRumor(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const text = cut(raw.text, 240);
+    const f0 = String(raw.form || '').toLowerCase().trim();
+    let form = RUMOR_FORMS.includes(f0) ? f0 : (RUMOR_FORM_RU[f0] || '');
+    const lines = (Array.isArray(raw.lines) ? raw.lines : [])
+        .map(l => (l && typeof l === 'object') ? { who: cut(l.who || l.name, 40), text: cut(l.text || l.say, 200) } : { who: '', text: cut(l, 200) })
+        .filter(l => l.text).slice(0, 5);
+    if (!form) form = lines.length >= 2 ? 'dialog' : 'talk';
+    if (form === 'dialog' && lines.length < 2) form = 'talk';
+    let text = cut(raw.text, 240);
+    if (!text && form === 'dialog') text = cut(lines.map(l => `${l.who ? l.who + ': ' : ''}${l.text}`).join(' — '), 240);
     if (!text) return null;
     const tr = String(raw.truth ?? '').toLowerCase();
     const about = cut(raw.about, 60);
     const town = /^(город|город[ае]?|все|всех|двор|столиц|деревн|округ|town|city|everyone)/i.test(about || '');
-    return Object.assign({ who: cut(raw.who, 60), about: town ? '' : about, text, truth: tr === 'true' || tr === 'правда' ? 'true' : (tr === 'false' || tr === 'ложь' ? 'false' : 'half') }, town ? { town: true } : {});
+    const out = { who: cut(raw.who, 60), about: town ? '' : about, text, truth: tr === 'true' || tr === 'правда' ? 'true' : (tr === 'false' || tr === 'ложь' ? 'false' : 'half') };
+    if (town) out.town = true;
+    if (form !== 'talk') out.form = form;
+    if (form === 'dialog') out.lines = lines;
+    const title = cut(raw.title || raw.headline, 120);
+    if (title && (form === 'news' || form === 'post' || form === 'herald' || form === 'note')) out.title = title;
+    const source = cut(raw.source || raw.handle || raw.paper, 60);
+    if (source && form !== 'talk' && form !== 'dialog') out.source = source;
+    if (form === 'post') {
+        const via = cut(raw.via || raw.platform, 30);
+        if (via) out.via = via;
+        const n = v => { const x = Math.round(Number(v)); return Number.isFinite(x) && x > 0 ? Math.min(x, 9999999) : 0; };
+        if (n(raw.likes)) out.likes = n(raw.likes);
+        if (n(raw.reposts)) out.reposts = n(raw.reposts);
+    }
+    return out;
+}
+
+// Слух одной строкой (для подсказки модели и для уведомления)
+export function rumorPlain(r) {
+    if (!r) return '';
+    if (r.form === 'dialog' && Array.isArray(r.lines) && r.lines.length) return r.lines.map(l => `${l.who ? l.who + ': ' : ''}«${l.text}»`).join(' ');
+    if (r.form === 'news' && r.title) return `${r.source ? r.source + ': ' : ''}«${r.title}» — ${r.text}`;
+    return r.text;
 }
 
 export function eventText(ev) {
     switch (ev.type) {
         case 'night': return ev.text;
-        case 'rumor': return `«${ev.text}»`;
+        case 'rumor': return ev.plain || `«${ev.text}»`;
         case 'achievement': return `«${ev.text}»${ev.desc ? ` — ${ev.desc}` : ''}`;
         case 'want_done': return `«${ev.text}» — сбылось!`;
         case 'fear_real': return `«${ev.text}»`;
@@ -2219,7 +2297,7 @@ export function buildSystemPrompt(settings, ctx) {
         rules.push('mood — общее состояние одним-двумя словами так, чтобы оно продолжало фразу «Сейчас он…» / «Сейчас она…»: краткое прилагательное или причастие в роде персонажа, со строчной буквы («встревожен», «весела», «не в духе», «сосредоточена»). Не существительное и не полная форма («замотанный» — нельзя, «вымотан» — можно). Главное состояние дневник считает сам, как в «Симс»: складывает силу всех эмоций (старых, что ещё не прошли, и новых) по похожим чувствам, и побеждает то, у которого сила больше. Поэтому mood называй по самому сильному чувству из всех эмоций, а не по последнему событию и не смесью — слово про другое чувство дневник не возьмёт. face — лицо этого самого сильного чувства. Общее состояние всегда опирается на эмоции из moodlets: если состояние называет чувство, которого среди эмоций нет (например, «сосредоточен», а сосредоточенности в списке нет), добавь эту эмоцию в moodlets с причиной. mood_why — одной короткой фразой, почему он сейчас такой (что к этому привело).');
         const manual = settings.moodMode === 'manual';
         rules.push('face — какое лицо сейчас у персонажа, выбирай самое точное: joy (радость, веселье), excited (азарт, восторг, воодушевление, предвкушение), playful (озорство, игривость, дурачится), energized (бодрость, прилив сил), inspired (вдохновение, озарение), pride (гордость, торжество), confident (уверенность, смелость, хладнокровие), hope (надежда), grateful (благодарность, тронут), calm (спокоен, облегчение), love (нежность, влюблённость, забота), flirty (кокетство, флирт), desire (страсть, влечение), shy (смущён), sad (грусть, горе, отчаяние), melancholy (тоска, одиночество, ностальгия), hurt (обида, разочарование), guilt (вина, стыд, раскаяние), angry (злость, гнев), irritated (раздражение, досада), envy (зависть, ревность), disgust (отвращение, брезгливость), contempt (презрение, высокомерие), fear (страх, испуг, ужас), anxious (тревога, беспокойство, напряжение), suspicious (подозрение, недоверие, настороженность), uncomfortable (телесный дискомфорт: голод, холод, жара, неудобство), tired (усталость), bored (скука, апатия, опустошённость), focus (сосредоточен, решителен), surprise (удивлён), dazed (оглушён, в ступоре, в тумане, пьян), confused (растерян, озадачен), curious (любопытство, интерес), neutral. У каждой эмоции в moodlets тоже свой face из этого же списка — по самому чувству.');
-        rules.push('moodlets — эмоции, которые ВЫЗВАЛИ ИЛИ УСИЛИЛИ последние события, обычно 1–2, не больше 3. Старые эмоции из текущего состояния (moodlets_now) не повторяй и не переименовывай синонимами: они идут своим сроком (left) и угасают сами. emotion — ЧУВСТВО одним-двумя словами, существительное со строчной буквы («облегчение», «нежность», «ревность», «стыд»), никогда не поступок и не описание сцены. feel — как это чувство ощущается внутри у самого персонажа, коротко и по-человечески («внутри теплеет, хочется её защитить», «сжимается в груди»). why — что его вызвало: конкретное событие с точки зрения персонажа, коротко («успел перехватить Эвелин в переулке»). feel и why ОБЯЗАТЕЛЬНЫ у каждой эмоции: эмоция без причины не нужна — если не можешь назвать, откуда она, не пиши её. Не путай: поступок персонажа — это причина (why), а не эмоция. weight — сила: light — слабая бытовая (раздражение, скука, смущение, лёгкая досада), medium — заметная (обида, тревога, радость от события), deep — сильная и долгая (горе, потрясение, влюблённость, страх после угрозы жизни). Обычные мелочи — только light, deep — только после серьёзных событий.'
+        rules.push('moodlets — эмоции, которые ВЫЗВАЛИ ИЛИ УСИЛИЛИ последние события, обычно 1–2, не больше 3. Старые эмоции из текущего состояния (moodlets_now) не повторяй и не переименовывай синонимами: они идут своим сроком (left) и угасают сами. emotion — ЧУВСТВО одним-двумя словами, существительное со строчной буквы («облегчение», «нежность», «ревность», «стыд»), никогда не поступок и не описание сцены; без уточнений «за кого / к кому / из-за чего» — не «тревога за неё», а «тревога» (за кого — пиши в why). feel — как это чувство ощущается внутри у самого персонажа, коротко и по-человечески («внутри теплеет, хочется её защитить», «сжимается в груди»). why — что его вызвало: конкретное событие с точки зрения персонажа, коротко («успел перехватить Эвелин в переулке»). feel и why ОБЯЗАТЕЛЬНЫ у каждой эмоции: эмоция без причины не нужна — если не можешь назвать, откуда она, не пиши её. Не путай: поступок персонажа — это причина (why), а не эмоция. weight — сила: light — слабая бытовая (раздражение, скука, смущение, лёгкая досада), medium — заметная (обида, тревога, радость от события), deep — сильная и долгая (горе, потрясение, влюблённость, страх после угрозы жизни). Обычные мелочи — только light, deep — только после серьёзных событий.'
             + (manual ? '' : ' turns — сколько ответов продержится, по силе и по контексту: light 1–2, medium 3–6, deep 6–25.')
             + ' Если исполнилось желание — добавь приятную эмоцию, если сбылся страх — сильную неприятную. ended — только те эмоции из moodlets_now, которые событие в последних сообщениях ПРЯМО сняло (обида прошла после извинений, страх ушёл, когда опасность миновала). Если сцена просто сменилась — эмоцию не снимай: она догорит сама.');
     }
@@ -2242,7 +2320,7 @@ export function buildSystemPrompt(settings, ctx) {
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     if (ctx.clockNow && settings.weather !== false) rules.push(`weather — погода в сцене, на верхнем уровне JSON рядом с characters: {"sky":"${WEATHER_SKIES.join('|')}","temp":"градусы числом или null","note":"2–5 слов, как ощущается"}. Пиши, только если погода прямо описана в последних сообщениях или явно сменилась${ctx.weatherNow ? ` (сейчас в дневнике: ${ctx.weatherNow})` : '; погоды в дневнике ещё нет — можешь назвать правдоподобную по месту, эпохе и времени года'}. Если не ясно и не изменилось — не пиши.`);
     if (settings.dreams !== false && !ctx.firstRun) rules.push(`night_dream — сны. Ночь прошла, если в последних сообщениях кто-то лёг спать, уснул или проснулся, если сцена «наутро» или «на следующий день»${ctx.nightPassed ? ', а ещё — ПО ЧАСАМ СЦЕНЫ ночь уже прошла (см. [Часы сцены])' : ''}. Тогда верни на верхнем уровне JSON список: "night_dream":[{"who":"имя","thought":"о чём думал, засыпая — его голосом, одна фраза","text":"что снилось — 1–2 образные фразы","tone":"${DREAM_TONES.join('|')}"}] — по одному сну на каждого главного героя, который спал этой ночью${settings.persona !== false ? `, и на ${user} тоже (сон ${user} — только для дневника игрока: по событиям дня и чувствам, без новых поступков и решений за ${user})` : ''}. Сам сон в чате описывать не обязательно: если ночь прошла, а что снилось — не сказано, придумай сон по событиям дня, страхам и желаниям героя; если сон описан в тексте — бери его. Если ночь не прошла — не пиши.${ctx.lastDream ? ` Уже записаны сны: ${ctx.lastDream} — за ту же ночь не повторяй.` : ''}`);
-    if (settings.rumors !== false && !ctx.firstRun && ctx.rumorDue !== 'no') rules.push(`rumor — слух, как городские сплетни: на верхнем уровне JSON {"who":"кто разносит — НПС, слуги, соседи, торговцы, «весь двор»","about":"о ком (имя) или «город», если это общее событие","text":"что болтают — живо, как сплетня, одна фраза","truth":"true|half|false"}. Повод: что-то заметное — героев видели вместе, ссора или скандал на людях, подвиг, странный поступок, новость о важной персоне; или событие, которое касается всех вокруг (пожар, свадьба наследника, приезд гостей, налог, эпидемия, война, ограбление) — о нём тоже судачат. Слух бывает правдой, полуправдой или выдумкой. ${ctx.rumorDue === 'now' ? 'Слухов давно не было: сейчас напиши один, если в истории или вокруг героев есть хоть что-то, о чём могли бы болтать.' : 'Пиши, только если повод правда есть; если нет — не пиши.'}${ctx.rumorTexts && ctx.rumorTexts.length ? ` Уже ходят (не повторяй): ${ctx.rumorTexts.join('; ')}.` : ''}`);
+    if (settings.rumors !== false && !ctx.firstRun && ctx.rumorDue !== 'no') rules.push(`rumor — слух: на верхнем уровне JSON {"form":"talk|dialog|news|herald|post|note","who":"кто разносит","about":"о ком (имя) или «город», если это общее событие","text":"суть слуха","truth":"true|half|false"} и поля по форме. Формы: talk — сплетня одной живой фразой; dialog — подслушанный разговор, "lines":[{"who":"кто","text":"реплика"}] 2–4 реплики (шёпот служанок на кухне, бабки у подъезда, стражники у ворот, коллеги в курилке), text — суть в двух словах; news — заметка, "source":"название газеты/канала","title":"заголовок", text — пара фраз в газетном стиле; herald — глашатай, указ, объявление на площади или по радио, "source":"кто объявляет", text — как зачитывают; post — пост в сети, "source":"автор или @ник","via":"где (X, Instagram, Telegram, форум, чат дома…)", text — сам пост с хэштегами или эмодзи, если к месту, можно "likes" и "reposts" числами (репост, ретвит — тоже post); note — записка, листовка, надпись на стене, анонимное письмо, "source":"где нашли". ВЫБИРАЙ ФОРМУ ПО СЕТТИНГУ И ЭПОХЕ: средневековье и фэнтези — шёпот слуг, глашатай, листовка, сплетни в таверне, никаких соцсетей; XIX — середина XX века — газета, письма, разговоры; современность — посты, репосты, сторис, чаты, бабки у подъезда, новостные каналы; будущее и киберпанк — ленты, форумы, взломанные экраны. Чередуй формы: не повторяй форму прошлого слуха${ctx.rumorForms && ctx.rumorForms.length ? ` (прошлые: ${ctx.rumorForms.join(', ')})` : ''}. Не начинай с «Говорят» и «Ходят слухи» — пиши голосом того, кто разносит. Повод: что-то заметное — героев видели вместе, ссора или скандал на людях, подвиг, странный поступок, новость о важной персоне; или событие, которое касается всех вокруг (пожар, свадьба наследника, приезд гостей, налог, эпидемия, война, ограбление). Слух бывает правдой, полуправдой или выдумкой. ${ctx.rumorDue === 'now' ? 'Слухов давно не было: сейчас напиши один, если в истории или вокруг героев есть хоть что-то, о чём могли бы болтать.' : 'Пиши, только если повод правда есть; если нет — не пиши.'}${ctx.rumorTexts && ctx.rumorTexts.length ? ` Уже ходят (не повторяй): ${ctx.rumorTexts.join('; ')}.` : ''}`);
     if (ctx.hasGifts) rules.push(`gift_given — если у персонажа есть gift_pending и в последних сообщениях он уже вручил этот подарок ${user}, верни на верхнем уровне JSON, рядом с characters: "gift_given":[{"who":"кто подарил","title":"название подарка дословно","how":"как прошёл момент, одной фразой"}]. Если подарок ещё не вручён — не пиши. Когда подарок вручён, обязательно выдай и achievement про этот момент — в тон подарку и тому, как его вручили и приняли (романтично, мило, забавно, неловко, холодно).`);
     if (ctx.love) rules.push(`[Love Score] — счёт отношения к ${user} из другого расширения, ему доверяй: не противоречь ему. Для этих персонажей impression.now_score и chem_now.score держи по нему: от −100 до 0 ≈ от −3 до 0, от 0 до максимума ≈ от 0 до +3. Тип отношений (романтика, дружба, семья, соперничество, одержимость, ненависть) учитывай в now и в желаниях: например, при дружбе не пиши влюблённость.`);
     if (ctx.ignored && ctx.ignored.length) rules.push(`Этих персонажей игрок попросил не вести: ${ctx.ignored.join(', ')}. Не возвращай их в characters, даже если они есть в сцене.`);

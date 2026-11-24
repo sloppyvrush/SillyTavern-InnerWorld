@@ -13,6 +13,7 @@ import {
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
     achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
+    toastAllowed, rumorPlain, RUMOR_FORM_NAMES,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
@@ -26,7 +27,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.16';
+const VERSION = '0.6.17';
 const UPDATED = '22.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1122,7 +1123,7 @@ function updateInjection(beforeId) {
         try {
             const last = c.chat.length - 1;
             const rs = s.rumors !== false ? (chatMeta().rumors || []).filter(r => r.mes !== undefined && last - r.mes <= 6).slice(-2) : [];
-            if (rs.length) clockText += `${clockText ? ' ' : ''}[Слухи вокруг: ${rs.map(r => `«${r.text}»${r.who ? ` (болтает ${r.who})` : ''}`).join('; ')}. Если к месту, кто-то из персонажей может это услышать, обсудить или отреагировать; не вставляй дословно и не делай главным в сцене.]`;
+            if (rs.length) clockText += `${clockText ? ' ' : ''}[Слухи вокруг: ${rs.map(r => { const t = rumorPlain(r); const q = r.form === 'dialog' || r.form === 'news' ? t : `«${t}»`; return `${q}${r.who || r.source ? ` (${r.form && r.form !== 'dialog' ? (RUMOR_FORM_NAMES[r.form] + ', ') : 'болтает '}${r.source || r.who})` : ''}`; }).join('; ')}. Если к месту, кто-то из персонажей может это услышать, обсудить или отреагировать; не вставляй дословно и не делай главным в сцене.]`;
         } catch { /* без слухов */ }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
@@ -1459,17 +1460,40 @@ async function callModel(system, user, s, onText = null) {
 
 // Мультибот: одна карточка — несколько главных героев. Игрок сам решает, кто главный, а кто НПС.
 // «Какая это карточка» — один раз на карточку, при первом нажатии «Чат», «Лорбук» или «Всё сразу»
+// Был ли в этом чате хоть один разбор (запись в сообщении или свайпе, стартовое состояние).
+function chatEverAnalyzed() {
+    const c = ctx();
+    const meta = c.chatMetadata && c.chatMetadata[META_KEY];
+    if (meta && (meta.base || meta.modeAsked)) return true;
+    for (const m of c.chat || []) {
+        if (m && m.extra && m.extra[META_KEY]) return true;
+        for (const sw of (m && m.swipe_info) || []) if (sw && sw.extra && sw.extra[META_KEY]) return true;
+    }
+    return false;
+}
+
+// Вопрос «какая это карточка» — только перед самым первым разбором чата (или после очистки его дневника).
+// Если в чате уже был разбор — не спрашиваем никогда.
+let cardModeAsking = null;
 async function askCardMode() {
     const key = rosterKey();
-    if (!key) return true;
+    if (!key || !hasChat()) return true;
+    if (chatEverAnalyzed()) return true;
+    if (cardModeAsking) return cardModeAsking;
+    cardModeAsking = askCardModeNow(key).finally(() => { cardModeAsking = null; });
+    return cardModeAsking;
+}
+
+async function askCardModeNow(key) {
     const rs = settings().rosters;
-    const r0 = rs[key];
-    if (r0 && r0.modeSet) return true;
     const res = await iwDialog({
         title: 'Какая это карточка?',
         html: '<p class="iw-modal-text"><b>Обычный бот</b> — главный герой один: персонаж карточки. Остальные люди мира — НПС.</p><p class="iw-modal-text"><b>Мультибот</b> — в карточке несколько главных героев (экипаж, команда, семья). После разбора лорбука выберешь, кто из них главный, — и сможешь переносить героев из НПС в главные и обратно.</p>',
         buttons: [{ text: 'Обычный бот', value: 'single', kind: 'main' }, { text: 'Мультибот', value: 'multi', kind: 'main' }, { text: 'Отмена', value: null }],
     });
+    // спросили — в этом чате больше не спрашиваем, даже если закрыли без ответа
+    chatMeta().modeAsked = true;
+    ctx().saveMetadataDebounced?.();
     if (res !== 'single' && res !== 'multi') return false;
     const r = rs[key] = Object.assign(emptyRoster(), rs[key] || {});
     r.modeSet = true;
@@ -1887,6 +1911,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 }
             } catch { /* без подсказки */ }
             info.rumorTexts = (meta.rumors || []).slice(-6).map(r => r.text);
+            info.rumorForms = (meta.rumors || []).slice(-3).map(r => RUMOR_FORM_NAMES[r.form || 'talk'] || 'сплетня');
             // слухи — время от времени: давно не было — пора, только что был — не надо
             {
                 const lastR = (meta.rumors || []).reduce((m, r) => Math.max(m, Number(r.mes) || 0), -1);
@@ -2111,7 +2136,7 @@ function evRank(t) { const i = EV_RANK.indexOf(t); return i < 0 ? EV_RANK.length
 // После разбора: ачивки — каждая отдельно (их редко больше одной), остальное — одним уведомлением,
 // если событий больше двух; одно-два — как раньше, по отдельности.
 function flushEvents(list) {
-    const items = (list || []).filter(Boolean);
+    const items = (list || []).filter(ev => ev && toastAllowed(settings(), ev.type));
     if (!items.length) return;
     if (items.length <= 2) { items.forEach((ev, i) => showEvent(ev, i * 450)); return; }
     showGroup(items);
@@ -2161,6 +2186,8 @@ function showGroup(items) {
 function showEvent(ev, delay = 0) {
     // всплывашки выключены: событие всё равно записано (витрина, лента), просто не показываем
     if (settings().popups === false) return;
+    // этот вид всплывашек выключен в настройках (проверочные из настроек показываем всегда)
+    if (!ev.force && !toastAllowed(settings(), ev.type)) return;
     // идёт разбор — копим, ачивку показываем сразу
     if (evBatch && ev.type !== 'achievement') { evBatch.push(ev); return; }
     setTimeout(() => {
@@ -2759,7 +2786,7 @@ function takeExtras(raw, state, messageId) {
     if (r && !(meta.rumors || []).some(x => x.text === r.text)) {
         meta.rumors = [...(meta.rumors || []), Object.assign(r, { date: dateText, mes: messageId, at: Date.now() })].slice(-12);
         changed = true;
-        showEvent({ type: 'rumor', who: r.who || 'Слухи', text: r.text, icon: 'chat' }, 1200);
+        showEvent({ type: 'rumor', who: r.who || r.source || 'Слухи', text: r.text, icon: 'chat', rumor: r, plain: r.form === 'dialog' || r.form === 'news' ? rumorPlain(r) : '' }, 1200);
     }
     if (changed) ctx().saveMetadataDebounced?.();
 }
@@ -3095,7 +3122,26 @@ async function openPanel() {
     panelEl().hidden = false;
     raiseLayer(true);
     renderPanelNow();
+    fitPanel();
 }
+
+// Телефон: дневник ровно по экрану. Таверна и темы иногда ставят transform на <html> или страница
+// шире экрана — тогда «fixed» считается не от экрана, и дневник уезжает вправо. Меряем и сдвигаем назад.
+function fitPanel() {
+    const el = panelEl();
+    if (!el) return;
+    el.style.left = ''; el.style.width = ''; el.style.right = '';
+    if (!isPhone() || el.hidden) return;
+    const vw = Math.round(Math.min(window.innerWidth || 9999, document.documentElement.clientWidth || 9999));
+    el.style.width = vw + 'px';
+    el.style.right = 'auto';
+    el.style.left = '0px';
+    // где он оказался на самом деле — и сдвигаем так, чтобы левый край совпал с краем экрана
+    const dx = Math.round(el.getBoundingClientRect().left);
+    if (Math.abs(dx) > 1) el.style.left = (-dx) + 'px';
+}
+window.addEventListener('resize', () => fitPanel());
+
 
 function closePanel() {
     panelEl().hidden = true;
@@ -3269,9 +3315,11 @@ const TEST_DREAMS = [
     { thought: 'Странная она. Хорошая, но странная.', text: 'Снилось лето, дача, запах яблок — и она смеялась так, будто они знакомы сто лет.', tone: 'тёплый' },
 ];
 const TEST_RUMORS = [
-    { who: 'соседка с первого этажа', about: 'bot', text: 'Говорят, он по ночам сидит в машине у её подъезда и курит одну за одной', truth: 'half' },
-    { who: 'продавщица из ларька', about: 'persona', text: 'Ходят слухи, что она гадает на картах и знает, кто умрёт следующим', truth: 'false' },
-    { who: 'дворник', about: 'persona', text: 'Видели, как она выходила из его машины под утро', truth: 'true' },
+    { form: 'dialog', who: 'соседки на лавочке', about: 'bot', text: 'ночует у неё в машине', truth: 'half', lines: [{ who: 'Тамара Петровна', text: 'Опять этот в чёрном под её окнами стоял. До трёх ночи!' }, { who: 'Нина', text: 'Да ладно, может, охраняет.' }, { who: 'Тамара Петровна', text: 'Охраняет он… Знаем мы таких охранников.' }] },
+    { form: 'post', who: 'Подслушано в районе', source: '@podslushano_rayon', via: 'Telegram', about: 'persona', text: 'Девушка из третьего подъезда опять гадала кому-то на картах у ларька 🔮 Говорят, сбывается всё. Кто знает, как к ней записаться? #подслушано', truth: 'false', likes: 214, reposts: 37 },
+    { form: 'news', who: 'утренняя газета', source: 'Вечерний вестник', title: 'Таинственная пара замечена на рассвете', about: 'persona', text: 'Наш корреспондент видел, как молодая особа покидала автомобиль у набережной в пятом часу утра. Кто её спутник — пока загадка.', truth: 'true' },
+    { form: 'herald', who: 'глашатай на площади', source: 'Глашатай', about: 'город', text: 'Слушайте, слушайте! Указом совета ворота закрываются с заходом солнца, а всякий, кто будет замечен на улицах после, — будет допрошен!', truth: 'true' },
+    { form: 'note', who: 'кто-то неизвестный', source: 'на двери подъезда', about: 'bot', text: 'ТОТ, КТО ЕЗДИТ НА ЧЁРНОЙ МАШИНЕ, — ВЕРНИ ДОЛГ. МЫ ЗНАЕМ, ГДЕ ТЫ СПИШЬ.', truth: 'half' },
 ];
 let testDreamIdx = 0;
 async function testNightRumor(kind) {
@@ -3294,10 +3342,10 @@ async function testNightRumor(kind) {
     const pname = (personaKey && st.characters[personaKey] && st.characters[personaKey].name) || ctx().name1 || '';
     const have = (meta.rumors || []).map(r => r.text);
     const r0 = TEST_RUMORS.find(r => !have.includes(r.text)) || TEST_RUMORS[0];
-    const r = Object.assign({}, r0, { about: r0.about === 'bot' ? bot.name : pname, date, at: Date.now(), test: true });
+    const r = Object.assign({}, r0, { about: r0.about === 'город' ? '' : (r0.about === 'bot' ? bot.name : pname), date, at: Date.now(), test: true }, r0.about === 'город' ? { town: true } : {});
     meta.rumors = [...(meta.rumors || []).filter(x => x.text !== r.text), r].slice(-12);
     ctx().saveMetadataDebounced?.();
-    showEvent({ type: 'rumor', who: r.who, text: r.text, icon: 'chat' });
+    showEvent({ type: 'rumor', who: r.who || r.source, text: r.text, icon: 'chat', rumor: r, force: true });
     return renderAll();
 }
 
@@ -3309,10 +3357,10 @@ function testNotice(kind) {
     if (kind === 'error') return showError({ kind: 'test', title: 'Модель не ответила', text: 'Это проверочная ошибка: так выглядит листок, если разбор не удался.' }, { manual: true, what: 'Проверка' });
     if (kind === 'all') {
         const kinds = Object.keys(TEST_SAMPLES);
-        kinds.forEach((k, i) => showEvent(Object.assign({ type: k, who }, TEST_SAMPLES[k]), i * 2600));
+        kinds.forEach((k, i) => showEvent(Object.assign({ type: k, who, force: true }, TEST_SAMPLES[k]), i * 2600));
         return;
     }
-    showEvent(Object.assign({ type: kind, who }, TEST_SAMPLES[kind] || {}));
+    showEvent(Object.assign({ type: kind, who, force: true }, TEST_SAMPLES[kind] || {}));
 }
 
 async function onPanelClick(e) {
@@ -3499,6 +3547,14 @@ async function onPanelClick(e) {
         await saveEditedState(st);
         updateInjection();
         notice(`«${(ch && ch.name) || ''}»: отменено, вернулось ${back} ${plural(back, 'монета', 'монеты', 'монет')}.`);
+        return renderAll();
+    }
+    if (t.dataset.iwTk) {
+        const k = t.dataset.iwTk;
+        s.toastKinds = Object.assign({}, s.toastKinds);
+        if (s.toastKinds[k] === false) delete s.toastKinds[k]; else s.toastKinds[k] = false;
+        saveSettings();
+        syncSettingsForm();
         return renderAll();
     }
     if (t.dataset.iwMod) {

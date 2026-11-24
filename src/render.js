@@ -400,10 +400,41 @@ function aboutHim(r, name, persona) {
     if (!a) return false;
     return a === n || a.split(' ')[0] === n.split(' ')[0];
 }
+// Хэштеги и @ники в посте — подсвечены
+const tagged = t => esc(t).replace(/(^|\s)([#@][\p{L}\p{N}_]+)/gu, '$1<span class="iw-rp-tag">$2</span>');
+const shortNum = n => (n >= 10000 ? `${Math.round(n / 1000)}k` : (n >= 1000 ? `${(n / 1000).toFixed(1).replace('.0', '')}k` : String(n)));
+
+// Тело слуха — по форме: сплетня, подслушанный разговор, газета, глашатай, пост, записка.
+export function rumorBody(r) {
+    const f = r.form || 'talk';
+    if (f === 'dialog' && Array.isArray(r.lines) && r.lines.length) {
+        const who = [];
+        return `<div class="iw-rumor-dialog">${r.lines.map(l => {
+            let k = who.indexOf(l.who); if (k < 0) { who.push(l.who); k = who.length - 1; }
+            return `<div class="iw-rl iw-rl-${k % 2 ? 'b' : 'a'}">${l.who ? `<b>${esc(l.who)}</b>` : ''}<span>${ce(l.text)}</span></div>`;
+        }).join('')}</div>`;
+    }
+    if (f === 'news') {
+        return `<div class="iw-rumor-news">${r.source ? `<div class="iw-rn-src">${esc(r.source)}</div>` : ''}${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rn-text">${ce(r.text)}</div></div>`;
+    }
+    if (f === 'herald') {
+        return `<div class="iw-rumor-herald"><div class="iw-rh-src">${icon('scroll')}<span>${esc(r.source || r.who || 'Объявление')}</span></div>${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rh-text">${ce(r.text)}</div></div>`;
+    }
+    if (f === 'post') {
+        const author = r.who && r.source && r.who !== r.source ? r.who : (r.source || r.who || 'аноним');
+        const handle = r.source && r.source !== author ? r.source : '';
+        return `<div class="iw-rumor-post"><div class="iw-rp-head"><span class="iw-rp-ava" aria-hidden="true">${esc(String(author).replace(/^@/, '').charAt(0).toUpperCase() || '?')}</span><span class="iw-rp-names"><b>${esc(author)}</b>${handle || r.via ? `<span>${esc([handle, r.via].filter(Boolean).join(' · '))}</span>` : ''}</span></div>${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rp-text">${tagged(r.text)}</div>${r.likes || r.reposts ? `<div class="iw-rp-foot">${r.reposts ? `<span>${icon('rotate')}${shortNum(r.reposts)}</span>` : ''}${r.likes ? `<span>${icon('heart')}${shortNum(r.likes)}</span>` : ''}</div>` : ''}</div>`;
+    }
+    if (f === 'note') {
+        return `<div class="iw-rumor-note">${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rnote-text">${esc(r.text)}</div>${r.source ? `<div class="iw-rnote-src">${icon('letter')}<span>${esc(r.source)}</span></div>` : ''}</div>`;
+    }
+    return `<div class="iw-rumor-text">«${ce(r.text)}»</div>`;
+}
+
 function rumorCard(r, name, persona) {
     const id = r.at || r.text;
-    return `<li class="iw-rumor iw-rumor-${esc(r.truth)}">
-        <div class="iw-rumor-text">«${ce(r.text)}»</div>
+    return `<li class="iw-rumor iw-rumor-${esc(r.truth)} iw-rf-${esc(r.form || 'talk')}">
+        ${rumorBody(r)}
         <div class="iw-rumor-meta">${r.town ? '<span class="iw-rumor-town">по городу</span>' : (r.about && persona && nameKey(r.about) !== nameKey(name) ? `<span class="iw-rumor-about">о ${esc(r.about)}</span>` : '')}${r.who ? `<b>${esc(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
         <button type="button" class="iw-del iw-hist-x" data-iw-rumor-del="${esc(encodeURIComponent(String(id)))}" title="Убрать этот слух" aria-label="Убрать слух">${icon('x')}</button>
       </li>`;
@@ -1666,7 +1697,8 @@ export function renderToast(ev, theme) {
   <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
 </div>`;
     }
-    const kicker = toastKicker(theme, ev.type, eventTitle(ev));
+    const RK = { dialog: 'Подслушано', news: 'В газете', herald: 'Объявление', post: 'В сети', note: 'Записка' };
+    const kicker = ev.type === 'rumor' && ev.rumor && RK[ev.rumor.form] ? RK[ev.rumor.form] : toastKicker(theme, ev.type, eventTitle(ev));
     return `
 <div class="iw-toast-card iw-ev-${ev.type}" role="status">
   <span class="iw-tape" aria-hidden="true"></span>
@@ -1674,7 +1706,7 @@ export function renderToast(ev, theme) {
   <div class="iw-toast-body">
     <div class="iw-toast-kicker">${esc(kicker)}</div>
     <div class="iw-toast-who">${esc(ev.who)}</div>
-    <div class="iw-toast-text">${ce(eventText(ev))}</div>
+    ${ev.type === 'rumor' && ev.rumor && ev.rumor.form ? `<div class="iw-toast-text iw-toast-rumor">${rumorBody(ev.rumor)}</div>` : `<div class="iw-toast-text">${ce(eventText(ev))}</div>`}
     ${ev.points ? `<div class="iw-toast-points">+${esc(String(ev.points))} ${icon(currencyIcon(theme))}<span>${esc(themeLabels(theme, 'm').currency || '')}</span></div>` : ''}
     ${ev.claim ? `<div class="iw-toast-points iw-toast-claim">${icon('gift')}<span>Награда ждёт в дневнике: +${esc(String(ev.claim))}</span> ${icon(currencyIcon(theme))}</div>` : ''}
   </div>

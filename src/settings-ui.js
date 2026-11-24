@@ -1,5 +1,5 @@
 // Настройки «Внутреннего мира» — одна схема, два вида: в панели расширений таверны и внутри дневника.
-import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS } from './core.js';
+import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
 import { THEMES, THEME_IDS, THEME_SWATCHES } from './themes.js';
 import { API_KINDS } from './api.js';
 
@@ -58,6 +58,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'caseArt', label: 'Рисовать памятные вещи на витрине', hint: 'Покупаешь вещицу «в коллекцию» — модель рисует её маленькой картинкой по смыслу и по истории: засушенная роза, письмо с сургучом, часы. Одна короткая просьба к модели на покупку. Выключено — обычные значки.' },
                 { type: 'group', label: 'Вид и звук', hint: 'Уведомления, анимации и кнопка на экране.' },
                 { type: 'toggle', key: 'toasts', label: 'Всплывашки о событиях', hint: '«Желание исполнено», «Страх сбылся», «Новая черта»…' },
+                { type: 'toastKinds', label: 'Какие всплывашки показывать', show: s => s.toasts !== false && s.popups !== false, hint: 'Выключенные молчат, но события всё равно записываются в дневник, ленту и витрину.' },
                 { type: 'select', key: 'toastPos', label: 'Где всплывают уведомления', options: [['top', 'сверху'], ['bottom', 'снизу']], hint: 'И на компьютере, и на телефоне. Касается и событий, и ошибок дневника.' },
                 { type: 'toggle', key: 'sound', label: 'Звуки', hint: 'Свой звук на каждое событие, а на кнопки разбора — карандаш по бумаге.' },
                 { type: 'range', key: 'volume', label: 'Громкость звуков', min: 0, max: 100, step: 5, show: s => s.sound },
@@ -211,6 +212,13 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                     : `<button type="button" class="iw-mod${s.modules[m] ? ' on' : ''}" data-iw-mod="${m}" aria-pressed="${!!s.modules[m]}">${esc(MODULE_NAMES[m])}</button>`).join('');
                 return `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div><div class="iw-f-mods">${boxes}</div>${hintHtml}</div>`;
             }
+            if (f.type === 'toastKinds') {
+                const tk = s.toastKinds || {};
+                const boxes = Object.entries(TOAST_KINDS).map(([k, v]) => st
+                    ? `<label class="checkbox_label"><input type="checkbox" data-iw-set-tk="${k}"${tk[k] !== false ? ' checked' : ''}><span>${esc(v.label)}</span></label>`
+                    : `<button type="button" class="iw-mod${tk[k] !== false ? ' on' : ''}" data-iw-tk="${k}" aria-pressed="${tk[k] !== false}">${esc(v.label)}</button>`).join('');
+                return `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div><div class="iw-f-mods">${boxes}</div>${hintHtml}</div>`;
+            }
             if (f.type === 'turns') {
                 const one = (w, label) => `<label class="iw-f-label">${label}<select class="${st ? 'text_pole' : 'iw-select'}" data-iw-turn="${w}">${TURN_OPTIONS.map(([v]) => `<option value="${v}"${Number(s.moodTurns[w]) === v ? ' selected' : ''}>${v}</option>`).join('')}</select></label>`;
                 return `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div><div class="iw-f-turns">${one('light', 'слабые')}${one('medium', 'средние')}${one('deep', 'сильные')}</div></div>`;
@@ -270,6 +278,12 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
 export function applySettingChange(s, el) {
     if (el.dataset.iwSetMod) {
         s.modules[el.dataset.iwSetMod] = el.checked;
+        return true;
+    }
+    if (el.dataset.iwSetTk) {
+        s.toastKinds = Object.assign({}, s.toastKinds);
+        if (el.checked) delete s.toastKinds[el.dataset.iwSetTk];
+        else s.toastKinds[el.dataset.iwSetTk] = false;
         return true;
     }
     if (el.dataset.iwTurn) {

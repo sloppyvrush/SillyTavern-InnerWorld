@@ -18567,3 +18567,41 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel :is(.iw-b-wants, .iw-b-fears) > .iw-block-head > .iw-dream-tools { margin-left: auto; margin-right: 6px; flex: none; }
 .iw-panel :is(.iw-b-wants, .iw-b-fears) > .iw-block-head > .iw-dream-tools + .iw-fold { margin-left: 0; }
 .iw-panel :is(.iw-b-wants, .iw-b-fears) > .iw-block-head > .iw-label { min-width: 0; }
+
+/* ===== Слухи разных форм: разговор, газета, глашатай, пост, записка ===== */
+.iw-rumor-dialog { display: grid; gap: 4px; }
+.iw-rl { display: flex; flex-direction: column; max-width: 88%; padding: 5px 9px; border-radius: 12px 12px 12px 3px; background: color-mix(in srgb, var(--iw-ink) 7%, transparent); line-height: 1.35; }
+.iw-rl b { font-size: 11px; font-weight: 700; color: var(--iw-label-color, var(--iw-muted)); }
+.iw-rl-b { justify-self: end; border-radius: 12px 12px 3px 12px; background: color-mix(in srgb, var(--iw-hl-main, var(--iw-ink)) 14%, transparent); text-align: right; }
+.iw-rumor-news { padding: 2px 0; }
+.iw-rn-src { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--iw-muted); border-bottom: 1px solid currentColor; padding-bottom: 2px; margin-bottom: 4px; }
+.iw-rn-title { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 1.05em; line-height: 1.25; margin-bottom: 3px; }
+.iw-rn-text { font-family: Georgia, 'Times New Roman', serif; font-size: .95em; line-height: 1.4; }
+.iw-rumor-herald { text-align: center; }
+.iw-rh-src { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--iw-muted); margin-bottom: 3px; }
+.iw-rh-src .iw-ic, .iw-rh-src svg { width: 14px; height: 14px; }
+.iw-rh-text { font-style: italic; line-height: 1.4; }
+.iw-rumor-post { display: grid; gap: 5px; }
+.iw-rp-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.iw-rp-ava { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #f58529, #dd2a7b 55%, #8134af); }
+.iw-rp-names { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.iw-rp-names b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iw-rp-names span { font-size: 11px; color: var(--iw-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.iw-rp-text { line-height: 1.4; overflow-wrap: anywhere; }
+.iw-rp-tag { color: #3b82c4; }
+.iw-rp-foot { display: flex; gap: 14px; font-size: 11px; color: var(--iw-muted); }
+.iw-rp-foot span { display: inline-flex; align-items: center; gap: 4px; }
+.iw-rp-foot svg, .iw-rp-foot .iw-ic { width: 12px; height: 12px; }
+.iw-rumor-note { padding: 6px 8px; border: 1px dashed color-mix(in srgb, var(--iw-ink) 35%, transparent); border-radius: 4px; transform: rotate(-.4deg); }
+.iw-rnote-text { font-family: 'Caveat', 'Comic Sans MS', cursive; font-size: 1.12em; line-height: 1.3; overflow-wrap: anywhere; }
+.iw-rnote-src { display: flex; align-items: center; gap: 4px; margin-top: 3px; font-size: 11px; color: var(--iw-muted); }
+.iw-rnote-src svg, .iw-rnote-src .iw-ic { width: 12px; height: 12px; }
+.iw-toast-rumor { margin-top: 3px; }
+.iw-toast-rumor .iw-rl { max-width: 100%; }
+
+/* Телефон: дневник ровно по экрану, вбок не прокручивается и не уезжает */
+@media (max-width: 760px) {
+    .iw-panel { left: 0; right: auto; width: 100vw; max-width: 100vw; overflow-x: hidden; }
+    .iw-panel .iw-book { min-width: 0; max-width: 100%; overflow-x: hidden; overscroll-behavior-x: none; }
+    .iw-panel :is(p, li, .iw-muted, .iw-rumor, .iw-feel, .iw-note) { overflow-wrap: anywhere; }
+}
