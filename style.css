@@ -486,7 +486,12 @@
 
 /* Настройки в таверне: группы с заголовком */
 .iw-settings-form .iw-f-group { margin: 10px 0 4px; padding: 8px 10px 4px; border-radius: 10px; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
-.iw-settings-form .iw-f-group-head { display: grid; gap: 2px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed color-mix(in srgb, currentColor 25%, transparent); }
+.iw-settings-form .iw-f-group-head { position: relative; display: grid; gap: 2px; padding: 0 24px 4px 0; cursor: pointer; list-style: none; user-select: none; }
+.iw-settings-form .iw-f-group-head::-webkit-details-marker { display: none; }
+.iw-settings-form .iw-f-group-head::after { content: ''; position: absolute; right: 4px; top: 4px; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; opacity: .55; transform: rotate(45deg); transition: transform .2s; }
+.iw-settings-form .iw-f-group[open] > .iw-f-group-head { padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px dashed color-mix(in srgb, currentColor 25%, transparent); }
+.iw-settings-form .iw-f-group[open] > .iw-f-group-head::after { transform: translateY(3px) rotate(225deg); }
+.iw-settings-form .iw-f-group-body { display: grid; gap: 10px; }
 .iw-settings-form .iw-f-group-head b { font-size: .85em; letter-spacing: .05em; text-transform: uppercase; }
 .iw-settings-form .iw-f-group-head small { opacity: .7; font-size: .82em; }
 

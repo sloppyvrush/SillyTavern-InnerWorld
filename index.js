@@ -15,7 +15,7 @@ import {
     achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
     toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES,
 } from './src/core.js';
-import { generateImage, findImageExtensions } from './src/imagegen.js';
+import { generateImage, findImageExtensions, describeImageExtension } from './src/imagegen.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
     normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay, seasonOf,
@@ -28,7 +28,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel, IMG_STATUS } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.7.1';
+const VERSION = '0.7.2';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -2269,7 +2269,7 @@ function showError(info, { manual = false, what = '' } = {}) {
     wrap.addEventListener('click', e => {
         if (e.target.closest('.iw-toast-close')) return close();
         if (info.settings) {
-            sectionOpen.diary.connect = true;
+            sectionOpen.diary.connect = true; sectionOpen.diary['connect-g0'] = true;
             view = 'settings';
         }
         openPanel();
@@ -2634,7 +2634,8 @@ function masonry(el) {
         reset();
         grid.classList.add('iw-masonry');
         const kind = k => (k.className.match(/iw-b-([a-z]+)/) || [])[1] || '';
-        const rows = k => Math.max(1, Math.ceil((k.offsetHeight + MASONRY_GAP) / MASONRY_ROW));
+        // высоту меряем уже на ширине одной колонки: на всю ширину блок ниже, и потом текст вылезал бы за рамку
+        const rows = k => { if (k.style.gridColumn !== '1 / -1') k.style.gridColumn = k.style.gridColumn || '1'; return Math.max(1, Math.ceil((k.offsetHeight + MASONRY_GAP) / MASONRY_ROW)); };
         const col = [1, 1]; // следующая свободная строка в каждой колонке
         for (let i = 0; i < kids.length; i++) {
             const k = kids[i];
@@ -2645,6 +2646,7 @@ function masonry(el) {
             if (solo) {
                 const at = Math.max(col[0], col[1]);
                 k.style.gridColumn = '1 / -1';
+                k.style.gridRowEnd = '';
                 k.style.gridRowStart = at;
                 k.style.gridRowEnd = `span ${rows(k)}`;
                 col[0] = col[1] = at + rows(k);
@@ -2694,10 +2696,16 @@ function masonry(el) {
                 continue;
             }
             const c = col[0] <= col[1] ? 0 : 1;
+            const r = rows(k);
             k.style.gridColumn = String(c + 1);
             k.style.gridRowStart = col[c];
-            k.style.gridRowEnd = `span ${rows(k)}`;
-            col[c] += rows(k);
+            k.style.gridRowEnd = `span ${r}`;
+            col[c] += r;
+        }
+        // если содержимое блока потом выросло (картинка, шрифт, новая запись) — раскладываем заново
+        if (typeof ResizeObserver === 'function') {
+            if (!grid._iwRO) grid._iwRO = new ResizeObserver(list => { if (list.some(e => e.target.isConnected && Math.abs(e.target.offsetHeight - (Number(e.target.dataset.iwH) || 0)) > 4)) masonrySoon(); });
+            for (const k of kids) { k.dataset.iwH = String(k.offsetHeight); grid._iwRO.observe(k); }
         }
     }
 }
@@ -2906,13 +2914,24 @@ function takeExtras(raw, state, messageId) {
 function memeImgCfg() {
     const s = settings();
     if (!s.memeImg || s.memeImg === 'none') return null;
-    if (s.memeImg === 'ext') {
-        // только имя расширения: ключ и адрес читаются из его настроек в момент запроса
-        const list = findImageExtensions(ctx().extensionSettings);
-        const pick = list.find(e => e.key === s.memeImgExt) || list[0];
-        return pick ? { kind: 'ext', extKey: pick.key } : null;
+    // только имя расширения: ключ и адрес читаются из его настроек в момент запроса
+    const list = findImageExtensions(ctx().extensionSettings).filter(e => e.ok);
+    const pick = list.find(e => e.key === s.memeImgExt) || list[0];
+    return pick ? { kind: 'ext', extKey: pick.key } : null;
+}
+// Кто нарисован на меме: имя + файл аватарки карточки или персоны, чтобы расширение картинок нашло их внешность
+function memePeople(names) {
+    const c = ctx();
+    const out = [];
+    const cards = (c.characters || []).filter(Boolean);
+    for (const name of names || []) {
+        if (c.name1 && (sameName(name, c.name1) || namesLookAlike(name, c.name1))) { out.push({ name, persona: (personasMod && personasMod.user_avatar) || '' }); continue; }
+        let file = '';
+        if (!c.groupId && c.characterId !== undefined && isMain(name, mainNames())) file = (c.characters[c.characterId] || {}).avatar || '';
+        if (!file) { const ch = cards.find(x => sameName(x.name, name) || namesLookAlike(x.name, name)); if (ch) file = ch.avatar || ''; }
+        out.push({ name, char: file });
     }
-    return { kind: s.memeImg, url: s.memeImgUrl || '', key: s.memeImgKey || '', model: s.memeImgModel || '' };
+    return out;
 }
 const memeDrawing = new Set();
 async function drawMemeImage(at, { manual = false } = {}) {
@@ -2925,7 +2944,7 @@ async function drawMemeImage(at, { manual = false } = {}) {
     renderAll();
     try {
         const prompt = `Funny internet meme picture, expressive and comedic, bold simple composition, no text, no letters, no watermark. ${m0.img}`;
-        const src = await generateImage(prompt, cfg, ctx());
+        const src = await generateImage(prompt, Object.assign({ people: memePeople(m0.cast) }, cfg), ctx());
         if (ctx().getCurrentChatId?.() !== chatId) return;
         const m = (chatMeta().memes || []).find(x => x.at === at);
         if (!m || !src) return;
@@ -4852,7 +4871,7 @@ function settingsFormHtml(variant) {
         const ign = ignoredNames();
         if (ign.length) forgetHtml += `<div class="iw-forget-ignored"><span class="iw-muted">Забыты навсегда:</span> ${ign.map(n => `<button type="button" class="iw-btn iw-forget-chip iw-unignore" data-iw-unignore="${esc(n)}" title="Вернуть: дневник снова будет замечать ${esc(n)}">${esc(n)} <span aria-hidden="true">↺</span></button>`).join('')}</div>`;
     }
-    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED, imgExts: findImageExtensions(ctx().extensionSettings) });
+    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED, imgExts: findImageExtensions(ctx().extensionSettings), imgDesc: key => describeImageExtension(ctx().extensionSettings, key) });
 }
 
 function refreshForms() {
@@ -4909,6 +4928,7 @@ function onQuickSetting(spec) {
 
 function openSettingsAt(section) {
     sectionOpen.diary[section] = true;
+    if (section === 'connect') sectionOpen.diary['connect-g0'] = true;
     view = 'settings';
     openPanel();
     renderPanelNow();

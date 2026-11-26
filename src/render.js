@@ -12,6 +12,8 @@ function cap(v) {
     return t.replace(/^([^\p{L}\p{N}]*)(\p{L})/u, (m, a, b) => a + b.toUpperCase());
 }
 const ce = v => esc(cap(v));
+// Длинное слово в заголовке карточки (ориентация, знак) — чуть мельче, чтобы не залезало под кнопку
+const pnLong = t => { const w = Math.max(...String(t || '').split(/\s+/).map(x => x.length)); return w >= 17 ? ' iw-pn-xlong' : (w >= 13 ? ' iw-pn-long' : ''); };
 
 // Данные для подбора значка НПС: роль из лорбука или от модели, черты, имя, пол.
 function badgeInfo(c, entry) {
@@ -1011,7 +1013,7 @@ function renderPersona(c, L, opts = {}) {
         <div class="iw-persona-card iw-pc-editable iw-zd-${z ? z.el : 'none'}">
           <div class="iw-persona-top">
             <span class="iw-persona-code iw-zodiac-glyph">${z ? `${z.glyph}\uFE0E` : icon('zodiac')}</span>
-            <span class="iw-persona-name">${esc(z ? z.name : 'Знак не ясен')}<small>${born}</small></span>
+            <span class="iw-persona-name${pnLong(z ? z.name : 'Знак не ясен')}">${esc(z ? z.name : 'Знак не ясен')}<small>${born}</small></span>
             ${bornBtn}
           </div>
           ${z ? `<p class="iw-persona-general">${esc(z.text)}</p>` : ''}
@@ -1027,7 +1029,7 @@ function renderPersona(c, L, opts = {}) {
         <div class="iw-persona-card iw-pc-editable iw-or-${ok || 'none'}">
           <div class="iw-persona-top">
             <span class="iw-persona-code iw-orient-glyph">${icon('heart')}</span>
-            <span class="iw-persona-name">${esc(ok ? cap1(orientName(ok, g)) : 'Ориентация не ясна')}<small>Ориентация · ${src}</small></span>
+            <span class="iw-persona-name${pnLong(ok ? orientName(ok, g) : 'Ориентация не ясна')}">${esc(ok ? cap1(orientName(ok, g)) : 'Ориентация не ясна')}<small>Ориентация · ${src}</small></span>
             ${pick}
           </div>
           ${ok ? `<p class="iw-persona-general">${esc(ORIENTS[ok].text)}</p>` : ''}

@@ -18551,7 +18551,13 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     border: 1px solid color-mix(in srgb, var(--iw-ink) 14%, transparent);
 }
 .iw-f-group:first-child { margin-top: 4px; }
-.iw-f-group-head { display: grid; gap: 2px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 1px dashed color-mix(in srgb, var(--iw-ink) 22%, transparent); }
+.iw-f-group-head { position: relative; display: grid; gap: 2px; padding: 0 26px 4px 0; cursor: pointer; list-style: none; user-select: none; }
+.iw-f-group-head::-webkit-details-marker { display: none; }
+.iw-f-group-head::after { content: ''; position: absolute; right: 4px; top: 4px; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; opacity: .55; transform: rotate(45deg); transition: transform .2s; }
+.iw-f-group[open] > .iw-f-group-head { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px dashed color-mix(in srgb, var(--iw-ink) 22%, transparent); }
+.iw-f-group[open] > .iw-f-group-head::after { transform: translateY(3px) rotate(225deg); }
+.iw-f-group:not([open]) { padding-bottom: 8px; }
+.iw-f-group-head:hover b { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .iw-f-group-head b { font-size: .86em; letter-spacing: .06em; text-transform: uppercase; color: var(--iw-label-color, var(--iw-ink)); }
 .iw-f-group-head small { font-size: .82em; color: var(--iw-muted); }
 .iw-f-group-body > .iw-f:first-child { margin-top: 0; }
@@ -18980,6 +18986,14 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     .iw-panel.iw-theme-medieval .iw-book { padding-left: 16px; padding-right: 16px; }
     .iw-panel.iw-theme-medieval .iw-grid > .iw-block { max-width: 100%; }
 }
+/* длинный заголовок карточки (ориентация, знак) не залезает под кнопку «Изменить»: мельче и с переносом по слогам */
+.iw-panel .iw-persona-card .iw-persona-name { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; word-break: normal; }
+.iw-panel .iw-persona-name.iw-pn-long { font-size: calc(var(--iw-sub-size, 20px) * .86); }
+.iw-panel .iw-persona-name.iw-pn-xlong { font-size: calc(var(--iw-sub-size, 20px) * .76); }
+.iw-panel .iw-persona-name small { hyphens: manual; }
+/* знак и ориентация: название — так же ярко, как основной текст, а подпись под ним — бледнее */
+.iw-panel .iw-persona-card.iw-pc-editable .iw-persona-name { color: color-mix(in srgb, var(--pt, var(--iw-ink)) 30%, var(--iw-ink)); font-weight: 700; }
+.iw-panel .iw-persona-card.iw-pc-editable .iw-persona-name small { color: var(--iw-muted); opacity: .72; font-weight: 500; }
 /* длинное название эмоции не рвётся по букве («Сосредоточенност / ь»): шрифт чуть меньше,
    а если слово всё равно не влезает — перенос по слогам с дефисом */
 .iw-panel .iw-feel-name { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: break-word; word-break: normal; min-width: 0; }

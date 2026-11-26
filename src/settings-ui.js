@@ -49,12 +49,6 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'clock', label: 'Часы и календарь сцены', hint: 'Дата и время истории над дневником: сами понимают таймскипы и строчки вида «[02:50 | 08.10.1996]», календарь подстраивается под сеттинг, есть праздники и дни рождения.' },
                 { type: 'select', key: 'clockStep', label: 'Часы сцены: шаг за обычный ответ', options: [[0, 'не двигать — только по тексту'], [1, '1 минута'], [2, '2 минуты'], [5, '5 минут'], [10, '10 минут'], [15, '15 минут'], [30, '30 минут']], show: s => s.clock !== false, hint: 'Это время ВНУТРИ истории, а не то, сколько модель думает или пишет. Каждый ответ бота часы сцены двигаются сами: по отметке времени в ответе, по названной дате, по «через два часа» или «наутро». Если в ответе ничего такого нет — на этот шаг: 5 минут подходят для разговора, 0 — если время у вас стоит, пока его не назовут.' },
                 { type: 'range', key: 'memeEvery', label: 'Как часто мемы', min: 1, max: 30, step: 1, fmt: v => (Number(v) === 1 ? 'каждое сообщение' : `раз в ${v} сообщ.`), show: s => s.memes !== false },
-                { type: 'select', key: 'memeImg', label: 'Картинки к мемам', show: s => s.memes !== false, options: [['none', 'Без генерации: дневник рисует сам (эмодзи и вёрстка)'], ['st', 'Генерация картинок таверны'], ['ext', 'Через установленное расширение картинок'], ['openai', 'Свой сервис: OpenAI-совместимый'], ['gemini', 'Свой сервис: Gemini-совместимый (Nano Banana и др.)']], hint: s => (s.memeImg === 'st' ? 'Берётся то, что настроено в таверне в разделе «Генерация изображений».' : s.memeImg === 'ext' ? 'Дневник берёт подключение, модель и ключ из настроек выбранного расширения в момент рисования и никуда их не копирует. Поменяешь там — поменяется и тут.' : (s.memeImg === 'openai' || s.memeImg === 'gemini' ? 'Подписи мем пишет сам дневник, картинка — без текста. Картинка сохраняется в таверну, в чате — только путь к ней.' : 'Картинка мема — крупные эмодзи на цветном фоне. Чтобы были настоящие картинки, выбери генерацию.')) },
-                { type: 'select', key: 'memeImgExt', label: 'Какое расширение', show: s => s.memes !== false && s.memeImg === 'ext', options: (ctx.imgExts || []).length ? ctx.imgExts.map(e => [e.key, `${e.name} · ${e.type}`]) : [['', 'Не нашла установленных расширений картинок']], hint: (ctx.imgExts || []).length ? 'Показаны расширения таверны, у которых есть своё подключение к сервису картинок.' : 'Установи и настрой расширение для генерации картинок, потом открой настройки заново.' },
-                { type: 'text', key: 'memeImgUrl', label: 'Адрес сервиса картинок', placeholder: 'например https://api.openai.com/v1', show: s => s.memes !== false && (s.memeImg === 'openai' || s.memeImg === 'gemini') },
-                { type: 'text', key: 'memeImgKey', label: 'Ключ сервиса картинок', input: 'password', show: s => s.memes !== false && (s.memeImg === 'openai' || s.memeImg === 'gemini'), hint: 'Хранится в настройках таверны, как ключи других расширений.' },
-                { type: 'text', key: 'memeImgModel', label: 'Модель картинок', placeholder: 'например gpt-image-1 или gemini-2.5-flash-image', show: s => s.memes !== false && (s.memeImg === 'openai' || s.memeImg === 'gemini') },
-                { type: 'buttons', show: s => s.memes !== false && s.memeImg && s.memeImg !== 'none', buttons: [{ id: 'testMemeImg', label: 'Проверить картинки', hint: ctx.imgStatus || '' }] },
                 { type: 'group', label: 'Награды и витрина', hint: 'Очки за желания, лавка, достижения и картинки памятных вещей.' },
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
                 { type: 'toggle', key: 'claimAuto', label: 'Забирать награду за желания сразу', show: s => s.points !== false, hint: s => (s.claimAuto ? 'Монеты за сбывшееся желание приходят сами, а желание вычёркивается.' : 'Сбывшееся желание остаётся в списке с кнопкой «Забрать награду» — монеты придут, когда нажмёшь, и желание уйдёт из списка.') },
@@ -83,6 +77,7 @@ export function settingsSchema(ctx = {}) {
             id: 'connect',
             title: 'Подключение',
             fields: [
+                { type: 'group', label: 'Модель дневника', hint: 'Та же модель, что в чате, или отдельное подключение.' },
                 { type: 'select', key: 'source', label: 'Какая модель пишет дневник', options: [['main', 'та же, что в чате'], ['custom', 'отдельное подключение']] },
                 { type: 'select', key: 'apiKind', label: 'Подключение', options: API_KINDS, show: custom },
                 { type: 'select', key: 'profileId', label: 'Профиль', options: [['', '— выбери профиль —'], ...(ctx.profiles || [])], show: s => custom(s) && s.apiKind === 'profile', hint: 'Профили создаются в таверне: «Подключение к API» → «Профили подключения».' },
@@ -90,10 +85,15 @@ export function settingsSchema(ctx = {}) {
                 { type: 'text', key: 'apiKey', input: 'password', label: 'Ключ API', placeholder: 'вставь ключ', show: own },
                 { type: 'model', key: 'apiModel', label: 'Модель', options: models, show: own },
                 { type: 'buttons', show: custom, buttons: [{ id: 'testApi', label: 'Проверить подключение', hint: ctx.apiStatus || '' }] },
+                { type: 'group', label: 'Размышления и запас на ответ', hint: 'Сколько модель думает и сколько токенов ей оставлять.' },
                 { type: 'select', key: 'thinking', label: 'Сколько модели думать при разборе', options: THINKING_OPTIONS, hint: 'Разбор — это выписка из готового текста, долгие размышления ему почти не нужны. Думающие модели (Gemini 3 и 4, GLM, DeepSeek и похожие) иначе тратят на размышления весь запас, и запись обрывается. «Как в основном чате» — как выставлено в таверне.' },
                 { type: 'select', key: 'budgetMode', label: 'Запас на ответ модели', options: [['auto', 'сам, по размеру сцены'], ['fixed', 'как я задам']], hint: s => (s.budgetMode === 'fixed' ? 'Каждый запрос получает ровно столько. Если ответы обрываются — увеличь.' : 'Дневник считает запас сам: сколько персонажей в сцене, какой разбор, думающая ли модель. Платишь только за то, что модель написала, а запас лишь не даёт ей оборваться. Повторных запросов дневник сам не делает.') },
                 { type: 'select', key: 'budgetCap', label: 'Потолок на один ответ', options: BUDGET_CAP_OPTIONS.map((v, i) => [v, i === 0 ? `${v} токенов` : (v === 8000 ? '8000 (обычно)' : String(v))]), show: s => s.budgetMode !== 'fixed', hint: 'Больше этого дневник не попросит ни при каком разборе. Защищает от слишком долгих размышлений модели.' },
                 { type: 'select', key: 'responseLength', label: 'Запас на каждый ответ', options: RESPONSE_LENGTH_OPTIONS.map((v, i) => [v, i === 0 ? `${v} токенов` : String(v)]), show: s => s.budgetMode === 'fixed', hint: 'Думающие модели (Gemini 3 Pro и похожие) тратят запас ещё и на размышления.' },
+                { type: 'group', label: 'Картинки к мемам', hint: 'Чем рисовать картинки мемов: подключение берётся из установленного расширения картинок.' },
+                { type: 'select', key: 'memeImg', label: 'Картинки к мемам', options: [['none', 'Без генерации: дневник рисует сам (эмодзи и вёрстка)'], ['ext', 'Через установленное расширение картинок']], hint: s => (s.memes === false ? 'Мемы сейчас выключены в «Что вести в дневнике».' : s.memeImg === 'ext' ? 'Дневник берёт из расширения подключение, модель, ключ, стиль и негатив в момент рисования и ничего к себе не копирует. Промпт для мема — свой, генератор промптов расширения не используется. Если на меме герои истории — их внешность и фото-референсы берутся оттуда же.' : 'Картинка мема — крупные эмодзи на цветном фоне. Чтобы были настоящие картинки, выбери расширение картинок.') },
+                { type: 'select', key: 'memeImgExt', label: 'Какое расширение', show: s => s.memeImg === 'ext', options: (ctx.imgExts || []).length ? ctx.imgExts.map(e => [e.key, e.name]) : [['', 'Не нашла установленных расширений картинок']], hint: s => ((ctx.imgExts || []).length ? (ctx.imgDesc ? ctx.imgDesc(s.memeImgExt || ctx.imgExts[0].key) : '') : 'Установи и настрой расширение для генерации картинок, потом открой настройки заново.') },
+                { type: 'buttons', show: s => s.memeImg === 'ext', buttons: [{ id: 'testMemeImg', label: 'Проверить картинки', hint: ctx.imgStatus || '' }] },
             ],
         },
         {
@@ -171,9 +171,9 @@ export function rangeLabel(key, v) {
     return '';
 }
 
-export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '', imgExts = [] } = {}) {
+export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '', imgExts = [], imgDesc = null } = {}) {
     const st = variant === 'st';
-    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml, imgExts });
+    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml, imgExts, imgDesc });
     const sections = schema.map(sec => {
         const fieldsRaw = sec.fields.filter(f => !f.only || f.only === variant).map(f => {
             const hidden = f.show && !f.show(s) ? ' hidden' : '';
@@ -284,10 +284,12 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
         let fields = fieldsRaw;
         if (fieldsRaw.includes('\u0001')) {
             const parts = fieldsRaw.split('\u0001');
-            fields = (parts[0] ? parts[0] : '') + parts.slice(1).map(p => {
+            // каждая группа сворачивается; по умолчанию свёрнуты, дальше — как оставил пользователь
+            fields = (parts[0] ? parts[0] : '') + parts.slice(1).map((p, i) => {
                 const [label, rest] = p.split('\u0002');
                 const [hint, inner] = rest.split('\u0003');
-                return `<div class="iw-f-group"><div class="iw-f-group-head"><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</div><div class="iw-f-group-body">${inner}</div></div>`;
+                const gid = `${sec.id}-g${i}`;
+                return `<details class="iw-f-group" data-iw-sec="${gid}"${open[gid] ? ' open' : ''}><summary class="iw-f-group-head"><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</summary><div class="iw-f-group-body">${inner}</div></details>`;
             }).join('');
         }
         // в дневнике все разделы свёрнуты, в таверне раскрыты; дальше — как оставил пользователь
