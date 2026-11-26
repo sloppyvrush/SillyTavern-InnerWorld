@@ -1411,7 +1411,11 @@ test('частота ачивок: на «эпохальных» — тольк�
     assert.equal(C2.achGate({ tier: 'silver' }, list, 15, { achRate: 2 }), false);
     assert.equal(C2.achGate({ tier: 'silver' }, list, 30, { achRate: 2 }), true);
     assert.equal(C2.achGate({ tier: 'bronze' }, list, 11, {}), true);
-    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achRate: 1 }), { messages: ['x'] }).includes('эпохальное'));
+    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 10 }), { messages: ['x'] }).includes('эпохальное'));
+    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 70 }), { messages: ['x'] }).includes('примерно в 70%'));
+    assert.equal(mergeSettings({ achRate: 1 }).achPct, 10);
+    assert.equal(C2.achGate({ tier: 'silver' }, list, 15, { achPct: 20 }), false);
+    assert.equal(C2.achGate({ tier: 'bronze' }, list, 12, { achPct: 80 }), true);
 });
 test('картинка памятной вещи: только безопасный SVG, свои id', () => {
     const svg = C2.cleanArt('вот: <svg viewBox="0 0 64 64" onload="x()"><script>alert(1)</script><defs><radialGradient id="g"><stop offset="0" stop-color="#f00"/></radialGradient></defs><circle cx="32" cy="32" r="20" fill="url(#g)" onclick="y"/><image href="http://evil"/><a href="javascript:1"><path d="M0 0"/></a><foreignObject><div>x</div></foreignObject></svg> готово', 'k1');

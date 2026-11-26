@@ -578,7 +578,8 @@ function renderMemes(info, L = {}) {
         return `
     <section class="iw-block iw-b-memes">
       ${blockHead('memes', esc(L.memes || 'Мемы'))}
-      <div class="iw-muted">Пока без мемов. Раз в ${info.every} ${plural(info.every, 'сообщение', 'сообщения', 'сообщений')} дневник подберёт смешной мем к тому, что творится в истории.</div>
+      <div class="iw-muted">Пока без мемов. Раз в ${info.every} ${plural(info.every, 'сообщение', 'сообщения', 'сообщений')} дневник подберёт смешной мем к тому, что творится в истории — или придумай его прямо сейчас по последней сцене.</div>
+      <div class="iw-meme-meta iw-meme-first"><button type="button" class="iw-meme-draw${(info.rerolling || []).includes('new') ? ' iw-spin' : ''}" data-iw-meme-again="new"${(info.rerolling || []).includes('new') ? ' disabled' : ''} title="Придумать мем по последней сцене">${icon('sparkle')}<span>${(info.rerolling || []).includes('new') ? 'Придумываю…' : 'Сгенерировать мем'}</span></button></div>
     </section>`;
     }
     const newest = list.slice().reverse();
@@ -587,6 +588,7 @@ function renderMemes(info, L = {}) {
     <section class="iw-block iw-b-memes">
       ${blockHead('memes', esc(L.memes || 'Мемы'))}
       <ul class="iw-memes iw-hist-list">${memeCard(newest[0], info)}</ul>
+      <div class="iw-meme-meta iw-meme-more"><button type="button" class="iw-meme-draw${(info.rerolling || []).includes('new') ? ' iw-spin' : ''}" data-iw-meme-again="new"${(info.rerolling || []).includes('new') ? ' disabled' : ''} title="Придумать ещё один мем по последней сцене">${icon('plus')}<span>${(info.rerolling || []).includes('new') ? 'Придумываю…' : 'Ещё мем'}</span></button></div>
       ${older.length ? `<details class="iw-hist" data-iw-hist="memes"${HIST_OPEN.memes ? ' open' : ''}><summary class="iw-hist-sum"><span>Прошлые мемы</span><b>${older.length}</b>${icon('chevron')}</summary><ul class="iw-memes iw-hist-list">${older.map(m => memeCard(m, info)).join('')}</ul></details>` : ''}
     </section>`;
 }

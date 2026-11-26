@@ -18822,6 +18822,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-mld-bar { height: 18px; border: 1px solid #9a9a9a; background: #fff; padding: 2px; border-radius: 2px; }
 .iw-mld-bar i { display: block; height: 100%; min-width: 4px; background: repeating-linear-gradient(90deg, #06b025 0 8px, #fff 8px 10px); }
 .iw-mld-row { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 12px; color: #444; }
+.iw-mld-row b { flex: none; white-space: nowrap; }
 .iw-meme-poll { display: grid; gap: 6px; padding: 12px; border-radius: 14px; background: linear-gradient(160deg, #833ab4, #fd1d1d 60%, #fcb045); }
 .iw-mpl-q { padding: 8px 10px; border-radius: 10px; background: #fff; color: #111; font-weight: 800; text-align: center; }
 .iw-mpl-opt { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,.85); color: #111; overflow: hidden; }
@@ -18966,7 +18967,8 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-mr-menu .iw-mr-row i { flex: 1 1 auto; border-bottom: 1px dotted rgba(242,234,215,.5); transform: translateY(-4px); }
 /* картинка, нарисованная к мему без своей картинки, — над мемом */
 .iw-meme-extra { margin-bottom: 6px; }
-/* кнопки под мемом */
+/* кнопки под мемом; «Сгенерировать мем» / «Ещё мем» — под списком */
+.iw-panel .iw-meme-first, .iw-panel .iw-meme-more { margin-top: 10px; }
 .iw-panel .iw-meme-meta { flex-wrap: wrap; }
 .iw-panel .iw-meme-meta .iw-meme-draw + .iw-meme-draw { margin-left: 0; }
 
@@ -18978,6 +18980,14 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-tok-own .iw-input { width: 100%; max-width: none; height: 32px; }
 .iw-tok-own small { font-weight: 400; opacity: .7; font-size: 11px; }
 .iw-qrow .iw-tok { margin-left: 2px; }
+/* на телефоне меню не вылезает за край: раскрывается прямо под кнопкой на всю ширину */
+@media (max-width: 760px) {
+    .iw-tok[open] { display: block; flex: 1 1 100%; width: 100%; }
+    .iw-tok .iw-pick-list { position: static; margin-top: 6px; min-width: 0; width: 100%; box-sizing: border-box; box-shadow: none; }
+}
+@media (max-width: 440px) {
+    .iw-tok .iw-pick-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 /* ===== Сны: разные формы ===== */
 .iw-night-frags { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; }

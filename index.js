@@ -29,7 +29,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel, IMG_STATUS } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.7.4';
+const VERSION = '0.7.6';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1954,8 +1954,11 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 const memes = meta.memes || [];
                 const lastM = memes.reduce((m, x) => Math.max(m, Number(x.mes) || 0), -1);
                 const every = Math.max(1, Number(s.memeEvery) || 6);
-                const since = lastM < 0 ? messageId - (Number(meta.memeFrom) || 0) : messageId - lastM;
-                info.memeDue = s.memes !== false && since >= every;
+                // мемов ещё нет — первый пишется сразу (в том числе при самом первом разборе), дальше — раз в выбранное число сообщений
+                const since = lastM < 0 ? (meta.memeFrom === undefined ? Infinity : messageId - Number(meta.memeFrom)) : messageId - lastM;
+                info.memeDue = s.memes !== false && since >= every && !!(msgs && msgs.length);
+                info.memeFirst = info.memeDue && !memes.length;
+                if (info.memeDue && !memes.length) meta.memeFrom = messageId; // не вышло — следующая попытка через выбранное число сообщений
                 info.memeRecent = memes.slice(-8).map(x => x.format);
                 info.memeTexts = memes.slice(-5).map(memePlain).filter(Boolean);
             }
@@ -2817,7 +2820,7 @@ async function drawAllArt(which = 'items') {
 function artAuto(kind) {
     const s = settings();
     if (s.caseArt === false) return false;
-    return kind === 'gift' ? s.artAutoGifts !== false : s.artAutoItems !== false;
+    return s.artAuto !== false;
 }
 function drawNewItem(target, kind = 'item', delay = 300) {
     if (!artAuto(kind) || !target || !Array.isArray(target.collection)) return;
@@ -2948,18 +2951,23 @@ function memePeople(names) {
 const memeDrawing = new Set();
 const memeRerolling = new Set();
 // «Другой мем»: отдельная короткая просьба к модели дневника — новый мем к той же сцене на месте старого
+// «Другой мем» (at — какой заменить) и «Сгенерировать мем» (at = 'new' — новый по последней сцене):
+// отдельная короткая просьба к модели дневника
 async function rerollMeme(at) {
     if (!hasChat() || memeRerolling.has(at)) return;
+    const fresh = at === 'new';
     const chatId = ctx().getCurrentChatId?.();
     const list0 = chatMeta().memes || [];
-    const m0 = list0.find(x => x.at === at);
-    if (!m0) return;
+    const m0 = fresh ? null : list0.find(x => x.at === at);
+    if (!fresh && !m0) return;
+    const lastBot = lastBotMessageId();
+    if (fresh && lastBot < 0) return notice('В чате ещё нет сцены — мем пока не из чего придумать.');
     memeRerolling.add(at);
     renderAll();
     try {
         const c = ctx();
         const chat = c.chat || [];
-        const upto = Number.isInteger(m0.mes) && m0.mes >= 0 ? Math.min(m0.mes, chat.length - 1) : chat.length - 1;
+        const upto = m0 && Number.isInteger(m0.mes) && m0.mes >= 0 ? Math.min(m0.mes, chat.length - 1) : (lastBot >= 0 ? lastBot : chat.length - 1);
         const msgs = [];
         for (let i = upto; i >= 0 && msgs.length < 6; i--) {
             const m = chat[i];
@@ -2969,22 +2977,29 @@ async function rerollMeme(at) {
         const st = currentState();
         const cast = (st.order || []).slice(0, 6).map(k => st.characters[k]).filter(Boolean).map(ch => `${ch.name}${ch.persona ? ' (персонаж игрока)' : ''}${ch.mood ? ` — ${ch.mood}` : ''}`);
         const others = list0.filter(x => x.at !== at).slice(-4).map(memePlain);
-        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: [m0.format, ...list0.slice(-6).map(x => x.format)], texts: others, was: memePlain(m0) }, settings().language || 'русском');
+        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: [...(m0 ? [m0.format] : []), ...list0.slice(-6).map(x => x.format)], texts: others, was: m0 ? memePlain(m0) : '' }, settings().language || 'русском');
         const raw = await callModel(system, user, withBudget('rewards'));
         const data = extractJson(raw);
         const mm = cleanMeme((data && data.meme) || data);
         if (!mm) throw new Error('модель не прислала мем');
         if (ctx().getCurrentChatId?.() !== chatId) return;
         const meta = chatMeta();
-        const idx = (meta.memes || []).findIndex(x => x.at === at);
-        if (idx < 0) return;
-        const old = meta.memes[idx];
-        meta.memes[idx] = Object.assign(mm, { date: old.date, mes: old.mes, at: Date.now() });
+        if (fresh) {
+            const now = clockNow(upto + 1);
+            const date = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
+            meta.memes = [...(meta.memes || []), Object.assign(mm, { date, mes: upto, at: Date.now() })].slice(-20);
+        } else {
+            const idx = (meta.memes || []).findIndex(x => x.at === at);
+            if (idx < 0) return;
+            const old = meta.memes[idx];
+            meta.memes[idx] = Object.assign(mm, { date: old.date, mes: old.mes, at: Date.now() });
+        }
         ctx().saveMetadataDebounced?.();
+        renderInfobar();
     } catch (err) {
         if (err && err.cancelled) return;
-        console.warn('[Внутренний мир] другой мем', err);
-        notice(`Другой мем не получился: ${String(err && err.message || err).slice(0, 160)}`);
+        console.warn('[Внутренний мир] мем', err);
+        notice(`${fresh ? 'Мем' : 'Другой мем'} не получился: ${String(err && err.message || err).slice(0, 160)}`);
     } finally {
         memeRerolling.delete(at);
         renderAll();
@@ -3932,7 +3947,7 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwMemePic) return drawMemeImage(Number(t.dataset.iwMemePic), { manual: true });
-    if (t.dataset.iwMemeAgain) return rerollMeme(Number(t.dataset.iwMemeAgain));
+    if (t.dataset.iwMemeAgain) return rerollMeme(t.dataset.iwMemeAgain === 'new' ? 'new' : Number(t.dataset.iwMemeAgain));
     if (t.dataset.iwRumorDel) {
         const id = decodeURIComponent(t.dataset.iwRumorDel);
         const meta = chatMeta();

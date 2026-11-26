@@ -1,5 +1,5 @@
 // Настройки «Внутреннего мира» — одна схема, два вида: в панели расширений таверны и внутри дневника.
-import { TOKENS_MIN, TOKENS_MAX, MODULES, MODULE_NAMES, EXTRA_MODULES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
+import { achPctLabel, TOKENS_MIN, TOKENS_MAX, MODULES, MODULE_NAMES, EXTRA_MODULES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
 import { THEMES, THEME_IDS, THEME_SWATCHES, THEME_CARDS, THEME_VARIANTS, themeFamily, icon } from './themes.js';
 import { API_KINDS } from './api.js';
 
@@ -27,7 +27,7 @@ export function cap(t) {
 }
 
 // Поля, которые хранятся числом.
-export const NUMERIC_KEYS = ['memeEvery', 'shopEvery', 'every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume'];
+export const NUMERIC_KEYS = ['achPct', 'memeEvery', 'shopEvery', 'every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume'];
 
 const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 
@@ -63,13 +63,12 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
                 { type: 'toggle', key: 'claimAuto', label: 'Забирать награду за желания сразу', show: s => s.points !== false, hint: s => (s.claimAuto ? 'Монеты за сбывшееся желание приходят сами, а желание вычёркивается.' : 'Сбывшееся желание остаётся в списке с кнопкой «Забрать награду» — монеты придут, когда нажмёшь, и желание уйдёт из списка.') },
                 { type: 'toggle', key: 'shopAuto', label: 'Лавка обновляется сама', show: s => s.points !== false, hint: 'Включено — товары в лавке подбираются заново вместе с разбором, раз в выбранное число сообщений. Выключено — только кнопкой «обновить» в лавке.' },
-                { type: 'range', key: 'shopEvery', label: 'Как часто обновлять лавку', min: 1, max: 30, step: 1, fmt: v => (Number(v) === 1 ? 'каждое сообщение' : `раз в ${v} сообщ.`), show: s => s.points !== false && s.shopAuto },
+                { type: 'select', key: 'shopEvery', label: 'Как часто обновлять лавку', show: s => s.points !== false && s.shopAuto, options: [[1, 'после каждого сообщения'], [2, 'раз в 2 сообщения'], [3, 'раз в 3 сообщения'], [5, 'раз в 5 сообщений'], [10, 'раз в 10 сообщений'], [15, 'раз в 15 сообщений'], [20, 'раз в 20 сообщений'], [30, 'раз в 30 сообщений']] },
                 { type: 'toggle', key: 'buyOne', label: 'Покупать по одному', show: s => s.points !== false, hint: 'Включено — у персонажа за раз ждёт один подарок, одно событие и действует один эффект: следующий такой же можно купить, когда прошлый случится. Выключено — можно набрать сколько угодно сразу.' },
                 { type: 'toggle', key: 'achievements', label: 'Достижения на витрине', hint: 'Когда в истории случается что-то крупное, дневник сам выдаёт достижение и ставит его на полку витрины. Почти не тратит токенов: строчка в ответе только в важные моменты.' },
-                { type: 'range', key: 'achRate', label: 'Как часто выпадают достижения', min: 1, max: 5, step: 1, fmt: v => ACH_RATE_NAMES[v] || '', show: s => s.achievements !== false, hint: 'Влево — реже: только по-настоящему важные события (признание, смерть, свадьба, раскрытая тайна). Вправо — чаще: смешные и трогательные мелочи тоже становятся ачивками. «Обычно» — как было.' },
+                { type: 'range', key: 'achPct', label: 'Как часто выпадают достижения', min: 5, max: 100, step: 5, fmt: v => achPctLabel(Number(v)), show: s => s.achievements !== false, hint: 'Примерно в какой доле ответов, где в истории что-то произошло, выпадает ачивка. До 10% — только золото, по-настоящему эпохальное; до 25% — серебро и золото; ниже 40% между ачивками ещё и пауза (при 10% — около 24 сообщений, при 20% — около 12). От 40% — без паузы, годятся и мелкие смешные моменты.' },
                 { type: 'toggle', key: 'caseArt', label: 'Картинки памятных вещей и подарков', hint: 'Модель рисует вещь маленькой картинкой по смыслу и по истории: засушенная роза, письмо с сургучом, часы. Одна короткая просьба к модели на картинку. Выключено — обычные значки и никаких кнопок «нарисовать».' },
-                { type: 'toggle', key: 'artAutoItems', label: 'Памятные вещи рисовать сразу', show: s => s.caseArt !== false, hint: 'Купил вещицу в коллекцию — картинка рисуется сама. Выключено — только когда нажмёшь «нарисовать» у вещи на витрине.' },
-                { type: 'toggle', key: 'artAutoGifts', label: 'Подарки рисовать сразу', show: s => s.caseArt !== false, hint: 'Купил подарок — картинка рисуется сама, пока он ждёт вручения, и потом переходит на витрину вместе с ним. Выключено — только по кнопке «нарисовать».' },
+                { type: 'toggle', key: 'artAuto', label: 'Памятные вещи и подарки рисовать сразу', show: s => s.caseArt !== false, hint: 'Купил вещицу в коллекцию или подарок — картинка рисуется сама (подарок — пока ждёт вручения, потом переходит на витрину вместе с ним). Выключено — только когда нажмёшь «нарисовать».' },
                 { type: 'group', label: 'Вид и звук', hint: 'Уведомления, анимации и кнопка на экране.' },
                 { type: 'toggle', key: 'toasts', label: 'Всплывашки о событиях', hint: '«Желание исполнено», «Страх сбылся», «Новая черта»…' },
                 { type: 'toastKinds', label: 'Какие всплывашки показывать', show: s => s.toasts !== false && s.popups !== false, hint: 'Выключенные молчат, но события всё равно записываются в дневник, ленту и витрину.' },
