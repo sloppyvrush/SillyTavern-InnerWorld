@@ -12,7 +12,7 @@ import {
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
-    achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
+    achGate, memePublicGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
     toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt, TOKENS_MIN, TOKENS_MAX,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
@@ -28,7 +28,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.8.0';
+const VERSION = '0.8.1';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -2914,7 +2914,7 @@ function takeExtras(raw, state, messageId) {
         changed = true;
         showEvent({ type: 'rumor', who: r.who || r.source || 'Слухи', text: r.text, icon: 'chat', rumor: r, plain: r.form === 'dialog' || r.form === 'news' ? rumorPlain(r) : '' }, 1200);
     }
-    const mm = s.memes !== false && cleanMeme(data.meme);
+    const mm = s.memes !== false && memePublicGate(cleanMeme(data.meme), meta.memes);
     if (mm && !(meta.memes || []).some(x => memePlain(x) === memePlain(mm))) {
         const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now() });
         meta.memes = [...(meta.memes || []), rec].slice(-20);
@@ -2961,6 +2961,7 @@ async function rerollMeme(at) {
         if (!mm) throw new Error('модель не прислала мем');
         if (ctx().getCurrentChatId?.() !== chatId) return;
         const meta = chatMeta();
+        memePublicGate(mm, (meta.memes || []).filter(x => x.at !== at));
         if (fresh) {
             const now = clockNow(upto + 1);
             const date = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';

@@ -1568,6 +1568,21 @@ test('сны разной формы: обрывки, разговор, знак
     assert.equal(z.symbol, 'Зеркало');
 });
 
+test('мемы: паблик только у части, новые форматы из старых пабликов', () => {
+    const a = C2.memePublicGate({ format: 'macro', public: 'Паблик' }, [{ public: 'Был' }, {}]);
+    assert.equal(a.public, '');
+    const b = C2.memePublicGate({ format: 'macro', public: 'Паблик' }, [{ public: 'Был' }, {}, {}]);
+    assert.equal(b.public, 'Паблик');
+    assert.equal(C2.memePublicGate(null, []), null);
+    for (const f of ['comic', 'bebill', 'nothing', 'meanwhile', 'likeif', 'loveis', 'story', 'saywithout', 'fact', 'rarephoto']) assert.ok(C2.MEME_DEFS[f], f);
+    const st = C2.cleanMeme({ format: 'pikabu', title: 'Т', text: 'история', lines: [{ text: 'юмор' }], score: 1200 });
+    assert.equal(st.format, 'story');
+    assert.equal(st.score, 1200);
+    assert.equal(C2.cleanMeme({ format: 'comic', lines: [{ who: '😐', text: 'а' }] }).format, 'macro');
+    assert.ok(C2.pickMemeFormats([], 14, () => 0.5).filter(f => C2.MEME_DEFS[f].pic).length >= 4);
+    const p = C2.buildSystemPrompt({ ...C2.DEFAULT_SETTINGS, memes: true }, { memeDue: true, memeOffer: ['comic'] });
+    assert.ok(p.includes('примерно у каждого третьего мема'));
+});
 test('мемы: большой пул, горсть без недавних, разбор новых форматов', () => {
     assert.ok(C2.MEME_FORMATS.length >= 50);
     const offer = C2.pickMemeFormats(['macro', 'when'], 14, () => 0.3);

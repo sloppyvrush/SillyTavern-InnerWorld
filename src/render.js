@@ -552,16 +552,26 @@ export function memeBody(m, { drawing = false } = {}) {
     if (f === 'brain') return `<div class="iw-meme-brain">${L.map((l, i) => `<div class="iw-mb-row iw-mb-${Math.min(i, 3)}"><span>${ce(l.text)}</span><i aria-hidden="true">${['🧠', '🧠✨', '🌟🧠🌟', '🌌'][Math.min(i, 3)]}</i></div>`).join('')}</div>`;
     if (f === 'buttons') return `<div class="iw-meme-btns"><div class="iw-mbt-row">${L.slice(0, 2).map(l => `<span class="iw-mbt">${ce(l.text)}</span>`).join('')}</div><div class="iw-mbt-who"><span aria-hidden="true">😰</span>${m.who ? `<b>${esc(m.who)}</b>` : ''}</div></div>`;
     if (f === 'tweet') return `<div class="iw-rumor-post iw-meme-tweet"><div class="iw-rp-head"><span class="iw-rp-ava" aria-hidden="true">${esc(String(m.who || m.source || '?').replace(/^@/, '').charAt(0).toUpperCase())}</span><span class="iw-rp-names"><b>${esc(m.who || m.source || 'аноним')}</b>${m.source && m.source !== m.who ? `<span>${esc(m.source)}</span>` : ''}</span></div><div class="iw-rp-text">${tagged(m.text || '')}</div>${m.likes || m.reposts ? `<div class="iw-rp-foot">${m.reposts ? `<span>${icon('rotate')}${shortNum(m.reposts)}</span>` : ''}${m.likes ? `<span>${icon('heart')}${shortNum(m.likes)}</span>` : ''}</div>` : ''}</div>`;
+    if (f === 'comic') return `<div class="iw-meme-comic">${m.title ? `<div class="iw-mcm-title">${ce(m.title)}</div>` : ''}<div class="iw-mcm-grid iw-mcm-n${Math.min(L.length, 4)}">${L.slice(0, 4).map(l => `<div class="iw-mcm-cell"><span class="iw-mcm-say">${ce(l.text)}</span><span class="iw-mcm-face" aria-hidden="true">${esc(l.who && [...l.who].length <= 4 ? l.who : '😐')}</span></div>`).join('')}</div></div>`;
+    if (f === 'bebill') return `<div class="iw-meme-bebill"><span class="iw-mbb-fig" aria-hidden="true"><svg viewBox="0 0 40 80" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"><circle cx="20" cy="12" r="8"/><path d="M20 20v30M20 28L8 40M20 28l12 12M20 50L10 74M20 50l10 24"/><path d="M14 4h12l-2-4h-8z" fill="#111"/></svg></span><div class="iw-mbb-text"><b>${ce(m.title || 'Это он.')}</b>${L.map(l => `<span>${ce(l.text)}</span>`).join('')}${m.bottom ? `<b>${ce(m.bottom)}</b>` : ''}</div></div>`;
+    if (f === 'nothing' || f === 'likeif') return `<div class="iw-meme-vkpic iw-mvp-${f}"><div class="iw-mvp-cap">${ce(m.top || m.text || m.title || '')}</div>${memePic(m, drawing)}${m.bottom ? `<div class="iw-mvp-cap iw-mvp-bot">${ce(m.bottom)}</div>` : ''}${f === 'likeif' ? `<div class="iw-mvp-like" aria-hidden="true">♥ Мне нравится</div>` : ''}</div>`;
+    if (f === 'meanwhile') return `<div class="iw-meme-meanwhile">${memePic(m, drawing)}<div class="iw-mmw-cap">${ce(m.top || m.title || 'Тем временем…')}</div>${m.bottom || m.text ? `<div class="iw-mmw-sub">${ce(m.bottom || m.text)}</div>` : ''}</div>`;
+    if (f === 'rarephoto') return `<div class="iw-meme-rare">${memePic(m, drawing)}<div class="iw-mra-cap">${ce(m.top || m.title || m.text || '')}</div>${m.bottom ? `<div class="iw-mra-sub">${ce(m.bottom)}</div>` : ''}</div>`;
+    if (f === 'loveis') return `<div class="iw-meme-loveis"><div class="iw-mli-pic" aria-hidden="true">${esc(m.emoji || '👫')}</div><div class="iw-mli-text"><b>Love is…</b><span>${esc((t => t.charAt(0).toLowerCase() + t.slice(1))(String(m.text || m.top || m.title || '').replace(/^love is/i, '').replace(/^[\s….]+/, '')))}</span></div><span class="iw-mli-no" aria-hidden="true">№ ${String((Math.abs(Number(m.at) || 7) % 900) + 100)}</span></div>`;
+    if (f === 'story') { const sc = m.score != null ? m.score : 300 + (Math.abs(Number(m.at) || 7) % 1500); return `<div class="iw-meme-story"><div class="iw-msy-rate" aria-hidden="true"><i>▲</i><b>${shortNum(sc)}</b><i>▼</i></div><div class="iw-msy-main">${m.title ? `<div class="iw-msy-title">${ce(m.title)}</div>` : ''}<div class="iw-msy-text">${ce(m.text || '')}</div>${L.length ? `<div class="iw-msy-tags">${L.slice(0, 4).map(l => `<span>${esc(l.text)}</span>`).join('')}</div>` : ''}</div></div>`; }
+    if (f === 'saywithout') return `<div class="iw-meme-say"><div class="iw-msw-q"><span class="iw-rp-ava" aria-hidden="true">?</span><span>${ce(m.title || m.top || '')}</span></div><div class="iw-msw-a"><span class="iw-rp-ava" aria-hidden="true">${esc(String(m.who || '!').charAt(0).toUpperCase())}</span><div>${m.who ? `<b>${esc(m.who)}</b>` : ''}<span>${ce(m.text || m.bottom || '')}</span></div></div></div>`;
+    if (f === 'fact') return `<div class="iw-meme-fact"><div class="iw-mft-head"><span aria-hidden="true">${esc(m.emoji || '🧐')}</span><b>${ce(m.title || 'Интересный факт')}</b></div><div class="iw-mft-text">${ce(m.text || m.top || '')}</div></div>`;
     if (L.length) return memeList(m, L, 'top', '•');
     return `<div class="iw-meme-lines">${ce([m.title, m.top, m.text, m.bottom].filter(Boolean).join(' — '))}</div>`;
 }
 // Мем как пост в паблике: шапка с названием паблика, сам мем, лайки и репосты
 const NO_POST = ['tweet', 'tiktok', 'status'];
-const PUBLIC_DEFAULT = ['Мемы для своих', 'Подслушано', 'Типичная история', 'Смешно до слёз', 'Лучшее за неделю'];
+const POSTLIKE = ['story', 'saywithout', 'likeif'];
+// Пост — только когда модель назвала паблик: так выглядит лишь часть мемов, как репост из группы
 export function memePost(m, body) {
-    if (NO_POST.includes(m.format)) return body;
+    if (!m.public || NO_POST.includes(m.format) || POSTLIKE.includes(m.format)) return body;
     const seed = Math.abs(Number(m.at) || 7);
-    const name = m.public || PUBLIC_DEFAULT[seed % PUBLIC_DEFAULT.length];
+    const name = m.public;
     const likes = m.likes || 120 + (seed % 9000);
     const reposts = Math.round(likes / (6 + (seed % 7)));
     const hue = (seed * 37) % 360;

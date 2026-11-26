@@ -2276,6 +2276,16 @@ export const MEME_DEFS = {
     manual: { name: 'инструкция по применению', need: 3, spec: '"title":"Инструкция: [герой]", "lines":[{"text":"шаг или правило ухода"}] 3–5, "bottom":"предупреждение мелким шрифтом"' },
     menu: { name: 'меню', need: 3, spec: '"title":"название заведения или «Меню дня»", "lines":[{"text":"блюдо со смешным названием","who":"цена"}] 3–5' },
     forecast: { name: 'прогноз настроения', need: 3, spec: '"title":"Прогноз [чего] на сегодня", "lines":[{"who":"время","text":"прогноз с эмодзи погоды"}] 3–4' },
+    comic: { name: 'комикс', need: 2, spec: 'комикс из старых пабликов в 3–4 кадра: "title" — название (можно без), "lines":[{"who":"эмодзи-лицо кадра","text":"реплика или мысль"}] 3–4 кадра, последний — панчлайн' },
+    bebill: { name: 'будь как…', spec: '"title":"Это [герой].", "lines":[{"text":"Он …"},{"text":"Он не …"}] 2–3 пункта, "bottom":"[Герой] умный. Будь как [герой]." — как старый мем «Будь как Билл»' },
+    nothing: { name: 'ничего необычного', pic: true, spec: '"top":"Ничего необычного, просто [абсурдная ситуация из истории как будто это норма]", картинка' },
+    meanwhile: { name: 'тем временем…', pic: true, spec: '"top":"Тем временем в [месте или у героя]…", "bottom":"что там творится" (можно без), картинка' },
+    likeif: { name: 'лайк, если…', pic: true, spec: 'пост из старого ВК: "top":"Поставь лайк, если тоже …" или «Лайк, если …», картинка' },
+    loveis: { name: 'Love is…', pic: true, spec: 'вкладыш из жвачки: "text" — окончание фразы «Love is…» по-русски, про героев (смешно или трогательно), "emoji" — пара фигурок или предмет' },
+    story: { name: 'история с пикабу', spec: 'пост-история: "title":"заголовок поста", "text":"3–5 коротких предложений от первого лица героя, с неожиданным концом", "lines":[{"text":"тег"}] 2–3 тега, "score":рейтинг поста' },
+    saywithout: { name: 'скажи, не говоря', spec: '"title":"Скажи, что ты [кто], не говоря, что ты [кто]", "who":"кто отвечает (герой)", "text":"его ответ — смешное доказательство"' },
+    fact: { name: 'интересный факт', spec: 'паблик «интересных фактов»: "title":"Интересный факт" или «Факт №N», "text":"«факт» о герое или мире, звучит научно, но абсурден", "emoji"' },
+    rarephoto: { name: 'редкое фото', pic: true, spec: 'старое фото в сепии: "top":"Редкое фото: [кто и что делает]" или «Найдено в архиве: …», "bottom":"подпись мелко" (можно без), картинка' },
 };
 export const MEME_FORMATS = Object.keys(MEME_DEFS);
 export const MEME_FORMAT_NAMES = Object.fromEntries(MEME_FORMATS.map(k => [k, MEME_DEFS[k].name]));
@@ -2285,11 +2295,16 @@ export function pickMemeFormats(recent = [], n = 14, rnd = Math.random) {
     const pool = MEME_FORMATS.filter(f => !recent.includes(f));
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const out = pool.slice(0, n);
-    const pics = out.filter(f => MEME_DEFS[f].pic).length;
-    for (const f of pool.slice(n)) { if (out.filter(x => MEME_DEFS[x].pic).length >= 2) break; if (MEME_DEFS[f].pic && pics < 2) out.push(f); }
+    // как в старых пабликах: в каждой горсти хотя бы четыре мема-картинки
+    for (const f of pool.slice(n)) { if (out.filter(x => MEME_DEFS[x].pic).length >= 4) break; if (MEME_DEFS[f].pic) out.push(f); }
     return out;
 }
-const MEME_ALIAS = { 'meme': 'macro', 'image': 'macro', 'picture': 'macro', 'face': 'reaction', 'myface': 'reaction', 'beforeafter': 'before', 'howitstarted': 'started', 'starterpack': 'starter', 'tierlist': 'tier', 'alignment': 'align', 'redflag': 'redflags', 'greenflag': 'greenflags', 'todo': 'checklist', 'patchnotes': 'patch', 'mastercard': 'priceless', 'progress': 'loading', 'story': 'poll', 'post': 'tweet', 'dialog': 'chat', 'group': 'groupchat', 'google': 'autocomplete' };
+const MEME_ALIAS = { 'pikabu': 'story', 'loveisnt': 'loveis', 'bebill': 'bebill', 'belike': 'bebill', 'comics': 'comic', 'meme': 'macro', 'image': 'macro', 'picture': 'macro', 'face': 'reaction', 'myface': 'reaction', 'beforeafter': 'before', 'howitstarted': 'started', 'starterpack': 'starter', 'tierlist': 'tier', 'alignment': 'align', 'redflag': 'redflags', 'greenflag': 'greenflags', 'todo': 'checklist', 'patchnotes': 'patch', 'mastercard': 'priceless', 'progress': 'loading', 'story': 'poll', 'post': 'tweet', 'dialog': 'chat', 'group': 'groupchat', 'google': 'autocomplete' };
+// Подпись паблика — только у части мемов: если у одного из двух последних уже была, у нового убираем
+export function memePublicGate(mm, list) {
+    if (mm && mm.public && (list || []).slice(-2).some(x => x && x.public)) mm.public = '';
+    return mm;
+}
 export function cleanMeme(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const f0 = String(raw.format || raw.form || '').toLowerCase().replace(/[\s_\-]+/g, '').trim();
@@ -2313,7 +2328,8 @@ export function cleanMeme(raw) {
     for (const k of Object.keys(out)) if (out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) delete out[k];
     out.format = format;
     const sc = num(raw.score ?? raw.level ?? raw.percent ?? raw.stars);
-    if (sc !== null && ['meter', 'loading', 'review', 'battery'].includes(format)) out.score = format === 'review' ? Math.max(1, Math.min(5, sc)) : Math.max(0, Math.min(100, sc));
+    if (sc !== null && format === 'story') out.score = Math.max(-999, Math.min(99999, sc));
+    else if (sc !== null && ['meter', 'loading', 'review', 'battery'].includes(format)) out.score = format === 'review' ? Math.max(1, Math.min(5, sc)) : Math.max(0, Math.min(100, sc));
     const n = v => { const x = Math.round(Number(v)); return Number.isFinite(x) && x > 0 ? Math.min(x, 9999999) : 0; };
     if (format === 'tweet' || format === 'tiktok') { if (n(raw.likes)) out.likes = n(raw.likes); if (n(raw.reposts)) out.reposts = n(raw.reposts); }
     return out;
@@ -3056,7 +3072,7 @@ export function shownAliases(entry) {
 // Правило для мема: формат из случайной горсти, русский интернет-юмор; «картинка» мема — эмодзи и вёрстка
 export function memeRule(ctx = {}) {
     const offer = (ctx.memeOffer && ctx.memeOffer.length ? ctx.memeOffer : pickMemeFormats(ctx.memeRecent || [])).filter(f => MEME_DEFS[f]);
-    return `meme — мем по ситуации. На верхнем уровне JSON "meme":{"format":"один из форматов ниже", ...поля}. Юмор — как в русском интернете у зумеров, в тиктоке и пабликах: смешно, метко, узнаваемо — про героев, их характер, отношения, неловкость, абсурд сцены и мира, контраст ожиданий; можно с самоиронией героя; шутки русские, не переводные. ИМПРОВИЗИРУЙ: не пересказывай сцену и не цитируй реплики из чата дословно — придумай свою шутку, свой поворот, свою подпись, как будто мем сделал фанат истории. Мем — не обязательно про последнюю реплику: можно про героя вообще, про их отношения, про мир или про то, к чему всё идёт. Сленг к месту, а не в каждой строке («база», «кринж», «вайб», «сигма», «ну всё, гг», «это пушка», «я в своём познании настолько преисполнился», «мам, можно…»). Не обидно по признакам людей, без пошлости. Сегодня выбери самый смешной для этой сцены формат из этих: ${offer.map(f => `${f} (${MEME_DEFS[f].name}) — ${MEME_DEFS[f].spec}`).join('; ')}. У строки "lines" поля: "who" — подпись или кто, "text" — текст, "val" — число, если формат его просит. Для форматов с картинкой (${MEME_PIC.join(', ')}) впиши "emoji" — 1–3 эмодзи, которые и будут картинкой мема: реакция, лицо, предмет.${ctx.memeTexts && ctx.memeTexts.length ? ` Уже были (не повторяй шутки): ${ctx.memeTexts.join('; ')}.` : ''}${ctx.forced ? ' Мем нужен обязательно — найди, над чем посмеяться.' : ' Если смешного повода совсем нет — не пиши.'} Ещё впиши "public" — название паблика или канала, где выложен мем: смешное и по сеттингу истории (например «Подслушано во дворце», «Типичный Велесгар», «Мемы для оруженосцев», «Пикабу по-северному»), каждый раз другое.`;
+    return `meme — мем по ситуации. На верхнем уровне JSON "meme":{"format":"один из форматов ниже", ...поля}. Юмор — как в русском интернете у зумеров, в тиктоке и пабликах: смешно, метко, узнаваемо — про героев, их характер, отношения, неловкость, абсурд сцены и мира, контраст ожиданий; можно с самоиронией героя; шутки русские, не переводные. ИМПРОВИЗИРУЙ: не пересказывай сцену и не цитируй реплики из чата дословно — придумай свою шутку, свой поворот, свою подпись, как будто мем сделал фанат истории. Мем — не обязательно про последнюю реплику: можно про героя вообще, про их отношения, про мир или про то, к чему всё идёт. Сленг к месту, а не в каждой строке («база», «кринж», «вайб», «сигма», «ну всё, гг», «это пушка», «я в своём познании настолько преисполнился», «мам, можно…»). Не обидно по признакам людей, без пошлости. Сегодня выбери самый смешной для этой сцены формат из этих: ${offer.map(f => `${f} (${MEME_DEFS[f].name}) — ${MEME_DEFS[f].spec}`).join('; ')}. У строки "lines" поля: "who" — подпись или кто, "text" — текст, "val" — число, если формат его просит. Для форматов с картинкой (${MEME_PIC.join(', ')}) впиши "emoji" — 1–3 эмодзи, которые и будут картинкой мема: реакция, лицо, предмет.${ctx.memeTexts && ctx.memeTexts.length ? ` Уже были (не повторяй шутки): ${ctx.memeTexts.join('; ')}.` : ''}${ctx.forced ? ' Мем нужен обязательно — найди, над чем посмеяться.' : ' Если смешного повода совсем нет — не пиши.'} Мемы должны быть разными, как в старых пабликах ВК и на пикабу: картинки с подписью, комиксы, демотиваторы, списки, переписки — каждый раз другой вид и другая шутка. Иногда, примерно у каждого третьего мема, впиши "public" — смешное название паблика по сеттингу истории (например «Подслушано во дворце», «Типичный Велесгар», «Мемы для оруженосцев»), тогда мем покажется как репост из паблика; у остальных "public" не пиши.`;
 }
 // Отдельная просьба: другой мем к той же сцене (кнопка «Другой мем»)
 export function buildMemePrompt(info, lang = 'русском') {
