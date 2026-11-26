@@ -68,7 +68,7 @@ export const DEFAULT_SETTINGS = {
     apiModels: [],
     contextMessages: 6,
     budgetMode: 'auto',      // auto — запас считается по сцене, но не выше потолка; fixed — ровно responseLength
-    budgetCap: 8000,
+    budgetCap: 16000,        // думающим моделям (Gemini 3, Claude 3.7 и новее) 8000 часто не хватает
     responseLength: 4000,
     thinking: 'low',
     attrKeys: 'keys',        // притяжение модели: keys — только к месту по последним сообщениям; always — всё всегда
@@ -524,10 +524,10 @@ export function includeBodyWithThinking(body, level) {
 }
 
 // Новые версии тоже думают: Gemini 3/4 (Argon), GLM 4.5+ и 5, DeepSeek V3.1+/V4, Kimi K2/K3, Grok 3+, Qwen 3 и т. д.
-export const THINKING_MODEL = /gemini-(2\.5|[3-9])|think|reason|deepseek-(r|v3\.[1-9]|v[4-9])|-r1\b|\bo[134](-|$)|gpt-[5-9]|qwq|qwen-?[3-9]|kimi-k[2-9]|glm-(4\.[5-9]|[5-9])|grok-[3-9]|magistral|claude-(opus|sonnet)-[4-9]/i;
+export const THINKING_MODEL = /gemini-(2\.5|[3-9])|think|reason|deepseek-(r|v3\.[1-9]|v[4-9])|-r1\b|\bo[134](-|$)|gpt-[5-9]|qwq|qwen-?[3-9]|kimi-k[2-9]|glm-(4\.[5-9]|[5-9])|grok-[3-9]|magistral|claude-(opus|sonnet)-[4-9]|claude-3[.-]7|claude-[a-z-]*thinking/i;
 export function responseBudget(s, { kind = 'chat', mains = 1, npcs = 0, model = '' } = {}) {
-    if (s.budgetMode === 'fixed') return Math.max(1000, Number(s.responseLength) || 4000);
-    const cap = Math.max(2000, Number(s.budgetCap) || 8000);
+    if (s.budgetMode === 'fixed') return Math.min(TOKENS_MAX, Math.max(TOKENS_MIN, Number(s.responseLength) || 4000));
+    const cap = Math.min(TOKENS_MAX, Math.max(2000, Number(s.budgetCap) || 16000));
     const on = MODEL_MODULES.filter(m => s.modules && s.modules[m]).length / MODEL_MODULES.length;
     let need;
     if (kind === 'roster') need = 3000;
@@ -865,8 +865,9 @@ export const SHOWN_MOODLETS = 3; // столько эмоций видно ср�
 // Варианты числовых настроек — одни и те же в настройках и в быстрых кнопках пустого дневника.
 export const CONTEXT_OPTIONS = [2, 4, 6, 8, 10, 15, 20];
 export const CATCHUP_OPTIONS = [6, 8, 10, 12, 15, 20, 30];
-export const BUDGET_CAP_OPTIONS = [4000, 6000, 8000, 12000, 16000];
-export const RESPONSE_LENGTH_OPTIONS = [2000, 3000, 4000, 6000, 8000, 12000, 16000];
+export const BUDGET_CAP_OPTIONS = [4000, 8000, 12000, 16000, 24000, 32000, 48000, 64000];
+export const TOKENS_MIN = 1000, TOKENS_MAX = 200000;
+export const RESPONSE_LENGTH_OPTIONS = [2000, 4000, 6000, 8000, 12000, 16000, 24000, 32000];
 
 // Одна настройка силы влияния притяжения → тон подсказки и её глубина в чате.
 export const ATTR_POWER = {
@@ -903,10 +904,12 @@ export function mergeSettings(saved) {
     if (!Array.isArray(s.apiModels)) s.apiModels = [];
     s.volume = Math.max(0, Math.min(100, Number.isFinite(Number(s.volume)) ? Number(s.volume) : 45));
     if (!['auto', 'fixed'].includes(s.budgetMode)) s.budgetMode = 'auto';
-    s.budgetCap = Math.max(2000, Math.min(32000, Number(s.budgetCap) || 8000));
+    s.budgetCap = Math.max(2000, Math.min(TOKENS_MAX, Number(s.budgetCap) || 16000));
+    // старый потолок 8000 думающим моделям мал — один раз поднимаем до 16000 (это только потолок: платишь за написанное)
+    if (!s.capV2) { if (Number(s.budgetCap) === 8000) s.budgetCap = 16000; s.capV2 = true; }
     if (!THINKING_OPTIONS.some(([k]) => k === s.thinking)) s.thinking = 'low';
     if (!['all', 'last'].includes(s.infobarWhere)) s.infobarWhere = 'all';
-    s.responseLength = Math.max(1000, Math.min(32000, Number(s.responseLength) || 4000));
+    s.responseLength = Math.max(TOKENS_MIN, Math.min(TOKENS_MAX, Number(s.responseLength) || 4000));
     delete s.badges;
     delete s.track;
     delete s.trackList;

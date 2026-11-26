@@ -369,7 +369,9 @@ test('форма настроек', () => {
     const s = mergeSettings({ moodMode: 'manual', source: 'main', inject: false, contextMessages: 7 });
     const st = renderSettingsForm(s, { variant: 'st', profiles: [['p1', 'Быстрый']] });
     const diary = renderSettingsForm(s, { variant: 'diary' });
-    assert.ok(!st.includes('type="number"') && !diary.includes('type="number"'), 'нет полей с цифрами');
+    // цифры вписываются только в своё число токенов
+    const nums = h => (h.match(/<input type="number"[^>]*>/g) || []).filter(x => !/budgetCap|responseLength/.test(x));
+    assert.ok(!nums(st).length && !nums(diary).length, 'нет лишних полей с цифрами');
     assert.ok(st.includes('text_pole') && diary.includes('iw-select'));
     assert.ok(st.includes('data-iw-turn="deep"'), 'ручная длительность видна');
     assert.ok(/data-iw-set="profileId"/.test(st));
@@ -655,7 +657,7 @@ test('запас: сам по сцене и не выше потолка; вру
     const small = responseBudget(s, { kind: 'chat', mains: 1 });
     const big = responseBudget(s, { kind: 'all', mains: 3, npcs: 10, model: 'google/gemini-3.1-pro-preview' });
     assert.ok(small >= 1500 && small < big);
-    assert.equal(big, 8000);
+    assert.ok(big > 8000 && big <= 16000, String(big));
     assert.ok(responseBudget(s, { kind: 'chat', mains: 1, model: 'gemini-3.1-pro' }) > small);
     assert.equal(responseBudget(mergeSettings({ budgetMode: 'fixed', responseLength: 3000 }), { kind: 'all', mains: 5 }), 3000);
     assert.equal(responseBudget(mergeSettings({ budgetCap: 4000 }), { kind: 'all', mains: 5, npcs: 9 }), 4000);
@@ -696,7 +698,7 @@ test('пустой дневник: без фото, с быстрыми наст
     const waiting = html.slice(html.indexOf('iw-waiting'));
     assert.ok(!waiting.includes('iw-photo'));
     assert.ok(waiting.includes('у неё на душе') && waiting.includes('«Всё сразу»'));
-    assert.ok(waiting.includes('data-iw-quick="budgetCap:8000" aria-pressed="true"'));
+    assert.ok(waiting.includes('data-iw-tok="budgetCap:16000"') && waiting.includes('data-iw-tok-in="budgetCap"'));
     assert.ok(waiting.includes('data-iw-quick-open="connect"'));
 });
 

@@ -3,6 +3,7 @@ import { buyBlock, dedupeSteps, settleMood, cleanKnown, purseOf, isHearsay, isDe
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
+import { tokenPick } from './settings-ui.js';
 import { REL_THEMED } from './rel-themes.js';
 import { collectionOf, TIER_NAMES_RU, ACH_FACES, ACH_KINDS } from './showcase.js';
 
@@ -2028,9 +2029,7 @@ function renderWaiting(name, s, theme, roster) {
     const auto = s.budgetMode !== 'fixed';
     const caps = BUDGET_CAP_OPTIONS;
     const fixed = RESPONSE_LENGTH_OPTIONS;
-    const budgetRow = auto
-        ? caps.map(v => quickOpt('budgetCap', v, String(v), Number(s.budgetCap) === v)).join('')
-        : fixed.map(v => quickOpt('responseLength', v, String(v), Number(s.responseLength) === v)).join('');
+    const budgetRow = auto ? tokenPick('budgetCap', s.budgetCap, caps) : tokenPick('responseLength', s.responseLength, fixed);
     return `
 <div class="iw-waiting">
   <div class="iw-waiting-text">
@@ -2057,7 +2056,7 @@ function renderWaiting(name, s, theme, roster) {
         <div class="iw-quick-title">Сколько токенов давать модели на ответ</div>
         <div class="iw-qrow">${quickOpt('budgetMode', 'auto', 'сам, по размеру сцены', auto)}${quickOpt('budgetMode', 'fixed', 'как я задам', !auto)}</div>
         <div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">${auto ? 'Потолок:' : 'На каждый ответ:'}</span>${budgetRow}</div>
-        <div class="iw-quick-hint iw-hint-arrow">${sketchArrow(theme, 'iw-arrow-long')}<span>${auto ? 'Дневник сам считает, сколько нужно, и никогда не выходит за потолок. Платишь только за то, что модель написала.' : 'Каждый запрос получит ровно столько.'} Думающим моделям (Gemini 3 Pro и похожие) лучше от 6000: часть запаса уходит на размышления.</span></div>
+        <div class="iw-quick-hint iw-hint-arrow">${sketchArrow(theme, 'iw-arrow-long')}<span>${auto ? 'Дневник сам считает, сколько нужно, и никогда не выходит за потолок. Платишь только за то, что модель написала.' : 'Каждый запрос получит ровно столько.'} Думающим моделям (Gemini 3, Claude 3.7 и новее) лучше от 16 000: часть запаса уходит на размышления. В меню — готовые значения или своё число.</span></div>
       </div>
     </div>
     <div class="iw-quick-step">

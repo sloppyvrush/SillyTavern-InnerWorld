@@ -13,7 +13,7 @@ import {
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
     achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
-    toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt,
+    toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt, TOKENS_MIN, TOKENS_MAX,
 } from './src/core.js';
 import { generateImage, findImageExtensions, describeImageExtension } from './src/imagegen.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
@@ -29,7 +29,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel, IMG_STATUS } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.7.3';
+const VERSION = '0.7.4';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -3908,6 +3908,12 @@ async function onPanelClick(e) {
         if (!rosterBusy && !busy) writeSound();
         return studyLore({ mode: 'lore' });
     }
+    if (t.dataset.iwTok) {
+        // токены: готовое значение из меню
+        const i = t.dataset.iwTok.indexOf(':');
+        setTokens(t.dataset.iwTok.slice(0, i), t.dataset.iwTok.slice(i + 1));
+        return;
+    }
     if (t.dataset.iwQuick) return onQuickSetting(t.dataset.iwQuick);
     if (t.dataset.iwQuickOpen) return openSettingsAt(t.dataset.iwQuickOpen);
     if (t.dataset.iwCaseview) {
@@ -4671,6 +4677,17 @@ function onPanelInput(e) {
     if (out) out.textContent = v + '%';
 }
 
+function setTokens(key, raw) {
+    if (key !== 'budgetCap' && key !== 'responseLength') return;
+    const v = Math.round(Number(String(raw).replace(/[^\d]/g, '')));
+    if (!Number.isFinite(v) || v <= 0) return notice('Впиши число токенов, например 20000.');
+    const s = settings();
+    s[key] = Math.max(key === 'budgetCap' ? 2000 : TOKENS_MIN, Math.min(TOKENS_MAX, v));
+    saveSettings();
+    syncSettingsForm();
+    renderAll();
+}
+
 async function onPanelChange(e) {
     const el = e.target;
     if (el && el.matches && el.matches('[data-iw-life]')) return onLifeEdit(el.dataset.iwLife, el.value);
@@ -4699,6 +4716,10 @@ async function onPanelChange(e) {
         clockDraft = Object.assign({}, clockDraft || now.t, { d: Math.max(1, Number(el.value) || 1) });
         clockOpen = true;
         return renderAll();
+    }
+    if (el && el.matches && el.matches('[data-iw-tok-in]')) {
+        if (String(el.value).trim()) setTokens(el.dataset.iwTokIn, el.value);
+        return;
     }
     if (el && el.matches && el.matches('[data-iw-volume]')) {
         settings().volume = Number(el.value) || 0;

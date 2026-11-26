@@ -1,6 +1,6 @@
 // Настройки «Внутреннего мира» — одна схема, два вида: в панели расширений таверны и внутри дневника.
-import { MODULES, MODULE_NAMES, EXTRA_MODULES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
-import { THEMES, THEME_IDS, THEME_SWATCHES, THEME_CARDS, THEME_VARIANTS, themeFamily } from './themes.js';
+import { TOKENS_MIN, TOKENS_MAX, MODULES, MODULE_NAMES, EXTRA_MODULES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
+import { THEMES, THEME_IDS, THEME_SWATCHES, THEME_CARDS, THEME_VARIANTS, themeFamily, icon } from './themes.js';
 import { API_KINDS } from './api.js';
 
 function esc(s) {
@@ -8,6 +8,17 @@ function esc(s) {
 }
 
 const n = list => list.map(v => [v, String(v)]);
+
+// Сколько токенов: выпадающее меню в стиле темы — готовые значения или своё число
+const tok = v => `${Number(v).toLocaleString('ru-RU')}`;
+export function tokenPick(key, value, options, { variant = 'diary' } = {}) {
+    const v = Number(value) || options[0];
+    if (variant === 'st') {
+        const opts = [...new Set([...options, v])].sort((a, b) => a - b);
+        return `<div class="iw-tok-st"><select class="text_pole" data-iw-set="${key}">${opts.map(o => `<option value="${o}"${o === v ? ' selected' : ''}>${tok(o)} токенов</option>`).join('')}</select><label class="iw-tok-own"><span>или своё:</span><input type="number" class="text_pole" data-iw-set="${key}" min="${TOKENS_MIN}" max="${TOKENS_MAX}" step="500" value="${v}" inputmode="numeric"></label></div>`;
+    }
+    return `<details class="iw-pick iw-tok"><summary class="iw-pick-sum"><span>${tok(v)} токенов</span>${icon('chevron')}</summary><div class="iw-pick-list">${options.map(o => `<button type="button" class="iw-pick-opt${o === v ? ' on' : ''}" data-iw-tok="${key}:${o}">${tok(o)}</button>`).join('')}<label class="iw-tok-own"><span>Своё число</span><input type="number" class="iw-input" data-iw-tok-in="${key}" min="${TOKENS_MIN}" max="${TOKENS_MAX}" step="500" value="${options.includes(v) ? '' : v}" placeholder="например 20000" inputmode="numeric"><small>от ${tok(TOKENS_MIN)} до ${tok(TOKENS_MAX)}, Enter — сохранить</small></label></div></details>`;
+}
 
 // Пункты списков пишутся с большой буквы: «Сам, по размеру сцены», «Очень сильно».
 export function cap(t) {
@@ -87,8 +98,8 @@ export function settingsSchema(ctx = {}) {
                 { type: 'group', label: 'Размышления и запас на ответ', hint: 'Сколько модель думает и сколько токенов ей оставлять.' },
                 { type: 'select', key: 'thinking', label: 'Сколько модели думать при разборе', options: THINKING_OPTIONS, hint: 'Разбор — это выписка из готового текста, долгие размышления ему почти не нужны. Думающие модели (Gemini 3 и 4, GLM, DeepSeek и похожие) иначе тратят на размышления весь запас, и запись обрывается. «Как в основном чате» — как выставлено в таверне.' },
                 { type: 'select', key: 'budgetMode', label: 'Запас на ответ модели', options: [['auto', 'сам, по размеру сцены'], ['fixed', 'как я задам']], hint: s => (s.budgetMode === 'fixed' ? 'Каждый запрос получает ровно столько. Если ответы обрываются — увеличь.' : 'Дневник считает запас сам: сколько персонажей в сцене, какой разбор, думающая ли модель. Платишь только за то, что модель написала, а запас лишь не даёт ей оборваться. Повторных запросов дневник сам не делает.') },
-                { type: 'select', key: 'budgetCap', label: 'Потолок на один ответ', options: BUDGET_CAP_OPTIONS.map((v, i) => [v, i === 0 ? `${v} токенов` : (v === 8000 ? '8000 (обычно)' : String(v))]), show: s => s.budgetMode !== 'fixed', hint: 'Больше этого дневник не попросит ни при каком разборе. Защищает от слишком долгих размышлений модели.' },
-                { type: 'select', key: 'responseLength', label: 'Запас на каждый ответ', options: RESPONSE_LENGTH_OPTIONS.map((v, i) => [v, i === 0 ? `${v} токенов` : String(v)]), show: s => s.budgetMode === 'fixed', hint: 'Думающие модели (Gemini 3 Pro и похожие) тратят запас ещё и на размышления.' },
+                { type: 'tokens', key: 'budgetCap', label: 'Потолок на один ответ', options: BUDGET_CAP_OPTIONS, show: s => s.budgetMode !== 'fixed', hint: 'Больше этого дневник не попросит ни при каком разборе. Это только потолок: платишь за то, что модель написала. Думающим моделям (Gemini 3, Claude 3.7 и новее) лучше от 16 000 — часть запаса уходит на размышления.' },
+                { type: 'tokens', key: 'responseLength', label: 'Запас на каждый ответ', options: RESPONSE_LENGTH_OPTIONS, show: s => s.budgetMode === 'fixed', hint: 'Думающие модели (Gemini 3 Pro, Claude 3.7 и похожие) тратят запас ещё и на размышления — если записи обрываются, ставь больше.' },
                 { type: 'group', label: 'Картинки к мемам', hint: 'Чем рисовать картинки мемов: подключение берётся из установленного расширения картинок.' },
                 { type: 'select', key: 'memeImg', label: 'Картинки к мемам', options: [['none', 'Без генерации: дневник рисует сам (эмодзи и вёрстка)'], ['ext', 'Через установленное расширение картинок']], hint: s => (s.memes === false ? 'Мемы сейчас выключены в «Что вести в дневнике».' : s.memeImg === 'ext' ? 'Дневник берёт из расширения подключение, модель, ключ, стиль и негатив в момент рисования и ничего к себе не копирует. Промпт для мема — свой, генератор промптов расширения не используется. Если на меме герои истории — их внешность и фото-референсы берутся оттуда же.' : 'Картинка мема — крупные эмодзи на цветном фоне. Чтобы были настоящие картинки, выбери расширение картинок.') },
                 { type: 'select', key: 'memeImgExt', label: 'Какое расширение', show: s => s.memeImg === 'ext', options: (ctx.imgExts || []).length ? ctx.imgExts.map(e => [e.key, e.name]) : [['', 'Не нашла установленных расширений картинок']], hint: s => ((ctx.imgExts || []).length ? (ctx.imgDesc ? ctx.imgDesc(s.memeImgExt || ctx.imgExts[0].key) : '') : 'Установи и настрой расширение для генерации картинок, потом открой настройки заново.') },
@@ -205,6 +216,9 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                 const v = Number(s[f.key] ?? DEFAULT_SETTINGS[f.key]) || 0;
                 const shown = f.fmt ? f.fmt(v) : `${v}%`;
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)} <output class="iw-range-val">${esc(shown)}</output><input type="range" class="iw-range${f.fmt ? ' iw-range-steps' : ''}" data-iw-set="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}"${f.fmt ? ` data-iw-fmt="${f.key}"` : ''}></label>${hintHtml}</div>`;
+            }
+            if (f.type === 'tokens') {
+                return `<div class="iw-f"${hidden}><span class="iw-f-label">${esc(f.label)}</span>${tokenPick(f.key, s[f.key], f.options, { variant })}${hintHtml}</div>`;
             }
             if (f.type === 'text') {
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<input type="${f.input === 'password' ? 'password' : 'text'}" class="${st ? 'text_pole' : 'iw-input'}" data-iw-set="${f.key}" value="${esc(fieldValue(s, f.key))}" placeholder="${esc(f.placeholder || '')}" autocomplete="${f.input === 'password' ? 'new-password' : 'off'}" spellcheck="false"${f.input === 'password' ? ' data-lpignore="true" data-1p-ignore' : ''}></label>${hintHtml}</div>`;

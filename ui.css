@@ -12443,16 +12443,12 @@ ol {
 /* ---------- Низ настроек: язык записей, очистка и сброс, подпись ---------- */
 .iw-panel .iw-form-foot {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px 14px;
-    margin-top: 0;
-    padding: 10px 14px;
-    background: var(--iw-block-bg);
-    border: var(--iw-block-border);
-    border-radius: var(--iw-block-radius);
-    box-shadow: var(--iw-block-shadow);
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1.5px dashed var(--iw-divider);
 }
 
 .iw-panel .iw-form-foot .iw-lang { margin: 0; }
@@ -12461,14 +12457,11 @@ ol {
 .iw-panel .iw-foot-actions {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 8px;
 }
 
 .iw-panel .iw-sign {
-    flex: 1 1 100%;
-    padding-top: 10px;
-    border-top: 1.5px dashed var(--iw-divider);
     font-size: 12.5px;
     line-height: 1.5;
     text-align: center;
@@ -12939,7 +12932,9 @@ ol {
         gap: 8px 6px;
         padding: 10px 0 10px;
         background-color: var(--iw-bg);
-        box-shadow: -48px 0 0 var(--iw-bg), 48px 0 0 var(--iw-bg), 0 12px 12px -12px rgba(0, 0, 0, .35);
+        /* снизу — тонкая линия-рамочка во всю ширину листа вместо тени */
+        --iw-head-line: color-mix(in srgb, var(--iw-label-color, var(--iw-ink)) 35%, var(--iw-bg));
+        box-shadow: -48px 0 0 var(--iw-bg), 48px 0 0 var(--iw-bg), -48px 2px 0 var(--iw-head-line), 48px 2px 0 var(--iw-head-line), 0 2px 0 var(--iw-head-line);
     }
 
     .iw-panel .iw-head > .iw-titlebox {
@@ -18975,6 +18970,15 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel .iw-meme-meta { flex-wrap: wrap; }
 .iw-panel .iw-meme-meta .iw-meme-draw + .iw-meme-draw { margin-left: 0; }
 
+/* Токены: меню с готовыми значениями и своим числом */
+.iw-tok .iw-pick-sum { text-transform: none; }
+.iw-tok .iw-pick-list { grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 280px; }
+.iw-tok .iw-pick-opt { text-transform: none; white-space: nowrap; }
+.iw-tok-own { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, currentColor 30%, transparent); font-size: 12.5px; font-weight: 700; }
+.iw-tok-own .iw-input { width: 100%; max-width: none; height: 32px; }
+.iw-tok-own small { font-weight: 400; opacity: .7; font-size: 11px; }
+.iw-qrow .iw-tok { margin-left: 2px; }
+
 /* ===== Сны: разные формы ===== */
 .iw-night-frags { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; }
 .iw-night-frags li { position: relative; padding-left: 16px; font-style: italic; line-height: 1.35; opacity: .95; }
@@ -19101,8 +19105,20 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-cyber .iw-note .iw-note-x { color: #e6f7ff; }
 .iw-panel.iw-theme-cyber .iw-note::before, .iw-panel.iw-theme-cyber .iw-note .iw-note-pin { display: none; }
 
+
+/* Телефон: лист по центру — слева и справа одинаковые поля во всех темах; линия полей у «Дневника» и «Тетради» уходит к краю */
+@media (max-width: 760px) {
+    .iw-panel .iw-book,
+    .iw-panel[class*="iw-theme-"] .iw-book { padding-left: 12px; padding-right: 12px; }
+    .iw-panel .iw-margin { left: 5px; }
+    /* полоса прокрутки на телефоне не нужна (листают пальцем) и не съедает место справа */
+    .iw-panel .iw-book { scrollbar-width: none; }
+    .iw-panel .iw-book::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    .iw-panel:is(.iw-theme-vk, .iw-theme-icq, .iw-theme-telegram) .iw-head { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
+}
+
 /* ===== DARK-VARIANTS:BEGIN (генерируется tools/darkgen.py) ===== */
-/* --- общие правила в тёмном варианте (336) --- */
+/* --- общие правила в тёмном варианте (335) --- */
 .iw-dark .iw-panel,
 .iw-panel.iw-dark {
     box-shadow: -12px 0 30px rgba(0, 0, 0, 0.35);
@@ -19749,12 +19765,6 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-dark .iw-panel .iw-live-stop,
 .iw-panel.iw-dark .iw-live-stop {
     color: var(--iw-fears, #e99094);
-}
-@media (max-width: 760px) {
-    .iw-dark .iw-panel .iw-head,
-    .iw-panel.iw-dark .iw-head {
-        box-shadow: -48px 0 0 var(--iw-bg), 48px 0 0 var(--iw-bg), 0 12px 12px -12px rgba(0, 0, 0, 0.35);
-    }
 }
 .iw-dark .iw-clock-tag {
     background-image: none;
