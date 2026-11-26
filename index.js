@@ -13,8 +13,9 @@ import {
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
     achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
-    toastAllowed, rumorPlain, RUMOR_FORM_NAMES,
+    toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES,
 } from './src/core.js';
+import { generateImage, findImageExtensions } from './src/imagegen.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
     normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay, seasonOf,
@@ -22,13 +23,13 @@ import {
     parseClockCommand, CALENDAR_TYPES, MONTHS_RU, dayIndex, plainForClock,
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
-import { THEMES, THEME_IDS, validTheme, themeFontUrls, icon as iconHtml } from './src/themes.js';
+import { THEMES, THEME_IDS, validTheme, themeFontUrls, themeParts, icon as iconHtml } from './src/themes.js';
 import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortName, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
-import { renderSettingsForm, applySettingChange } from './src/settings-ui.js';
+import { renderSettingsForm, applySettingChange, rangeLabel, IMG_STATUS } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.6.17';
-const UPDATED = '22.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
+const VERSION = '0.7.1';
+const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
 
@@ -37,6 +38,7 @@ const META_KEY = 'inner_world';
 const PROMPT_KEY = 'inner_world';
 const ATTR_PROMPT_KEY = 'inner_world_attraction';
 const CLOCK_PROMPT_KEY = 'inner_world_clock';
+const BUY_PROMPT_KEY = 'inner_world_shop';
 const CLOCK_KEY = 'inner_world_clock';
 const KEEP_SNAPSHOTS = 12;
 const ROSTER_V = 2;        // 2 — в списке НПС есть знакомства по предыстории (knows_main / knows_player)
@@ -64,6 +66,9 @@ let attrMode = 'likes';
 let attrOpen = false;
 let attrMore = {};
 let currentTheme = 'diary';
+let currentDark = false; // тёмный вариант темы («ночь»): та же тема + класс iw-dark
+// классы темы для всех окон дневника
+const themeCls = () => `iw-theme-${currentTheme}${currentDark ? " iw-dark" : ""}`;
 // Часы сцены: какой месяц открыт в календаре, раскрыт ли листок часов, идёт ли определение календаря.
 let clockMonth = null;
 let clockOpen = false;
@@ -1098,6 +1103,12 @@ function updateInjection(beforeId) {
         text = buildInjection(liveState(beforeId), s.modules, c.name1, s.moodInfluence, { love: loveScoreInfo() });
     }
     c.setExtensionPrompt(PROMPT_KEY, text, 1, Number(s.injectDepth) || 0, false, 0);
+    // купленное в лавке — всегда и у самого конца: это выбор игрока на следующий ответ
+    let buyText = '';
+    if (s.enabled && hasChat() && c.chat && c.chat.length) {
+        try { buyText = buildBuyInjection(liveState(beforeId), c.name1); } catch (e) { console.warn('[Внутренний мир] покупки', e); }
+    }
+    c.setExtensionPrompt(BUY_PROMPT_KEY, buyText, 1, 0, false, 0);
     // притяжение — своей подсказкой, со своей настойчивостью
     let attr = '';
     const attrHits = [];
@@ -1127,7 +1138,7 @@ function updateInjection(beforeId) {
         } catch { /* без слухов */ }
     }
     c.setExtensionPrompt(CLOCK_PROMPT_KEY, clockText, 1, 0, false, 0);
-    lastInjected = { mood: text, attr, clock: clockText, moodDepth: Number(s.injectDepth) || 0, attrDepth: Number(s.attrDepth) || 4, moodLevel: s.moodInfluence, attrLevel: s.attrInfluence, attrHits: attrHits.slice(0, 20), attrMode: s.attrKeys === 'always' ? 'always' : 'keys' };
+    lastInjected = { mood: text, attr, clock: clockText, shop: buyText, moodDepth: Number(s.injectDepth) || 0, attrDepth: Number(s.attrDepth) || 4, moodLevel: s.moodInfluence, attrLevel: s.attrInfluence, attrHits: attrHits.slice(0, 20), attrMode: s.attrKeys === 'always' ? 'always' : 'keys' };
 }
 
 // ---------- Теги влияния в чате (диагностика) ----------
@@ -1140,7 +1151,7 @@ let pendingDiag = null;
 function snapshotDiag() {
     if (!lastInjected) return null;
     const x = lastInjected;
-    if (!x.mood && !x.attr && !x.clock) return null;
+    if (!x.mood && !x.attr && !x.clock && !x.shop) return null;
     return Object.assign({ at: Date.now() }, clone(x));
 }
 
@@ -1244,7 +1255,7 @@ function diagHtml(mes, id) {
             const soul = (body.match(/на душе: ([^.]+)/) || [])[1];
             const feels = soul ? soul.split('; ').map(f => f.split(' — ')[0]).slice(0, 2) : [];
             const att = (body.match(/отношение к игроку[^:]*: ([+−-]?\d+)/) || [])[1];
-            const what = [/хочет:/.test(body) && 'желания', /боится:/.test(body) && 'страхи', /только что сбылось то, чего боялся/.test(body) && 'страх сбылся!', /мечта:/.test(body) && 'мечта', /сам дарит|сейчас действует|вплети в ближайший ответ/.test(body) && 'награда'].filter(Boolean);
+            const what = [/хочет:/.test(body) && 'желания', /боится:/.test(body) && 'страхи', /только что сбылось то, чего боялся/.test(body) && 'страх сбылся!', /мечта:/.test(body) && 'мечта'].filter(Boolean);
             people.push({ who: m[1], text: [mood, feels.join(', '), att !== undefined ? `отн. ${att}` : '', what.join(', ')].filter(Boolean).join(' · ') });
         }
         const LEVELW = LEVEL[x.moodDepth] || 'обычно';
@@ -1258,12 +1269,18 @@ function diagHtml(mes, id) {
                 if (!hits.length) chip('attr', 'притяжение', 'только совместимость', 'теги «нравится / не нравится» к этой сцене не подошли — модели ушла только совместимость с игроком');
             } else chip('attr', 'притяжение', `все теги · ${({ strong: 'заметно', medium: 'проскальзывает', light: 'оттенок' }[x.attrLevel] || 'есть')}`, 'что привлекает и отталкивает → модели');
         }
+        for (const line of String(x.shop || '').split('\n').slice(1)) {
+            const m = line.match(/^([^:]{1,60}):\s*(.*)$/);
+            if (!m) continue;
+            const kinds = [/В ЭТОМ ответе обязательно происходит/.test(m[2]) && 'событие', /дарит/.test(m[2]) && 'подарок', /сейчас действует/.test(m[2]) && 'эффект'].filter(Boolean);
+            chip('shop', m[1].split(/\s+/)[0], `куплено: ${kinds.join(', ')}`, `${m[1]}: купленное в лавке → модели в этот ответ`);
+        }
         if (/снилось:/.test(x.clock || '')) chip('night', 'сон', 'свежий — в настроении', 'свежий сон → модели: может отозваться в настроении героя');
     }
     const after = d && d.after ? d.after : [];
     if (!chips.length && !after.length && !(d && d.sent)) return '';
     const tok = t => Math.round(String(t || '').length / 3.6);
-    const sentTxt = d && d.sent ? [['Эмоции, желания, отношение', d.sent.mood], ['Притяжение', d.sent.attr], ['Часы сцены и сон', d.sent.clock]].filter(([, t]) => t) : [];
+    const sentTxt = d && d.sent ? [['Купленное в лавке', d.sent.shop], ['Эмоции, желания, отношение', d.sent.mood], ['Притяжение', d.sent.attr], ['Часы сцены и сон', d.sent.clock]].filter(([, t]) => t) : [];
     const total = sentTxt.reduce((n, [, t]) => n + tok(t), 0);
     return `<div class="iw-dg-row"><b class="iw-dg-head" title="Теги влияния «Внутреннего мира» — видны только тебе">ВМ</b>${chips.join('')}${after.length ? `<span class="iw-dg iw-dg-after"><i>после разбора</i>${after.length} ${plural(after.length, 'перемена', 'перемены', 'перемен')}</span>` : ''}</div>`
         + (sentTxt.length || after.length ? `<details class="iw-dg-more"><summary>${sentTxt.length ? `что ушло модели · ≈${total} ток.` : ''}${sentTxt.length && after.length ? ' · ' : ''}${after.length ? 'что изменилось' : ''}</summary>`
@@ -1562,6 +1579,7 @@ function stopAnalysis(msg = '') {
     status = msg || 'Разбор остановлен';
     updateInjection();
     renderAll();
+    flushBuyQueue();
 }
 
 // Поток от таверны (профиль подключения или основное подключение): генератор отдаёт текст целиком на сейчас.
@@ -1918,6 +1936,16 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 const since = lastR < 0 ? (meta.rumorSkip ? messageId - meta.rumorSkip : messageId) : messageId - lastR;
                 info.rumorDue = since >= 14 ? 'now' : (since >= 7 ? 'maybe' : 'no');
             }
+            // мемы — раз в выбранное число сообщений
+            {
+                const memes = meta.memes || [];
+                const lastM = memes.reduce((m, x) => Math.max(m, Number(x.mes) || 0), -1);
+                const every = Math.max(1, Number(s.memeEvery) || 6);
+                const since = lastM < 0 ? messageId - (Number(meta.memeFrom) || 0) : messageId - lastM;
+                info.memeDue = s.memes !== false && since >= every;
+                info.memeRecent = memes.slice(-8).map(x => x.format);
+                info.memeTexts = memes.slice(-5).map(memePlain).filter(Boolean);
+            }
             // слухи и сны — только по ходу ролевой: при первом разборе (дневник ещё пуст) их не просим
             info.firstRun = !(base.order || []).some(k => base.characters && base.characters[k]) || !(msgs && msgs.length);
         } catch { /* без подсказок */ }
@@ -2074,6 +2102,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         if (manual && kind === 'chat') busyKind = '';
         updateInjection();
         renderAll();
+        flushBuyQueue();
         // пустые «привлекает / отталкивает» у главных — дозаполним отдельной короткой просьбой
         if (!pending && !fromLore) setTimeout(() => { if (!busy && !rosterBusy) fillAttractionGaps(); }, 1500);
         if (pending) {
@@ -2096,7 +2125,7 @@ function toastBox() {
         box.setAttribute('aria-live', 'polite');
         ui().appendChild(box);
     }
-    box.className = `iw-toasts iw-toasts-${settings().toastPos === 'bottom' ? 'bottom' : 'top'} iw-theme-${currentTheme}${settings().animations === false ? ' iw-noanim' : ''}`;
+    box.className = `iw-toasts iw-toasts-${settings().toastPos === 'bottom' ? 'bottom' : 'top'} ${themeCls()}${settings().animations === false ? ' iw-noanim' : ''}`;
     return box;
 }
 
@@ -2281,7 +2310,14 @@ async function onMessageReceived(messageId, type) {
             return;
         }
     }
+    const my = runId;
     await analyze(id);
+    // лавка с автообновлением подбирается заново вместе с разбором, когда подошёл её срок
+    if (my === runId && settings().shopAuto && needsRewards()) {
+        await autoRewards();
+        if (live && !busy && !rosterBusy && !shopBusy) setLive(null);
+        renderAll();
+    }
 }
 
 // Через сколько ответов будет следующий автоматический разбор (0 — не показываем: каждый ответ или только по кнопке)
@@ -2351,7 +2387,9 @@ function onGenerationStarted(type, _options, dryRun) {
 // ---------- Тема ----------
 
 function refreshTheme() {
-    currentTheme = validTheme(settings().theme);
+    const parts = themeParts(validTheme(settings().theme));
+    currentTheme = parts.base;
+    currentDark = parts.dark;
     setVolume(settings().volume ?? 45);
     setSilentMode(true, () => settings().sound !== false);
     loadFonts(currentTheme);
@@ -2364,6 +2402,7 @@ function setFabTheme(fab) {
     fab.classList.add('iw-fab');
     for (const cls of [...fab.classList]) if (cls.startsWith('iw-theme-') && cls !== `iw-theme-${currentTheme}`) fab.classList.remove(cls);
     fab.classList.add(`iw-theme-${currentTheme}`);
+    fab.classList.toggle('iw-dark', currentDark);
     fab.classList.toggle('iw-noanim', settings().animations === false);
 }
 
@@ -2535,7 +2574,8 @@ function renderPanelNow() {
     if (blockDrag) { dragRenderPending = true; return; }
     const s = settings();
     if (!hasChat() && view !== 'settings') {
-        el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
+        el.className = `iw-panel ${themeCls()}${s.animations === false ? ' iw-noanim' : ''}`;
+        el.lang = 'ru';
         el.innerHTML = renderPanel({ state: emptyState(), settings: s, theme: currentTheme, view: '', busy: false, status: '', mains: [], npcKeys: [], roster: null, noChat: true });
         watchHead(el);
         return;
@@ -2554,13 +2594,13 @@ function renderPanelNow() {
         || (showNpc && view === 'npc')
         || (showNpc && view.startsWith('npc:') && npcKeys.includes(view.slice(4)));
     if (!valid) view = mains.length ? 'main:' + mains[0] : (showNpc ? 'npc' : '');
-    el.className = `iw-panel iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
+    el.className = `iw-panel ${themeCls()}${s.animations === false ? ' iw-noanim' : ''}`;
     const keepScroll = readScroll(el);
     const hs = showNpc ? historySeen() : { seen: [], pending: [] };
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, nights: settings().dreams !== false, histOpen });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], drawing: [...memeDrawing], img: !!memeImgCfg(), every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen });
     masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
@@ -2600,7 +2640,7 @@ function masonry(el) {
             const k = kids[i];
             // широкие блоки (во всю ширину по стилю темы или одиночки) так и остаются широкими
             const cs = getComputedStyle(k);
-            const stackable = ['life', 'nights', 'rumors'].includes(kind(k)) && !k.classList.contains('iw-collapsed');
+            const stackable = ['life', 'nights', 'rumors', 'memes'].includes(kind(k)) && !k.classList.contains('iw-collapsed');
             const solo = !stackable && (k.classList.contains('iw-solo') || cs.gridColumnEnd === '-1' || /span\s*2/.test(cs.gridColumnEnd) || cs.gridColumnStart === 'span 2');
             if (solo) {
                 const at = Math.max(col[0], col[1]);
@@ -2619,10 +2659,38 @@ function masonry(el) {
                     b.style.gridColumn = String(c + 1);
                     b.style.gridRowStart = at;
                     b.style.gridRowEnd = `span ${span}`;
-                    b.style.minHeight = `${span * MASONRY_ROW - MASONRY_GAP}px`;
+                    // «Отношение к тебе» держит свою высоту и не тянется за «Настроением»
+                    if (kind(b) !== 'impression' && kind(b) !== 'mood') b.style.minHeight = `${span * MASONRY_ROW - MASONRY_GAP}px`;
                 });
                 col[0] = col[1] = at + span;
                 i++;
+                continue;
+            }
+            // подряд идущие «свободные» блоки (семья, сны, слухи, мемы) раскладываем по колонкам так,
+            // чтобы колонки вышли как можно ровнее — без пустоты сбоку
+            const run = [k];
+            while (i + run.length < kids.length) {
+                const n = kids[i + run.length];
+                if (!['life', 'nights', 'rumors', 'memes'].includes(kind(n)) || n.classList.contains('iw-collapsed')) break;
+                run.push(n);
+            }
+            if (run.length >= 2 && run.length <= 8 && run.every(b => ['life', 'nights', 'rumors', 'memes'].includes(kind(b)) && !b.classList.contains('iw-collapsed'))) {
+                const h = run.map(rows);
+                let best = null;
+                for (let mask = 0; mask < (1 << run.length); mask++) {
+                    const t = [col[0], col[1]];
+                    for (let j = 0; j < run.length; j++) t[(mask >> j) & 1] += h[j];
+                    const score = Math.max(t[0], t[1]) * 1000 + Math.abs(t[0] - t[1]);
+                    if (!best || score < best.score) best = { mask, score };
+                }
+                for (let j = 0; j < run.length; j++) {
+                    const c = (best.mask >> j) & 1;
+                    run[j].style.gridColumn = String(c + 1);
+                    run[j].style.gridRowStart = col[c];
+                    run[j].style.gridRowEnd = `span ${h[j]}`;
+                    col[c] += h[j];
+                }
+                i += run.length - 1;
                 continue;
             }
             const c = col[0] <= col[1] ? 0 : 1;
@@ -2650,8 +2718,23 @@ function showcaseModel() {
 
 // ---------- Картинки памятных вещей ----------
 let artBusy = '';
+// очередь сам-рисования: купил несколько вещей подряд — рисуются по очереди, а не только первая
+let artQueue = [];
+function nextArt() {
+    while (artQueue.length && !artBusy) {
+        const q = artQueue.shift();
+        const ch = currentState().characters[q.key];
+        if (!ch) continue;
+        let idx = -1;
+        if (q.buff) { idx = (ch.buffs || []).findIndex(b => b && b.kind === 'gift' && b.title === q.title && !b.art); if (idx >= 0) idx = 'b' + idx; }
+        else { const list = ch.collection || []; for (let j = list.length - 1; j >= 0; j--) if (list[j] && list[j].title === q.title && !list[j].art) { idx = j; break; } }
+        if (idx === -1) continue;
+        drawItemArt(q.key, idx, { quiet: true });
+        return;
+    }
+}
 async function drawItemArt(key, i, { quiet = false } = {}) {
-    if (artBusy || settings().caseArt === false) return;
+    if (settings().caseArt === false) return;
     const st0 = currentState();
     const ch0 = st0.characters[key];
     // подарок, который ещё не вручён, живёт в buffs: номер вида «b3»
@@ -2659,6 +2742,11 @@ async function drawItemArt(key, i, { quiet = false } = {}) {
     const bi = isBuff ? Number(i.slice(1)) : -1;
     const item0 = ch0 && (isBuff ? (ch0.buffs || [])[bi] : (ch0.collection || [])[i]);
     if (!item0) return;
+    if (artBusy) {
+        // рисуется другая вещь: сам-рисование ставим в очередь, нажатие кнопки — просто ждёт своей очереди тоже
+        if (!artQueue.some(q => q.key === key && q.title === item0.title)) artQueue.push({ key, title: item0.title, buff: isBuff });
+        return;
+    }
     const my = runId;
     artBusy = `${key}:${i}`;
     renderAll();
@@ -2680,6 +2768,7 @@ async function drawItemArt(key, i, { quiet = false } = {}) {
         if (!quiet) notice('Картинка не нарисовалась — попробуй ещё раз');
     } finally {
         if (my === runId || artBusy) { artBusy = ''; renderAll(); }
+        if (my === runId) setTimeout(nextArt, 200); else artQueue = [];
     }
 }
 // «Нарисовать все»: по очереди, по одной просьбе на вещь; остановить можно кнопкой стоп
@@ -2702,12 +2791,26 @@ async function drawAllArt(which = 'items') {
     if (todo.length) notice(n === todo.length ? `Нарисовано: ${n}` : `Нарисовано ${n} из ${todo.length} — остальные можно дорисовать ещё раз`);
 }
 
-// после покупки или подарка: рисуем новую вещь, если включено
-function drawNewItem(target) {
-    if (settings().caseArt === false || !target || !Array.isArray(target.collection)) return;
-    const st = currentState();
-    const key = Object.keys(st.characters).find(k => st.characters[k] === target || (st.characters[k] && st.characters[k].name === target.name));
-    if (key) setTimeout(() => drawItemArt(key, target.collection.length - 1, { quiet: true }), 300);
+// после покупки или подарка: рисуем новую вещь сами, если так выбрано в настройках
+// (иначе — только по кнопке «нарисовать» у самой вещи)
+function artAuto(kind) {
+    const s = settings();
+    if (s.caseArt === false) return false;
+    return kind === 'gift' ? s.artAutoGifts !== false : s.artAutoItems !== false;
+}
+function drawNewItem(target, kind = 'item', delay = 300) {
+    if (!artAuto(kind) || !target || !Array.isArray(target.collection)) return;
+    const title = (target.collection[target.collection.length - 1] || {}).title;
+    const name = target.name;
+    setTimeout(() => {
+        // ищем вещь заново: к этому времени дневник мог уже переписать запись
+        const st = currentState();
+        const key = Object.keys(st.characters).find(k => st.characters[k] && st.characters[k].name === name);
+        const list = key && st.characters[key].collection || [];
+        let i = -1;
+        for (let j = list.length - 1; j >= 0; j--) if (list[j] && list[j].title === title) { i = j; break; }
+        if (i >= 0 && !list[i].art) drawItemArt(key, i, { quiet: true });
+    }, delay);
 }
 
 function seenAchievements() {
@@ -2733,7 +2836,7 @@ function takeGifts(raw, state) {
             const b = ch && (ch.buffs || []).find(x => x.kind === 'gift' && (norm(x.title) === norm(g && g.title) || norm(g && g.title).includes(norm(x.title)) || norm(x.title).includes(norm(g && g.title))));
             if (!b) continue;
             ch.buffs = ch.buffs.filter(x => x !== b);
-            if (pc) { pc.collection = (pc.collection || []).concat([Object.assign({ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }, b.art ? { art: b.art } : {})]).slice(-30); if (!b.art) drawNewItem(pc); }
+            if (pc) { pc.collection = (pc.collection || []).concat([Object.assign({ title: b.title, icon: b.icon, desc: `Подарок от ${ch.name}${g.how ? `: ${String(g.how).slice(0, 140)}` : ''}`, got: Date.now(), gift: true }, b.art ? { art: b.art } : {})]).slice(-30); if (!b.art) drawNewItem(pc, 'gift', 6000); }
             showEvent({ type: 'reward', who: ch.name, text: `«${b.title}» — подарено${pc ? `, теперь в коллекции ${pc.name}` : ''}`, icon: b.icon }, 300);
             break;
         }
@@ -2788,7 +2891,53 @@ function takeExtras(raw, state, messageId) {
         changed = true;
         showEvent({ type: 'rumor', who: r.who || r.source || 'Слухи', text: r.text, icon: 'chat', rumor: r, plain: r.form === 'dialog' || r.form === 'news' ? rumorPlain(r) : '' }, 1200);
     }
+    const mm = s.memes !== false && cleanMeme(data.meme);
+    if (mm && !(meta.memes || []).some(x => memePlain(x) === memePlain(mm))) {
+        const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now() });
+        meta.memes = [...(meta.memes || []), rec].slice(-20);
+        changed = true;
+        showEvent({ type: 'meme', who: MEME_FORMAT_NAMES[mm.format] ? `Мем · ${MEME_FORMAT_NAMES[mm.format]}` : 'Мем', text: memePlain(mm), icon: 'joy', meme: mm }, 1600);
+        if (mm.img && memeImgCfg()) setTimeout(() => drawMemeImage(rec.at), 400);
+    }
     if (changed) ctx().saveMetadataDebounced?.();
+}
+
+// ---------- Картинки к мемам ----------
+function memeImgCfg() {
+    const s = settings();
+    if (!s.memeImg || s.memeImg === 'none') return null;
+    if (s.memeImg === 'ext') {
+        // только имя расширения: ключ и адрес читаются из его настроек в момент запроса
+        const list = findImageExtensions(ctx().extensionSettings);
+        const pick = list.find(e => e.key === s.memeImgExt) || list[0];
+        return pick ? { kind: 'ext', extKey: pick.key } : null;
+    }
+    return { kind: s.memeImg, url: s.memeImgUrl || '', key: s.memeImgKey || '', model: s.memeImgModel || '' };
+}
+const memeDrawing = new Set();
+async function drawMemeImage(at, { manual = false } = {}) {
+    const cfg = memeImgCfg();
+    if (!cfg || !hasChat() || memeDrawing.has(at)) return;
+    const chatId = ctx().getCurrentChatId?.();
+    const m0 = (chatMeta().memes || []).find(x => x.at === at);
+    if (!m0 || !m0.img) return;
+    memeDrawing.add(at);
+    renderAll();
+    try {
+        const prompt = `Funny internet meme picture, expressive and comedic, bold simple composition, no text, no letters, no watermark. ${m0.img}`;
+        const src = await generateImage(prompt, cfg, ctx());
+        if (ctx().getCurrentChatId?.() !== chatId) return;
+        const m = (chatMeta().memes || []).find(x => x.at === at);
+        if (!m || !src) return;
+        m.pic = src;
+        ctx().saveMetadataDebounced?.();
+    } catch (err) {
+        console.warn('[Внутренний мир] картинка мема', err);
+        if (manual) notice(`Картинка к мему не нарисовалась: ${String(err && err.message || err).slice(0, 160)}`);
+    } finally {
+        memeDrawing.delete(at);
+        renderAll();
+    }
 }
 
 function takeAchievement(raw, messageId) {
@@ -3054,7 +3203,7 @@ function renderInfobar() {
         ibSigs.set(host, sig);
         const html = renderInfobarHtml(infobarModelFor(id), currentTheme, ibOpen.has(id), ibTab.get(id) || '');
         const wrap = host.shadowRoot.querySelector('.iw-ib-wrap');
-        wrap.className = `iw-ib-wrap iw-ib-in iw-theme-${currentTheme}${s.animations === false ? ' iw-noanim' : ''}`;
+        wrap.className = `iw-ib-wrap iw-ib-in ${themeCls()}${s.animations === false ? ' iw-noanim' : ''}`;
         host.hidden = !html;
         if (wrap.dataset.html !== html) {
             wrap.innerHTML = html;
@@ -3162,7 +3311,7 @@ function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{
     return new Promise(resolve => {
         const root = ui();
         const wrap = document.createElement('div');
-        wrap.className = `iw-modal iw-theme-${currentTheme}${settings().animations === false ? ' iw-noanim' : ''}`;
+        wrap.className = `iw-modal ${themeCls()}${settings().animations === false ? ' iw-noanim' : ''}`;
         wrap.innerHTML = `
 <div class="iw-modal-back"></div>
 <div class="iw-modal-paper"><div class="iw-modal-card iw-block" role="dialog" aria-modal="true" aria-label="${esc(title)}">
@@ -3312,8 +3461,90 @@ async function testShowcase(kind) {
 // Проверка снов и слухов: тестовый сон боту и пара слухов (о боте и о твоём герое), стираются кнопкой «Стереть тестовые»
 const TEST_DREAMS = [
     { thought: 'Надо было проводить её до самой двери.', text: 'Снилась мокрая набережная и чужой смех за спиной; он всё шёл на свет в окне и никак не мог дойти.', tone: 'тревожный' },
-    { thought: 'Странная она. Хорошая, но странная.', text: 'Снилось лето, дача, запах яблок — и она смеялась так, будто они знакомы сто лет.', tone: 'тёплый' },
+    { form: 'fragments', thought: 'Завтра. Всё завтра.', text: 'Обрывки', lines: [{ text: 'Чёрный ворон на перилах моста' }, { text: 'Ключ, который не подходит ни к одной двери' }, { text: 'Её смех — где-то за стеной' }], tone: 'странный' },
+    { form: 'dialog', thought: 'Отец бы не одобрил.', text: 'Говорил во сне с отцом', lines: [{ who: 'Отец', text: 'Корона не для того, чтобы её любили.' }, { who: 'Он', text: 'А для чего тогда я?' }, { who: 'Отец', text: 'Спроси у неё.' }], tone: 'вещий' },
+    { form: 'memory', when: 'Как в детстве, зимой', thought: 'Тогда было проще.', text: 'Снился двор старого дома, санки и мамин голос из окна: «Домой, уже темно!»', tone: 'сладкий' },
+    { form: 'symbol', symbol: 'Разбитое зеркало', thought: 'Не к добру всё это.', text: 'В каждом осколке — другое его лицо, и ни одно не улыбается. Кажется, он боится, что так и не узнает, кто он без короны.', tone: 'кошмар' },
 ];
+const TEST_MEMES = [
+    { format: 'nobody', lines: [{ who: 'Никто', text: '' }, { who: 'Абсолютно никто', text: '' }, { who: 'bot', text: 'в три часа ночи ищет копчёную селёдку с мёдом' }] },
+    { format: 'me', lines: [{ who: 'Я на совете', text: 'Император. Холодный. Неприступный.' }, { who: 'Тоже я в 3 ночи', text: 'ест варенье ложкой, потому что она сказала, что это вкусно' }] },
+    { format: 'when', top: 'Когда она говорит «всё нормально», а ты император и привык к донесениям', emoji: '🧐📜', img: 'a stern king squinting suspiciously at a cheerful woman, cartoon' },
+    { format: 'demotivator', title: 'Дипломатия', text: 'Когда переговоры зашли в тупик, но у тебя есть варенье', emoji: '🍯👑' },
+    { format: 'chat', lines: [{ who: 'persona', text: 'ты спишь?' }, { who: 'bot', text: 'Император не спит. Император бдит.' }, { who: 'persona', text: 'то есть не спишь' }, { who: 'bot', text: 'Иди сюда.' }] },
+    { format: 'brain', lines: [{ text: 'Подарить цветы' }, { text: 'Подарить драгоценности' }, { text: 'Подарить провинцию' }, { text: 'Отдать ей свой плащ и делать вид, что не мёрзнешь' }] },
+    { format: 'expect', lines: [{ text: 'Ожидание: грозный император' }, { text: 'Реальность: прячет её любимые ягоды в карман мундира' }], emoji: '👑🫐' },
+    { format: 'buttons', who: 'bot', lines: [{ text: 'Сохранить лицо' }, { text: 'Признаться, что скучал' }] },
+    { format: 'tweet', who: 'Дворцовый кот', source: '@palace_cat', text: 'император опять ходил по галерее до рассвета. я тоже ходил. мы оба делали вид, что просто так #вайб', likes: 1204, reposts: 88 },
+    {"format": "reaction", "top": "Моё лицо, когда она назвала меня «милым» при послах", "emoji": "😐👑"},
+    {"format": "nature", "text": "Перед нами взрослый самец императора. Он делает вид, что не ждёт её у окна, уже третий час.", "emoji": "🦁"},
+    {"format": "trailer", "text": "В мире, где все боятся императора… одна девушка не боится. И это его пугает.", "title": "Ледяной трон: Варенье", "emoji": "🎬"},
+    {"format": "quote", "text": "Волк не тот, кто воет. Волк тот, кто молча носит её плащ", "who": "bot", "emoji": "🐺"},
+    {"format": "before", "lines": [{"text": "Холодный правитель, никому не верит"}, {"text": "Спрашивает у неё, тепло ли ей, каждые пять минут"}]},
+    {"format": "started", "lines": [{"text": "Брак по договору ради мира"}, {"text": "Ревнует к собственному плащу"}]},
+    {"format": "see", "title": "Он глазами…", "lines": [{"who": "Совет", "text": "Тиран и стратег"}, {"who": "Слуги", "text": "Ходячая метель"}, {"who": "Она", "text": "Большой сонный кот"}, {"who": "На самом деле", "text": "Всё сразу и ещё немного варенья"}]},
+    {"format": "doctor", "lines": [{"who": "Лекарь", "text": "Вашему величеству нужен покой и никаких волнений"}, {"who": "bot", "text": "*идёт на бал смотреть, как она танцует с другим*"}]},
+    {"format": "mom", "lines": [{"who": "Я", "text": "Мам, можно свадьбу как в легендах?"}, {"who": "Мама", "text": "У нас есть свадьба дома"}, {"who": "Свадьба дома", "text": "подпись в договоре и два хмурых советника"}]},
+    {"format": "therapist", "lines": [{"who": "Психолог", "text": "Ревнивый император не существует, он не может тебе навредить"}, {"who": "Ревнивый император", "text": "*стоит за колонной уже сорок минут*"}]},
+    {"format": "interview", "lines": [{"who": "HR", "text": "Где вы видите себя через пять лет?"}, {"who": "bot", "text": "Рядом с ней. И на троне. Но в первую очередь рядом с ней."}]},
+    {"format": "translator", "title": "Переводчик с языка императора", "lines": [{"who": "Сказал", "text": "Возьмите плащ, во дворце сквозняки"}, {"who": "Имел в виду", "text": "Я всю ночь думал, не замёрзла ли ты"}]},
+    {"format": "twotypes", "title": "Есть два типа людей", "lines": [{"text": "Те, кто боится императора"}, {"text": "Те, кто ещё не видел его злым"}, {"text": "И та, которая кормит его ягодами"}]},
+    {"format": "groupchat", "title": "Слуги восточного крыла 🧹", "lines": [{"who": "Марта", "text": "он опять улыбнулся"}, {"who": "Грета", "text": "кто"}, {"who": "Марта", "text": "ИМПЕРАТОР"}, {"who": "Повар", "text": "всем по пирогу, это надо отметить"}]},
+    {"format": "search", "title": "История поиска императора", "lines": [{"text": "как понять, что девушка тебя не боится"}, {"text": "нормально ли думать о ком-то во время совета"}, {"text": "сколько ягод съедает человек в день"}, {"text": "как подарить провинцию незаметно"}]},
+    {"format": "autocomplete", "top": "почему император", "lines": [{"text": "почему император не спит"}, {"text": "почему император улыбается"}, {"text": "почему император носит с собой ягоды"}]},
+    {"format": "notifications", "lines": [{"who": "Совет", "text": "Срочно: вопрос о налогах"}, {"who": "Совет", "text": "Ваше величество??"}, {"who": "persona", "text": "иди спать 🌙"}]},
+    {"format": "top", "title": "Топ-4 причины, почему император опоздал на совет", "lines": [{"text": "Пробки в коридоре"}, {"text": "Сквозняк"}, {"text": "Государственные дела"}, {"text": "Она попросила рассказать сказку"}]},
+    {"format": "starter", "title": "Стартовый набор холодного императора", "lines": [{"who": "👑", "text": "Корона"}, {"who": "🧥", "text": "Плащ, который вечно на ком-то другом"}, {"who": "🫐", "text": "Ягоды в кармане"}, {"who": "😐", "text": "Лицо «мне всё равно»"}, {"who": "📜", "text": "Указ, который никто не читал"}, {"who": "🌙", "text": "Бессонница"}]},
+    {"format": "recipe", "title": "Рецепт: император в хорошем настроении", "lines": [{"who": "1 шт.", "text": "Её улыбка"}, {"who": "горсть", "text": "Ягоды"}, {"who": "0 шт.", "text": "Советников рядом"}], "bottom": "Подавать на балконе, не мешать."},
+    {"format": "redflags", "title": "Красные флаги императора", "lines": [{"text": "Знает, где ты была каждые 10 минут"}, {"text": "Называет это «безопасностью»"}, {"text": "Подарил тебе крепость"}]},
+    {"format": "greenflags", "title": "Зелёные флаги императора", "lines": [{"text": "Помнит, какие ягоды ты любишь"}, {"text": "Отдал плащ и сделал вид, что не мёрзнет"}, {"text": "Спрашивает, а не приказывает (иногда)"}]},
+    {"format": "rules", "title": "Правила дворца", "lines": [{"text": "Не бегать по коридорам"}, {"text": "Не трогать императорский плащ"}, {"text": "Не входить в покои без стука"}, {"text": "Ей можно всё"}]},
+    {"format": "checklist", "title": "План императора на день", "lines": [{"text": "Совет", "val": 1}, {"text": "Подписать указы", "val": 0}, {"text": "Случайно пройти мимо её комнаты", "val": 1}, {"text": "Случайно пройти ещё раз", "val": 1}]},
+    {"format": "signs", "title": "Ты точно император Велесгара, если…", "lines": [{"text": "Твой плащ живёт своей жизнью"}, {"text": "Слуги замирают при твоём появлении"}, {"text": "Кроме одной"}]},
+    {"format": "patch", "title": "Император 2.0 — список изменений", "lines": [{"who": "+", "text": "Улыбка (редкая, но есть)"}, {"who": "−", "text": "Желание казнить всех за ошибки"}, {"who": "фикс", "text": "Исправлена бессонница, если она рядом"}]},
+    {"format": "bingo", "title": "Бинго: ужин с императором", "lines": [{"text": "Молчит 10 минут", "val": 1}, {"text": "Смотрит на неё", "val": 1}, {"text": "Хмурится на посла", "val": 0}, {"text": "Отдаёт свой десерт", "val": 1}, {"text": "", "val": 1}, {"text": "Говорит «садись»", "val": 1}, {"text": "Ревнует к вилке", "val": 0}, {"text": "Улыбается", "val": 0}, {"text": "Уходит первым", "val": 0}]},
+    {"format": "receipt", "title": "Лавка у Южных ворот", "lines": [{"text": "Ягоды, корзина", "who": "3 сер."}, {"text": "Ленты шёлковые", "who": "12 сер."}, {"text": "Молчание продавца", "who": "50 зол."}], "bottom": "ИТОГО: 50 зол. 15 сер."},
+    {"format": "priceless", "lines": [{"text": "Новое платье", "who": "200 зол."}, {"text": "Бал на всю столицу", "who": "5000 зол."}], "bottom": "Лицо советников, когда он танцует с ней второй раз — бесценно"},
+    {"format": "tier", "title": "Тир-лист вещей во дворце", "lines": [{"who": "S", "text": "Её смех"}, {"who": "A", "text": "Ягоды"}, {"who": "B", "text": "Тёплый плащ"}, {"who": "F", "text": "Утренний совет"}]},
+    {"format": "align", "title": "Обитатели дворца", "lines": [{"text": "Император на совете"}, {"text": "Повар"}, {"text": "Она"}, {"text": "Первый советник"}, {"text": "Кот"}, {"text": "Служанка Марта"}, {"text": "Казначей"}, {"text": "Сквозняк"}, {"text": "Император, когда она танцует с другим"}]},
+    {"format": "iceberg", "title": "Айсберг императора", "lines": [{"text": "Он правит империей"}, {"text": "Он плохо спит"}, {"text": "Он хранит её ленту"}, {"text": "Он написал ей стихи"}, {"text": "Стихи были плохие"}]},
+    {"format": "stats", "title": "Император, ур. 34", "lines": [{"who": "Стратегия", "val": 10}, {"who": "Сдержанность", "val": 8}, {"who": "Скрывать чувства", "val": 2}, {"who": "Отказать ей", "val": 0}]},
+    {"format": "meter", "title": "Уровень ревности императора", "score": 87, "bottom": "Она просто поздоровалась с послом", "emoji": "🔥"},
+    {"format": "loading", "title": "Загрузка терпения…", "score": 4, "text": "Посол говорит уже час"},
+    {"format": "poll", "title": "Он сегодня улыбнулся?", "lines": [{"text": "Да, я видела!", "val": 23}, {"text": "Тебе показалось", "val": 77}]},
+    {"format": "error", "title": "Император.exe", "text": "Не удалось сохранить холодное выражение лица: она рядом", "lines": [{"text": "Повторить"}, {"text": "Сдаться"}]},
+    {"format": "achievement", "title": "Без титулов", "text": "Назвать её просто по имени при всём дворе", "emoji": "🏆"},
+    {"format": "quest", "title": "Добыть зимние ягоды", "text": "Она сказала, что скучает по ним. Ни слова больше.", "lines": [{"text": "+100 к её улыбке"}]},
+    {"format": "notice", "title": "ОБЪЯВЛЕНИЕ", "text": "Уважаемые придворные! Кто брал плащ его величества — верните. Он мёрзнет, но делает вид, что нет.", "bottom": "Вернуть плащ"},
+    {"format": "sign", "title": "Осторожно: злой император", "text": "Добреет от ягод", "emoji": "⚠️"},
+    {"format": "horoscope", "who": "Император ♑", "text": "Сегодня звёзды советуют не притворяться, что вам всё равно. Не поможет.", "emoji": "♑"},
+    {"format": "news", "source": "Столичный вестник", "title": "СРОЧНО: император замечен улыбающимся", "text": "Свидетели в шоке, лекари разводят руками"},
+    {"format": "review", "title": "Бал во дворце", "who": "Первый советник", "score": 2, "text": "Император танцевал дважды с одной дамой. Протокол нарушен. Музыка хорошая."},
+    {"format": "status", "who": "bot", "text": "Корона тяжела. Но плащ ещё тяжелее, когда его некому отдать"},
+    {"format": "card", "title": "Император", "lines": [{"who": "Должность", "text": "Император"}, {"who": "Хобби", "text": "Ходить по галерее до рассвета"}, {"who": "Слабость", "text": "Она"}, {"who": "Сила", "text": "Делать вид, что слабости нет"}]},
+    {"format": "dictionary", "title": "Императорить", "who": "гл.", "text": "Делать вид, что тебе всё равно, при этом всё помнить и всё замечать.", "bottom": "Он опять императорит у окна."},
+    {"format": "formula", "lines": [{"text": "Холодный император"}, {"text": "Её плащ"}], "bottom": "Тёплый император"},
+];
+let testMemeIdx = 0;
+async function testMeme() {
+    if (!hasChat()) return showEvent({ type: 'meme', who: 'Проверка', text: 'Открой чат с персонажем — тогда тестовый мем запишется в его дневник.', force: true });
+    const st = currentState();
+    const { mains, personaKey } = splitCast(st);
+    const bot = mains[0] && st.characters[mains[0]];
+    const pname = (personaKey && st.characters[personaKey] && st.characters[personaKey].name) || ctx().name1 || 'Я';
+    const bname = (bot && bot.name.split(' ')[0]) || ctx().name2 || 'Он';
+    const fix = v => (v === 'bot' ? bname : (v === 'persona' ? pname.split(' ')[0] : v));
+    const m0 = JSON.parse(JSON.stringify(TEST_MEMES[testMemeIdx++ % TEST_MEMES.length]));
+    for (const l of m0.lines || []) l.who = fix(l.who);
+    if (m0.who) m0.who = fix(m0.who);
+    const m = Object.assign(cleanMeme(m0) || m0, { at: Date.now(), test: true, mes: (ctx().chat || []).length - 1 });
+    const meta = chatMeta();
+    meta.memes = [...(meta.memes || []), m].slice(-20);
+    ctx().saveMetadataDebounced?.();
+    showEvent({ type: 'meme', who: `Мем · ${MEME_FORMAT_NAMES[m.format] || ''}`, text: memePlain(m), icon: 'joy', meme: m, force: true });
+    if (m.img && memeImgCfg()) setTimeout(() => drawMemeImage(m.at, { manual: true }), 300);
+    return renderAll();
+}
 const TEST_RUMORS = [
     { form: 'dialog', who: 'соседки на лавочке', about: 'bot', text: 'ночует у неё в машине', truth: 'half', lines: [{ who: 'Тамара Петровна', text: 'Опять этот в чёрном под её окнами стоял. До трёх ночи!' }, { who: 'Нина', text: 'Да ладно, может, охраняет.' }, { who: 'Тамара Петровна', text: 'Охраняет он… Знаем мы таких охранников.' }] },
     { form: 'post', who: 'Подслушано в районе', source: '@podslushano_rayon', via: 'Telegram', about: 'persona', text: 'Девушка из третьего подъезда опять гадала кому-то на картах у ларька 🔮 Говорят, сбывается всё. Кто знает, как к ней записаться? #подслушано', truth: 'false', likes: 214, reposts: 37 },
@@ -3353,6 +3584,7 @@ function testNotice(kind) {
     const who = (currentState().order || []).map(k => currentState().characters[k] && currentState().characters[k].name).find(Boolean) || ctx().name2 || 'Персонаж';
     if (kind === 'ach' || kind === 'keep' || kind === 'clearcase') return testShowcase(kind);
     if (kind === 'night' || kind === 'rumor') return testNightRumor(kind);
+    if (kind === 'meme') return testMeme();
     if (kind === 'write') return writeSound();
     if (kind === 'error') return showError({ kind: 'test', title: 'Модель не ответила', text: 'Это проверочная ошибка: так выглядит листок, если разбор не удался.' }, { manual: true, what: 'Проверка' });
     if (kind === 'all') {
@@ -3549,6 +3781,15 @@ async function onPanelClick(e) {
         notice(`«${(ch && ch.name) || ''}»: отменено, вернулось ${back} ${plural(back, 'монета', 'монеты', 'монет')}.`);
         return renderAll();
     }
+    if (t.dataset.iwModSet) {
+        // сны, слухи, мемы, погода — переключаются из «Что вести в дневнике»
+        const k = t.dataset.iwModSet;
+        s[k] = s[k] === false;
+        saveSettings();
+        syncSettingsForm();
+        updateInjection();
+        return renderAll();
+    }
     if (t.dataset.iwTk) {
         const k = t.dataset.iwTk;
         s.toastKinds = Object.assign({}, s.toastKinds);
@@ -3559,7 +3800,7 @@ async function onPanelClick(e) {
     }
     if (t.dataset.iwMod) {
         const m = t.dataset.iwMod;
-        s.modules[m] = !s.modules[m];
+        s.modules[m] = s.modules[m] === false;
         saveSettings();
         syncSettingsForm();
         updateInjection();
@@ -3585,6 +3826,16 @@ async function onPanelClick(e) {
         return renderPanelNow();
     }
     if (t.dataset.iwArtAll) return drawAllArt(t.dataset.iwArtAll);
+    if (t.dataset.iwMemeDel) {
+        const at = Number(t.dataset.iwMemeDel);
+        const meta = chatMeta();
+        const m = (meta.memes || []).find(x => x.at === at);
+        if (!m || !(await confirmDelete(memePlain(m) || 'мем'))) return;
+        meta.memes = (meta.memes || []).filter(x => x !== m);
+        ctx().saveMetadataDebounced?.();
+        return renderAll();
+    }
+    if (t.dataset.iwMemePic) return drawMemeImage(Number(t.dataset.iwMemePic), { manual: true });
     if (t.dataset.iwRumorDel) {
         const id = decodeURIComponent(t.dataset.iwRumorDel);
         const meta = chatMeta();
@@ -3859,19 +4110,28 @@ function knowledgeLore(limit = 3) {
     return k && Array.isArray(k.lore) ? k.lore.filter(t => !t.startsWith('[Карточка')).slice(0, limit) : null;
 }
 
+// Лавке пора обновиться: её нет вовсе, или включено автообновление и прошло нужное число сообщений.
+function shopStale(ch) {
+    if (!ch) return true;
+    if (!(ch.shop && ch.shop.length)) return true;
+    if (!settings().shopAuto) return false;
+    const every = Math.max(1, Number(settings().shopEvery) || 10);
+    const now = (ctx().chat || []).length;
+    return now - (Number(ch.shopMes) || 0) >= every;
+}
+
 function needsRewards() {
     if (settings().points === false || !hasChat()) return false;
     const st = currentState();
-    return splitCast(st).mains.some(k => { const ch = st.characters[k]; return !ch || !(ch.shop && ch.shop.length); });
+    return splitCast(st).mains.some(k => shopStale(st.characters[k]));
 }
 
-// Награды подбираются сами после разбора — тем главным персонажам, у кого магазина ещё нет.
+// Награды подбираются сами после разбора — тем главным, у кого лавки ещё нет или ей пора обновиться.
 async function autoRewards() {
     if (settings().points === false || !hasChat()) return;
     const st = currentState();
     for (const key of splitCast(st).mains) {
-        const ch = st.characters[key];
-        if (!ch || (ch.shop && ch.shop.length)) continue;
+        if (!shopStale(st.characters[key])) continue;
         await regenShop(key, { quiet: true });
     }
 }
@@ -4052,6 +4312,7 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
         const st = currentState();
         if (!st.characters[key]) return;
         st.characters[key].shop = rewards;
+        st.characters[key].shopMes = (ctx().chat || []).length; // от этого сообщения считаем автообновление
         await saveEditedState(st);
     } catch (err) {
         if (err && err.cancelled) return;
@@ -4235,8 +4496,23 @@ async function enterCheat() {
     renderAll();
 }
 
-async function buy(id) {
-    const key = viewKey();
+// Покупки, сделанные, пока дневник пишет запись: разбор взял состояние до покупки и иначе затёр бы её.
+// Копим и проводим сразу, как только запись готова.
+let buyQueue = [];
+function flushBuyQueue() {
+    if (busy || !buyQueue.length) return;
+    const q = buyQueue; buyQueue = [];
+    const chatNow = ctx().getCurrentChatId?.();
+    (async () => { for (const b of q) if (b.chat === chatNow) await buy(b.id, b.key, true); })();
+}
+
+async function buy(id, keyArg = null, queued = false) {
+    const key = keyArg || viewKey();
+    if (busy && key) {
+        buyQueue.push({ id, key, chat: ctx().getCurrentChatId?.() });
+        notice('Дневник как раз дописывает запись — покупка пройдёт через пару секунд, как только он закончит');
+        return;
+    }
     const st = currentState();
     const ch = key && st.characters[key];
     if (!ch) return;
@@ -4255,14 +4531,21 @@ async function buy(id) {
         renderAll();
         return drawNewItem(target);
     }
-    const err = buyReward(target, reward, st);
+    const err = buyReward(target, reward, st, settings().buyOne !== false);
     if (err) return notice(err);
+    // эффект считается от покупки: если последние ответы ещё не разобраны, их не вычитаем из срока —
+    // иначе событие на «следующий ответ» пропадало бы, не дойдя до модели
+    if (reward.kind !== 'collect') {
+        const lag = botRepliesBetween(findHolder().index, (ctx().chat || []).length - 1);
+        const b = (target.buffs || []).find(x => x && x.id === reward.id);
+        if (b && lag > 0 && b.kind !== 'gift') b.left = (b.left ?? 1) + lag;
+    }
     await saveEditedState(st);
     updateInjection();
     const persName = ctx().name1 || 'тебе';
     if (reward.kind === 'collect') drawNewItem(target);
     // подарок рисуется сразу, пока ждёт вручения; при вручении картинка переходит на витрину
-    if (reward.kind === 'gift' && settings().caseArt !== false) {
+    if (reward.kind === 'gift' && artAuto('gift')) {
         const gi = (target.buffs || []).findIndex(b => b && b.kind === 'gift' && b.id === reward.id);
         if (gi >= 0) setTimeout(() => drawItemArt(key, 'b' + gi, { quiet: true }), 300);
     }
@@ -4283,9 +4566,9 @@ function setLanguage(lang) {
 function onPanelInput(e) {
     const el = e.target;
     // ползунки со словами (частота ачивок): подпись меняется сразу
-    if (el && el.matches && el.matches('[data-iw-fmt="achRate"]')) {
+    if (el && el.matches && el.matches('[data-iw-fmt]')) {
         const out = el.closest('label') && el.closest('label').querySelector('.iw-range-val');
-        if (out) out.textContent = ACH_RATE_NAMES[Number(el.value)] || '';
+        if (out) out.textContent = rangeLabel(el.dataset.iwFmt, el.value);
         return;
     }
     if (!el || !(el.matches('[data-iw-volume]') || el.dataset.iwSet === 'volume')) return;
@@ -4569,7 +4852,7 @@ function settingsFormHtml(variant) {
         const ign = ignoredNames();
         if (ign.length) forgetHtml += `<div class="iw-forget-ignored"><span class="iw-muted">Забыты навсегда:</span> ${ign.map(n => `<button type="button" class="iw-btn iw-forget-chip iw-unignore" data-iw-unignore="${esc(n)}" title="Вернуть: дневник снова будет замечать ${esc(n)}">${esc(n)} <span aria-hidden="true">↺</span></button>`).join('')}</div>`;
     }
-    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED });
+    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED, imgExts: findImageExtensions(ctx().extensionSettings) });
 }
 
 function refreshForms() {
@@ -4583,7 +4866,7 @@ function settingsHtml() {
 <div class="iw-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>💭 Внутренний мир</b>
+      <b class="iw-drawer-title"><span class="iw-dt-spark" aria-hidden="true">✦</span><span class="iw-dt-main">Внутренний</span><span class="iw-dt-main iw-dt-sub">мир</span><svg class="iw-dt-ico" viewBox="0 0 40 32" aria-hidden="true"><defs><linearGradient id="iwDtGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c77dff"/><stop offset=".55" stop-color="#ff6fae"/><stop offset="1" stop-color="#ffa46b"/></linearGradient></defs><path d="M11 22.5c-4.6 0-8-3-8-6.9 0-3.6 2.9-6.4 6.6-6.8C10.7 5 14.3 2.6 18.6 2.6c3.7 0 6.9 1.8 8.4 4.6 4.6-.2 8.4 3.2 8.4 7.4 0 4.4-3.8 7.9-8.6 7.9z" fill="url(#iwDtGrad)" opacity=".22"/><path d="M11 22.5c-4.6 0-8-3-8-6.9 0-3.6 2.9-6.4 6.6-6.8C10.7 5 14.3 2.6 18.6 2.6c3.7 0 6.9 1.8 8.4 4.6 4.6-.2 8.4 3.2 8.4 7.4 0 4.4-3.8 7.9-8.6 7.9z" fill="none" stroke="url(#iwDtGrad)" stroke-width="2.2" stroke-linejoin="round"/><path d="M19.4 18.4c-3.1-2.1-5-3.8-5-6 0-1.5 1.1-2.6 2.5-2.6.9 0 1.8.5 2.5 1.4.7-.9 1.6-1.4 2.5-1.4 1.4 0 2.5 1.1 2.5 2.6 0 2.2-1.9 3.9-5 6z" fill="url(#iwDtGrad)"/><circle cx="8" cy="26.5" r="2.2" fill="url(#iwDtGrad)"/><circle cx="4" cy="30" r="1.3" fill="url(#iwDtGrad)"/></svg></b>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -4657,6 +4940,19 @@ async function onSettingsChanged(el) {
 
 async function onSettingsAction(action, el) {
     const s = settings();
+    if (action === 'testMemeImg') {
+        const cfg = memeImgCfg();
+        if (!cfg) { IMG_STATUS.text = 'Источник картинок не найден: выбери расширение или другой способ.'; return refreshForms(); }
+        IMG_STATUS.text = 'Рисую пробную картинку…';
+        refreshForms();
+        try {
+            const src = await generateImage('a tiny cute cartoon cat waving, flat colors, simple background', cfg, ctx());
+            IMG_STATUS.text = src ? 'Работает: картинка нарисовалась.' : 'Сервис ничего не вернул.';
+        } catch (err) {
+            IMG_STATUS.text = `Не вышло: ${String(err && err.message || err).slice(0, 180)}`;
+        }
+        return refreshForms();
+    }
     if (action === 'loadModels') {
         apiStatus = 'Загружаю список моделей…';
         refreshForms();
@@ -4705,6 +5001,14 @@ function addSettings() {
     const host = document.getElementById('extensions_settings2') || document.getElementById('extensions_settings');
     if (!host || document.querySelector('.iw-settings')) return;
     host.insertAdjacentHTML('beforeend', settingsHtml());
+    // шрифты для названия расширения в списке расширений таверны и общие для всех тем (записки слухов, мемы)
+    if (!document.querySelector('link[data-iw-title-font]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Marck+Script&family=Comfortaa:wght@700&family=Caveat:wght@600;700&family=Oswald:wght@600;700&display=swap';
+        link.dataset.iwTitleFont = '1';
+        document.head.appendChild(link);
+    }
     const root = host.querySelector('.iw-settings');
     root.addEventListener('change', e => onSettingsChanged(e.target));
     root.addEventListener('input', onPanelInput);

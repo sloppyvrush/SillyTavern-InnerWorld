@@ -1,9 +1,9 @@
 // Чистая логика «Внутреннего мира»: состояние, разбор ответа модели, сравнение, тексты.
 // Здесь нет обращений к таверне, поэтому файл можно проверять тестами в node.
 
-export const MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'impression', 'attraction', 'chronicle'];
+export const MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'ptype', 'impression', 'attraction', 'life', 'chronicle'];
 // Блоки, которые спрашивают у модели (хроника собирается сама и токенов не тратит).
-export const MODEL_MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'impression', 'attraction'];
+export const MODEL_MODULES = ['mood', 'wants', 'fears', 'dream', 'traits', 'ptype', 'impression', 'attraction', 'life'];
 
 export const MODULE_NAMES = {
     mood: 'Настроение',
@@ -11,10 +11,14 @@ export const MODULE_NAMES = {
     fears: 'Страхи',
     dream: 'Мечта жизни',
     traits: 'Черты',
+    ptype: 'Тип личности',
     impression: 'Отношение к тебе',
-    attraction: 'Что привлекает, брак и дети',
+    attraction: 'Что привлекает',
+    life: 'Брак и дети',
     chronicle: 'Хроника',
 };
+// Блоки, которые включаются своими настройками, а в списке «Что вести» стоят рядом с остальными
+export const EXTRA_MODULES = [['dreams', 'Сны'], ['rumors', 'Слухи'], ['memes', 'Мемы'], ['weather', 'Погода']];
 
 // Какие всплывашки показывать: группа → типы событий. Выключенная группа молчит, но событие всё равно записано.
 export const TOAST_KINDS = {
@@ -25,6 +29,7 @@ export const TOAST_KINDS = {
     traits: { label: 'Черты', types: ['trait_new', 'trait_gone', 'trait_up', 'trait_down'] },
     relation: { label: 'Отношение', types: ['impression', 'attitude'] },
     rumor: { label: 'Слухи', types: ['rumor'] },
+    meme: { label: 'Мемы', types: ['meme'] },
     night: { label: 'Сны', types: ['night'] },
     reward: { label: 'Покупки и подарки', types: ['reward'] },
     note: { label: 'Подсказки дневника', types: ['note'] },
@@ -44,8 +49,15 @@ export const DEFAULT_SETTINGS = {
     npcLimit: 12,            // сколько НПС вести в дневнике (99 — все)
     dreams: true,
     rumors: true,
+    memes: true,             // мемы по ситуации
+    memeEvery: 6,            // раз в столько сообщений
+    memeImg: 'none',         // картинки к мемам: none — рисует дневник (эмодзи и вёрстка), st — генерация картинок таверны, ext — установленное расширение картинок, openai, gemini
+    memeImgUrl: '',
+    memeImgKey: '',
+    memeImgModel: '',
+    memeImgExt: '',          // какое установленное расширение картинок использовать (только его имя в настройках таверны)
     weather: true,
-    modules: { mood: true, wants: true, fears: true, dream: true, traits: true, impression: true, attraction: true, chronicle: true },
+    modules: { mood: true, wants: true, fears: true, dream: true, traits: true, ptype: true, impression: true, attraction: true, life: true, chronicle: true },
     toastKinds: {},          // группа → false, если такие всплывашки не показывать
     theme: 'diary',
     track: 'scene',          // scene | bot | list
@@ -113,6 +125,11 @@ export const DEFAULT_SETTINGS = {
     achievements: true,      // достижения появляются сами по ходу истории
     achRate: 3,              // как часто: 1 — только эпохальные … 3 — как раньше … 5 — часто
     caseArt: true,           // рисовать памятные вещи на витрине (модель рисует маленькую картинку при покупке)
+    shopAuto: false,         // лавка обновляется сама вместе с разбором
+    shopEvery: 10,           // …раз в столько сообщений
+    buyOne: true,            // по одному подарку, событию и эффекту на персонажа, пока прошлое не случится
+    artAutoItems: true,      // памятные вещи рисуются сами сразу после покупки (иначе — по кнопке)
+    artAutoGifts: true,      // подарки рисуются сами сразу после покупки (иначе — по кнопке)
     points: true,            // очки за желания и мечту + награды
     claimAuto: false,        // награду за сбывшееся желание забирать сразу (иначе — кнопкой «Забрать награду»)
 };
@@ -266,13 +283,13 @@ export function attrHit(tag, text) {
 export const LIFE_FIELDS = {
     marry: { label: 'Брак', opts: { yes: 'хочет', maybe: 'не против', no: 'не хочет' } },
     kids: { label: 'Дети', opts: { love: 'любит', neutral: 'нейтрально', dislike: 'не любит' } },
-    own: { label: 'Свои дети', opts: { want: 'хочет', maybe: 'может быть', no: 'не хочет', has: 'уже есть' } },
+    own: { label: 'Свои дети', opts: { want: 'хочет', maybe: 'может быть', no: 'не хочет' } },
     when: { label: 'Когда', opts: { now: 'сейчас', later: 'позже', never: 'никогда' } },
 };
 const LIFE_RU = {
     marry: { 'хочет': 'yes', 'да': 'yes', 'не против': 'maybe', 'возможно': 'maybe', 'не хочет': 'no', 'нет': 'no' },
     kids: { 'любит': 'love', 'ровно': 'neutral', 'нейтрально': 'neutral', 'не любит': 'dislike' },
-    own: { 'хочет': 'want', 'может быть': 'maybe', 'возможно': 'maybe', 'не хочет': 'no', 'уже есть': 'has', 'есть': 'has' },
+    own: { 'хочет': 'want', 'может быть': 'maybe', 'возможно': 'maybe', 'не хочет': 'no' },
     when: { 'сейчас': 'now', 'скоро': 'now', 'позже': 'later', 'потом': 'later', 'никогда': 'never' },
 };
 // Слова, при которых взгляды на брак и детей становятся к месту
@@ -403,7 +420,7 @@ function lifeGuess(f, v) {
     const no = /не хочет|не собира|против|никогда|ни за что|не нужн|не любит|не терпит|терпеть не/;
     if (f === 'marry') return no.test(v) ? 'no' : (/может|не против|возможн|если|подумал|не уверен/.test(v) ? 'maybe' : (/уже жена|женат|замужем|в браке/.test(v) ? 'yes' : (/хочет|мечта|готов|жени|замуж|да\b|yes/.test(v) ? 'yes' : '')));
     if (f === 'kids') return /не любит|раздража|терпеть не|не выносит|dislike/.test(v) ? 'dislike' : (/любит|обожа|нравят|рад|нежн|love/.test(v) ? 'love' : (/равнодуш|спокойн|ровно|нейтрал|neutral/.test(v) ? 'neutral' : ''));
-    if (f === 'own') return /уже есть|есть сын|есть доч|есть дет|has/.test(v) ? 'has' : (no.test(v) || v === 'no' ? 'no' : (/может|возможн|не уверен|maybe/.test(v) ? 'maybe' : (/хочет|готов|мечта|yes|want|да\b/.test(v) ? 'want' : '')));
+    if (f === 'own') return /уже есть|есть сын|есть доч|есть дет|has/.test(v) ? '' : (no.test(v) || v === 'no' ? 'no' : (/может|возможн|не уверен|maybe/.test(v) ? 'maybe' : (/хочет|готов|мечта|yes|want|да\b/.test(v) ? 'want' : '')));
     if (f === 'when') return /никогда|never/.test(v) ? 'never' : (/сейчас|скорее|поскорее|now/.test(v) ? 'now' : (/потом|позже|будущ|когда|later|не сейчас/.test(v) ? 'later' : ''));
     return '';
 }
@@ -439,7 +456,7 @@ export function lifeText(life) {
     const bits = [];
     if (life.marry) bits.push(`брак: ${L.marry.opts[life.marry]}`);
     if (life.kids) bits.push(`дети: ${L.kids.opts[life.kids]}`);
-    const own = [life.own ? L.own.opts[life.own] : '', life.when && life.own !== 'no' && life.own !== 'has' ? L.when.opts[life.when] : '', life.count && life.own !== 'no' ? COUNT_WORDS[life.count] : ''].filter(Boolean);
+    const own = [life.own ? L.own.opts[life.own] : '', life.when && life.own !== 'no' ? L.when.opts[life.when] : '', life.count && life.own !== 'no' ? COUNT_WORDS[life.count] : ''].filter(Boolean);
     if (own.length) bits.push(`свои: ${own.join(', ')}`);
     return bits.join('; ');
 }
@@ -1815,6 +1832,8 @@ export function mergeCharacter(old, fresh, modules, mopts = {}) {
     if (modules.attraction) {
         if (!out.attrSet && fresh.likes && fresh.likes.length && !(out.likes && out.likes.length)) out.likes = fresh.likes;
         if (!out.attrSet && fresh.dislikes && fresh.dislikes.length && !(out.dislikes && out.dislikes.length)) out.dislikes = fresh.dislikes;
+    }
+    if (modules.life !== false) {
         // брак и дети: заполняются один раз; потом — только если модель отметила событие (changed + why); правку игрока не трогаем
         if (fresh.life && !out.persona && (!out.lifeSet || lifeEmpty(out.life)) && !mopts.npc) {
             const { changed, ...life } = fresh.life;
@@ -2110,6 +2129,7 @@ export function eventTitle(ev) {
         note: 'Дневник',
         night: 'Сон',
         rumor: 'Слух',
+        meme: 'Мем',
     }[ev.type] || 'Внутренний мир';
 }
 
@@ -2130,11 +2150,149 @@ export function cleanNightDreams(raw) {
     const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
     return list.map(cleanNightDream).filter(Boolean).slice(0, 6);
 }
+// Формы сна: сцена, обрывки-образы, разговор во сне, воспоминание, символ, повторяющийся сон
+export const DREAM_FORMS = ['scene', 'fragments', 'dialog', 'memory', 'symbol', 'recurring'];
+export const DREAM_FORM_NAMES = { scene: 'сон', fragments: 'обрывки', dialog: 'разговор во сне', memory: 'сон-воспоминание', symbol: 'знак', recurring: 'снова этот сон' };
 export function cleanNightDream(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const who = cut(raw.who, 60), text = cut(raw.text, 320);
+    const who = cut(raw.who, 60);
+    const f0 = String(raw.form || '').toLowerCase().trim();
+    let form = DREAM_FORMS.includes(f0) ? f0 : 'scene';
+    const lines = (Array.isArray(raw.lines) ? raw.lines : [])
+        .map(l => (l && typeof l === 'object') ? { who: capFirst(cut(l.who || l.name, 40)), text: capFirst(cut(l.text || l.say, 160)) } : { who: '', text: capFirst(cut(l, 160)) })
+        .filter(l => l.text).slice(0, 5);
+    if (form === 'dialog' && lines.length < 2) form = 'scene';
+    if (form === 'fragments' && lines.length < 2) form = 'scene';
+    let text = cut(raw.text, 320);
+    if (!text && lines.length) text = cut(lines.map(l => (l.who ? `${l.who}: ` : '') + l.text).join(' … '), 320);
     if (!who || !text) return null;
-    return { who, text, thought: cut(raw.thought, 200), tone: DREAM_TONES.includes(raw.tone) ? raw.tone : 'странный' };
+    const out = { who, text: capFirst(text), thought: capFirst(cut(raw.thought, 200)), tone: DREAM_TONES.includes(raw.tone) ? raw.tone : 'странный' };
+    if (form !== 'scene') out.form = form;
+    if (form === 'dialog' || form === 'fragments') out.lines = lines;
+    const sym = capFirst(cut(raw.symbol, 40));
+    if (form === 'symbol' && sym) out.symbol = sym;
+    const when = capFirst(cut(raw.when, 60));
+    if (form === 'memory' && when) out.when = when;
+    return out;
+}
+
+// ---------- Мемы: смешные картинки и тексты по ситуации, как в русском интернете ----------
+// Большой пул форматов. Каждый раз модели предлагается случайная горсть из них (без недавних),
+// так мемы не повторяются, а запрос не раздувается. spec — что заполнить, need — сколько строк нужно минимум.
+const L2 = '"lines":[{"who":"…","text":"…"}]';
+export const MEME_DEFS = {
+    macro: { name: 'картинка с подписью', pic: true, spec: 'картинка, "top" и "bottom" — подпись сверху и снизу' },
+    when: { name: '«Когда…»', pic: true, spec: '"top":"Когда …", под ним картинка-реакция' },
+    pov: { name: 'POV', pic: true, spec: '"top":"POV: …" — зритель на месте кого-то в сцене' },
+    reaction: { name: 'моё лицо, когда', pic: true, spec: '"top":"Моё лицо, когда …" или "Лицо [имя], когда …", картинка — эта самая гримаса' },
+    demotivator: { name: 'демотиватор', pic: true, spec: 'картинка в чёрной рамке, "title" крупно и "text" мелко под ним — пафосно-грустно' },
+    nature: { name: 'документалка о природе', pic: true, spec: 'голос за кадром как в фильме о дикой природе: "text" — «Перед нами самец… в естественной среде…» про героя, картинка — герой «в дикой природе»' },
+    trailer: { name: 'трейлер', pic: true, spec: 'голос из трейлера блокбастера: "text" — «В мире, где… один человек…», "title" — название фильма про эту сцену' },
+    quote: { name: 'пацанская цитата', pic: true, spec: 'цитата «на века» в стиле пафосных пабликов: "text" — мудрость (глупо-пафосная), "who" — автор (герой или «Волк»), картинка — пафосный портрет' },
+    compare: { name: 'это / а вот это', need: 2, spec: '"lines":[{"text":"то, что не нравится"},{"text":"то, что нравится"}]' },
+    expect: { name: 'ожидание / реальность', need: 2, spec: '"lines":[{"text":"ожидание"},{"text":"реальность"}]' },
+    before: { name: 'до / после', need: 2, spec: '"lines":[{"text":"до"},{"text":"после"}] — что было до события сцены и что стало' },
+    started: { name: 'как начиналось / как идёт', need: 2, spec: '"lines":[{"text":"как всё начиналось"},{"text":"как всё идёт сейчас"}]' },
+    see: { name: 'как меня видят', need: 3, spec: '"title":"[герой] глазами…", "lines":[{"who":"Мама","text":"…"},{"who":"Друзья","text":"…"},{"who":"Я","text":"…"},{"who":"На самом деле","text":"…"}] 3–4 штуки, у каждой "emoji"' },
+    nobody: { name: 'никто: …', need: 2, spec: '"lines":[{"who":"Никто","text":""},{"who":"Абсолютно никто","text":""},{"who":"имя героя","text":"что он выкинул"}]' },
+    me: { name: 'я / тоже я', need: 2, spec: '"lines":[{"who":"Я","text":"…"},{"who":"Тоже я","text":"…"}] от лица героя' },
+    doctor: { name: 'врач / я', need: 2, spec: '"lines":[{"who":"Врач","text":"запрет или совет"},{"who":"Я / имя героя","text":"что он тут же делает"}]' },
+    mom: { name: 'мам, можно…', need: 2, spec: '"lines":[{"who":"Я","text":"Мам, можно …?"},{"who":"Мама","text":"У нас есть … дома"},{"who":"… дома","text":"жалкая версия"}]' },
+    therapist: { name: 'психолог: его не существует', need: 2, spec: '"lines":[{"who":"Психолог","text":"[страшное] не существует, оно не может тебе навредить"},{"who":"[страшное]","text":"…"}]' },
+    interview: { name: 'собеседование', need: 2, spec: '"lines":[{"who":"HR","text":"вопрос"},{"who":"[герой]","text":"ответ"}] 2–4 реплики, как на собеседовании' },
+    translator: { name: 'перевод с языка героя', need: 2, spec: '"title":"Переводчик с языка [героя]", "lines":[{"who":"Сказал","text":"…"},{"who":"Имел в виду","text":"…"}] 1–2 пары' },
+    twotypes: { name: 'два типа людей', need: 2, spec: '"title":"Есть два типа людей", "lines":[{"text":"первые…"},{"text":"вторые…"}], можно третью — «и [герой]»' },
+    chat: { name: 'переписка', need: 2, spec: 'переписка, "lines":[{"who":"кто","text":"сообщение"}] 2–4 сообщения' },
+    groupchat: { name: 'общий чат', need: 3, spec: 'групповой чат, "title":"название чата (смешное)", "lines":[{"who":"кто","text":"сообщение"}] 3–5 сообщений от разных людей' },
+    search: { name: 'история поиска', need: 3, spec: '"title":"История поиска [героя]", "lines":[{"text":"запрос"}] 3–5 запросов, по нарастающей паники или абсурда' },
+    autocomplete: { name: 'подсказки поисковика', need: 3, spec: '"top":"начало запроса", "lines":[{"text":"вариант подсказки целиком"}] 3–4 подсказки' },
+    notifications: { name: 'уведомления', need: 2, spec: 'экран блокировки, "lines":[{"who":"приложение или отправитель","text":"уведомление"}] 2–4 штуки' },
+    top: { name: 'топ', need: 3, spec: '"title":"Топ-N …", "lines":[{"text":"пункт"}] 3–5 пунктов, последний — неожиданный' },
+    starter: { name: 'стартовый набор', need: 3, spec: '"title":"Стартовый набор [кого]", "lines":[{"text":"предмет","who":"эмодзи"}] 4–6 вещей' },
+    recipe: { name: 'рецепт', need: 2, spec: '"title":"Рецепт: [чего]", "lines":[{"who":"сколько","text":"ингредиент"}] 3–5 штук, "bottom" — способ приготовления одной фразой' },
+    redflags: { name: 'красные флаги', need: 2, spec: '"title":"Красные флаги …", "lines":[{"text":"флаг"}] 3–4 штуки' },
+    greenflags: { name: 'зелёные флаги', need: 2, spec: '"title":"Зелёные флаги …", "lines":[{"text":"флаг"}] 3–4 штуки' },
+    rules: { name: 'правила', need: 2, spec: '"title":"Правила [места или героя]", "lines":[{"text":"правило"}] 3–5, последнее нарушает все предыдущие' },
+    checklist: { name: 'чек-лист', need: 2, spec: '"title":"План на день / список дел", "lines":[{"text":"дело","val":1}] — val 1 сделано, 0 нет, 3–5 пунктов' },
+    signs: { name: 'ты точно…, если', need: 2, spec: '"title":"Ты точно [кто], если…", "lines":[{"text":"признак"}] 3–4' },
+    patch: { name: 'обновление героя', need: 2, spec: '"title":"[Герой] 2.0 — список изменений", "lines":[{"who":"+","text":"добавлено"},{"who":"−","text":"удалено"},{"who":"фикс","text":"исправлено"}] 3–5' },
+    bingo: { name: 'бинго', need: 6, spec: '"title":"Бинго: [кто или что]", "lines":[{"text":"клетка","val":1}] ровно 9 клеток, val 1 — уже случилось' },
+    receipt: { name: 'чек', need: 2, spec: '"title":"название лавки или магазина", "lines":[{"text":"позиция","who":"цена"}] 3–5, "bottom":"ИТОГО: …"' },
+    priceless: { name: 'бесценно', need: 2, spec: 'как в рекламе: "lines":[{"text":"вещь","who":"цена"}] 2–3, "bottom":"[момент] — бесценно"' },
+    tier: { name: 'тир-лист', need: 3, spec: '"title":"Тир-лист …", "lines":[{"who":"S","text":"что-то"},{"who":"A","text":"…"},{"who":"C","text":"…"},{"who":"F","text":"…"}] 3–5 рядов' },
+    align: { name: 'мировоззрение 3×3', need: 9, spec: 'таблица мировоззрений, "title":"тема", "lines" ровно 9 штук по порядку: законный добрый, нейтральный добрый, хаотичный добрый, законный нейтральный, истинно нейтральный, хаотичный нейтральный, законный злой, нейтральный злой, хаотичный злой — у каждого "text"' },
+    iceberg: { name: 'айсберг', need: 3, spec: '"title":"Айсберг …", "lines":[{"text":"уровень"}] 4–5 уровней — сверху все знают, внизу жуткие тайные факты' },
+    stats: { name: 'характеристики', need: 3, spec: 'как в игре: "title":"[герой], ур. N", "lines":[{"who":"характеристика","val":0..10}] 4–5, смешные навыки' },
+    meter: { name: 'уровень чего-то', spec: 'шкала: "title":"Уровень [чего]", "score":0..100, "bottom":"подпись к уровню", "emoji"' },
+    loading: { name: 'загрузка', spec: 'полоса загрузки: "title":"Загрузка [чего]…", "score":0..100, "text":"подпись под полосой"' },
+    poll: { name: 'опрос', need: 2, spec: 'опрос в сторис: "title":"вопрос", "lines":[{"text":"вариант","val":проценты}] 2–3 варианта' },
+    error: { name: 'системная ошибка', spec: 'окно ошибки компьютера: "title":"заголовок окна", "text":"сообщение об ошибке", "lines":[{"text":"кнопка"}] 1–2 кнопки' },
+    achievement: { name: 'достижение', spec: '"title":"название ачивки", "text":"за что", "emoji"' },
+    quest: { name: 'новый квест', spec: '"title":"название задания", "text":"описание", "lines":[{"text":"награда"}] 1–2' },
+    notice: { name: 'объявление на подъезде', spec: '"title":"ВНИМАНИЕ / ОБЪЯВЛЕНИЕ", "text":"текст объявления", "bottom":"что на отрывных листочках"' },
+    sign: { name: 'табличка', spec: 'предупреждающая табличка: "title":"ОСТОРОЖНО: …", "text":"мелкий текст", "emoji"' },
+    horoscope: { name: 'гороскоп', spec: '"who":"знак или имя героя", "text":"прогноз на сегодня", "emoji"' },
+    news: { name: 'срочная новость', spec: '"source":"канал или газета", "title":"СРОЧНО: заголовок", "text":"подробность"' },
+    review: { name: 'отзыв', spec: 'отзыв на героя или событие как на товар: "title":"что оценивают", "who":"автор отзыва", "score":1..5, "text":"отзыв"' },
+    status: { name: 'статус', spec: 'статус в соцсети: "who":"чей", "text":"пафосный или страдальческий статус"' },
+    card: { name: 'паспорт персонажа', need: 3, spec: '"title":"имя", "lines":[{"who":"поле","text":"значение"}] 4–5 смешных полей' },
+    dictionary: { name: 'словарь', spec: '"title":"слово (имя героя как глагол или новое слово)", "who":"часть речи", "text":"значение", "bottom":"пример употребления"' },
+    formula: { name: 'формула', need: 2, spec: '"lines":[{"text":"слагаемое"}] 2–3, "bottom":"результат"' },
+    brain: { name: 'уровни мозга', need: 3, spec: '"lines" 3–4 ступени, от простого к «просветлённому» абсурду' },
+    buttons: { name: 'две кнопки', need: 2, spec: 'две кнопки, между которыми мечется герой, "lines":[{"text":"кнопка 1"},{"text":"кнопка 2"}], "who" — кто выбирает' },
+    tweet: { name: 'пост', spec: 'пост в соцсети, "who":"автор","source":"@ник","text":"…", можно "likes" и "reposts"' },
+};
+export const MEME_FORMATS = Object.keys(MEME_DEFS);
+export const MEME_FORMAT_NAMES = Object.fromEntries(MEME_FORMATS.map(k => [k, MEME_DEFS[k].name]));
+export const MEME_PIC = MEME_FORMATS.filter(k => MEME_DEFS[k].pic);
+// Горсть форматов для одного запроса: без недавних, вперемешку, всегда пара картиночных
+export function pickMemeFormats(recent = [], n = 14, rnd = Math.random) {
+    const pool = MEME_FORMATS.filter(f => !recent.includes(f));
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const out = pool.slice(0, n);
+    const pics = out.filter(f => MEME_DEFS[f].pic).length;
+    for (const f of pool.slice(n)) { if (out.filter(x => MEME_DEFS[x].pic).length >= 2) break; if (MEME_DEFS[f].pic && pics < 2) out.push(f); }
+    return out;
+}
+const MEME_ALIAS = { 'meme': 'macro', 'image': 'macro', 'picture': 'macro', 'face': 'reaction', 'myface': 'reaction', 'beforeafter': 'before', 'howitstarted': 'started', 'starterpack': 'starter', 'tierlist': 'tier', 'alignment': 'align', 'redflag': 'redflags', 'greenflag': 'greenflags', 'todo': 'checklist', 'patchnotes': 'patch', 'mastercard': 'priceless', 'progress': 'loading', 'story': 'poll', 'post': 'tweet', 'dialog': 'chat', 'group': 'groupchat', 'google': 'autocomplete' };
+export function cleanMeme(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const f0 = String(raw.format || raw.form || '').toLowerCase().replace(/[\s_\-]+/g, '').trim();
+    let format = MEME_FORMATS.includes(f0) ? f0 : (MEME_ALIAS[f0] || 'macro');
+    const num = v => { const x = Math.round(Number(v)); return Number.isFinite(x) ? x : null; };
+    const lines = (Array.isArray(raw.lines) ? raw.lines : [])
+        .map(l => {
+            if (!l || typeof l !== 'object') return { who: '', text: cut(l, 160) };
+            const o = { who: capFirst(cut(l.who || l.name || l.label, 40)), text: cut(l.text || l.say, 160) };
+            const v = num(l.val ?? l.value ?? l.pct);
+            if (v !== null) o.val = Math.max(0, Math.min(100, v));
+            return o;
+        })
+        .filter(l => l.text || ((format === 'nobody' || format === 'stats') && l.who)).slice(0, format === 'bingo' || format === 'align' ? 9 : 6);
+    const need = (MEME_DEFS[format] || {}).need || 0;
+    if (need && lines.length < need) format = format === 'align' && lines.length >= 3 ? 'top' : 'macro';
+    const top = cut(raw.top, 120), bottom = cut(raw.bottom, 120), title = cut(raw.title, 120), text = cut(raw.text, 280);
+    const out = { format, top, bottom, title, text, lines, emoji: cut(raw.emoji, 12), img: cut(raw.img || raw.image, 400), who: cut(raw.who || raw.author, 60), source: cut(raw.source || raw.handle, 60) };
+    // в меме должна быть хоть одна подпись
+    if (!top && !bottom && !title && !text && !lines.length) return null;
+    for (const k of Object.keys(out)) if (out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) delete out[k];
+    out.format = format;
+    const sc = num(raw.score ?? raw.level ?? raw.percent ?? raw.stars);
+    if (sc !== null && ['meter', 'loading', 'review'].includes(format)) out.score = format === 'review' ? Math.max(1, Math.min(5, sc)) : Math.max(0, Math.min(100, sc));
+    const n = v => { const x = Math.round(Number(v)); return Number.isFinite(x) && x > 0 ? Math.min(x, 9999999) : 0; };
+    if (format === 'tweet') { if (n(raw.likes)) out.likes = n(raw.likes); if (n(raw.reposts)) out.reposts = n(raw.reposts); }
+    return out;
+}
+// Мем одной строкой (для уведомления и «уже были»)
+export function memePlain(m) {
+    if (!m) return '';
+    const parts = [m.title, m.top, m.text, ...(m.lines || []).map(l => (l.who ? `${l.who}: ` : '') + l.text), m.bottom].filter(Boolean);
+    return parts.join(' / ').slice(0, 200);
+}
+// С большой буквы — подписи, имена, кто болтает: «кухонный служка» → «Кухонный служка»
+export function capFirst(t) {
+    const x = String(t ?? '').trim();
+    return x ? x[0].toLocaleUpperCase('ru') + x.slice(1) : x;
 }
 // Формы слуха: болтовня, подслушанный разговор, газета, глашатай, пост в сети, записка/листовка.
 export const RUMOR_FORMS = ['talk', 'dialog', 'news', 'herald', 'post', 'note'];
@@ -2146,7 +2304,7 @@ export function cleanRumor(raw) {
     const f0 = String(raw.form || '').toLowerCase().trim();
     let form = RUMOR_FORMS.includes(f0) ? f0 : (RUMOR_FORM_RU[f0] || '');
     const lines = (Array.isArray(raw.lines) ? raw.lines : [])
-        .map(l => (l && typeof l === 'object') ? { who: cut(l.who || l.name, 40), text: cut(l.text || l.say, 200) } : { who: '', text: cut(l, 200) })
+        .map(l => (l && typeof l === 'object') ? { who: capFirst(cut(l.who || l.name, 40)), text: capFirst(cut(l.text || l.say, 200)) } : { who: '', text: capFirst(cut(l, 200)) })
         .filter(l => l.text).slice(0, 5);
     if (!form) form = lines.length >= 2 ? 'dialog' : 'talk';
     if (form === 'dialog' && lines.length < 2) form = 'talk';
@@ -2156,14 +2314,14 @@ export function cleanRumor(raw) {
     const tr = String(raw.truth ?? '').toLowerCase();
     const about = cut(raw.about, 60);
     const town = /^(город|город[ае]?|все|всех|двор|столиц|деревн|округ|town|city|everyone)/i.test(about || '');
-    const out = { who: cut(raw.who, 60), about: town ? '' : about, text, truth: tr === 'true' || tr === 'правда' ? 'true' : (tr === 'false' || tr === 'ложь' ? 'false' : 'half') };
+    const out = { who: capFirst(cut(raw.who, 60)), about: town ? '' : about, text: capFirst(text), truth: tr === 'true' || tr === 'правда' ? 'true' : (tr === 'false' || tr === 'ложь' ? 'false' : 'half') };
     if (town) out.town = true;
     if (form !== 'talk') out.form = form;
     if (form === 'dialog') out.lines = lines;
     const title = cut(raw.title || raw.headline, 120);
     if (title && (form === 'news' || form === 'post' || form === 'herald' || form === 'note')) out.title = title;
     const source = cut(raw.source || raw.handle || raw.paper, 60);
-    if (source && form !== 'talk' && form !== 'dialog') out.source = source;
+    if (source && form !== 'talk' && form !== 'dialog') out.source = /^@/.test(source) ? source : capFirst(source);
     if (form === 'post') {
         const via = cut(raw.via || raw.platform, 30);
         if (via) out.via = via;
@@ -2186,6 +2344,7 @@ export function eventText(ev) {
     switch (ev.type) {
         case 'night': return ev.text;
         case 'rumor': return ev.plain || `«${ev.text}»`;
+        case 'meme': return ev.text || '';
         case 'achievement': return `«${ev.text}»${ev.desc ? ` — ${ev.desc}` : ''}`;
         case 'want_done': return `«${ev.text}» — сбылось!`;
         case 'fear_real': return `«${ev.text}»`;
@@ -2222,6 +2381,8 @@ export function responseTemplate(modules, manualTurns) {
     if (modules.dream) c.dream = { title: 'мечта жизни', plus: '', steps: [{ text: 'этап', done: false }], change: 'same|change|add', why: '' };
     if (modules.traits) {
         c.traits = [{ name: 'черта характера', why: 'событие, после которого изменилась', kind: 'base|up|new|down|gone', about: 'почему эта черта у него (только если no_about)' }];
+    }
+    if (modules.ptype !== false) {
         c.ptype = 'INFP-T';
         c.ptype_note = 'как этот тип проявляется именно в нём (только при no_ptype)';
         c.temper = 'choleric|sanguine|phlegmatic|melancholic';
@@ -2239,9 +2400,11 @@ export function responseTemplate(modules, manualTurns) {
     if (modules.attraction) {
         c.turn_ons = ['что привлекает в других'];
         c.turn_offs = ['что отталкивает'];
+    }
+    if (modules.life !== false) {
         c.want_marry = 'yes|maybe|no|unknown';
         c.kids_attitude = 'love|neutral|dislike|unknown';
-        c.want_kids = 'want|maybe|no|has|unknown';
+        c.want_kids = 'want|maybe|no|unknown';
         c.kids_when = 'now|later|never|unknown';
         c.kids_count = 0;
         c.family_why = 'откуда такие взгляды, коротко (только при no_family или по событию)';
@@ -2305,22 +2468,26 @@ export function buildSystemPrompt(settings, ctx) {
     if (m.wants) rules.push('wants — до 3 текущих желаний, конкретных и живых, из характера, сюжета и мечты; не только про игрока. Желания живут долго: повторяй текст уже записанных желаний ДОСЛОВНО и не переписывай их. Исполнившееся по событиям помечай status "done", ставшее неважным из-за события — "dropped"; только на место закрытого можно добавить новое (за раз не больше одного). Желания с pinned: true игрок закрепил: верни их как есть, не меняй текст и не отменяй — только status "done", когда исполнится.');
     if (m.fears) rules.push('fears — до 3 страхов, из характера, прошлого и сюжета; strength 1–3; level — одно слово. Страхи глубокие и держатся долго: повторяй текст уже записанных страхов ДОСЛОВНО и не заменяй их новыми без причины. Если то, чего персонаж боялся, ПРОИЗОШЛО в последних сообщениях — обязательно помечай "realized" и добавь сильную неприятную эмоцию. Преодолённый — "gone". Новый страх — только на место закрытого или если появилась настоящая новая угроза. fears_realized_recently — что недавно сбылось: это ещё влияет на настроение и поведение, учитывай.');
     if (m.dream) rules.push(`dream — мечта всей жизни: одна большая личная цель, которая следует из характера и истории персонажа (карточка, прошлое, ценности), с 3–5 этапами. Это глобальное и личное, а не текущая сцена. ${user} может появиться в мечте, ТОЛЬКО если между ними уже по-настоящему близкие отношения (отношение +2 и выше) и было сильное общее событие; незнакомец, знакомый или просто приятель в мечту не попадает. Если мечта уже есть — повторяй её название, plus и этапы дословно, отмечай выполненные этапы (done: true) и ставь change "same". Меняй мечту, только если случилось настоящее потрясение, которое переворачивает жизнь персонажа: change "change" — новая мечта (новые title и steps), change "add" — мечта дополнилась (plus — короткое продолжение, например «…вместе с ней»); в why — какое событие. Мелкие события мечту не трогают. Мечта у каждого своя: если у одного персонажа (или у персоны игрока) мечта поменялась, это не повод менять мечту другого — у остальных повторяй их мечты дословно с change "same".`);
-    if (m.traits) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Пиши ptype, ptype_note, temper и temper_note только для персонажей с no_ptype: true и для новых; у остальных эти поля не пиши вовсе — они уже сохранены. Тип и темперамент — устойчивые свойства характера, а не настроение: не выводи их из одной сцены. Если у персонажа есть ptype_was / temper_was или он есть в списке «Ранее определённые типы личности» — это уже определено по той же карточке: верни те же значения, если карточка и лорбук им прямо не противоречат. ptype_note — по каким чертам из карточки выбран тип.');
-    if (m.traits) rules.push('orient — сексуальная ориентация: hetero (гетеро), homo (гей или лесбиянка), bi, pan, poly (полисексуальность), omni, ace (асексуальность), demi, gray (грейсексуальность), aro (аромантичность), andro (влечёт к мужчинам), gyne (влечёт к женщинам), queer, fluid, questioning (ищет себя). Пиши её, если она прямо названа в карточке, лорбуке, описании персоны игрока или сам персонаж прямо сказал о ней в чате — на любом языке и любым словом или формой («Orientation: Straight», «Sexuality: bi», «bisexual», «гетеросексуален», «лесбиянка», «openly gay» — всё это прямо названа). Не угадывай по поведению, внешности, стереотипам, по тому, с кем персонаж флиртует или в кого влюблён: влюблённость в человека своего пола ещё не называет ориентацию. Если прямо не названа — orient: "нет". Пиши только для персонажей с no_orient: true и для новых.');
-    if (m.traits) rules.push('born — дата рождения, только если она прямо написана в карточке, лорбуке или (для персоны игрока) в её описании: "ДД.ММ.ГГГГ" или "ДД.ММ". Если даты нет, но назван знак зодиака — верни zodiac (по-русски, например "Скорпион"). Если названа дата без года, но назван возраст, а год истории известен ([Часы сцены] или прямо прописанный в карточке и лорбуке год сеттинга) — вычисли год рождения: born "ДД.ММ.ГГГГ". Если даты нет совсем, но назван возраст и известен год истории — вычисли год рождения и верни born: "ГГГГ" (только год) и age. Если год истории неизвестен — только age (число лет на начало истории). Возраст — только НАСТОЯЩИЙ, сколько лет персонажу на самом деле («ему 30», «тридцатилетний», «родился 300 лет назад»). Кажущийся возраст не возраст: «выглядит на 30», «на вид лет тридцать», «застыл в облике двадцатилетнего» у вампиров, бессмертных, эльфов, духов, андроидов — такое в age и born не бери. Если назван только кажущийся возраст, а настоящего нет — born: "нет", age не пиши. Ничего не выдумывай: если ни даты, ни знака, ни настоящего возраста нет — born: "нет". Пиши эти поля только для персонажей с no_born: true и для новых.');
+    if (m.ptype !== false) rules.push('ptype — тип личности по 16 типам (как в тесте 16personalities): четыре буквы и -A (уверенный) или -T (беспокойный), например INFP-T, ENTJ-A; temper — темперамент: choleric, sanguine, phlegmatic или melancholic. Определяй их по характеру из карточки, лорбука и поведения в чате. ptype_note и temper_note — по 1–2 предложения: как этот тип и темперамент проявляются именно в этом персонаже, в его привычках и поступках (не общее описание типа). Пиши ptype, ptype_note, temper и temper_note только для персонажей с no_ptype: true и для новых; у остальных эти поля не пиши вовсе — они уже сохранены. Тип и темперамент — устойчивые свойства характера, а не настроение: не выводи их из одной сцены. Если у персонажа есть ptype_was / temper_was или он есть в списке «Ранее определённые типы личности» — это уже определено по той же карточке: верни те же значения, если карточка и лорбук им прямо не противоречат. ptype_note — по каким чертам из карточки выбран тип.');
+    if (m.ptype !== false) rules.push('orient — сексуальная ориентация: hetero (гетеро), homo (гей или лесбиянка), bi, pan, poly (полисексуальность), omni, ace (асексуальность), demi, gray (грейсексуальность), aro (аромантичность), andro (влечёт к мужчинам), gyne (влечёт к женщинам), queer, fluid, questioning (ищет себя). Пиши её, если она прямо названа в карточке, лорбуке, описании персоны игрока или сам персонаж прямо сказал о ней в чате — на любом языке и любым словом или формой («Orientation: Straight», «Sexuality: bi», «bisexual», «гетеросексуален», «лесбиянка», «openly gay» — всё это прямо названа). Не угадывай по поведению, внешности, стереотипам, по тому, с кем персонаж флиртует или в кого влюблён: влюблённость в человека своего пола ещё не называет ориентацию. Если прямо не названа — orient: "нет". Пиши только для персонажей с no_orient: true и для новых.');
+    if (m.ptype !== false) rules.push('born — дата рождения, только если она прямо написана в карточке, лорбуке или (для персоны игрока) в её описании: "ДД.ММ.ГГГГ" или "ДД.ММ". Если даты нет, но назван знак зодиака — верни zodiac (по-русски, например "Скорпион"). Если названа дата без года, но назван возраст, а год истории известен ([Часы сцены] или прямо прописанный в карточке и лорбуке год сеттинга) — вычисли год рождения: born "ДД.ММ.ГГГГ". Если даты нет совсем, но назван возраст и известен год истории — вычисли год рождения и верни born: "ГГГГ" (только год) и age. Если год истории неизвестен — только age (число лет на начало истории). Возраст — только НАСТОЯЩИЙ, сколько лет персонажу на самом деле («ему 30», «тридцатилетний», «родился 300 лет назад»). Кажущийся возраст не возраст: «выглядит на 30», «на вид лет тридцать», «застыл в облике двадцатилетнего» у вампиров, бессмертных, эльфов, духов, андроидов — такое в age и born не бери. Если назван только кажущийся возраст, а настоящего нет — born: "нет", age не пиши. Ничего не выдумывай: если ни даты, ни знака, ни настоящего возраста нет — born: "нет". Пиши эти поля только для персонажей с no_born: true и для новых.');
     if (m.traits) rules.push('traits — 3–6 черт характера. Черта — свойство характера одним прилагательным или коротким словосочетанием («недоверчивый», «вспыльчивый», «упрямый», «заботливый»), а не поступок, роль или отношение к кому-то: «опекает свидетельницу», «любит Еву», «следователь» — НЕ черты. Если персонаж новый — только kind "base". Характер меняется ТОЛЬКО после по-настоящему значимого события: предательство, измена, потеря, спасение жизни, признание, тяжёлый выбор, крупная победа или провал. В обычной сцене верни черты без изменений. За раз одно изменение: new — появилась, up — усилилась, down — слабеет, gone — черта ушла совсем; в why — какое именно событие. Если событие ломает черту (был доверчив, а ему изменили), верни старую черту с kind "gone" и тут же новую с kind "new" («недоверчивый»). Черты с kind "gone" уже ушли: не возвращай их и не добавляй снова. about — 1–2 предложения, почему эта черта есть у персонажа: для основной — что в его прошлом, воспитании, работе или судьбе (по карточке и лорбуку) её выстроило; для приобретённой — как именно событие её породило. Пиши about только для новых черт и для тех, где стоит no_about: true; у остальных не пиши.');
     if (m.impression) rules.push(`impression — первое впечатление персонажа об игроке (${user}) при знакомстве — это МНЕНИЕ персонажа, а не описание сцены: label — каким игрок ему показался, 1–3 слова («смелая чудачка», «опасный тип»); why — что персонаж подумал о нём при встрече, его глазами («не полезла к зевакам — уважаю, хоть и дрожит как воробей»), score от -3 до 3. chem — совместимость, как в «Симс»: насколько они подходят друг другу по чертам, типу личности и ценностям; level: amazing (родственные души), good (есть контакт), neutral (ровно), bad (не по душе), awful (как кошка с собакой); why — коротко, какие черты сходятся или сталкиваются. Если по карточке, лорбуку или чату персонаж и игрок уже давно знакомы (родня, друзья, коллеги, пара, супруги, бывшие) — это не первое впечатление: верни impression.known — кто они друг другу, 1–3 слова («супруги», «давние друзья», «бывшие»). known — только про них двоих: что связывает именно этого персонажа и игрока лично и ещё до начала истории. Если они впервые встретились в сообщениях чата или познакомились недавно — known не пиши, это обычное первое впечатление. Если же их связывает третий человек, которого игрок знает (персонаж — лучший друг главного героя, сестра её жениха, коллега её отца), — это не known, а impression.via: кем ЭТОТ персонаж приходится тому третьему, 2–5 слов, с его именем в родительном падеже («лучший друг Вити», «младшая сестра Кирилла»). via описывает самого персонажа, а не игрока («знакомая Кирилла» про игрока — ошибка). Пиши via, только если по карточке, лорбуку или чату персонаж действительно сам связан с этим человеком; не выводи связь через цепочку (если Лёша не знает Кирилла, никакого «через Кирилла» у Лёши быть не может); связи нет — via не пиши.  label и why — каким персонаж видит игрока с учётом их общей истории; chem — сложившаяся совместимость; chem_now — по их нынешним отношениям. Если они незнакомы — known не пиши. chem — это ПЕРВАЯ (или сложившаяся) совместимость, она не меняется: пиши её только при первом знакомстве и для тех, у кого no_chem: true. chem_now — как совместимость складывается сейчас, по событиям чата: score от -3 (сильное отторжение) до 3 (сильное притяжение), why — коротко, что их сейчас сближает или отталкивает. Меняй score постепенно: на 1 за заметное событие (общий риск, забота, флирт, ссора, обман), больше — только после очень сильного; если ничего не случилось — повтори прежний. Если впечатление уже есть — label, score и why не меняй, обновляй только now (что думает об игроке теперь) и now_score (от -3 до 3). Каждый разбор честно оцени, сдвинулось ли отношение: помощь, забота, честность, общее переживание, флирт, который зашёл, — повод подняться на 1; грубость, ложь, предательство — опуститься на 1 и больше. Отношения в долгой истории живые: если сближение идёт, отношение должно расти со временем, а не застревать на одном числе. now — переписывай, как только персонаж узнал или понял об игроке что-то новое (характер, привычки, прошлое, поступки), коротко и конкретно.`);
     if (m.attraction) rules.push(`turn_ons и turn_offs — что этого персонажа привлекает в других и что отталкивает (как в «Симс»): по 3–8 коротких тегов во множественном числе — телосложение, внешность, приметы, стиль, голос и запах, характер, образ жизни, увлечения («спортивные», «темноволосые», «со шрамами», «низкий голос», «надёжные», «с тёмным прошлым», «грубые»). Бери теги из этого списка, слово в слово: ${Object.entries(ATTRACT_CATALOG).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')}. Своё — только если в списке совсем нет подходящего. Выводи из характера, вкусов и истории персонажа. Не дели механически «хорошее нравится, плохое отталкивает»: живых людей часто тянет к «тёмному» (опасные, властные, циничные, с тёмным прошлым) и раздражает «светлое» (слишком правильные, наивные, послушные, жизнерадостные) — если это в характере персонажа, так и пиши; в обоих списках могут быть любые черты характера. Для персонажей с no_attraction: true и для новых — ОБЯЗАТЕЛЬНО напиши оба списка (и для персонажа игрока тоже), даже если в истории о вкусах прямо не сказано: выведи из характера, прошлого, ценностей и того, как он ведёт себя с людьми. У остальных не пиши — они уже сохранены, а игрок мог их поправить. Совместимость (chem) с игроком учитывай и по этим тегам: подходит ли ему игрок внешностью и характером.`);
     if (m.impression) rules.push(`rel — отношения персонажа с игроком (${user}), как шкалы в «Симс 4»: friend — дружба от -100 до 100 (≤ -85 заклятые враги, -85 враги, -60 неприязнь, -35 холодок, -10…18 знакомые, 18 приятели, 35 друзья, 55 хорошие друзья, 75 близкие друзья, 90 лучшие друзья — только после долгой общей истории); romance — романтика от -100 до 100 (≤ -65 отвращение, -65 неприятие, -35 неловкость, около 0 — нет романтики, 8 искра, 20 симпатия, 35 романтический интерес, 52 влюблённость, 72 любовь, 90 родственные души — редко и не быстро); formal — кто они формально: dating (встречаются), engaged (помолвлены), married (супруги), ex (бывшие), exspouse (бывшие супруги), kin (родня), rivals (соперники) или none; met: false — если лично ещё не встречались. Для тех, у кого no_rel: true, и для новых — задай по карточке, лорбуку и всей истории (давние супруги — married и высокие шкалы; подруга — дружба 50–70; бывший, который преследует, — дружба в минусе и formal ex; только познакомились — около 0); rel_guess — прикидка дневника, поправь её. Для остальных пришли rel, только если отношения сдвинулись: шкалы — новые значения, двигай медленно, как в «Симс»: обычная тёплая или холодная сцена — 1–4, заметное событие (помощь, ссора, флирт, откровенный разговор) — 5–8, очень сильное (признание, предательство, спасение, первый поцелуй) — до 20, и тогда changed: true. Отношения растут неделями истории, а не за пару сцен: если знакомы недавно, дружба не выше 35–45 и романтика не выше 30–40, как бы хорошо всё ни шло; formal меняй только по событию истории (предложение, свадьба, разрыв, развод) — тогда changed: true и why — что случилось. Ничего не случилось — rel не пиши. Персоне игрока rel не пиши.`);
-    if (m.attraction) rules.push(`Брак и дети (как в «Симс») — плоскими полями персонажа: want_marry — хочет ли в брак: yes / maybe (не против) / no / unknown; kids_attitude — как относится к детям вообще: love / neutral / dislike / unknown; want_kids — хочет ли своих детей: want / maybe / no / has (уже есть) / unknown; kids_when — когда: now / later / never / unknown; kids_count — сколько хотел бы, 0 — неизвестно; family_why — коротко, откуда такие взгляды. Бери из карточки, лорбука и чата; если не ясно — unknown, не выдумывай. Для персонажей с no_family: true и для новых главных эти поля пиши обязательно — даже если всё unknown; персоне игрока, животным и детям — не пиши. Дальше взгляды меняются только по сильному событию истории (предложение, беременность, рождение, развод, потеря, долгий серьёзный разговор): тогда верни эти поля с новыми значениями, family_changed: true и family_why — что случилось. Без такого события не пиши их.`);
+    if (settings.modules.life !== false) rules.push(`Брак и дети (как в «Симс») — плоскими полями персонажа: want_marry — хочет ли в брак: yes / maybe (не против) / no / unknown; kids_attitude — как относится к детям вообще: love / neutral / dislike / unknown; want_kids — хочет ли своих детей: want / maybe / no / unknown; kids_when — когда: now / later / never / unknown; kids_count — сколько хотел бы, 0 — неизвестно (если want_kids: no — kids_when и kids_count не пиши); family_why — коротко, откуда такие взгляды. Бери из карточки, лорбука и чата; если не ясно — unknown, не выдумывай. Для персонажей с no_family: true и для новых главных эти поля пиши обязательно — даже если всё unknown; персоне игрока, животным и детям — не пиши. Дальше взгляды меняются только по сильному событию истории (предложение, беременность, рождение, развод, потеря, долгий серьёзный разговор): тогда верни эти поля с новыми значениями, family_changed: true и family_why — что случилось. Без такого события не пиши их.`);
     if (ctx.clockNow) rules.push('scene_time — часы сцены, только по сообщениям чата (карточка и лорбук здесь не в счёт, даже если там написана другая дата): в запросе есть [Часы сцены] — какое время сейчас по дневнику. Верни scene_time на верхнем уровне JSON, рядом с characters, только если по последним сообщениям ясно, что время стало другим (прямо названо, наступило утро, прошёл вечер, долгая поездка): {"time":"ЧЧ:ММ","date":"ГГГГ-ММ-ДД" или null,"said":"дословный кусок сообщения, где названа дата, до 8 слов, или null","flashback":false}. Если дата прямо названа в последних сообщениях (в отметке, в повествовании, в письме или газете «сегодня», «наступило 9 мая») и она не совпадает с [Часами сцены] — обязательно верни её с said, даже если дневник сильно отстал или убежал вперёд: дата из чата важнее часов дневника. Без прямо названной даты время только идёт вперёд. Дата в прямой речи о будущем или прошлом («в субботу 9 мая у меня…», «помнишь, в марте…») — не сегодняшняя, её не бери. Если сцена — воспоминание о прошлом, верни flashback: true. Если ничего не ясно — не пиши scene_time.');
     if (settings.achievements !== false && ctx.messages && ctx.messages.length) {
         rules.push(`achievement — достижение, как в Steam. Пиши его на верхнем уровне JSON, рядом с characters, только когда сама ситуация «просится» в ачивку. ${ACH_RATE_RULE[achRateOf(settings)]} Поводы: веха сюжета (первая встреча, первый поцелуй, признание, раскрытая тайна, переломный момент); подвиг — кто-то сделал что-то сверх обычного (спас, рискнул, выиграл безнадёжное, провернул дерзкий план); забавная или абсурдная ситуация (нелепый провал, неловкость, комичное совпадение, кто-то уснул на допросе); милый момент (забота, трогательный жест); мрачное (предательство, потеря, жестокий выбор); тайное (герой узнал то, что от него прятали). Обычный разговор, мелкий шаг или повтор того, что уже было, — не повод: тогда achievement не пиши вовсе. Название — как у ачивок в Steam: коротко, остроумно, с характером, можно с иронией, отсылкой или игрой слов («Чай, а не яд», «Мастер неловких пауз», «Не в этот раз, смерть», «Кто здесь?», «Держи дистанцию… не вышло»), а не скучное описание события. desc — что именно случилось, одной фразой, тоже живо, как подпись к ачивке («Пережить ночь в доме, где кто-то ходит по чердаку»). icon — значок ПО СМЫСЛУ события: ${Object.entries({ trophy: 'победа', star: 'первый раз', crown: 'триумф', heart: 'любовь', lips: 'поцелуй', flower: 'ухаживание', gift: 'подарок', cake: 'праздник', cup: 'чай/кофе', potion: 'алкоголь/зелье', shield: 'спасение', flame: 'драка/страсть', key: 'тайна', lock: 'секрет', ghost: 'мистика/страх', eye: 'слежка', letter: 'письмо', scroll: 'договор', book: 'знание', feather: 'стихи', note: 'песня', dice: 'азарт', coin: 'деньги', gem: 'сокровище', sun: 'утро', moon: 'ночь', clock: 'опоздание', chat: 'болтовня', users: 'компания', sparkle: 'чудо', alert: 'опасность', trash: 'провал' }).map(([k, v]) => `${k} — ${v}`).join(', ')}; для смешного, милого и неловкого — лицо: joy, playful, shy, dazed (пьян/оглушён), confused, surprise, tired, angry, sad, fear, love, flirty, guilt, pride, suspicious. kind — характер: story (сюжет), feat (подвиг), funny (забавное), cute (милое), romance (романтика), dark (мрачное), secret (тайное). tier — bronze (обычное), silver (заметное), gold (редкое, меняет историю). Формат: {"title":"","desc":"","icon":"","kind":"","tier":""}.${ctx.achTitles && ctx.achTitles.length ? ` Уже получены (не повторяй и не перефразируй): ${ctx.achTitles.join('; ')}.` : ''}`);
     }
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     if (ctx.clockNow && settings.weather !== false) rules.push(`weather — погода в сцене, на верхнем уровне JSON рядом с characters: {"sky":"${WEATHER_SKIES.join('|')}","temp":"градусы числом или null","note":"2–5 слов, как ощущается"}. Пиши, только если погода прямо описана в последних сообщениях или явно сменилась${ctx.weatherNow ? ` (сейчас в дневнике: ${ctx.weatherNow})` : '; погоды в дневнике ещё нет — можешь назвать правдоподобную по месту, эпохе и времени года'}. Если не ясно и не изменилось — не пиши.`);
-    if (settings.dreams !== false && !ctx.firstRun) rules.push(`night_dream — сны. Ночь прошла, если в последних сообщениях кто-то лёг спать, уснул или проснулся, если сцена «наутро» или «на следующий день»${ctx.nightPassed ? ', а ещё — ПО ЧАСАМ СЦЕНЫ ночь уже прошла (см. [Часы сцены])' : ''}. Тогда верни на верхнем уровне JSON список: "night_dream":[{"who":"имя","thought":"о чём думал, засыпая — его голосом, одна фраза","text":"что снилось — 1–2 образные фразы","tone":"${DREAM_TONES.join('|')}"}] — по одному сну на каждого главного героя, который спал этой ночью${settings.persona !== false ? `, и на ${user} тоже (сон ${user} — только для дневника игрока: по событиям дня и чувствам, без новых поступков и решений за ${user})` : ''}. Сам сон в чате описывать не обязательно: если ночь прошла, а что снилось — не сказано, придумай сон по событиям дня, страхам и желаниям героя; если сон описан в тексте — бери его. Если ночь не прошла — не пиши.${ctx.lastDream ? ` Уже записаны сны: ${ctx.lastDream} — за ту же ночь не повторяй.` : ''}`);
+    if (settings.dreams !== false && !ctx.firstRun) rules.push(`night_dream — сны. Ночь прошла, если в последних сообщениях кто-то лёг спать, уснул или проснулся, если сцена «наутро» или «на следующий день»${ctx.nightPassed ? ', а ещё — ПО ЧАСАМ СЦЕНЫ ночь уже прошла (см. [Часы сцены])' : ''}. Тогда верни на верхнем уровне JSON список: "night_dream":[{"who":"имя","thought":"о чём думал, засыпая — его голосом, одна фраза","text":"что снилось — 1–2 образные фразы","tone":"${DREAM_TONES.join('|')}","form":"${DREAM_FORMS.join('|')}"}] — по одному сну на каждого главного героя, который спал этой ночью${settings.persona !== false ? `, и на ${user} тоже (сон ${user} — только для дневника игрока: по событиям дня и чувствам, без новых поступков и решений за ${user})` : ''}. Сам сон в чате описывать не обязательно: если ночь прошла, а что снилось — не сказано, придумай сон по событиям дня, страхам и желаниям героя; если сон описан в тексте — бери его. Если ночь не прошла — не пиши. Сны бывают разные — выбирай форму "form" и чередуй её от ночи к ночи: scene — сцена сна (text); fragments — обрывки, "lines":["образ","образ","образ"] 3–4 коротких кадра, как вспоминаешь утром; dialog — разговор во сне, "lines":[{"who":"кто","text":"реплика"}] 2–4 реплики (с кем-то из жизни, умершим, собой в детстве, странным незнакомцем), text — суть в одной фразе; memory — сон-воспоминание о прошлом, "when":"когда это было (в детстве, год назад…)"; symbol — сон-знак, "symbol":"главный образ одним-двумя словами (ключ, ворон, разбитое зеркало)", text — что он значит для героя; recurring — давний повторяющийся сон, который вернулся. Сны — по сеттингу и характеру: у воина — поле боя, у мага — видения, у современного героя — бытовой абсурд вроде экзамена, к которому не готов.${ctx.lastDream ? ` Уже записаны сны: ${ctx.lastDream} — за ту же ночь не повторяй.` : ''}`);
     if (settings.rumors !== false && !ctx.firstRun && ctx.rumorDue !== 'no') rules.push(`rumor — слух: на верхнем уровне JSON {"form":"talk|dialog|news|herald|post|note","who":"кто разносит","about":"о ком (имя) или «город», если это общее событие","text":"суть слуха","truth":"true|half|false"} и поля по форме. Формы: talk — сплетня одной живой фразой; dialog — подслушанный разговор, "lines":[{"who":"кто","text":"реплика"}] 2–4 реплики (шёпот служанок на кухне, бабки у подъезда, стражники у ворот, коллеги в курилке), text — суть в двух словах; news — заметка, "source":"название газеты/канала","title":"заголовок", text — пара фраз в газетном стиле; herald — глашатай, указ, объявление на площади или по радио, "source":"кто объявляет", text — как зачитывают; post — пост в сети, "source":"автор или @ник","via":"где (X, Instagram, Telegram, форум, чат дома…)", text — сам пост с хэштегами или эмодзи, если к месту, можно "likes" и "reposts" числами (репост, ретвит — тоже post); note — записка, листовка, надпись на стене, анонимное письмо, "source":"где нашли". ВЫБИРАЙ ФОРМУ ПО СЕТТИНГУ И ЭПОХЕ: средневековье и фэнтези — шёпот слуг, глашатай, листовка, сплетни в таверне, никаких соцсетей; XIX — середина XX века — газета, письма, разговоры; современность — посты, репосты, сторис, чаты, бабки у подъезда, новостные каналы; будущее и киберпанк — ленты, форумы, взломанные экраны. Чередуй формы: не повторяй форму прошлого слуха${ctx.rumorForms && ctx.rumorForms.length ? ` (прошлые: ${ctx.rumorForms.join(', ')})` : ''}. Не начинай с «Говорят» и «Ходят слухи» — пиши голосом того, кто разносит. Повод: что-то заметное — героев видели вместе, ссора или скандал на людях, подвиг, странный поступок, новость о важной персоне; или событие, которое касается всех вокруг (пожар, свадьба наследника, приезд гостей, налог, эпидемия, война, ограбление). Слух бывает правдой, полуправдой или выдумкой. ${ctx.rumorDue === 'now' ? 'Слухов давно не было: сейчас напиши один, если в истории или вокруг героев есть хоть что-то, о чём могли бы болтать.' : 'Пиши, только если повод правда есть; если нет — не пиши.'}${ctx.rumorTexts && ctx.rumorTexts.length ? ` Уже ходят (не повторяй): ${ctx.rumorTexts.join('; ')}.` : ''}`);
+    if (settings.memes !== false && !ctx.firstRun && ctx.memeDue) {
+        const offer = (ctx.memeOffer && ctx.memeOffer.length ? ctx.memeOffer : pickMemeFormats(ctx.memeRecent || [])).filter(f => MEME_DEFS[f]);
+        rules.push(`meme — мем по ситуации. На верхнем уровне JSON "meme":{"format":"один из форматов ниже", ...поля}. Юмор — как в русском интернете у зумеров, в тиктоке и пабликах: смешно, метко, узнаваемо, по тому, что сейчас происходит с героями (их неловкость, характер, абсурд сцены, контраст ожиданий), можно с самоиронией героя; шутки русские, не переводные. Сленг к месту, а не в каждой строке («база», «кринж», «вайб», «сигма», «ну всё, гг», «это пушка», «я в своём познании настолько преисполнился», «мам, можно…»). Не обидно по признакам людей, без пошлости. Сегодня выбери самый смешной для этой сцены формат из этих: ${offer.map(f => `${f} (${MEME_DEFS[f].name}) — ${MEME_DEFS[f].spec}`).join('; ')}. У строки "lines" поля: "who" — подпись или кто, "text" — текст, "val" — число, если формат его просит. Для ${offer.filter(f => MEME_DEFS[f].pic).join(', ') || 'macro, when'} впиши ещё "emoji" — 1–3 эмодзи-реакции и "img" — описание картинки ПО-АНГЛИЙСКИ для генератора изображений: смешная выразительная сцена или реакция, без текста на картинке, без реальных знаменитостей и чужих персонажей.${ctx.memeTexts && ctx.memeTexts.length ? ` Уже были (не повторяй шутки): ${ctx.memeTexts.join('; ')}.` : ''} Если смешного повода совсем нет — не пиши.`);
+    }
     if (ctx.hasGifts) rules.push(`gift_given — если у персонажа есть gift_pending и в последних сообщениях он уже вручил этот подарок ${user}, верни на верхнем уровне JSON, рядом с characters: "gift_given":[{"who":"кто подарил","title":"название подарка дословно","how":"как прошёл момент, одной фразой"}]. Если подарок ещё не вручён — не пиши. Когда подарок вручён, обязательно выдай и achievement про этот момент — в тон подарку и тому, как его вручили и приняли (романтично, мило, забавно, неловко, холодно).`);
     if (ctx.love) rules.push(`[Love Score] — счёт отношения к ${user} из другого расширения, ему доверяй: не противоречь ему. Для этих персонажей impression.now_score и chem_now.score держи по нему: от −100 до 0 ≈ от −3 до 0, от 0 до максимума ≈ от 0 до +3. Тип отношений (романтика, дружба, семья, соперничество, одержимость, ненависть) учитывай в now и в желаниях: например, при дружбе не пиши влюблённость.`);
     if (ctx.ignored && ctx.ignored.length) rules.push(`Этих персонажей игрок попросил не вести: ${ctx.ignored.join(', ')}. Не возвращай их в characters, даже если они есть в сцене.`);
@@ -2362,15 +2529,15 @@ export function buildUserPrompt(ctx, state, modules, onlyKeys) {
             if (onlyKeys && !onlyKeys.includes(k)) continue;
             const miss = [];
             const isMainC = !c.persona && isMain(c.name, mainsList);
-            if (modules.traits && !c.persona && !(c.ptype && c.temper)) miss.push('ptype и temper');
+            if (modules.ptype !== false && !c.persona && !(c.ptype && c.temper)) miss.push('ptype и temper');
             if (modules.impression && !c.persona && (!c.rel || c.rel.seeded) && c.impression) miss.push('rel');
-            if (modules.attraction && isMainC && lifeEmpty(c.life)) miss.push('want_marry, kids_attitude, want_kids, kids_when, kids_count, family_why');
+            if (modules.life !== false && isMainC && lifeEmpty(c.life)) miss.push('want_marry, kids_attitude, want_kids, kids_when, kids_count, family_why');
             if (miss.length) need.push(`${c.name}: ${miss.join(', ')}`);
         }
         if (need.length) parts.push(`[Нужно дописать в этом ответе — этого ещё нет в дневнике]\n${need.slice(0, 10).join('\n')}\nВерни этих персонажей с этими полями, даже если в сцене у них ничего не поменялось.`);
     }
     if (ctx.studyNames && ctx.studyNames.length) parts.push(`[Завести карточку]\n${ctx.studyNames.join(', ')} — игрок попросил завести карточку, даже если лично в сцене этого персонажа ещё не было. Верни его со всем, что можно понять по карточке, лорбуку и чату: g, who, role, mood (его обычное состояние), wants, fears, dream, traits, ptype, temper. Если с игроком (${ctx.userName || 'игрок'}) лично ещё не встречались — impression и rel не пиши, поставь unmet: true.`);
-    if (hintList.length && modules.traits) parts.push(`[Ранее определённые типы личности]\n${hintList.map(([n, h]) => `${n}: ${[h.ptype, h.temper].filter(Boolean).join(', ')}`).join('\n')}`);
+    if (hintList.length && modules.ptype !== false) parts.push(`[Ранее определённые типы личности]\n${hintList.map(([n, h]) => `${n}: ${[h.ptype, h.temper].filter(Boolean).join(', ')}`).join('\n')}`);
     const absent = onlyKeys ? (state.order || []).filter(k => !onlyKeys.includes(k)) : [];
     parts.push(`[Текущее состояние]\n${current || 'пока пусто — составь с нуля'}${absent.length ? `\nНет в сцене (не возвращай): ${absent.join(', ')}` : ''}`);
     if (ctx.messages && ctx.messages.length) parts.push(`[Последние сообщения]\n${ctx.messages.join('\n\n')}`);
@@ -2412,8 +2579,8 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
             if (realNow.length) o.fears_realized_recently = realNow;
         }
         if (modules.dream && c.dream) o.dream = { title: c.dream.title, plus: c.dream.plus || '', steps: c.dream.steps, pinned: !!c.dream.pinned };
-        if (modules.traits) {
-            o.traits = (c.traits || []).map(t => Object.assign({ name: t.name, kind: t.kind, why: t.why }, t.about ? {} : { no_about: true }));
+        if (modules.traits) o.traits = (c.traits || []).map(t => Object.assign({ name: t.name, kind: t.kind, why: t.why }, t.about ? {} : { no_about: true }));
+        if (modules.ptype !== false) {
             if (c.ptype && c.temper && c.ptypeNote && c.temperNote) o.ptype = c.ptype;
             else {
                 o.no_ptype = true;
@@ -2438,6 +2605,8 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
                 o.turn_ons = c.likes || [];
                 o.turn_offs = c.dislikes || [];
             } else o.no_attraction = true;
+        }
+        if (modules.life !== false) {
             if (!c.persona && !npc) {
                 if (!lifeEmpty(c.life)) o.family = { marry: c.life.marry || 'unknown', kids: c.life.kids || 'unknown', own: c.life.own || 'unknown', when: c.life.when || 'unknown', count: c.life.count || 0 };
                 else o.no_family = true;
@@ -2500,14 +2669,6 @@ export function buildInjection(state, modules, userName, influence = 'medium', o
         if (modules.traits && c.traits && c.traits.length) {
             bits.push(`черты: ${c.traits.filter(t => t.kind !== 'down' && t.kind !== 'gone').map(t => t.name).join(', ')}`);
         }
-        if (Array.isArray(c.buffs) && c.buffs.length) {
-            const eventsNow = c.buffs.filter(b => b.kind === 'event').map(b => b.effect || b.title);
-            const gifts = c.buffs.filter(b => b.kind === 'gift').map(b => `${b.title}${b.effect ? ` (${b.effect})` : ''}`);
-            const lasting = c.buffs.filter(b => b.kind !== 'event' && b.kind !== 'gift').map(b => b.effect || b.title);
-            if (gifts.length) bits.push(`в ближайшей подходящей сцене ${c.name} сам дарит ${userName || 'игроку'}: ${gifts.join('; ')}. Как вручит и как пройдёт момент — по их нынешним отношениям и характеру: тепло, неловко, нехотя, с подколкой, официально или холодно; момент не обязан быть идеальным`);
-            if (lasting.length) bits.push(`сейчас действует: ${lasting.join('; ')}`);
-            if (eventsNow.length) bits.push(`вплети в ближайший ответ это событие: ${eventsNow.join('; ')}`);
-        }
         // если отношение к игроку уже ведёт Love Score — не дублируем его своей цифрой (иначе две подсказки спорят)
         if (modules.impression && c.impression && !loveFor(opts.love, c.name)) {
             bits.push(`отношение к игроку${userName ? ` (${userName})` : ''}: ${signed(c.impression.nowScore ?? c.impression.score)} из 3 — ${c.impression.now || c.impression.label}`);
@@ -2522,6 +2683,31 @@ export function buildInjection(state, modules, userName, influence = 'medium', o
     }
     if (!lines.length) return '';
     return `[Внутренний мир персонажей. Пусть это влияет на их поведение и реплики, но не пересказывай это напрямую.]\n${lines.join('\n')}`;
+}
+
+// Купленное в лавке — отдельной подсказкой у самого конца чата: это выбор игрока, модель обязана
+// учесть его прямо в следующем ответе. Идёт модели всегда, даже если «Влияние на ролевую» выключено.
+export function buildBuyInjection(state, userName) {
+    if (!state || !state.order) return '';
+    const user = userName || 'игрок';
+    const lines = [];
+    for (const key of state.order) {
+        const c = state.characters[key];
+        if (!c || !Array.isArray(c.buffs) || !c.buffs.length) continue;
+        if (c.persona || (userName && sameName(c.name, userName))) continue;
+        const live = c.buffs.filter(b => b && (b.kind === 'gift' || (b.left ?? 1) > 0));
+        const bare = t => String(t || '').replace(/\s+/g, ' ').trim().replace(/[.!…;,\s]+$/u, '');
+        const events = live.filter(b => b.kind === 'event').map(b => bare(b.effect || b.title));
+        const gifts = live.filter(b => b.kind === 'gift').map(b => `«${bare(b.title)}»${b.effect && b.effect !== b.title ? ` (${bare(b.effect)})` : ''}`);
+        const lasting = live.filter(b => b.kind !== 'event' && b.kind !== 'gift').map(b => `${bare(b.effect || b.title)}${(b.left ?? 1) > 1 ? ` (ещё ${b.left} ${plural(b.left, 'ответ', 'ответа', 'ответов')})` : ' (последний ответ)'}`);
+        const bits = [];
+        if (events.length) bits.push(`В ЭТОМ ответе обязательно происходит: ${events.join('; ')}. Покажи это прямо в тексте, не откладывай`);
+        if (gifts.length) bits.push(`${c.name} дарит ${gifts.length > 1 ? 'подарки' : 'подарок'} (получатель — ${user}): ${gifts.join(', ')} — в этом ответе, если в сцене это хоть как-то возможно (иначе в самый ближайший момент). Как вручит — по их отношениям и характеру: тепло, неловко, нехотя, с подколкой или холодно`);
+        if (lasting.length) bits.push(`На ${c.name} сейчас действует: ${lasting.join('; ')}. Это должно быть заметно в его поведении и репликах`);
+        if (bits.length) lines.push(`${c.name}: ${bits.join('. ')}.`);
+    }
+    if (!lines.length) return '';
+    return `[Выбор игрока — обязательно учесть в следующем ответе, естественно, внутри сцены, не упоминая игру, покупки и дневник.]\n${lines.join('\n')}`;
 }
 
 // Подсказка про притяжение: что привлекает и отталкивает персонажа и как он сейчас относится к игроку по совместимости.
@@ -3001,20 +3187,20 @@ export function cancelReward(c, id, state = null) {
 }
 
 // Купить награду: списывает монеты из общего кошелька и применяет. Возвращает текст ошибки или null.
-// Чтобы модель не путалась: у персонажа одновременно ждёт не больше одного подарка, одного события
-// и действует не больше одного эффекта. Следующее того же вида — когда прошлое случится.
+// «По одному за раз» (настройка buyOne): у персонажа ждёт не больше одного подарка, одного события и действует
+// один эффект — следующее того же вида после того, как прошлое случится. Выключено — можно сколько угодно сразу.
 export const BUY_ONE = { gift: 'подарок', event: 'событие', buff: 'эффект' };
-export function buyBlock(c, kind) {
-    if (!c || !BUY_ONE[kind]) return '';
+export function buyBlock(c, kind, on = true) {
+    if (!on || !c || !BUY_ONE[kind]) return '';
     const b = (c.buffs || []).find(x => x && x.kind === kind && (kind === 'gift' || (x.left ?? 1) > 0));
     if (!b) return '';
     return kind === 'gift' ? `Сначала ${c.name || 'персонаж'} вручит «${b.title}» — потом можно купить следующий подарок`
         : kind === 'event' ? `«${b.title}» ещё не случилось — следующее событие можно купить после него`
             : `Сейчас действует «${b.title}» — новый эффект можно купить, когда он закончится`;
 }
-export function buyReward(c, reward, state = null) {
+export function buyReward(c, reward, state = null, one = true) {
     if (!c || !reward) return 'нет такой награды';
-    const blocked = buyBlock(c, reward.kind);
+    const blocked = buyBlock(c, reward.kind, one);
     if (blocked) return blocked;
     const have = state ? purseOf(state) : (c.points || 0);
     if (have < reward.cost) return 'не хватает монет';

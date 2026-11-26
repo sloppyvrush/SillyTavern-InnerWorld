@@ -1,6 +1,6 @@
 // Настройки «Внутреннего мира» — одна схема, два вида: в панели расширений таверны и внутри дневника.
-import { MODULES, MODULE_NAMES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
-import { THEMES, THEME_IDS, THEME_SWATCHES } from './themes.js';
+import { MODULES, MODULE_NAMES, EXTRA_MODULES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
+import { THEMES, THEME_IDS, THEME_SWATCHES, THEME_CARDS, THEME_VARIANTS, themeFamily } from './themes.js';
 import { API_KINDS } from './api.js';
 
 function esc(s) {
@@ -16,13 +16,14 @@ export function cap(t) {
 }
 
 // Поля, которые хранятся числом.
-export const NUMERIC_KEYS = ['every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume', 'clockStep'];
+export const NUMERIC_KEYS = ['memeEvery', 'shopEvery', 'every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume', 'clockStep'];
 
 const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 
 // Разделы и поля. show — когда поле видно; hint — пояснение мелким шрифтом.
 // id раздела постоянный: по нему запоминается, какие разделы раскрыты.
 export function settingsSchema(ctx = {}) {
+    ctx.imgStatus = IMG_STATUS.text;
     const custom = s => s.source === 'custom';
     const own = s => s.source === 'custom' && s.apiKind !== 'profile';
     const models = (ctx.models && ctx.models.length ? ctx.models : []).map(m => [m, m]);
@@ -47,15 +48,24 @@ export function settingsSchema(ctx = {}) {
                 { type: 'group', label: 'Мир истории', hint: 'Время, погода, сны и слухи вокруг героев.' },
                 { type: 'toggle', key: 'clock', label: 'Часы и календарь сцены', hint: 'Дата и время истории над дневником: сами понимают таймскипы и строчки вида «[02:50 | 08.10.1996]», календарь подстраивается под сеттинг, есть праздники и дни рождения.' },
                 { type: 'select', key: 'clockStep', label: 'Часы сцены: шаг за обычный ответ', options: [[0, 'не двигать — только по тексту'], [1, '1 минута'], [2, '2 минуты'], [5, '5 минут'], [10, '10 минут'], [15, '15 минут'], [30, '30 минут']], show: s => s.clock !== false, hint: 'Это время ВНУТРИ истории, а не то, сколько модель думает или пишет. Каждый ответ бота часы сцены двигаются сами: по отметке времени в ответе, по названной дате, по «через два часа» или «наутро». Если в ответе ничего такого нет — на этот шаг: 5 минут подходят для разговора, 0 — если время у вас стоит, пока его не назовут.' },
-                { type: 'toggle', key: 'weather', label: 'Погода и время года', hint: 'В полоске часов — погода и время года. Только для красоты, на настроение не влияет.' },
-                { type: 'toggle', key: 'dreams', label: 'Сны героев', hint: 'Когда герой ложится спать или наступает утро, дневник записывает, о чём он думал, засыпая, и что ему снилось. Сон мягко отзывается в его утре.' },
-                { type: 'toggle', key: 'rumors', label: 'Слухи и сплетни', hint: 'Время от времени — после заметных событий или когда в округе что-то случается — начинают судачить: о вас, о важных персонах, о новостях города. Слухи видны на странице твоего героя (и у персонажа — те, что о нём), а свежий слух мягко подсказывается модели, чтобы мир вокруг жил.' },
+                { type: 'range', key: 'memeEvery', label: 'Как часто мемы', min: 1, max: 30, step: 1, fmt: v => (Number(v) === 1 ? 'каждое сообщение' : `раз в ${v} сообщ.`), show: s => s.memes !== false },
+                { type: 'select', key: 'memeImg', label: 'Картинки к мемам', show: s => s.memes !== false, options: [['none', 'Без генерации: дневник рисует сам (эмодзи и вёрстка)'], ['st', 'Генерация картинок таверны'], ['ext', 'Через установленное расширение картинок'], ['openai', 'Свой сервис: OpenAI-совместимый'], ['gemini', 'Свой сервис: Gemini-совместимый (Nano Banana и др.)']], hint: s => (s.memeImg === 'st' ? 'Берётся то, что настроено в таверне в разделе «Генерация изображений».' : s.memeImg === 'ext' ? 'Дневник берёт подключение, модель и ключ из настроек выбранного расширения в момент рисования и никуда их не копирует. Поменяешь там — поменяется и тут.' : (s.memeImg === 'openai' || s.memeImg === 'gemini' ? 'Подписи мем пишет сам дневник, картинка — без текста. Картинка сохраняется в таверну, в чате — только путь к ней.' : 'Картинка мема — крупные эмодзи на цветном фоне. Чтобы были настоящие картинки, выбери генерацию.')) },
+                { type: 'select', key: 'memeImgExt', label: 'Какое расширение', show: s => s.memes !== false && s.memeImg === 'ext', options: (ctx.imgExts || []).length ? ctx.imgExts.map(e => [e.key, `${e.name} · ${e.type}`]) : [['', 'Не нашла установленных расширений картинок']], hint: (ctx.imgExts || []).length ? 'Показаны расширения таверны, у которых есть своё подключение к сервису картинок.' : 'Установи и настрой расширение для генерации картинок, потом открой настройки заново.' },
+                { type: 'text', key: 'memeImgUrl', label: 'Адрес сервиса картинок', placeholder: 'например https://api.openai.com/v1', show: s => s.memes !== false && (s.memeImg === 'openai' || s.memeImg === 'gemini') },
+                { type: 'text', key: 'memeImgKey', label: 'Ключ сервиса картинок', input: 'password', show: s => s.memes !== false && (s.memeImg === 'openai' || s.memeImg === 'gemini'), hint: 'Хранится в настройках таверны, как ключи других расширений.' },
+                { type: 'text', key: 'memeImgModel', label: 'Модель картинок', placeholder: 'например gpt-image-1 или gemini-2.5-flash-image', show: s => s.memes !== false && (s.memeImg === 'openai' || s.memeImg === 'gemini') },
+                { type: 'buttons', show: s => s.memes !== false && s.memeImg && s.memeImg !== 'none', buttons: [{ id: 'testMemeImg', label: 'Проверить картинки', hint: ctx.imgStatus || '' }] },
                 { type: 'group', label: 'Награды и витрина', hint: 'Очки за желания, лавка, достижения и картинки памятных вещей.' },
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
                 { type: 'toggle', key: 'claimAuto', label: 'Забирать награду за желания сразу', show: s => s.points !== false, hint: s => (s.claimAuto ? 'Монеты за сбывшееся желание приходят сами, а желание вычёркивается.' : 'Сбывшееся желание остаётся в списке с кнопкой «Забрать награду» — монеты придут, когда нажмёшь, и желание уйдёт из списка.') },
+                { type: 'toggle', key: 'shopAuto', label: 'Лавка обновляется сама', show: s => s.points !== false, hint: 'Включено — товары в лавке подбираются заново вместе с разбором, раз в выбранное число сообщений. Выключено — только кнопкой «обновить» в лавке.' },
+                { type: 'range', key: 'shopEvery', label: 'Как часто обновлять лавку', min: 1, max: 30, step: 1, fmt: v => (Number(v) === 1 ? 'каждое сообщение' : `раз в ${v} сообщ.`), show: s => s.points !== false && s.shopAuto },
+                { type: 'toggle', key: 'buyOne', label: 'Покупать по одному', show: s => s.points !== false, hint: 'Включено — у персонажа за раз ждёт один подарок, одно событие и действует один эффект: следующий такой же можно купить, когда прошлый случится. Выключено — можно набрать сколько угодно сразу.' },
                 { type: 'toggle', key: 'achievements', label: 'Достижения на витрине', hint: 'Когда в истории случается что-то крупное, дневник сам выдаёт достижение и ставит его на полку витрины. Почти не тратит токенов: строчка в ответе только в важные моменты.' },
                 { type: 'range', key: 'achRate', label: 'Как часто выпадают достижения', min: 1, max: 5, step: 1, fmt: v => ACH_RATE_NAMES[v] || '', show: s => s.achievements !== false, hint: 'Влево — реже: только по-настоящему важные события (признание, смерть, свадьба, раскрытая тайна). Вправо — чаще: смешные и трогательные мелочи тоже становятся ачивками. «Обычно» — как было.' },
-                { type: 'toggle', key: 'caseArt', label: 'Рисовать памятные вещи на витрине', hint: 'Покупаешь вещицу «в коллекцию» — модель рисует её маленькой картинкой по смыслу и по истории: засушенная роза, письмо с сургучом, часы. Одна короткая просьба к модели на покупку. Выключено — обычные значки.' },
+                { type: 'toggle', key: 'caseArt', label: 'Картинки памятных вещей и подарков', hint: 'Модель рисует вещь маленькой картинкой по смыслу и по истории: засушенная роза, письмо с сургучом, часы. Одна короткая просьба к модели на картинку. Выключено — обычные значки и никаких кнопок «нарисовать».' },
+                { type: 'toggle', key: 'artAutoItems', label: 'Памятные вещи рисовать сразу', show: s => s.caseArt !== false, hint: 'Купил вещицу в коллекцию — картинка рисуется сама. Выключено — только когда нажмёшь «нарисовать» у вещи на витрине.' },
+                { type: 'toggle', key: 'artAutoGifts', label: 'Подарки рисовать сразу', show: s => s.caseArt !== false, hint: 'Купил подарок — картинка рисуется сама, пока он ждёт вручения, и потом переходит на витрину вместе с ним. Выключено — только по кнопке «нарисовать».' },
                 { type: 'group', label: 'Вид и звук', hint: 'Уведомления, анимации и кнопка на экране.' },
                 { type: 'toggle', key: 'toasts', label: 'Всплывашки о событиях', hint: '«Желание исполнено», «Страх сбылся», «Новая черта»…' },
                 { type: 'toastKinds', label: 'Какие всплывашки показывать', show: s => s.toasts !== false && s.popups !== false, hint: 'Выключенные молчат, но события всё равно записываются в дневник, ленту и витрину.' },
@@ -152,9 +162,18 @@ function hintText(f, s) {
 }
 
 // variant: 'st' — разметка таверны; 'diary' — наши классы под тему дневника.
-export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '' } = {}) {
+// Последний ответ проверки картинок — показывается под кнопкой
+export const IMG_STATUS = { text: '' };
+
+// Подпись ползунка со словами (частота ачивок, лавки): меняется сразу, пока двигаешь
+export function rangeLabel(key, v) {
+    for (const sec of settingsSchema({})) for (const f of sec.fields) if (f.key === key && f.fmt) return f.fmt(Number(v));
+    return '';
+}
+
+export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '', imgExts = [] } = {}) {
     const st = variant === 'st';
-    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml });
+    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml, imgExts });
     const sections = schema.map(sec => {
         const fieldsRaw = sec.fields.filter(f => !f.only || f.only === variant).map(f => {
             const hidden = f.show && !f.show(s) ? ' hidden' : '';
@@ -183,7 +202,7 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                 return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)} <output class="iw-range-val">${esc(shown)}</output><input type="range" class="iw-range${f.fmt ? ' iw-range-steps' : ''}" data-iw-set="${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${v}"${f.fmt ? ` data-iw-fmt="${f.key}"` : ''}></label>${hintHtml}</div>`;
             }
             if (f.type === 'text') {
-                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<input type="${f.input === 'password' ? 'password' : 'text'}" class="${st ? 'text_pole' : 'iw-input'}" data-iw-set="${f.key}" value="${esc(fieldValue(s, f.key))}" placeholder="${esc(f.placeholder || '')}" autocomplete="off" spellcheck="false"></label>${hintHtml}</div>`;
+                return `<div class="iw-f"${hidden}><label class="iw-f-label">${esc(f.label)}<input type="${f.input === 'password' ? 'password' : 'text'}" class="${st ? 'text_pole' : 'iw-input'}" data-iw-set="${f.key}" value="${esc(fieldValue(s, f.key))}" placeholder="${esc(f.placeholder || '')}" autocomplete="${f.input === 'password' ? 'new-password' : 'off'}" spellcheck="false"${f.input === 'password' ? ' data-lpignore="true" data-1p-ignore' : ''}></label>${hintHtml}</div>`;
             }
             if (f.type === 'model') {
                 const cur = fieldValue(s, f.key);
@@ -198,18 +217,37 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
                     const opts = THEME_IDS.map(id => `<option value="${id}"${s.theme === id ? ' selected' : ''}>${esc(THEMES[id].name)}</option>`).join('');
                     return `<div class="iw-f"${hidden}><label class="iw-f-label">Тема дневника<select class="text_pole" data-iw-set="theme">${opts}</select></label></div>`;
                 }
-                const cards = THEME_IDS.map(id => {
-                    const [bg, ink, acc] = THEME_SWATCHES[id] || ['#fff', '#333', '#f9c'];
-                    const on = s.theme === id;
-                    return `<button type="button" class="iw-theme-card${on ? ' on' : ''}" data-iw-theme="${id}" aria-pressed="${on}" style="--sw-bg:${bg};--sw-ink:${ink};--sw-acc:${acc}"><span class="iw-theme-sw" aria-hidden="true"><i></i><i></i></span><span class="iw-theme-name">${esc(THEMES[id].name)}</span></button>`;
-                }).join('');
+                const fam = themeFamily(s.theme);
+                const lum = hex => { const v = parseInt(String(hex).slice(1), 16); return ((v >> 16) * 299 + ((v >> 8) & 255) * 587 + (v & 255) * 114) / 255000; };
+                const card = id => {
+                    const night = THEME_VARIANTS[id];
+                    const on = fam === id;
+                    const isNight = on && night && s.theme === night;
+                    const [bg, ink, acc] = THEME_SWATCHES[isNight ? night : id] || THEME_SWATCHES[id] || ['#fff', '#333', '#f9c'];
+                    // у темы с тёмным вариантом — маленький переключатель «день / ночь» справа на самой карточке
+                    const sw = night ? `<span class="iw-theme-dn" role="group" aria-label="Вариант темы">
+                        <button type="button" class="iw-theme-dnb${on && !isNight ? ' on' : ''}" data-iw-theme="${id}" aria-pressed="${on && !isNight}" title="Дневной вариант" aria-label="День">${'\u2600\uFE0E'}</button>
+                        <button type="button" class="iw-theme-dnb iw-dn-night${isNight ? ' on' : ''}" data-iw-theme="${night}" aria-pressed="${isNight}" title="Ночной вариант" aria-label="Ночь">${'\u263E\uFE0E'}</button></span>` : '';
+                    return `<div class="iw-theme-cardw${on ? ' on' : ''}${night ? ' has-dn' : ''}${isNight ? ' night' : ''}"><button type="button" class="iw-theme-card${on ? ' on' : ''}" data-iw-theme="${on ? s.theme : id}" aria-pressed="${on}" style="--sw-bg:${bg};--sw-ink:${ink};--sw-acc:${acc}"><span class="iw-theme-sw" aria-hidden="true"><i></i><i></i></span><span class="iw-theme-name">${esc(THEMES[id].name)}</span></button>${sw}</div>`;
+                };
+                // по группам: с днём и ночью, тёмные, светлые
+                const both = THEME_CARDS.filter(id => THEME_VARIANTS[id]);
+                const rest = THEME_CARDS.filter(id => !THEME_VARIANTS[id]);
+                const darkOnes = rest.filter(id => lum((THEME_SWATCHES[id] || ['#fff'])[0]) < 0.45);
+                const lightOnes = rest.filter(id => !darkOnes.includes(id));
+                const group = (title, ids) => (ids.length ? `<div class="iw-theme-group"><div class="iw-theme-group-cap">${esc(title)}</div><div class="iw-themes-grid">${ids.map(card).join('')}</div></div>` : '');
+                const cards = group('Днём и ночью', both) + group('Тёмные', darkOnes) + group('Светлые', lightOnes);
                 return `<div class="iw-f iw-theme-cards"${hidden}>${cards}</div>`;
             }
             if (f.type === 'modules') {
                 // в дневнике — наклейки-кнопки: на телефоне не выделяется текст и ничего не «уезжает»
                 const boxes = MODULES.map(m => st
-                    ? `<label class="checkbox_label"><input type="checkbox" data-iw-set-mod="${m}"${s.modules[m] ? ' checked' : ''}><span>${esc(MODULE_NAMES[m])}</span></label>`
-                    : `<button type="button" class="iw-mod${s.modules[m] ? ' on' : ''}" data-iw-mod="${m}" aria-pressed="${!!s.modules[m]}">${esc(MODULE_NAMES[m])}</button>`).join('');
+                    ? `<label class="checkbox_label"><input type="checkbox" data-iw-set-mod="${m}"${s.modules[m] !== false ? ' checked' : ''}><span>${esc(MODULE_NAMES[m])}</span></label>`
+                    : `<button type="button" class="iw-mod${s.modules[m] !== false ? ' on' : ''}" data-iw-mod="${m}" aria-pressed="${s.modules[m] !== false}">${esc(MODULE_NAMES[m])}</button>`).join('')
+                    // сны, слухи, мемы, погода — свои настройки, но включаются тут же
+                    + EXTRA_MODULES.map(([k, name]) => st
+                        ? `<label class="checkbox_label"><input type="checkbox" data-iw-set="${k}"${s[k] !== false ? ' checked' : ''}><span>${esc(name)}</span></label>`
+                        : `<button type="button" class="iw-mod${s[k] !== false ? ' on' : ''}" data-iw-mod-set="${k}" aria-pressed="${s[k] !== false}">${esc(name)}</button>`).join('');
                 return `<div class="iw-f"${hidden}><div class="iw-f-label">${esc(f.label)}</div><div class="iw-f-mods">${boxes}</div>${hintHtml}</div>`;
             }
             if (f.type === 'toastKinds') {

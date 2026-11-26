@@ -347,7 +347,7 @@ test('кириллица и латиница, пустой главный, бы�
     assert.ok(emptyMe.includes('Дневник ещё не заполнен'));
     const filled = applyAnalysis(emptyState(), one({ name: 'Иван Соколов', mood: 'спокоен' }), all).state;
     const list = renderPanel({ state: filled, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'npc', mains: ['Иван Соколов'], npcKeys: [], roster, seenOnly: [ros.npc[0]] });
-    assert.ok(list.includes('ещё не разобран') && list.includes('data-iw-npc-study'));
+    assert.ok(list.includes('Ещё не разобран') && list.includes('data-iw-npc-study'));
     assert.ok(list.includes('iw-npc-badge'), 'у НПС значок вместо фото');
     assert.ok(!list.includes('iw-photo"'), 'фото у НПС нет');
     assert.ok(list.includes('Хромой'));
@@ -455,7 +455,7 @@ test('очки и награды', () => {
     assert.equal(buyReward(ch, rewards[0]), null);
     assert.equal(ch.points, 2);
     assert.equal(ch.buffs[0].left, 4);
-    assert.ok(buildInjection({ characters: { 'Роберт': ch }, order: ['Роберт'] }, all, 'Ева').includes('спокоен'));
+    assert.ok(C2.buildBuyInjection({ characters: { 'Роберт': ch }, order: ['Роберт'] }, 'Ева').includes('спокоен'));
     assert.equal(decayState({ characters: { 'Роберт': ch }, order: ['Роберт'] }, 4).characters['Роберт'].buffs.length, 0);
 });
 
@@ -621,8 +621,8 @@ test('пол: склонения по лорбуку, описанию и име
     assert.equal(genderOf('n', 'Саша'), 'n');
     const html = renderNpcList({ state: emptyState(), npcKeys: [], roster: { npc: [], find: () => null }, seenOnly: [
         { name: 'Маша', g: 'n', checked: true }, { name: 'Олег', g: 'm', checked: true }] });
-    assert.ok(html.includes('не появлялась в сцене'));
-    assert.ok(html.includes('не появлялся в сцене'));
+    assert.ok(html.includes('е появлялась в сцене'));
+    assert.ok(html.includes('е появлялся в сцене'));
     assert.equal(themeLabels('diary', genderOf('n', 'Маша')).moodLead, 'Сейчас она');
     assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] }).includes('в его роде'));
 });
@@ -632,7 +632,7 @@ test('тип личности и темперамент: из ответа мо�
     assert.equal(st.characters['Роберт'].ptype, 'INFP-T');
     assert.equal(st.characters['Роберт'].temper, 'phlegmatic');
     const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'bimbo', view: 'main:Роберт', mains: ['Роберт'], npcKeys: [] });
-    assert.ok(html.includes('Посредник') && html.includes('флегматик') && html.includes('iw-pt-diplomat') && html.includes('iw-b-persona'));
+    assert.ok(html.includes('Посредник') && html.includes('Флегматик') && html.includes('iw-pt-diplomat') && html.includes('iw-b-persona'));
     const sys = buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Ева', botName: 'Марк', trackNames: [] });
     assert.ok(sys.includes('16personalities') && sys.includes('«опекает свидетельницу»'));
 });
@@ -683,7 +683,7 @@ test('дата рождения и знак зодиака: только есл�
     let st = applyAnalysis(emptyState(), one({ name: 'Маша', born: '21.03.1990' }), all).state;
     assert.equal(st.characters['Маша'].zodiac, 'aries');
     const html = renderPanel({ state: st, settings: DEFAULT_SETTINGS, theme: 'diary', view: 'main:Маша', mains: ['Маша'], npcKeys: [] });
-    assert.ok(html.includes('Овен') && html.includes('родилась 21 марта 1990'));
+    assert.ok(html.includes('Овен') && html.includes('Родилась 21 марта 1990'));
     st = applyAnalysis(emptyState(), one({ name: 'Олег', born: 'нет' }), all).state;
     assert.ok(st.characters['Олег'].bornChecked && !st.characters['Олег'].zodiac);
     st = applyAnalysis(emptyState(), one({ name: 'Олег', zodiac: 'Скорпион' }), all).state;
@@ -1073,7 +1073,7 @@ test('подарки от персонажа и лавка персоны', () =
     assert.equal(ch.buffs[0].kind, 'gift');
     const later = decayState(st, 3);
     assert.equal(later.characters.r.buffs.length, 1);
-    assert.ok(buildInjection(st, all, 'Эвелин').includes('сам дарит Эвелин'));
+    assert.ok(C2.buildBuyInjection(st, 'Эвелин').includes('получатель — Эвелин'));
     const up = buildUserPrompt({ userName: 'Эвелин', botName: 'Роберт' }, st, all);
     assert.ok(up.includes('gift_pending'));
     assert.ok(buildSystemPrompt(DEFAULT_SETTINGS, { userName: 'Эвелин', botName: 'Роберт', hasGifts: true, trackNames: [], mainNames: ['Роберт'] }).includes('gift_given'));
@@ -1275,9 +1275,10 @@ test('сквозной: лавка, баффы, событие, подарок, 
     for (const r of rewards.slice(0, 3)) assert.equal(buyReward(c, r, state), null);
     assert.equal(state.purse, 110);
     let inj = buildInjection(state, all, 'Ева', 'medium', { mains: ['Марк'] });
-    assert.ok(inj.includes('сейчас действует: смелее с игроком'));
-    assert.ok(inj.includes('вплети в ближайший ответ это событие: приходит письмо'));
-    assert.ok(inj.includes('сам дарит Ева: Брошь'));
+    const shop = C2.buildBuyInjection(state, 'Ева');
+    assert.ok(shop.includes('сейчас действует: смелее с игроком (ещё 3 ответа)'));
+    assert.ok(shop.includes('В ЭТОМ ответе обязательно происходит: приходит письмо'));
+    assert.ok(shop.includes('(получатель — Ева): «Брошь»'));
     assert.ok(inj.includes('кто они друг другу'));
     // через один ответ событие ушло, бафф ещё держится, подарок ждёт вручения
     state = decayState(state, 1);
@@ -1450,17 +1451,33 @@ test('брак и дети: закреплён только пункт, поме
     assert.equal(state.characters[k].life.kids, 'dislike');
     assert.equal(state.characters[k].life.own, 'no');
 });
-test('лавка: за раз один подарок, одно событие и один эффект', () => {
+test('лавка: можно сразу несколько подарков, событий и эффектов — и все уходят модели', () => {
+    const st = { purse: 500, order: ['m'], characters: { m: { name: 'Марк', buffs: [] } } };
+    const c = st.characters.m;
+    for (const r of [{ id: 'g1', kind: 'gift', title: 'Кольцо' }, { id: 'g2', kind: 'gift', title: 'Брошь' }, { id: 'e1', kind: 'event', title: 'Гроза', effect: 'начинается гроза' }, { id: 'e2', kind: 'event', title: 'Бал', effect: 'приходит приглашение на бал' }, { id: 'b1', kind: 'buff', title: 'Смелость', effect: 'смелее обычного', turns: 3 }, { id: 'b2', kind: 'buff', title: 'Удача', effect: 'везёт', turns: 1 }]) {
+        assert.equal(C2.buyReward(c, Object.assign({ cost: 10 }, r), st, false), null, r.title);
+    }
+    assert.equal(c.buffs.length, 6);
+    assert.equal(st.purse, 440);
+    const t = C2.buildBuyInjection(st, 'Ева');
+    for (const w of ['Кольцо', 'Брошь', 'начинается гроза', 'приглашение на бал', 'смелее обычного', 'везёт', 'В ЭТОМ ответе']) assert.ok(t.includes(w), w);
+    // после одного ответа: события прошли, подарки ждут вручения, длинный эффект ещё действует
+    const after = C2.decayState(st, 1);
+    const kinds = after.characters.m.buffs.map(b => b.id).sort();
+    assert.deepEqual(kinds, ['b1', 'g1', 'g2']);
+    // персоне игрока подсказка не уходит
+    assert.equal(C2.buildBuyInjection({ order: ['p'], characters: { p: { name: 'Ева', persona: true, buffs: [{ kind: 'event', effect: 'x', left: 1 }] } } }, 'Ева'), '');
+});
+test('лавка «по одному за раз»: второй подарок или событие — после первого', () => {
     const st = { purse: 500, order: ['m'], characters: { m: { name: 'Марк', buffs: [] } } };
     const c = st.characters.m;
     assert.equal(C2.buyReward(c, { id: 'g1', kind: 'gift', title: 'Кольцо', cost: 10 }, st), null);
     assert.ok(/вручит/.test(C2.buyReward(c, { id: 'g2', kind: 'gift', title: 'Брошь', cost: 10 }, st)));
     assert.equal(C2.buyReward(c, { id: 'e1', kind: 'event', title: 'Гроза', cost: 10 }, st), null);
     assert.ok(C2.buyReward(c, { id: 'e2', kind: 'event', title: 'Бал', cost: 10 }, st));
-    assert.equal(C2.buyReward(c, { id: 'b1', kind: 'buff', title: 'Смелость', cost: 10, turns: 3 }, st), null);
-    assert.ok(C2.buyReward(c, { id: 'b2', kind: 'buff', title: 'Удача', cost: 10, turns: 3 }, st));
-    assert.equal(C2.buyReward(c, { id: 'c1', kind: 'collect', title: 'Перо', cost: 10 }, st), null);
-    assert.equal(c.buffs.length, 3);
+    // событие случилось (прошёл ответ) — можно следующее
+    const after = C2.decayState(st, 1);
+    assert.equal(C2.buyReward(after.characters.m, { id: 'e2', kind: 'event', title: 'Бал', cost: 10 }, after), null);
 });
 test('знак зодиака в выдуманном календаре — по месту дня в году', () => {
     const cal = { type: 'custom', months: Array.from({ length: 10 }, (_, i) => ({ name: 'Месяц' + (i + 1), gen: 'Месяца' + (i + 1), days: 36 })) };
@@ -1471,5 +1488,87 @@ test('знак зодиака в выдуманном календаре — п�
     for (const z of Object.keys(C2.ZODIAC)) { const m = C2.zodiacMidOn(cal, z); assert.equal(C2.zodiacOn(cal, m.d, m.m), z, z); }
     assert.equal(C2.zodiacOn(null, 8, 8), 'leo');
     assert.equal(C2.bornText({ d: 7, m: 8, approx: true }, cal), 'около 7 Месяца8');
+});
+test('название эмоции не обрывается на предлоге', () => {
+    assert.equal(C2.emotionWord('Тревога за Лянь Евэй'), 'тревога');
+    assert.equal(C2.emotionWord('тревога за'), 'тревога');
+    assert.equal(C2.emotionWord('страх перед будущим'), 'страх');
+    assert.equal(C2.emotionWord('горькое разочарование'), 'горькое разочарование');
+    assert.equal(C2.emotionWord('не в себе'), 'не в себе');
+    assert.equal(C2.moodPhrase('встревожен за'), 'встревожен');
+    assert.equal(C2.moodPhrase('в порядке'), 'в порядке');
+});
+test('слухи разных форм: разговор, газета, пост', () => {
+    const d = C2.cleanRumor({ form: 'dialog', who: 'служанки', lines: [{ who: 'Марта', text: 'Видела их в саду!' }, { who: 'Грета', text: 'Тише ты.' }], truth: 'half' });
+    assert.equal(d.form, 'dialog');
+    assert.equal(d.lines.length, 2);
+    assert.ok(d.text.includes('Марта'));
+    assert.ok(C2.rumorPlain(d).includes('«Видела их в саду!»'));
+    // одна реплика — это просто сплетня
+    const one = C2.cleanRumor({ form: 'dialog', lines: [{ who: 'А', text: 'что-то' }], text: 'что-то' });
+    assert.equal(one.form, undefined);
+    const n = C2.cleanRumor({ form: 'газета', source: 'Вестник', title: 'Пожар в порту', text: 'Сгорели склады.' });
+    assert.equal(n.form, 'news');
+    assert.equal(n.title, 'Пожар в порту');
+    const p = C2.cleanRumor({ form: 'ретвит', source: '@gossip', via: 'X', text: 'их видели вместе #love', likes: '120', reposts: 7 });
+    assert.equal(p.form, 'post');
+    assert.equal(p.likes, 120);
+    assert.equal(p.reposts, 7);
+    const t = C2.cleanRumor({ who: 'кузнец', text: 'видели дракона', truth: 'false' });
+    assert.equal(t.form, undefined);
+    assert.equal(t.text, 'Видели дракона');
+    const html = renderToast({ type: 'rumor', who: 'служанки', text: d.text, rumor: d }, 'diary');
+    assert.ok(html.includes('iw-rumor-dialog'));
+});
+test('всплывашки можно выключать по видам', () => {
+    const s = { toastKinds: { rumor: false } };
+    assert.equal(C2.toastAllowed(s, 'rumor'), false);
+    assert.equal(C2.toastAllowed(s, 'achievement'), true);
+    assert.equal(C2.toastAllowed({ toastKinds: { traits: false } }, 'trait_up'), false);
+    assert.equal(C2.toastAllowed({}, 'want_done'), true);
+    const m = mergeSettings({ toastKinds: { fears: false } });
+    assert.equal(m.toastKinds.fears, false);
+});
+test('мемы: форматы, «никто:», демотиватор, перебор без подписи', () => {
+    const n = C2.cleanMeme({ format: 'nobody', lines: [{ who: 'никто', text: '' }, { who: 'абсолютно никто', text: '' }, { who: 'Кассиан', text: 'ищет селёдку' }] });
+    assert.equal(n.format, 'nobody');
+    assert.equal(n.lines[0].who, 'Никто');
+    const d = C2.cleanMeme({ format: 'demotivator', title: 'Дипломатия', text: 'варенье решает', emoji: '🍯', img: 'a jar of jam on a throne' });
+    assert.equal(d.format, 'demotivator');
+    assert.ok(d.img);
+    // формат без нужных строк — обычная картинка с подписью
+    assert.equal(C2.cleanMeme({ format: 'brain', lines: [{ text: 'одно' }], top: 'сверху' }).format, 'macro');
+    assert.equal(C2.cleanMeme({ format: 'macro' }), null);
+    const html = renderToast({ type: 'meme', who: 'Мем', text: C2.memePlain(d), meme: d }, 'diary');
+    assert.ok(html.includes('iw-meme-demo'));
+    assert.ok(C2.toastAllowed({ toastKinds: { meme: false } }, 'meme') === false);
+});
+test('сны разной формы: обрывки, разговор, знак', () => {
+    const f = C2.cleanNightDream({ who: 'Марк', form: 'fragments', lines: ['ворон', 'ключ', 'снег'] });
+    assert.equal(f.form, 'fragments');
+    assert.equal(f.lines.length, 3);
+    assert.ok(f.text);
+    const g = C2.cleanNightDream({ who: 'Марк', form: 'dialog', lines: [{ who: 'отец', text: 'ну и?' }] , text: 'говорил с отцом' });
+    assert.equal(g.form, undefined); // одна реплика — просто сон
+    const z = C2.cleanNightDream({ who: 'Марк', form: 'symbol', symbol: 'зеркало', text: 'к беде' });
+    assert.equal(z.symbol, 'Зеркало');
+});
+
+test('мемы: большой пул, горсть без недавних, разбор новых форматов', () => {
+    assert.ok(C2.MEME_FORMATS.length >= 50);
+    const offer = C2.pickMemeFormats(['macro', 'when'], 14, () => 0.3);
+    assert.ok(!offer.includes('macro') && !offer.includes('when'));
+    assert.ok(offer.filter(f => C2.MEME_DEFS[f].pic).length >= 2);
+    const t = C2.cleanMeme({ format: 'tier list', lines: [{ who: 's', text: 'а' }, { who: 'a', text: 'б' }, { who: 'f', text: 'в' }] });
+    assert.equal(t.format, 'tier');
+    const m = C2.cleanMeme({ format: 'meter', title: 'Уровень', score: 250 });
+    assert.equal(m.score, 100);
+    const st = C2.cleanMeme({ format: 'stats', lines: [{ who: 'Сила', val: 7 }, { who: 'Ум', val: 3 }, { who: 'Ловкость', val: '12' }] });
+    assert.equal(st.format, 'stats');
+    assert.equal(st.lines[2].val, 12);
+    assert.equal(C2.cleanMeme({ format: 'bingo', lines: [{ text: 'a' }] }).format, 'macro');
+    const s = { ...C2.DEFAULT_SETTINGS, memes: true };
+    const p = buildSystemPrompt(s, { memeDue: true, memeOffer: ['tier', 'reaction'] });
+    assert.ok(/tier \(тир-лист\)/.test(p) && /reaction/.test(p) && !/bingo \(/.test(p));
 });
 console.log(`итого: ${passed} проверок`);

@@ -442,6 +442,7 @@
 .iw-dg-dream { --dg: #c9a23a; }
 .iw-dg-attr { --dg: #b07ad8; }
 .iw-dg-night { --dg: #7a8ad8; }
+.iw-dg-shop { --dg: #d89a3a; }
 .iw-dg-reward { --dg: #d8a85a; }
 .iw-dg-after { --dg: #9aa0a6; }
 .iw-dg-more { margin-top: 3px; }
@@ -488,3 +489,36 @@
 .iw-settings-form .iw-f-group-head { display: grid; gap: 2px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px dashed color-mix(in srgb, currentColor 25%, transparent); }
 .iw-settings-form .iw-f-group-head b { font-size: .85em; letter-spacing: .05em; text-transform: uppercase; }
 .iw-settings-form .iw-f-group-head small { opacity: .7; font-size: .82em; }
+
+/* Название расширения в списке расширений таверны: рукописное «Внутренний» с переливом и маленькое «МИР» */
+.iw-settings .iw-drawer-title {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    font-weight: 400;
+    line-height: 1.1;
+}
+.iw-settings .iw-drawer-title .iw-dt-ico { width: 1.75em; height: 1.4em; flex: none; align-self: center; margin-right: 1px; overflow: visible; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .2)); }
+.iw-settings .iw-drawer-title .iw-dt-main {
+    font-family: 'Marck Script', 'Segoe Script', 'Comic Sans MS', cursive;
+    font-size: 1.55em;
+    letter-spacing: .01em;
+    color: #c08cf0;
+    background: linear-gradient(100deg, #9b7dff 0%, #c77dff 30%, #ff6fae 65%, #ffa46b 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .25));
+    padding-right: .08em;
+}
+/* «мир» — тем же рукописным шрифтом и переливом, что и «Внутренний» */
+.iw-settings .iw-drawer-title .iw-dt-sub { margin-left: 3px; background: linear-gradient(100deg, #ff6fae 0%, #ffa46b 100%); -webkit-background-clip: text; background-clip: text; }
+.iw-settings .iw-drawer-title .iw-dt-spark {
+    align-self: center;
+    font-size: 1.05em;
+    line-height: 1;
+    color: #b48cff;
+    text-shadow: 0 0 6px rgba(180, 140, 255, .55);
+}
+.iw-settings .iw-drawer-title .iw-dt-ico { margin-left: 2px; }

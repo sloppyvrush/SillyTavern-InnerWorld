@@ -537,6 +537,8 @@ function lengthOf(pattern) {
 }
 
 const ICQ_ONLY = [{ smp: 'icq-uhoh', t: 0, d: 0.8, v: 0.6 }];
+// «ВКонтакте» (и её тёмный вариант): на любое уведомление — звук сообщения ВК
+const VK_ONLY = [{ smp: 'vk-msg', t: 0, d: 0.8, v: 0.6 }];
 
 export function playSound(kind, theme = '') {
     try {
@@ -557,7 +559,8 @@ export function playSound(kind, theme = '') {
         // запись дневника во всех темах звучит одинаково — карандаш по бумаге
         // в «Аське» один-единственный звук на всё — «у-оу»
         const pattern = theme === 'icq' ? ICQ_ONLY
-            : kind === 'write' ? (PATTERNS.base || {}).write : (set[kind] || (PATTERNS.base || {})[kind]);
+            : kind === 'write' ? (PATTERNS.base || {}).write
+                : theme === 'vk' ? VK_ONLY : (set[kind] || (PATTERNS.base || {})[kind]);
         if (!pattern) return;
         for (const p of pattern) voice(ac, master, p, start);
         lastAt = start + Math.min(lengthOf(pattern) * 0.7, 1.1);

@@ -69,9 +69,28 @@ export const THEMES = {
     },
     vk: {
         name: 'ВКонтакте',
-        fonts: 'family=Open+Sans:wght@400;600;700',
+        fonts: 'family=Open+Sans:wght@400;600;700;800',
     },
 };
+
+// Тёмные варианты: та же тема (вёрстка, значки, звуки, подписи), только в тёмных цветах — класс iw-dark.
+// В выборе темы они не отдельные карточки, а переключатель «день / ночь» у своей темы.
+// У «Дневника» тёмный вариант — давняя отдельная тема «Тёмный дневник».
+export const THEME_VARIANTS = { diary: 'dark', sims: 'sims_dark', medieval: 'medieval_dark', vk: 'vk_dark', bimbo: 'bimbo_dark', grid: 'grid_dark' };
+for (const [base, id] of Object.entries(THEME_VARIANTS)) {
+    if (THEMES[id]) continue;
+    THEMES[id] = Object.assign({}, THEMES[base], { name: `${THEMES[base].name} · ночь`, base, dark: true });
+}
+// К какой теме относится вариант (для карточек выбора): «vk_dark» → «vk», «dark» → «diary»
+export function themeFamily(id) {
+    for (const [base, v] of Object.entries(THEME_VARIANTS)) if (v === id) return base;
+    return id;
+}
+// Тема для вёрстки и класс: «vk_dark» → { base: 'vk', dark: true }
+export function themeParts(id) {
+    const t = THEMES[id];
+    return t && t.base ? { base: t.base, dark: true } : { base: id, dark: false };
+}
 
 // Цвета для карточек выбора темы: фон, чернила, акцент.
 export const THEME_SWATCHES = {
@@ -92,9 +111,16 @@ export const THEME_SWATCHES = {
     vk: ['#edeef0', '#4a76a8', '#ffffff'],
     icq: ['#dfe8f2', '#3f8f2a', '#e2453c'],
     telegram: ['#c9dbb7', '#3390ec', '#effdde'],
+    sims_dark: ['#14213a', '#d6e6ff', '#7ed957'],
+    medieval_dark: ['#2a1d10', '#ecd9b0', '#e0574a'],
+    vk_dark: ['#19191a', '#e1e3e6', '#71aaeb'],
+    bimbo_dark: ['#2a0f22', '#ff7ab8', '#d77be6'],
+    grid_dark: ['#16181f', '#a9bdf5', '#ff6b6b'],
 };
 
 export const THEME_IDS = Object.keys(THEMES);
+// Карточки в выборе темы: по одной на тему, без отдельных тёмных вариантов
+export const THEME_CARDS = THEME_IDS.filter(id => !Object.values(THEME_VARIANTS).includes(id));
 
 // Значок валюты — у каждой темы свой: сердечко-монетка, лунная монета, кристалл, дукат с короной, чип,
 // бриллиант, звёздочка из тетради, цянь, росток, звёздный знак, свеча, веретено, жетон, кредит, пиксельная монета.
@@ -140,6 +166,11 @@ const BASE_LABELS = {
     wallet: 'очки',
     analyze: 'Проанализировать',
     analyzing: 'Записываю',
+    life: 'Брак и дети',
+    nights: 'Сны и мысли перед сном',
+    rumors: 'Слухи',
+    memes: 'Мемы',
+    npc: 'НПС',
 };
 
 const THEME_LABELS = {
@@ -148,15 +179,34 @@ const THEME_LABELS = {
         moodTitle: 'Статус',
         moodLead: 'Сейчас {он}',
         feels: 'Что на душе',
-        wants: 'Хочет',
+        wants: 'Интересы',
         fears: 'Боится',
-        chronicle: 'Стена',
+        dream: 'Главное в жизни',
+        traits: 'О себе',
+        traitsBase: 'Основное',
+        traitsGained: 'Новое',
+        persona: 'Личная информация',
+        attitude: 'Отношение к тебе',
+        first: 'Первое впечатление',
+        now: 'Сейчас',
+        attraction: 'Главное в людях',
+        life: 'Семейное положение',
+        nights: 'Заметки перед сном',
+        rumors: 'Новости',
+        memes: 'Мемы · паблик',
+        npc: 'Друзья',
+        chronicle: 'Стена (Дуров, верни стену)',
         chronicleEmpty: 'На стене пока нет записей.',
         currency: 'голоса',
         shop: 'Подарки',
         rewards: 'Подарки',
+        analyze: 'Обновить страницу',
         analyzing: 'Обновляю страницу',
         whois: 'Информация',
+        whoisTraits: 'из анкеты',
+        settings: 'Настройки',
+        empty: 'Страница пока пустая. Она заполнится после следующего ответа — или нажми «Обновить страницу».',
+        noChat: 'Открой диалог с персонажем — и здесь появится его страница.',
     },
     icq: {
         title: 'Аська',
@@ -768,7 +818,7 @@ export function pictIcon(name, cls = '') {
     return icon(name, cls);
 }
 
-export const EVENT_ICONS = { achievement: 'trophy', note: 'feather', night: 'moon', rumor: 'chat',
+export const EVENT_ICONS = { achievement: 'trophy', note: 'feather', night: 'moon', rumor: 'chat', meme: 'joy',
     want_done: 'check',
     fear_real: 'ghost',
     fear_gone: 'sun',
@@ -799,6 +849,7 @@ export const BLOCK_ICONS = {
     rewards: 'gift',
     nights: 'moon',
     rumors: 'chat',
+    memes: 'joy',
 };
 
 // Подписи всплывашек в духе темы.

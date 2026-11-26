@@ -2,6 +2,7 @@
 // Запросы идут прямо из браузера, как в расширениях для картинок.
 
 import { thinkingBody } from './core.js';
+import { scrubSecrets } from './imagegen.js';
 
 export const API_KINDS = [
     ['profile', 'профиль подключения таверны'],
@@ -13,9 +14,12 @@ export const API_KINDS = [
 const OPENROUTER = 'https://openrouter.ai/api/v1';
 const GEMINI = 'https://generativelanguage.googleapis.com/v1beta';
 
+// Ключ живёт только в настройках таверны. Сюда он попадает на время запроса и уходит
+// только в заголовке выбранному сервису: не в адресе, не в логах, не в чате.
 function cleanKey(key) {
-    return String(key ?? '').trim().replace(/^Bearer\s+/i, '');
+    return String(key ?? '').trim().replace(/^Bearer\s+/i, '').replace(/[^\x21-\x7e]/g, '');
 }
+const geminiHeaders = key => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key });
 
 export function baseUrl(s) {
     if (s.apiKind === 'openrouter') return OPENROUTER;
@@ -35,21 +39,21 @@ export function missingFields(s) {
     return out;
 }
 
-async function readError(res) {
+async function readError(res, key = '') {
     let text = '';
     try {
         text = await res.text();
         const j = JSON.parse(text);
         text = (j.error && (j.error.message || j.error)) || j.message || text;
     } catch { /* как есть */ }
-    return `${res.status}: ${String(text).slice(0, 300)}`;
+    return `${res.status}: ${scrubSecrets(String(text).slice(0, 300), [key])}`;
 }
 
 export async function fetchModels(s, fetchImpl = fetch) {
     const key = cleanKey(s.apiKey);
     if (s.apiKind === 'gemini') {
-        const res = await fetchImpl(`${GEMINI}/models?key=${encodeURIComponent(key)}&pageSize=200`);
-        if (!res.ok) throw new Error(await readError(res));
+        const res = await fetchImpl(`${GEMINI}/models?pageSize=200`, { headers: { 'x-goog-api-key': key } });
+        if (!res.ok) throw new Error(await readError(res, key));
         const data = await res.json();
         return (data.models || [])
             .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
@@ -59,7 +63,7 @@ export async function fetchModels(s, fetchImpl = fetch) {
     const base = baseUrl(s);
     if (!base) throw new Error('не указан адрес');
     const res = await fetchImpl(`${base}/models`, { headers: key ? { Authorization: `Bearer ${key}` } : {} });
-    if (!res.ok) throw new Error(await readError(res));
+    if (!res.ok) throw new Error(await readError(res, key));
     const data = await res.json();
     const list = Array.isArray(data) ? data : (data.data || data.models || []);
     return list.map(m => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean).sort();
@@ -92,16 +96,16 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
     const budget = { low: 1024, medium: 4096, high: 12000 }[s.thinking];
     const key = cleanKey(s.apiKey);
     if (s.apiKind === 'gemini' && onText) {
-        const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`, {
+        const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:streamGenerateContent?alt=sse`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: geminiHeaders(key),
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: system }] },
                 contents: [{ role: 'user', parts: [{ text: user }] }],
                 generationConfig: Object.assign({ maxOutputTokens: maxTokens, temperature: 0.7 }, budget ? { thinkingConfig: { thinkingBudget: Math.min(budget, Math.floor(maxTokens / 2)) } } : {}),
             }),
         });
-        if (!res.ok) throw new Error(await readError(res));
+        if (!res.ok) throw new Error(await readError(res, key));
         let text = '';
         let think = '';
         await readSse(res, d => {
@@ -116,16 +120,16 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
         return text;
     }
     if (s.apiKind === 'gemini') {
-        const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:generateContent?key=${encodeURIComponent(key)}`, {
+        const res = await fetchImpl(`${GEMINI}/models/${encodeURIComponent(s.apiModel)}:generateContent`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: geminiHeaders(key),
             body: JSON.stringify({
                 systemInstruction: { parts: [{ text: system }] },
                 contents: [{ role: 'user', parts: [{ text: user }] }],
                 generationConfig: Object.assign({ maxOutputTokens: maxTokens, temperature: 0.7 }, budget ? { thinkingConfig: { thinkingBudget: Math.min(budget, Math.floor(maxTokens / 2)) } } : {}),
             }),
         });
-        if (!res.ok) throw new Error(await readError(res));
+        if (!res.ok) throw new Error(await readError(res, key));
         const data = await res.json();
         const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
         const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');
@@ -136,7 +140,7 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
     const headers = { 'Content-Type': 'application/json' };
     if (key) headers.Authorization = `Bearer ${key}`;
     if (s.apiKind === 'openrouter') {
-        headers['HTTP-Referer'] = location.origin;
+        headers['HTTP-Referer'] = 'https://github.com/sloppyvrush/SillyTavern-InnerWorld'; // адрес своей таверны сервису не сообщаем
         headers['X-Title'] = 'Inner World (SillyTavern)';
     }
     const res = await fetchImpl(`${base}/chat/completions`, {
@@ -151,7 +155,7 @@ export async function chatRequest(s, system, user, maxTokens, fetchImpl = fetch,
             ...(onText ? { stream: true } : {}),
         }),
     });
-    if (!res.ok) throw new Error(await readError(res));
+    if (!res.ok) throw new Error(await readError(res, key));
     if (onText && res.body && /event-stream/i.test(res.headers.get('content-type') || '')) {
         let text = '';
         let think = '';
