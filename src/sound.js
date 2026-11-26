@@ -464,7 +464,7 @@ export const PATTERNS = {
 /* PATTERNS-END */
 
 // Какая тема каким набором звучит. Остальные темы — обычный набор.
-const THEME_SET = { bimbo: 'bimbo', cyber: 'cyber', medieval: 'medieval', china: 'china', herbal: 'herbal', arcana: 'arcana', nav: 'nav', seance: 'seance', dossier: 'dossier', logbook: 'logbook', pixel: 'pixel', vk: 'vk', icq: 'icq', telegram: 'telegram' };
+const THEME_SET = { bimbo: 'bimbo', cyber: 'cyber', medieval: 'medieval', china: 'china', herbal: 'herbal', arcana: 'arcana', nav: 'nav', seance: 'seance', dossier: 'dossier', logbook: 'logbook', noir: 'seance', pixel: 'pixel', vk: 'vk', icq: 'icq', telegram: 'telegram' };
 
 function envelope(param, at, v, a, s, d) {
     param.setValueAtTime(0.0001, at);

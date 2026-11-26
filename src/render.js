@@ -477,7 +477,6 @@ function renderRumors(list, name, persona, L = {}) {
 const MEME_GRADS = ['#ff9a9e,#fad0c4', '#a18cd1,#fbc2eb', '#84fab0,#8fd3f4', '#fccb90,#d57eeb', '#f6d365,#fda085', '#89f7fe,#66a6ff', '#fddb92,#d1fdff', '#c2e9fb,#a1c4fd'];
 function memePic(m, drawing) {
     const g = MEME_GRADS[Math.abs(Number(m.at) || 0) % MEME_GRADS.length].split(',');
-    if (m.pic) return `<div class="iw-meme-pic"><img src="${esc(m.pic)}" alt="${esc(m.img || 'мем')}" loading="lazy"></div>`;
     const emo = m.emoji ? esc(m.emoji) : '😶';
     return `<div class="iw-meme-pic iw-meme-emo${drawing ? ' iw-meme-drawing' : ''}" style="--mg1:${g[0]};--mg2:${g[1]}"><span>${emo}</span></div>`;
 }
@@ -556,19 +555,24 @@ export function memeBody(m, { drawing = false } = {}) {
     if (L.length) return memeList(m, L, 'top', '•');
     return `<div class="iw-meme-lines">${ce([m.title, m.top, m.text, m.bottom].filter(Boolean).join(' — '))}</div>`;
 }
+// Мем как пост в паблике: шапка с названием паблика, сам мем, лайки и репосты
+const NO_POST = ['tweet', 'tiktok', 'status'];
+const PUBLIC_DEFAULT = ['Мемы для своих', 'Подслушано', 'Типичная история', 'Смешно до слёз', 'Лучшее за неделю'];
+export function memePost(m, body) {
+    if (NO_POST.includes(m.format)) return body;
+    const seed = Math.abs(Number(m.at) || 7);
+    const name = m.public || PUBLIC_DEFAULT[seed % PUBLIC_DEFAULT.length];
+    const likes = m.likes || 120 + (seed % 9000);
+    const reposts = Math.round(likes / (6 + (seed % 7)));
+    const hue = (seed * 37) % 360;
+    return `<div class="iw-mpost"><div class="iw-mpost-head"><span class="iw-mpost-ava" style="--h:${hue}" aria-hidden="true">${esc(String(name).replace(/[^\p{L}\d]/gu, '').charAt(0).toUpperCase() || 'М')}</span><span class="iw-mpost-names"><b>${esc(name)}</b><small>${esc(m.date ? 'запись к сцене' : 'только что')}</small></span><span class="iw-mpost-more" aria-hidden="true">⋯</span></div><div class="iw-mpost-body">${body}</div><div class="iw-mpost-foot" aria-hidden="true"><span>♥ ${shortNum(likes)}</span><span>💬 ${shortNum(Math.round(likes / 11))}</span><span>↪ ${shortNum(reposts)}</span></div></div>`;
+}
 function memeCard(m, info) {
-    const drawing = (info.drawing || []).includes(m.at);
     const rerolling = (info.rerolling || []).includes(m.at);
-    const own = MEME_PIC.includes(m.format || 'macro');
-    // картинка рисуется только по кнопке и только если подключено расширение картинок
-    const canPic = !!info.img;
-    const extra = !own && m.pic ? `<div class="iw-meme-pic iw-meme-extra"><img src="${esc(m.pic)}" alt="${esc(m.img || 'мем')}" loading="lazy"></div>` : '';
-    const btn = (cls, data, ic, label, title, busy) => `<button type="button" class="iw-meme-draw ${cls}${busy ? ' iw-spin' : ''}" ${data}${busy ? ' disabled' : ''} title="${esc(title)}">${icon(ic)}<span>${esc(label)}</span></button>`;
-    const pic = canPic ? btn('iw-meme-picbtn', `data-iw-meme-pic="${esc(String(m.at))}"`, 'feather', drawing ? 'Рисую…' : (m.pic ? 'Перерисовать' : 'Картинка'), m.pic ? 'Нарисовать картинку заново через расширение картинок' : 'Нарисовать картинку к мему через расширение картинок', drawing) : '';
-    const again = btn('iw-meme-again', `data-iw-meme-again="${esc(String(m.at))}"`, 'rotate', rerolling ? 'Придумываю…' : 'Другой мем', 'Придумать другой мем к той же сцене', rerolling);
+    const again = `<button type="button" class="iw-meme-draw iw-meme-again${rerolling ? ' iw-spin' : ''}" data-iw-meme-again="${esc(String(m.at))}"${rerolling ? ' disabled' : ''} title="Придумать другой мем — по другому моменту истории">${icon('rotate')}<span>${rerolling ? 'Придумываю…' : 'Другой мем'}</span></button>`;
     return `<li class="iw-meme iw-mf-${esc(m.format || 'macro')}">
-        ${extra}${memeBody(m, { drawing })}
-        <div class="iw-meme-meta">${again}${pic}</div>
+        ${memePost(m, memeBody(m))}
+        <div class="iw-meme-meta">${again}</div>
         <button type="button" class="iw-del iw-hist-x" data-iw-meme-del="${esc(String(m.at))}" title="Убрать этот мем" aria-label="Убрать мем">${icon('x')}</button>
       </li>`;
 }
@@ -1170,7 +1174,7 @@ const SHOP_FIRST = {
     icq: 'Загрузить смайлы и подарки', vk: 'Найти подарки', sims: 'Заполнить магазин', bimbo: 'Хочу шопинг ♡',
     medieval: 'Наполнить лавку', china: 'Наполнить лавку', herbal: 'Собрать травы', arcana: 'Разложить талисманы',
     nav: 'Наполнить лавку', seance: 'Собрать подношения', cyber: 'Загрузить бонусы', dossier: 'Запросить снабжение',
-    logbook: 'Пополнить склад', grid: 'Подобрать награды', diary: 'Подобрать награды', dark: 'Подобрать награды',
+    logbook: 'Пополнить склад', noir: 'Открыть салон', grid: 'Подобрать награды', diary: 'Подобрать награды', dark: 'Подобрать награды',
 };
 
 // Витрина — как лавка: список памятных вещей и достижений, значки в скетчевых кружках, звёздочки за достоинство.
@@ -1899,7 +1903,7 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
     // слух и мем к этому ответу — отдельным рядом под героями
     const world = [];
     if (rumor) world.push(`<div class="iw-ib-sec iw-ib-rumor"><span class="iw-ib-sec-cap">${icon('chat')}Слух</span><span class="iw-ib-wtxt">${rumor.source || rumor.who ? `<b>${esc(rumor.source || rumor.who)}:</b> ` : ''}${esc(rumorPlainIb(rumor))}</span></div>`);
-    if (meme) world.push(`<div class="iw-ib-sec iw-ib-memesec"><span class="iw-ib-sec-cap">${icon('joy')}Мем</span><div class="iw-ib-meme iw-meme iw-mf-${esc(meme.format || 'macro')}">${memeBody(meme)}</div></div>`);
+    if (meme) world.push(`<div class="iw-ib-sec iw-ib-memesec"><span class="iw-ib-sec-cap">${icon('joy')}Мем</span><div class="iw-ib-meme iw-meme iw-mf-${esc(meme.format || 'macro')}">${memePost(meme, memeBody(meme))}</div></div>`);
     const more = people.length || evs || world.length;
     let body = '';
     if (more && open) {
@@ -1981,7 +1985,7 @@ export function renderGroupToast(items, theme) {
 }
 
 // Скетчевая стрелка «сюда»: в рисованных темах — от руки, в технических — ломаная линия.
-const TECH_THEMES = ['cyber', 'logbook', 'dossier'];
+const TECH_THEMES = ['cyber', 'logbook', 'dossier', 'noir'];
 function sketchArrow(theme, cls = '') {
     const tech = TECH_THEMES.includes(theme);
     // в поле слева от шагов: от подсказки загибается вверх и показывает на кнопки над ней

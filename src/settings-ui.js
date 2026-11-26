@@ -34,7 +34,6 @@ const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 // Разделы и поля. show — когда поле видно; hint — пояснение мелким шрифтом.
 // id раздела постоянный: по нему запоминается, какие разделы раскрыты.
 export function settingsSchema(ctx = {}) {
-    ctx.imgStatus = IMG_STATUS.text;
     const custom = s => s.source === 'custom';
     const own = s => s.source === 'custom' && s.apiKind !== 'profile';
     const models = (ctx.models && ctx.models.length ? ctx.models : []).map(m => [m, m]);
@@ -66,7 +65,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'select', key: 'shopEvery', label: 'Как часто обновлять лавку', show: s => s.points !== false && s.shopAuto, options: [[1, 'после каждого сообщения'], [2, 'раз в 2 сообщения'], [3, 'раз в 3 сообщения'], [5, 'раз в 5 сообщений'], [10, 'раз в 10 сообщений'], [15, 'раз в 15 сообщений'], [20, 'раз в 20 сообщений'], [30, 'раз в 30 сообщений']] },
                 { type: 'toggle', key: 'buyOne', label: 'Покупать по одному', show: s => s.points !== false, hint: 'Включено — у персонажа за раз ждёт один подарок, одно событие и действует один эффект: следующий такой же можно купить, когда прошлый случится. Выключено — можно набрать сколько угодно сразу.' },
                 { type: 'toggle', key: 'achievements', label: 'Достижения на витрине', hint: 'Когда в истории случается что-то крупное, дневник сам выдаёт достижение и ставит его на полку витрины. Почти не тратит токенов: строчка в ответе только в важные моменты.' },
-                { type: 'range', key: 'achPct', label: 'Как часто выпадают достижения', min: 5, max: 100, step: 5, fmt: v => achPctLabel(Number(v)), show: s => s.achievements !== false, hint: 'Примерно в какой доле ответов, где в истории что-то произошло, выпадает ачивка. До 10% — только золото, по-настоящему эпохальное; до 25% — серебро и золото; ниже 40% между ачивками ещё и пауза (при 10% — около 24 сообщений, при 20% — около 12). От 40% — без паузы, годятся и мелкие смешные моменты.' },
+                { type: 'range', key: 'achPct', label: 'Как часто выпадают достижения', min: 5, max: 100, step: 5, fmt: v => achPctLabel(Number(v)), show: s => s.achievements !== false, hint: 'Просто частота: примерно в какой доле ответов выпадает ачивка. Выпадать могут любые — бронза, серебро и золото, ранг на частоту не влияет. Пример: 50% — примерно каждый второй ответ, 10% — каждый десятый.' },
                 { type: 'toggle', key: 'caseArt', label: 'Картинки памятных вещей и подарков', hint: 'Модель рисует вещь маленькой картинкой по смыслу и по истории: засушенная роза, письмо с сургучом, часы. Одна короткая просьба к модели на картинку. Выключено — обычные значки и никаких кнопок «нарисовать».' },
                 { type: 'toggle', key: 'artAuto', label: 'Памятные вещи и подарки рисовать сразу', show: s => s.caseArt !== false, hint: 'Купил вещицу в коллекцию или подарок — картинка рисуется сама (подарок — пока ждёт вручения, потом переходит на витрину вместе с ним). Выключено — только когда нажмёшь «нарисовать».' },
                 { type: 'group', label: 'Вид и звук', hint: 'Уведомления, анимации и кнопка на экране.' },
@@ -99,10 +98,6 @@ export function settingsSchema(ctx = {}) {
                 { type: 'select', key: 'budgetMode', label: 'Запас на ответ модели', options: [['auto', 'сам, по размеру сцены'], ['fixed', 'как я задам']], hint: s => (s.budgetMode === 'fixed' ? 'Каждый запрос получает ровно столько. Если ответы обрываются — увеличь.' : 'Дневник считает запас сам: сколько персонажей в сцене, какой разбор, думающая ли модель. Платишь только за то, что модель написала, а запас лишь не даёт ей оборваться. Повторных запросов дневник сам не делает.') },
                 { type: 'tokens', key: 'budgetCap', label: 'Потолок на один ответ', options: BUDGET_CAP_OPTIONS, show: s => s.budgetMode !== 'fixed', hint: 'Больше этого дневник не попросит ни при каком разборе. Это только потолок: платишь за то, что модель написала. Думающим моделям (Gemini 3, Claude 3.7 и новее) лучше от 16 000 — часть запаса уходит на размышления.' },
                 { type: 'tokens', key: 'responseLength', label: 'Запас на каждый ответ', options: RESPONSE_LENGTH_OPTIONS, show: s => s.budgetMode === 'fixed', hint: 'Думающие модели (Gemini 3 Pro, Claude 3.7 и похожие) тратят запас ещё и на размышления — если записи обрываются, ставь больше.' },
-                { type: 'group', label: 'Картинки к мемам', hint: 'Чем рисовать картинки мемов: подключение берётся из установленного расширения картинок.' },
-                { type: 'select', key: 'memeImg', label: 'Картинки к мемам', options: [['none', 'Без генерации: дневник рисует сам (эмодзи и вёрстка)'], ['ext', 'Через установленное расширение картинок']], hint: s => (s.memes === false ? 'Мемы сейчас выключены в «Что вести в дневнике».' : s.memeImg === 'ext' ? 'Дневник берёт из расширения подключение, модель, ключ, стиль и негатив в момент рисования и ничего к себе не копирует. Промпт для мема — свой, генератор промптов расширения не используется. Если на меме герои истории — их внешность и фото-референсы берутся оттуда же.' : 'Картинка мема — крупные эмодзи на цветном фоне. Чтобы были настоящие картинки, выбери расширение картинок.') },
-                { type: 'select', key: 'memeImgExt', label: 'Какое расширение', show: s => s.memeImg === 'ext', options: (ctx.imgExts || []).length ? ctx.imgExts.map(e => [e.key, e.name]) : [['', 'Не нашла установленных расширений картинок']], hint: s => ((ctx.imgExts || []).length ? (ctx.imgDesc ? ctx.imgDesc(s.memeImgExt || ctx.imgExts[0].key) : '') : 'Установи и настрой расширение для генерации картинок, потом открой настройки заново.') },
-                { type: 'buttons', show: s => s.memeImg === 'ext', buttons: [{ id: 'testMemeImg', label: 'Проверить картинки', hint: ctx.imgStatus || '' }] },
             ],
         },
         {
@@ -177,8 +172,6 @@ function hintText(f, s) {
 }
 
 // variant: 'st' — разметка таверны; 'diary' — наши классы под тему дневника.
-// Последний ответ проверки картинок — показывается под кнопкой
-export const IMG_STATUS = { text: '' };
 
 // Подпись ползунка со словами (частота ачивок, лавки): меняется сразу, пока двигаешь
 export function rangeLabel(key, v) {
@@ -186,9 +179,9 @@ export function rangeLabel(key, v) {
     return '';
 }
 
-export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '', imgExts = [], imgDesc = null } = {}) {
+export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '' } = {}) {
     const st = variant === 'st';
-    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml, imgExts, imgDesc });
+    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml });
     const sections = schema.map(sec => {
         const fieldsRaw = sec.fields.filter(f => !f.only || f.only === variant).map(f => {
             const hidden = f.show && !f.show(s) ? ' hidden' : '';

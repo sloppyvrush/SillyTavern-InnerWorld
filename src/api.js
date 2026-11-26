@@ -2,7 +2,6 @@
 // Запросы идут прямо из браузера, как в расширениях для картинок.
 
 import { thinkingBody } from './core.js';
-import { scrubSecrets } from './imagegen.js';
 
 export const API_KINDS = [
     ['profile', 'профиль подключения таверны'],
@@ -18,6 +17,16 @@ const GEMINI = 'https://generativelanguage.googleapis.com/v1beta';
 // только в заголовке выбранному сервису: не в адресе, не в логах, не в чате.
 function cleanKey(key) {
     return String(key ?? '').trim().replace(/^Bearer\s+/i, '').replace(/[^\x21-\x7e]/g, '');
+}
+// Из текста ошибки убираем всё, что похоже на ключ: сервисы иногда повторяют присланный ключ в ответе
+export function scrubSecrets(text, keys = []) {
+    let t = String(text || '');
+    for (const k of keys) { const c = cleanKey(k); if (c.length >= 6) t = t.split(c).join('•••'); }
+    return t
+        .replace(/\b(sk|rk|pk)-[A-Za-z0-9_\-]{8,}/g, '•••')
+        .replace(/\bAIza[0-9A-Za-z_\-]{20,}/g, '•••')
+        .replace(/\b(Bearer)\s+[A-Za-z0-9._\-]{8,}/gi, '$1 •••')
+        .replace(/([?&](key|api_key|apikey|token)=)[^&\s]+/gi, '$1•••');
 }
 const geminiHeaders = key => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key });
 

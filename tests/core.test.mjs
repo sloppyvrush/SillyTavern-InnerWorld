@@ -1403,19 +1403,27 @@ test('мультибот: плашка выбора главных, «сдела
     assert.ok(/мультибот/.test(sp));
 });
 
-test('частота ачивок: на «эпохальных» — только золото и с паузой; на «обычно» — как раньше', () => {
+test('частота ачивок: просто процент срабатывания, ранг не важен', () => {
     const list = [{ mes: 10 }];
-    assert.equal(C2.achGate({ tier: 'bronze' }, list, 40, { achRate: 1 }), false);
-    assert.equal(C2.achGate({ tier: 'silver' }, list, 40, { achRate: 1 }), false);
-    assert.equal(C2.achGate({ tier: 'gold' }, list, 40, { achRate: 1 }), true);
-    assert.equal(C2.achGate({ tier: 'silver' }, list, 15, { achRate: 2 }), false);
-    assert.equal(C2.achGate({ tier: 'silver' }, list, 30, { achRate: 2 }), true);
-    assert.equal(C2.achGate({ tier: 'bronze' }, list, 11, {}), true);
-    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 10 }), { messages: ['x'] }).includes('эпохальное'));
+    // 10% — раз в 10 ответов: любые ранги ждут одинаково, золото без поблажек
+    for (const tier of ['bronze', 'silver', 'gold']) {
+        assert.equal(C2.achGate({ tier }, list, 20, { achPct: 10 }), false);
+        assert.equal(C2.achGate({ tier }, list, 30, { achPct: 10 }), true);
+    }
+    // 100% — хоть каждый ответ, и бронза проходит
+    assert.equal(C2.achGate({ tier: 'bronze' }, list, 12, { achPct: 100 }), true);
+    // 50% — каждый второй ответ
+    assert.equal(C2.achGate({ tier: 'bronze' }, list, 12, { achPct: 50 }), false);
+    assert.equal(C2.achGate({ tier: 'bronze' }, list, 14, { achPct: 50 }), true);
+    // свайп того же сообщения не считается
+    assert.equal(C2.achGate({ tier: 'bronze' }, [{ mes: 10 }], 10, { achPct: 10 }), true);
+    assert.equal(C2.achEvery({ achPct: 20 }), 5);
+    assert.ok(C2.achPctLabel(50).includes('раз в 2 ответа'));
+    assert.ok(C2.achPctLabel(100).includes('каждом'));
+    const p10 = C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 10 }), { messages: ['x'] });
+    assert.ok(p10.includes('примерно в 10%') && p10.includes('Ранг на частоту не влияет') && !p10.includes('эпохальн'));
     assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 70 }), { messages: ['x'] }).includes('примерно в 70%'));
     assert.equal(mergeSettings({ achRate: 1 }).achPct, 10);
-    assert.equal(C2.achGate({ tier: 'silver' }, list, 15, { achPct: 20 }), false);
-    assert.equal(C2.achGate({ tier: 'bronze' }, list, 12, { achPct: 80 }), true);
 });
 test('картинка памятной вещи: только безопасный SVG, свои id', () => {
     const svg = C2.cleanArt('вот: <svg viewBox="0 0 64 64" onload="x()"><script>alert(1)</script><defs><radialGradient id="g"><stop offset="0" stop-color="#f00"/></radialGradient></defs><circle cx="32" cy="32" r="20" fill="url(#g)" onclick="y"/><image href="http://evil"/><a href="javascript:1"><path d="M0 0"/></a><foreignObject><div>x</div></foreignObject></svg> готово', 'k1');
@@ -1541,7 +1549,7 @@ test('мемы: форматы, «никто:», демотиватор, пер�
     assert.equal(n.lines[0].who, 'Никто');
     const d = C2.cleanMeme({ format: 'demotivator', title: 'Дипломатия', text: 'варенье решает', emoji: '🍯', img: 'a jar of jam on a throne' });
     assert.equal(d.format, 'demotivator');
-    assert.ok(d.img);
+    assert.ok(!d.img && d.emoji === '🍯'); // картинок к мемам больше нет — только эмодзи и вёрстка
     // формат без нужных строк — обычная картинка с подписью
     assert.equal(C2.cleanMeme({ format: 'brain', lines: [{ text: 'одно' }], top: 'сверху' }).format, 'macro');
     assert.equal(C2.cleanMeme({ format: 'macro' }), null);

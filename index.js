@@ -15,7 +15,6 @@ import {
     achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
     toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt, TOKENS_MIN, TOKENS_MAX,
 } from './src/core.js';
-import { generateImage, findImageExtensions, describeImageExtension } from './src/imagegen.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
 import {
     normCalendar, normTime, advance, findStamp, stampToTime, addMinutes, atHour, toMinutes, fmtDate, fmtTime, fmtSpan, partOfDay, seasonOf,
@@ -26,10 +25,10 @@ import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, themeParts, icon as iconHtml } from './src/themes.js';
 import { lifeText as lifeTextIb } from './src/core.js';
 import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortName, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
-import { renderSettingsForm, applySettingChange, rangeLabel, IMG_STATUS } from './src/settings-ui.js';
+import { renderSettingsForm, applySettingChange, rangeLabel } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.7.6';
+const VERSION = '0.8.0';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -2616,7 +2615,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], drawing: [...memeDrawing], rerolling: [...memeRerolling], img: !!memeImgCfg(), every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], rerolling: [...memeRerolling], every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen });
     masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
@@ -2925,30 +2924,7 @@ function takeExtras(raw, state, messageId) {
     if (changed) ctx().saveMetadataDebounced?.();
 }
 
-// ---------- Картинки к мемам ----------
-function memeImgCfg() {
-    const s = settings();
-    if (!s.memeImg || s.memeImg === 'none') return null;
-    // только имя расширения: ключ и адрес читаются из его настроек в момент запроса
-    const list = findImageExtensions(ctx().extensionSettings).filter(e => e.ok);
-    const pick = list.find(e => e.key === s.memeImgExt) || list[0];
-    return pick ? { kind: 'ext', extKey: pick.key } : null;
-}
-// Кто нарисован на меме: имя + файл аватарки карточки или персоны, чтобы расширение картинок нашло их внешность
-function memePeople(names) {
-    const c = ctx();
-    const out = [];
-    const cards = (c.characters || []).filter(Boolean);
-    for (const name of names || []) {
-        if (c.name1 && (sameName(name, c.name1) || namesLookAlike(name, c.name1))) { out.push({ name, persona: (personasMod && personasMod.user_avatar) || '' }); continue; }
-        let file = '';
-        if (!c.groupId && c.characterId !== undefined && isMain(name, mainNames())) file = (c.characters[c.characterId] || {}).avatar || '';
-        if (!file) { const ch = cards.find(x => sameName(x.name, name) || namesLookAlike(x.name, name)); if (ch) file = ch.avatar || ''; }
-        out.push({ name, char: file });
-    }
-    return out;
-}
-const memeDrawing = new Set();
+// ---------- Мемы: «Другой мем» и «Сгенерировать мем» ----------
 const memeRerolling = new Set();
 // «Другой мем»: отдельная короткая просьба к модели дневника — новый мем к той же сцене на месте старого
 // «Другой мем» (at — какой заменить) и «Сгенерировать мем» (at = 'new' — новый по последней сцене):
@@ -2969,10 +2945,11 @@ async function rerollMeme(at) {
         const chat = c.chat || [];
         const upto = m0 && Number.isInteger(m0.mes) && m0.mes >= 0 ? Math.min(m0.mes, chat.length - 1) : (lastBot >= 0 ? lastBot : chat.length - 1);
         const msgs = [];
-        for (let i = upto; i >= 0 && msgs.length < 6; i--) {
+        // побольше истории — чтобы «другой мем» мог взять другой момент, а не тот же самый
+        for (let i = upto; i >= 0 && msgs.length < 12; i--) {
             const m = chat[i];
             if (!m || m.is_system || !m.mes) continue;
-            msgs.unshift(`${m.name}: ${cleanMessageText(m.mes, 1200)}`);
+            msgs.unshift(`${m.name}: ${cleanMessageText(m.mes, msgs.length < 4 ? 1200 : 600)}`);
         }
         const st = currentState();
         const cast = (st.order || []).slice(0, 6).map(k => st.characters[k]).filter(Boolean).map(ch => `${ch.name}${ch.persona ? ' (персонаж игрока)' : ''}${ch.mood ? ` — ${ch.mood}` : ''}`);
@@ -3005,32 +2982,6 @@ async function rerollMeme(at) {
         renderAll();
     }
 }
-async function drawMemeImage(at, { manual = false } = {}) {
-    const cfg = memeImgCfg();
-    if (!cfg || !hasChat() || memeDrawing.has(at)) return;
-    const chatId = ctx().getCurrentChatId?.();
-    const m0 = (chatMeta().memes || []).find(x => x.at === at);
-    if (!m0) return;
-    memeDrawing.add(at);
-    renderAll();
-    try {
-        // старые мемы без описания картинки — рисуем по самому мему
-        const prompt = `Funny internet meme picture, expressive and comedic, bold simple composition, no text, no letters, no watermark. ${m0.img || `A funny reaction picture for this meme: ${memePlain(m0)}`}`;
-        const src = await generateImage(prompt, Object.assign({ people: memePeople(m0.cast) }, cfg), ctx());
-        if (ctx().getCurrentChatId?.() !== chatId) return;
-        const m = (chatMeta().memes || []).find(x => x.at === at);
-        if (!m || !src) return;
-        m.pic = src;
-        ctx().saveMetadataDebounced?.();
-    } catch (err) {
-        console.warn('[Внутренний мир] картинка мема', err);
-        if (manual) notice(`Картинка к мему не нарисовалась: ${String(err && err.message || err).slice(0, 160)}`);
-    } finally {
-        memeDrawing.delete(at);
-        renderAll();
-    }
-}
-
 function takeAchievement(raw, messageId) {
     if (settings().achievements === false) return;
     let data = null;
@@ -3946,7 +3897,6 @@ async function onPanelClick(e) {
         ctx().saveMetadataDebounced?.();
         return renderAll();
     }
-    if (t.dataset.iwMemePic) return drawMemeImage(Number(t.dataset.iwMemePic), { manual: true });
     if (t.dataset.iwMemeAgain) return rerollMeme(t.dataset.iwMemeAgain === 'new' ? 'new' : Number(t.dataset.iwMemeAgain));
     if (t.dataset.iwRumorDel) {
         const id = decodeURIComponent(t.dataset.iwRumorDel);
@@ -4979,7 +4929,7 @@ function settingsFormHtml(variant) {
         const ign = ignoredNames();
         if (ign.length) forgetHtml += `<div class="iw-forget-ignored"><span class="iw-muted">Забыты навсегда:</span> ${ign.map(n => `<button type="button" class="iw-btn iw-forget-chip iw-unignore" data-iw-unignore="${esc(n)}" title="Вернуть: дневник снова будет замечать ${esc(n)}">${esc(n)} <span aria-hidden="true">↺</span></button>`).join('')}</div>`;
     }
-    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED, imgExts: findImageExtensions(ctx().extensionSettings), imgDesc: key => describeImageExtension(ctx().extensionSettings, key) });
+    return renderSettingsForm(s, { variant, profiles: profileList(), apiStatus, books: worldNames, studied: studiedBooks(), open: sectionOpen[variant], booksHtml, forgetHtml, version: VERSION, updated: UPDATED });
 }
 
 function refreshForms() {
@@ -5068,19 +5018,6 @@ async function onSettingsChanged(el) {
 
 async function onSettingsAction(action, el) {
     const s = settings();
-    if (action === 'testMemeImg') {
-        const cfg = memeImgCfg();
-        if (!cfg) { IMG_STATUS.text = 'Источник картинок не найден: выбери расширение или другой способ.'; return refreshForms(); }
-        IMG_STATUS.text = 'Рисую пробную картинку…';
-        refreshForms();
-        try {
-            const src = await generateImage('a tiny cute cartoon cat waving, flat colors, simple background', cfg, ctx());
-            IMG_STATUS.text = src ? 'Работает: картинка нарисовалась.' : 'Сервис ничего не вернул.';
-        } catch (err) {
-            IMG_STATUS.text = `Не вышло: ${String(err && err.message || err).slice(0, 180)}`;
-        }
-        return refreshForms();
-    }
     if (action === 'loadModels') {
         apiStatus = 'Загружаю список моделей…';
         refreshForms();

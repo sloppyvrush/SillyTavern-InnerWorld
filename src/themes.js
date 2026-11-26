@@ -71,6 +71,11 @@ export const THEMES = {
         name: 'ВКонтакте',
         fonts: 'family=Open+Sans:wght@400;600;700;800',
     },
+    noir: {
+        name: 'Ночное досье',
+        // Unbounded — заголовки, Jost — всё остальное
+        fonts: 'family=Unbounded:wght@600;800&family=Jost:wght@400;500;600;700',
+    },
 };
 
 // Тёмные варианты: та же тема (вёрстка, значки, звуки, подписи), только в тёмных цветах — класс iw-dark.
@@ -108,6 +113,7 @@ export const THEME_SWATCHES = {
     nav: ['#111814', '#d9c8a6', '#d6392e'],
     dossier: ['#d8bf8a', '#2a2a2a', '#c0262d'],
     logbook: ['#0c141a', '#f2a93f', '#62d6c8'],
+    noir: ['#120d11', '#e8a0b8', '#c77a97'],
     vk: ['#edeef0', '#4a76a8', '#ffffff'],
     icq: ['#dfe8f2', '#3f8f2a', '#e2453c'],
     telegram: ['#c9dbb7', '#3390ec', '#effdde'],
@@ -126,7 +132,7 @@ export const THEME_CARDS = THEME_IDS.filter(id => !Object.values(THEME_VARIANTS)
 // бриллиант, звёздочка из тетради, цянь, росток, звёздный знак, свеча, веретено, жетон, кредит, пиксельная монета.
 const CURRENCY_ICONS = {
     diary: 'cur_heart', dark: 'cur_moon', sims: 'cur_crystal', medieval: 'cur_ducat', cyber: 'cur_chip', bimbo: 'cur_gem',
-    grid: 'cur_star', china: 'cashcoin', herbal: 'cur_sprout', arcana: 'cur_sigil', seance: 'cur_candle', nav: 'cur_spindle', dossier: 'cur_token', logbook: 'credit', pixel: 'pxcoin',
+    grid: 'cur_star', china: 'cashcoin', herbal: 'cur_sprout', arcana: 'cur_sigil', seance: 'cur_candle', nav: 'cur_spindle', dossier: 'cur_token', logbook: 'credit', noir: 'cur_gem', pixel: 'pxcoin',
     vk: 'cur_vote', icq: 'cur_flower', telegram: 'cur_tgstar',
 };
 export function currencyIcon(theme) {
@@ -522,6 +528,36 @@ const THEME_LABELS = {
         analyze: 'Собрать сведения',
         analyzing: 'Печатаю',
     },
+    noir: {
+        attraction: 'Притяжение',
+        currency: 'жемчужины',
+        chartMark: '◈',
+        persona: 'Профиль',
+        title: 'Досье',
+        moodTitle: 'Состояние',
+        moodLead: 'Сейчас {он}',
+        feels: 'Под кожей',
+        wants: 'Мотив',
+        fears: 'Слабое место',
+        dream: 'Главная цель',
+        traits: 'Приметы',
+        traitsBase: 'С первой страницы',
+        traitsGained: 'Вписано позже',
+        attitude: 'Как смотрит на тебя',
+        first: 'при первой встрече',
+        now: 'сейчас',
+        chronicle: 'Хроника дела',
+        chronicleEmpty: 'Хроника пока пуста.',
+        whois: 'Кто это?',
+        whoisTraits: 'из досье',
+        empty: 'Досье пока пустое. Страницы появятся после следующего ответа.',
+        noChat: 'Дело не открыто. Открой чат с персонажем.',
+        settings: 'Настройки',
+        rewards: 'Трофеи',
+        shop: 'Закрытый салон',
+        analyze: 'Открыть досье',
+        analyzing: 'Листаю дело',
+    },
     logbook: {
         attraction: 'Притяжение',
         currency: 'кредиты снабжения',
@@ -862,6 +898,7 @@ const TOAST_KICKERS = {
     nav: { want_done: 'Желание сбылось', fear_real: 'Лихо пришло: страх сбылся', fear_gone: 'Лихо отступило', trait_new: 'Проявилась новая черта', trait_up: 'Черта окрепла', trait_down: 'Черта слабеет', trait_gone: 'Черта ушла', dream_step: 'Шаг к Жар-птице', dream_done: 'Жар-птица поймана', dream_change: 'Мечта сменилась', dream_grow: 'Мечта разрослась', impression: 'Первая встреча', attitude: 'Нить натянулась иначе', reward: 'Оберег получен' },
     seance: { want_done: 'Желание сбылось', fear_real: 'Тень явилась: страх сбылся', fear_gone: 'Тень отступила', trait_new: 'Проявилась новая черта', trait_up: 'Черта окрепла', trait_down: 'Черта слабеет', trait_gone: 'Черта растаяла', dream_step: 'Шаг к заветному', dream_done: 'Заветное свершилось', dream_change: 'Духи сказали иное', dream_grow: 'Мечта стала шире', impression: 'Первое явление', attitude: 'Связь дрогнула', reward: 'Подношение принято' },
     dossier: { want_done: 'Мотив реализован', fear_real: 'ВНИМАНИЕ: уязвимость подтвердилась', fear_gone: 'Угроза снята', trait_new: 'Выявлена новая черта', trait_up: 'Черта усилилась', trait_down: 'Черта ослабла', trait_gone: 'Черта утрачена', dream_step: 'Продвижение к цели', dream_done: 'Цель достигнута', dream_change: 'Цель сменилась', dream_grow: 'Цель расширена', impression: 'Новый фигурант', attitude: 'Отношение изменилось', reward: 'Поощрение выдано' },
+    noir: { want_done: 'Желание сбылось', fear_real: 'Слабое место задели: страх сбылся', fear_gone: 'Страх отпустил', trait_new: 'В досье новая примета', trait_up: 'Примета ярче', trait_down: 'Примета бледнеет', trait_gone: 'Примета стёрта', dream_step: 'Шаг к главной цели', dream_done: 'Цель достигнута', impression: 'Новая запись в досье', attitude: 'Взгляд изменился' },
     logbook: { want_done: 'Задача выполнена', fear_real: 'ТРЕВОГА: риск сработал', fear_gone: 'Риск миновал', trait_new: 'Профиль обновлён', trait_up: 'Профиль обновлён', trait_down: 'Профиль обновлён', trait_gone: 'Профиль обновлён', dream_step: 'Курс выдержан', dream_done: 'Пункт назначения достигнут', dream_change: 'Курс изменён', dream_grow: 'Курс продлён', impression: 'Первый контакт', attitude: 'Связь изменилась', reward: 'Груз получен' },
     cyber: { attitude: 'RELATION SHIFT', want_done: 'TASK COMPLETE', fear_real: 'THREAT DETECTED', fear_gone: 'THREAT CLEARED', trait_new: 'PROFILE UPDATE', trait_up: 'PROFILE UPDATE', trait_down: 'PROFILE UPDATE', dream_step: 'DIRECTIVE PROGRESS', dream_done: 'DIRECTIVE COMPLETE', impression: 'NEW CONTACT' },
     vk: { want_done: 'Новое уведомление: желание сбылось', fear_real: 'Новое уведомление: страх сбылся', fear_gone: 'Страх больше не беспокоит', trait_new: 'Обновлена информация: новая черта', trait_up: 'Обновлена информация', trait_down: 'Обновлена информация', dream_step: 'Шаг к мечте', dream_done: 'Мечта сбылась!', attitude: 'Изменилось отношение', impression: 'Новый друг', reward: 'Вам подарок' },
@@ -875,7 +912,7 @@ const ERROR_KICKERS = {
     diary: 'Не получилось', dark: 'Не получилось', sims: 'Ой! Ошибка', grid: 'Ошибка — исправить!',
     vk: 'Ошибка', icq: 'О-оу! Ошибка соединения', telegram: 'Не удалось отправить',
     bimbo: 'Ой-ой, ошибочка…', medieval: 'Худая весть', cyber: 'ERR // сбой', china: 'Кисть сорвалась',
-    herbal: 'Отвар не удался', arcana: 'Карты спутались', seance: 'Связь оборвалась', nav: 'Нить оборвалась', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', pixel: 'GAME OVER? Нет, просто ошибка',
+    herbal: 'Отвар не удался', arcana: 'Карты спутались', seance: 'Связь оборвалась', nav: 'Нить оборвалась', dossier: 'СБОЙ: дело не оформлено', logbook: 'СБОЙ СИСТЕМЫ', noir: 'Страница не загрузилась', pixel: 'GAME OVER? Нет, просто ошибка',
 };
 export function errorKicker(theme) {
     return ERROR_KICKERS[theme] || 'Не получилось';

@@ -536,3 +536,5 @@
 .iw-tok-st .iw-tok-own { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
 .iw-tok-st .iw-tok-own span { opacity: .75; font-size: .9em; }
 .iw-tok-st .iw-tok-own input.text_pole { width: 110px; margin: 0; }
+#iw_fab.iw-theme-noir { --iwf-bg: #120d11; --iwf-paper: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(229, 138, 174, .35), transparent 70%); --iwf-ink: #e8a0b8; --iwf-spine: #c77a97; --iwf-accent: #e8a0b8; }
+#iw_fab.iw-theme-noir .iw-fab-cover { border-radius: 10px; box-shadow: 0 0 12px rgba(229, 138, 174, .45); }
