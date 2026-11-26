@@ -1,5 +1,5 @@
 // Разметка дневника и всплывашек. Только строки — без обращений к таверне.
-import { buyBlock, dedupeSteps, settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName, MEME_PIC } from './core.js';
+import { buyBlock, dedupeSteps, settleMood, cleanKnown, purseOf, isHearsay, isDead, npcWeight, loveFor, loveToAttitude, moodletLeftLabel, WEIGHT_NAMES, WEIGHT_TURNS, eventTitle, eventText, signed, shownAliases, SHOWN_MOODLETS, FACE_NAMES, guessFace, moodFaces, plural, genderOf, gw, PTYPES, PTYPE_GROUPS, ptypeGroup, TEMPERS, ZODIAC, bornText, CHEM_NAMES, ATTRACT_CATALOG, CHEM_SCORE, CHEM_NOW_NAMES, chemLevelOf, CONTEXT_OPTIONS, CATCHUP_OPTIONS, catchUpTokens, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, MODULES, MODULE_NAMES, LIFE_FIELDS, COUNT_WORDS, relStatus, friendLevel, romanceLevel, seedRel, ORIENTS, orientName, MEME_PIC, rumorPlain as rumorPlainIb, EXTRA_MODULES } from './core.js';
 import { ageNow, annivText } from './clock.js';
 import { themeLabels, EVENT_ICONS, BLOCK_ICONS, toastKicker, errorKicker, icon, pictIcon, smileHtml, faceIcon, currencyIcon, bimboNicks, setIconTheme, iconStyle } from './themes.js';
 import { npcBadge } from './npc-icons.js';
@@ -481,8 +481,8 @@ function memePic(m, drawing) {
     return `<div class="iw-meme-pic iw-meme-emo${drawing ? ' iw-meme-drawing' : ''}" style="--mg1:${g[0]};--mg2:${g[1]}"><span>${emo}</span></div>`;
 }
 const ALIGN = ['Законный добрый', 'Нейтральный добрый', 'Хаотичный добрый', 'Законный нейтральный', 'Истинно нейтральный', 'Хаотичный нейтральный', 'Законный злой', 'Нейтральный злой', 'Хаотичный злой'];
-const PAIR = { compare: ['', ''], expect: ['Ожидание', 'Реальность'], before: ['До', 'После'], started: ['Как начиналось', 'Как идёт'] };
-const PAIR_EMO = { expect: ['✨', '🫠'], before: ['🙂', '💀'], started: ['🌱', '🔥'] };
+const PAIR = { compare: ['', ''], expect: ['Ожидание', 'Реальность'], before: ['До', 'После'], started: ['Как начиналось', 'Как идёт'], plan: ['План', 'Реальность'], now: ['Тогда', 'Сейчас'] };
+const PAIR_EMO = { expect: ['✨', '🫠'], before: ['🙂', '💀'], started: ['🌱', '🔥'], plan: ['📋', '🫠'], now: ['🌸', '🥀'] };
 const pct = v => Math.max(0, Math.min(100, Number(v) || 0));
 const stripLbl = (t, lbls) => String(t || '').replace(new RegExp(`^(${lbls.filter(Boolean).join('|')})\\s*[:—-]\\s*`, 'i'), '');
 function memeList(m, L, kind, mark) {
@@ -500,7 +500,7 @@ export function memeBody(m, { drawing = false } = {}) {
     if (f === 'compare') return `<div class="iw-meme-cmp">${L.slice(0, 2).map((l, i) => `<div class="iw-mc-row iw-mc-${i ? 'yes' : 'no'}"><span class="iw-mc-ico" aria-hidden="true">${i ? '😎👉' : '🙅‍♂️'}</span><span>${ce(l.text)}</span></div>`).join('')}</div>`;
     if (PAIR[f]) return `<div class="iw-meme-exp iw-mx-${f}">${L.slice(0, 2).map((l, i) => `<div class="iw-me-col iw-me-${i ? 'real' : 'exp'}"><b>${esc(l.who && f !== 'expect' && l.who.length < 24 ? l.who : PAIR[f][i])}</b><span class="iw-me-emo" aria-hidden="true">${PAIR_EMO[f][i]}</span><span>${ce(stripLbl(l.text, PAIR[f]))}</span></div>`).join('')}</div>`;
     if (f === 'see') return `<div class="iw-meme-see">${m.title ? `<div class="iw-msee-title">${ce(m.title)}</div>` : ''}<div class="iw-msee-grid">${L.slice(0, 4).map((l, i) => `<div class="iw-msee-cell iw-msee-${i}"><b>${esc(l.who || '')}</b><span>${ce(l.text)}</span></div>`).join('')}</div></div>`;
-    if (f === 'nobody' || f === 'me' || f === 'doctor' || f === 'mom' || f === 'therapist' || f === 'interview' || f === 'translator') return `<div class="iw-meme-lines iw-ml-${f}">${m.title ? `<div class="iw-ml-title">${ce(m.title)}</div>` : ''}${L.map(l => `<div class="iw-ml-row"><b>${esc(l.who || '')}:</b>${l.text ? ` <span>${ce(l.text)}</span>` : ''}</div>`).join('')}</div>`;
+    if (['nobody', 'me', 'doctor', 'mom', 'therapist', 'interview', 'translator', 'friend', 'teacher', 'boss', 'grandma', 'inner', 'faq'].includes(f)) return `<div class="iw-meme-lines iw-ml-${f}">${m.title ? `<div class="iw-ml-title">${ce(m.title)}</div>` : ''}${L.map(l => `<div class="iw-ml-row"><b>${esc(l.who || '')}:</b>${l.text ? ` <span>${ce(l.text)}</span>` : ''}</div>`).join('')}</div>`;
     if (f === 'twotypes') return `<div class="iw-meme-lines iw-ml-twotypes"><div class="iw-ml-title">${ce(m.title || 'Есть два типа людей')}</div>${L.slice(0, 3).map((l, i) => `<div class="iw-ml-row iw-tt-${i}"><span>${ce(l.text)}</span></div>`).join('')}</div>`;
     if (f === 'chat' || f === 'groupchat') {
         const who = [];
@@ -509,6 +509,16 @@ export function memeBody(m, { drawing = false } = {}) {
     if (f === 'search') return `<div class="iw-meme-search">${m.title ? `<div class="iw-ms-title">${ce(m.title)}</div>` : ''}${L.map(l => `<div class="iw-ms-row"><i aria-hidden="true">🕘</i><span>${esc(l.text)}</span></div>`).join('')}</div>`;
     if (f === 'autocomplete') return `<div class="iw-meme-search iw-ms-auto"><div class="iw-ms-box"><i aria-hidden="true">🔍</i><span>${esc(m.top || m.title || '')}</span></div>${L.map(l => { const t = String(l.text); const q = String(m.top || m.title || ''); const k = q && t.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0; return `<div class="iw-ms-row"><i aria-hidden="true">🔍</i><span>${esc(t.slice(0, k))}<b>${esc(t.slice(k))}</b></span></div>`; }).join('')}</div>`;
     if (f === 'notifications') return `<div class="iw-meme-lock"><div class="iw-mlk-time">03:47</div>${L.map(l => `<div class="iw-mlk-n"><b>${esc(l.who || 'Сообщение')}</b><span>${ce(l.text)}</span></div>`).join('')}</div>`;
+    if (f === 'average' || f === 'vs' || f === 'chad') return `<div class="iw-meme-vs iw-mvs-${f}">${m.title ? `<div class="iw-mvs-title">${ce(m.title)}</div>` : ''}<div class="iw-mvs-row">${L.slice(0, 2).map((l, i) => `<div class="iw-mvs-side iw-mvs-${i ? 'b' : 'a'}"><b>${esc(l.who || (i ? 'Он' : 'Я'))}</b><span class="iw-mvs-emo" aria-hidden="true">${f === 'chad' ? (i ? '🗿' : '🤓') : (f === 'average' ? (i ? '😎' : '😩') : (i ? '🥊' : '🛡️'))}</span><span>${ce(l.text)}</span></div>`).join('<i class="iw-mvs-x" aria-hidden="true">VS</i>')}</div></div>`;
+    if (f === 'diary') return `<div class="iw-meme-diary"><div class="iw-mdy-date">${ce(m.title || 'Дорогой дневник')}</div><div class="iw-mdy-text">${ce(m.text || '')}</div>${m.who ? `<div class="iw-mdy-who">${esc(m.who)}</div>` : ''}</div>`;
+    if (f === 'certificate') return `<div class="iw-meme-cert"><div class="iw-mct-title">Грамота</div><div class="iw-mct-sub">награждается</div><div class="iw-mct-who">${ce(m.who || m.title || '')}</div><div class="iw-mct-text">${ce(m.text || '')}</div>${m.source ? `<div class="iw-mct-sign">${esc(m.source)}</div>` : ''}<span class="iw-mct-seal" aria-hidden="true">★</span></div>`;
+    if (f === 'wanted') return `<div class="iw-meme-wanted"><div class="iw-mwt-head">Разыскивается</div>${memePic(m, drawing)}<div class="iw-mwt-name">${ce(m.title || m.who || '')}</div>${m.text ? `<div class="iw-mwt-text">${ce(m.text)}</div>` : ''}${m.bottom ? `<div class="iw-mwt-reward">${ce(m.bottom)}</div>` : ''}</div>`;
+    if (f === 'ticket') return `<div class="iw-meme-ticket"><div class="iw-mtk-main"><small>Билет</small><b>${ce(m.title || '')}</b><div class="iw-mtk-rows">${L.map(l => `<span><small>${esc(l.who || '')}</small>${ce(l.text)}</span>`).join('')}</div></div><div class="iw-mtk-stub" aria-hidden="true">№ ${String((Number(m.at) || 7) % 1000).padStart(3, '0')}</div></div>`;
+    if (f === 'tiktok') return `<div class="iw-meme-tiktok">${memePic(m, drawing)}<div class="iw-mtt-side" aria-hidden="true"><span>♥<small>${shortNum(m.likes || 12400)}</small></span><span>💬</span><span>↗</span></div><div class="iw-mtt-cap">${m.who ? `<b>${esc(m.who)}</b>` : ''}<span>${tagged(m.text || '')}</span>${m.source ? `<small>${esc(m.source)}</small>` : ''}</div></div>`;
+    if (f === 'battery') { const v = pct(m.score ?? 12); return `<div class="iw-meme-battery"><div class="iw-mbat-title">${ce(m.title || 'Заряд')}</div><div class="iw-mbat-cell${v <= 20 ? ' iw-mbat-low' : ''}"><i style="width:${v}%"></i><b>${v}%</b></div>${m.bottom || m.text ? `<div class="iw-mbat-cap">${ce(m.bottom || m.text)}</div>` : ''}</div>`; }
+    if (f === 'timeline' || f === 'forecast') return `<div class="iw-meme-timeline iw-mtl-${f}">${m.title ? `<div class="iw-mtl-title">${ce(m.title)}</div>` : ''}${L.map(l => `<div class="iw-mtl-row"><b>${esc(l.who || '')}</b><span>${ce(l.text)}</span></div>`).join('')}</div>`;
+    if (f === 'manual') return memeList(m, L, 'manual', (l, i) => `${i + 1}`);
+    if (f === 'menu') return `<div class="iw-meme-receipt iw-mr-menu">${m.title ? `<div class="iw-mr-title">${esc(m.title)}</div>` : ''}${L.map(l => `<div class="iw-mr-row"><span>${ce(l.text)}</span><i aria-hidden="true"></i><b>${esc(l.who || '')}</b></div>`).join('')}${m.bottom ? `<div class="iw-mr-total">${ce(m.bottom)}</div>` : ''}</div>`;
     if (f === 'top') return memeList(m, L, 'top', (l, i) => `${i + 1}.`);
     if (f === 'redflags') return memeList(m, L, 'red', '🚩');
     if (f === 'greenflags') return memeList(m, L, 'green', '💚');
@@ -547,10 +557,17 @@ export function memeBody(m, { drawing = false } = {}) {
 }
 function memeCard(m, info) {
     const drawing = (info.drawing || []).includes(m.at);
-    const canPic = info.img && m.img && MEME_PIC.includes(m.format || 'macro');
+    const rerolling = (info.rerolling || []).includes(m.at);
+    const own = MEME_PIC.includes(m.format || 'macro');
+    // картинка рисуется только по кнопке и только если подключено расширение картинок
+    const canPic = !!info.img;
+    const extra = !own && m.pic ? `<div class="iw-meme-pic iw-meme-extra"><img src="${esc(m.pic)}" alt="${esc(m.img || 'мем')}" loading="lazy"></div>` : '';
+    const btn = (cls, data, ic, label, title, busy) => `<button type="button" class="iw-meme-draw ${cls}${busy ? ' iw-spin' : ''}" ${data}${busy ? ' disabled' : ''} title="${esc(title)}">${icon(ic)}<span>${esc(label)}</span></button>`;
+    const pic = canPic ? btn('iw-meme-picbtn', `data-iw-meme-pic="${esc(String(m.at))}"`, 'feather', drawing ? 'Рисую…' : (m.pic ? 'Перерисовать' : 'Картинка'), m.pic ? 'Нарисовать картинку заново через расширение картинок' : 'Нарисовать картинку к мему через расширение картинок', drawing) : '';
+    const again = btn('iw-meme-again', `data-iw-meme-again="${esc(String(m.at))}"`, 'rotate', rerolling ? 'Придумываю…' : 'Другой мем', 'Придумать другой мем к той же сцене', rerolling);
     return `<li class="iw-meme iw-mf-${esc(m.format || 'macro')}">
-        ${memeBody(m, { drawing })}
-        ${canPic ? `<div class="iw-meme-meta"><button type="button" class="iw-meme-draw${drawing ? ' iw-spin' : ''}" data-iw-meme-pic="${esc(String(m.at))}"${drawing ? ' disabled' : ''} title="${m.pic ? 'Нарисовать картинку заново' : 'Нарисовать картинку'}">${icon('feather')}<span>${drawing ? 'Рисую…' : (m.pic ? 'Перерисовать' : 'Картинка')}</span></button></div>` : ''}
+        ${extra}${memeBody(m, { drawing })}
+        <div class="iw-meme-meta">${again}${pic}</div>
         <button type="button" class="iw-del iw-hist-x" data-iw-meme-del="${esc(String(m.at))}" title="Убрать этот мем" aria-label="Убрать мем">${icon('x')}</button>
       </li>`;
 }
@@ -1480,8 +1497,7 @@ export function renderClock(clock) {
     if (!clock.t) {
         return `<div class="iw-clock iw-clock-empty">
   <span class="iw-clock-ico">${icon('clock')}</span>
-  <span class="iw-muted">${clock.busy ? 'Определяю календарь и время по истории…' : 'Время сцены пока не понятно.'}</span>
-  ${clock.busy ? '' : `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="detect">${icon('sparkle')}<span>Определить по истории</span></button>`}
+  <span class="iw-muted">${clock.busy ? 'Определяю календарь и время по истории…' : 'Дата и время сцены встанут сами при разборе.'}</span>
 </div>`;
     }
     const cal = clock.cal;
@@ -1838,7 +1854,7 @@ export function renderToast(ev, theme) {
 // model: { clock, cast: [{ name, mood, face, face2, feels: [{ e, w }] , persona }], show: { time, date, weather, events, moods } }
 export function renderInfobarHtml(model, theme, open = false, tab = '') {
     setIconTheme(theme);
-    const { clock, cast = [], show = {}, changes = [] } = model || {};
+    const { clock, cast = [], show = {}, changes = [], rumor = null, meme = null } = model || {};
     // листочек: сверху крупно время (и значки справа), ниже мелко дата, погода и праздник, ещё ниже — герои по строке
     let top = '';
     const parts = [];
@@ -1866,7 +1882,7 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
     // слева столбиком — кто как себя чувствует, справа столбиком — шкалы; оба столбика по центру друг друга
     const relCol = faces.map(x => x.rel).filter(Boolean);
     const castHtml = faces.length ? `<span class="iw-ib-cast${relCol.length ? ' iw-ib-cast2' : ''}"><span class="iw-ib-chips">${faces.map(x => x.chip).join('')}</span>${relCol.length ? `<span class="iw-ib-relcol${relCol.length > 1 ? ' iw-ib-relmany' : ''}">${relCol.join('')}</span>` : ''}</span>` : '';
-    if (!top && !parts.length && !faces.length) return '';
+    if (!top && !parts.length && !faces.length && !rumor && !meme) return '';
     // подробности: то, что есть в дневнике, коротко — настроение уже видно в строке, здесь не повторяем
     // развёрнуто: герои вкладками, у выбранного — по строке на раздел
     const chg = show.changes !== false ? changes : [];
@@ -1877,7 +1893,11 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
     const cur = people.find(x => x.p.key === tab) || people[0];
     const soon = show.soon !== false && show.events !== false && clock && clock.upcoming ? clock.upcoming.filter(e => e.inDays > 0).slice(0, 3) : [];
     const evs = soon.map(e => `<span class="iw-ib-ev">${calIcon(e.kind)}<b>${esc(e.dateText)}</b> ${esc(clockEventText(e))} <em>${esc(clockWhen(e))}</em></span>`).join('');
-    const more = people.length || evs;
+    // слух и мем к этому ответу — отдельным рядом под героями
+    const world = [];
+    if (rumor) world.push(`<div class="iw-ib-sec iw-ib-rumor"><span class="iw-ib-sec-cap">${icon('chat')}Слух</span><span class="iw-ib-wtxt">${rumor.source || rumor.who ? `<b>${esc(rumor.source || rumor.who)}:</b> ` : ''}${esc(rumorPlainIb(rumor))}</span></div>`);
+    if (meme) world.push(`<div class="iw-ib-sec iw-ib-memesec"><span class="iw-ib-sec-cap">${icon('joy')}Мем</span><div class="iw-ib-meme iw-meme iw-mf-${esc(meme.format || 'macro')}">${memeBody(meme)}</div></div>`);
+    const more = people.length || evs || world.length;
     let body = '';
     if (more && open) {
         const tabs = people.map(({ p, chg: pc }) => {
@@ -1890,10 +1910,12 @@ export function renderInfobarHtml(model, theme, open = false, tab = '') {
   ${cur.rows.length ? `<dl class="iw-ib-rows">${cur.rows.join('')}</dl>` : ''}
   ${cur.chg.length ? `<div class="iw-ib-sec iw-ib-chg"><span class="iw-ib-sec-cap" title="Что изменилось у ${esc(ibShortName(cur.p.name))} в дневнике после этого ответа">${icon('sparkle')}Новое после ответа</span><ul>${cur.chg.map(chgLi).join('')}</ul></div>` : ''}` : ''}
   ${evs ? `<div class="iw-ib-sec iw-ib-soon"><span class="iw-ib-sec-cap">${icon('calendar')}Скоро</span><span class="iw-ib-evs">${evs}</span></div>` : ''}
+  ${world.length ? `<div class="iw-ib-world${world.length > 1 ? ' iw-ib-world2' : ''}">${world.join('')}</div>` : ''}
   ${cur ? `<div class="iw-ib-foot"><button type="button" class="iw-ib-open" data-iw-ib-open="${esc(cur.p.key)}">подробнее в дневнике ${icon('arrowright')}</button></div>` : ''}
 </div>`;
     }
-    const end = chg.length || more ? `<span class="iw-ib-end">${chg.length ? `<span class="iw-ib-chgcount" title="Изменилось в дневнике после этого ответа: ${chg.length}">${icon('sparkle')}${chg.length}</span>` : ''}${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}</span>` : '';
+    const flags = `${rumor ? `<span class="iw-ib-flag" title="После этого ответа пошёл слух — разверни">${icon('chat')}</span>` : ''}${meme ? `<span class="iw-ib-flag" title="К этому ответу есть мем — разверни">${icon('joy')}</span>` : ''}`;
+    const end = chg.length || more ? `<span class="iw-ib-end">${flags}${chg.length ? `<span class="iw-ib-chgcount" title="Изменилось в дневнике после этого ответа: ${chg.length}">${icon('sparkle')}${chg.length}</span>` : ''}${more ? `<span class="iw-ib-chev">${icon('chevron')}</span>` : ''}</span>` : '';
     return `<div class="iw-ib-note${open && body ? ' iw-open' : ''}">
 <div class="iw-ib-bar${open ? ' iw-open' : ''}" role="button" tabindex="0" aria-expanded="${open ? 'true' : 'false'}" title="Внутренний мир: нажми — подробности">
   <span class="iw-ib-top">${top || '<span></span>'}${end}</span>
@@ -1922,6 +1944,9 @@ function ibRows(p, show) {
     if (show.fears) row('iw-ib-r-fears', 'Боится', p.fears);
     if (show.night && p.night) row('iw-ib-r-night', 'Сон', p.night.text, p.night.date ? `<em class="iw-ib-when">${esc(ibDay(p.night.date))}</em>` : '');
     if (show.feels && p.feels && p.feels.length) row('iw-ib-r-feels', 'Чувства', p.feels.map(f => `${f.e}${f.why ? ` — ${f.why}` : ''}`));
+    if (show.dream && p.dream) row('iw-ib-r-dream', 'Мечта', p.dream);
+    if (show.traits && p.traits && p.traits.length) row('iw-ib-r-traits', 'Черты', p.traits.join(', '));
+    if (show.life && p.life) row('iw-ib-r-life', 'Брак и дети', p.life);
     return rows;
 }
 
@@ -2063,7 +2088,7 @@ function renderWaiting(name, s, theme, roster) {
       <span class="iw-quick-num">5</span>
       <div class="iw-quick-body">
         <div class="iw-quick-title">Что разбирать</div>
-        <div class="iw-qrow iw-qmods">${MODULES.map(m => `<button type="button" class="iw-qopt${s.modules[m] ? ' on' : ''}" data-iw-mod="${m}" aria-pressed="${!!s.modules[m]}">${esc(MODULE_NAMES[m])}</button>`).join('')}</div>
+        <div class="iw-qrow iw-qmods">${MODULES.map(m => `<button type="button" class="iw-qopt${s.modules[m] !== false ? ' on' : ''}" data-iw-mod="${m}" aria-pressed="${s.modules[m] !== false}">${esc(MODULE_NAMES[m])}</button>`).join('')}${EXTRA_MODULES.map(([k, label]) => `<button type="button" class="iw-qopt${s[k] !== false ? ' on' : ''}" data-iw-mod-set="${k}" aria-pressed="${s[k] !== false}">${esc(label)}</button>`).join('')}</div>
         <div class="iw-quick-hint"><span>Выключенные блоки не разбираются и не тратят токены. Так и останутся выключенными, пока не включишь их в настройках.</span></div>
       </div>
     </div>
@@ -2082,7 +2107,7 @@ function renderWaiting(name, s, theme, roster) {
         <div class="iw-quick-title">Инфоблок в чате</div>
         <div class="iw-qrow">${quickOpt('infobar', 'on', 'добавлять', s.infobar !== false)}${quickOpt('infobar', 'off', 'не нужен', s.infobar === false)}</div>
         ${s.infobar !== false ? `<div class="iw-qrow iw-qrow-sub"><span class="iw-qlabel">Где:</span>${quickOpt('infobarWhere', 'all', 'в каждом ответе', s.infobarWhere !== 'last')}${quickOpt('infobarWhere', 'last', 'только в последнем', s.infobarWhere === 'last')}</div>` : ''}
-        <div class="iw-quick-hint"><span>В начале ответа бота — тонкая плашка в стиле темы: время и дата сцены, погода, праздник, настроение героев. Только для тебя: в текст и в запрос к модели не попадает. Потом можно поменять в настройках, раздел «Оформление».</span></div>
+        <div class="iw-quick-hint"><span>В начале ответа бота — тонкая плашка в стиле темы: время и дата сцены, погода, праздник, настроение героев. Только для тебя: в текст и в запрос к модели не попадает. Потом можно поменять в настройках, раздел «Инфоблок».</span></div>
       </div>
     </div>
     <div class="iw-quick-foot">

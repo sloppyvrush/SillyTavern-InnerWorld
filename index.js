@@ -13,7 +13,7 @@ import {
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
     achGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
-    toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES,
+    toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt,
 } from './src/core.js';
 import { generateImage, findImageExtensions, describeImageExtension } from './src/imagegen.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
@@ -24,11 +24,12 @@ import {
 } from './src/clock.js';
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, themeParts, icon as iconHtml } from './src/themes.js';
+import { lifeText as lifeTextIb } from './src/core.js';
 import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortName, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
 import { renderSettingsForm, applySettingChange, rangeLabel, IMG_STATUS } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.7.2';
+const VERSION = '0.7.3';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -643,7 +644,8 @@ function stepClock(messageId) {
         writeClock(messageId, { t: cur, prev: cur, why: 'locked', size: 0 });
         return;
     }
-    const res = advance(cal, cur, texts, { step: Number(s.clockStep ?? 5) });
+    // время прямо не названо — шаг по смыслу сцены; разбор потом может его поправить (scene_time)
+    const res = advance(cal, cur, texts, { step: 'auto' });
     if (!res || !res.t) return;
     writeClock(messageId, { t: res.t, prev: cur, why: res.why, size: cur ? toMinutes(cal, res.t) - toMinutes(cal, cur) : 0 });
     ctx().saveMetadataDebounced?.();
@@ -787,11 +789,13 @@ function syncClockFromChat() {
 // Календаря нет — или он собран только по метке времени в сообщении (без страны и праздников): спросить модель один раз
 function calendarNeedsModel() {
     const m = chatMeta();
-    if (!m.calendar) return !m.calendarTried;
+    // время так и не встало — пробуем ещё пару раз на следующих разборах
+    if (!m.calendar) return !m.calendarTried || (!m.timeSet && (m.calendarTries || 0) < 3);
     return m.calendar.source === 'stamp' && !m.calendarUp;
 }
 function markCalendarTried() {
     const m = chatMeta();
+    m.calendarTries = (m.calendarTries || 0) + 1;
     if (m.calendar) m.calendarUp = true;
     else m.calendarTried = true;
 }
@@ -1496,6 +1500,15 @@ async function askCardMode() {
     const key = rosterKey();
     if (!key || !hasChat()) return true;
     if (chatEverAnalyzed()) return true;
+    // «Обычный бот / Мультибот» выбирается на первой странице дневника («Перед первым разбором») — отдельно не спрашиваем
+    const r = settings().rosters[key];
+    if (!r || !r.modeSet) {
+        const rs = settings().rosters;
+        rs[key] = Object.assign(emptyRoster(), rs[key] || {}, { modeSet: true });
+        saveSettings();
+    }
+    chatMeta().modeAsked = true;
+    return true;
     if (cardModeAsking) return cardModeAsking;
     cardModeAsking = askCardModeNow(key).finally(() => { cardModeAsking = null; });
     return cardModeAsking;
@@ -2600,7 +2613,7 @@ function renderPanelNow() {
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], drawing: [...memeDrawing], img: !!memeImgCfg(), every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], drawing: [...memeDrawing], rerolling: [...memeRerolling], img: !!memeImgCfg(), every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen });
     masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
@@ -2904,8 +2917,7 @@ function takeExtras(raw, state, messageId) {
         const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now() });
         meta.memes = [...(meta.memes || []), rec].slice(-20);
         changed = true;
-        showEvent({ type: 'meme', who: MEME_FORMAT_NAMES[mm.format] ? `Мем · ${MEME_FORMAT_NAMES[mm.format]}` : 'Мем', text: memePlain(mm), icon: 'joy', meme: mm }, 1600);
-        if (mm.img && memeImgCfg()) setTimeout(() => drawMemeImage(rec.at), 400);
+        // без всплывашки: мем виден в блоке «Мемы» и, если включено, в инфоблоке этого ответа; картинка — только по кнопке
     }
     if (changed) ctx().saveMetadataDebounced?.();
 }
@@ -2934,16 +2946,61 @@ function memePeople(names) {
     return out;
 }
 const memeDrawing = new Set();
+const memeRerolling = new Set();
+// «Другой мем»: отдельная короткая просьба к модели дневника — новый мем к той же сцене на месте старого
+async function rerollMeme(at) {
+    if (!hasChat() || memeRerolling.has(at)) return;
+    const chatId = ctx().getCurrentChatId?.();
+    const list0 = chatMeta().memes || [];
+    const m0 = list0.find(x => x.at === at);
+    if (!m0) return;
+    memeRerolling.add(at);
+    renderAll();
+    try {
+        const c = ctx();
+        const chat = c.chat || [];
+        const upto = Number.isInteger(m0.mes) && m0.mes >= 0 ? Math.min(m0.mes, chat.length - 1) : chat.length - 1;
+        const msgs = [];
+        for (let i = upto; i >= 0 && msgs.length < 6; i--) {
+            const m = chat[i];
+            if (!m || m.is_system || !m.mes) continue;
+            msgs.unshift(`${m.name}: ${cleanMessageText(m.mes, 1200)}`);
+        }
+        const st = currentState();
+        const cast = (st.order || []).slice(0, 6).map(k => st.characters[k]).filter(Boolean).map(ch => `${ch.name}${ch.persona ? ' (персонаж игрока)' : ''}${ch.mood ? ` — ${ch.mood}` : ''}`);
+        const others = list0.filter(x => x.at !== at).slice(-4).map(memePlain);
+        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: [m0.format, ...list0.slice(-6).map(x => x.format)], texts: others, was: memePlain(m0) }, settings().language || 'русском');
+        const raw = await callModel(system, user, withBudget('rewards'));
+        const data = extractJson(raw);
+        const mm = cleanMeme((data && data.meme) || data);
+        if (!mm) throw new Error('модель не прислала мем');
+        if (ctx().getCurrentChatId?.() !== chatId) return;
+        const meta = chatMeta();
+        const idx = (meta.memes || []).findIndex(x => x.at === at);
+        if (idx < 0) return;
+        const old = meta.memes[idx];
+        meta.memes[idx] = Object.assign(mm, { date: old.date, mes: old.mes, at: Date.now() });
+        ctx().saveMetadataDebounced?.();
+    } catch (err) {
+        if (err && err.cancelled) return;
+        console.warn('[Внутренний мир] другой мем', err);
+        notice(`Другой мем не получился: ${String(err && err.message || err).slice(0, 160)}`);
+    } finally {
+        memeRerolling.delete(at);
+        renderAll();
+    }
+}
 async function drawMemeImage(at, { manual = false } = {}) {
     const cfg = memeImgCfg();
     if (!cfg || !hasChat() || memeDrawing.has(at)) return;
     const chatId = ctx().getCurrentChatId?.();
     const m0 = (chatMeta().memes || []).find(x => x.at === at);
-    if (!m0 || !m0.img) return;
+    if (!m0) return;
     memeDrawing.add(at);
     renderAll();
     try {
-        const prompt = `Funny internet meme picture, expressive and comedic, bold simple composition, no text, no letters, no watermark. ${m0.img}`;
+        // старые мемы без описания картинки — рисуем по самому мему
+        const prompt = `Funny internet meme picture, expressive and comedic, bold simple composition, no text, no letters, no watermark. ${m0.img || `A funny reaction picture for this meme: ${memePlain(m0)}`}`;
         const src = await generateImage(prompt, Object.assign({ people: memePeople(m0.cast) }, cfg), ctx());
         if (ctx().getCurrentChatId?.() !== chatId) return;
         const m = (chatMeta().memes || []).find(x => x.at === at);
@@ -3048,6 +3105,9 @@ function infobarModelFor(id) {
                 wants, fears,
                 attitude, attCap, chem, chemTone: now > 0 ? 'pos' : (now < 0 ? 'neg' : 'mid'),
                 night: night && night.text ? { text: night.text, date: night.date || '' } : null,
+                dream: c.dream && c.dream.title ? c.dream.title : '',
+                traits: (c.traits || []).filter(t => t && t.name && t.kind !== 'gone').slice(0, 4).map(t => t.name),
+                life: c.life ? lifeTextIb(c.life) : '',
             });
         }
     } catch (e) { console.warn('[Внутренний мир] инфоблок: герои', e); }
@@ -3083,12 +3143,24 @@ function infobarModelFor(id) {
         }
     } catch (e) { console.warn('[Внутренний мир] инфоблок: изменения', e); }
     const show = { time: s.ibTime, date: s.ibDate, weather: s.ibWeather && s.weather !== false, events: s.ibEvents, moods: s.ibMoods };
-    for (const f of ['Wants', 'Fears', 'Attitude', 'Night', 'Soon', 'Feels']) show[f.toLowerCase()] = !!s['ib' + f];
+    for (const f of ['Wants', 'Fears', 'Attitude', 'Night', 'Soon', 'Feels', 'Dream', 'Traits', 'Life', 'Rumor', 'Meme']) show[f.toLowerCase()] = !!s['ib' + f];
+    if (s.modules && s.modules.dream === false) show.dream = false;
+    if (s.modules && s.modules.traits === false) show.traits = false;
+    if (s.modules && s.modules.life === false) show.life = false;
+    if (s.rumors === false) show.rumor = false;
+    if (s.memes === false) show.meme = false;
+    // слух и мем, которые появились именно после этого ответа
+    let rumor = null, meme = null;
+    try {
+        const meta = hasChat() ? chatMeta() : {};
+        if (show.rumor) rumor = (meta.rumors || []).slice().reverse().find(r => r && r.mes === id) || null;
+        if (show.meme) meme = (meta.memes || []).slice().reverse().find(m => m && m.mes === id) || null;
+    } catch { /* без слухов и мемов */ }
     if (s.dreams === false) show.night = false;
     show.clockOn = s.clock !== false;
     show.changes = s.ibChanges !== false;
     show.rel = s.ibRel !== false && s.ibMoods !== false;
-    return { clock, cast: cast.slice(0, 4), show, changes: changes.slice(0, 8) };
+    return { clock, cast: cast.slice(0, 4), show, changes: changes.slice(0, 8), rumor, meme };
 }
 
 // Разобрать одного НПС по кнопке: карточка заводится, даже если лично в сцене его ещё не было
@@ -3546,7 +3618,7 @@ const TEST_MEMES = [
 ];
 let testMemeIdx = 0;
 async function testMeme() {
-    if (!hasChat()) return showEvent({ type: 'meme', who: 'Проверка', text: 'Открой чат с персонажем — тогда тестовый мем запишется в его дневник.', force: true });
+    if (!hasChat()) return notice('Открой чат с персонажем — тогда тестовый мем запишется в его дневник.');
     const st = currentState();
     const { mains, personaKey } = splitCast(st);
     const bot = mains[0] && st.characters[mains[0]];
@@ -3560,8 +3632,7 @@ async function testMeme() {
     const meta = chatMeta();
     meta.memes = [...(meta.memes || []), m].slice(-20);
     ctx().saveMetadataDebounced?.();
-    showEvent({ type: 'meme', who: `Мем · ${MEME_FORMAT_NAMES[m.format] || ''}`, text: memePlain(m), icon: 'joy', meme: m, force: true });
-    if (m.img && memeImgCfg()) setTimeout(() => drawMemeImage(m.at, { manual: true }), 300);
+    notice(`Тестовый мем «${MEME_FORMAT_NAMES[m.format] || m.format}» добавлен в блок «Мемы».`);
     return renderAll();
 }
 const TEST_RUMORS = [
@@ -3855,6 +3926,7 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwMemePic) return drawMemeImage(Number(t.dataset.iwMemePic), { manual: true });
+    if (t.dataset.iwMemeAgain) return rerollMeme(Number(t.dataset.iwMemeAgain));
     if (t.dataset.iwRumorDel) {
         const id = decodeURIComponent(t.dataset.iwRumorDel);
         const meta = chatMeta();

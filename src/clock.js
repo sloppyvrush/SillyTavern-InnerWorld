@@ -510,6 +510,24 @@ export function stampToTime(cal, cur, st) {
 }
 
 // Новое время после ответа: отметка в тексте важнее всего, потом явный таймскип, потом обычный шаг за ответ.
+// Сколько примерно прошло за обычный ответ, если время прямо не названо: по длине сцены и по тому, что в ней делали.
+// Короткая реплика — минута-две, длинная сцена — дольше; еда, дорога, душ, работа добавляют своё.
+const STEP_CUES = [
+    [/\b(поужина|пообеда|позавтрака|ели\b|съели|доел|трапез|ужин|обед|завтрак)/i, 30],
+    [/\b(ехал|поехал|доехал|дорог[аеу]|в пути|скакал|шли до|дошли|добрались|долет|плыл)/i, 40],
+    [/\b(душ|ванн|переоде|оделся|оделась|собрал(ся|ась)|причесал)/i, 15],
+    [/\b(готовил|приготовил|сварил|испек|убирал|прибрал)/i, 30],
+    [/\b(тренир|спаррин|бег(ал|ом)|работал|читал|писал письмо|занимал)/i, 40],
+    [/\b(поцелу|обнял|обняла|целовал)/i, 3],
+];
+export function guessStep(texts) {
+    const all = (Array.isArray(texts) ? texts : [texts]).filter(Boolean).join('\n');
+    const words = (all.match(/[\p{L}\d]+/gu) || []).length;
+    let m = Math.round(words / 90); // примерно столько минут занимает сцена такой длины
+    for (const [re, add] of STEP_CUES) if (re.test(all)) m = Math.max(m, add);
+    return Math.max(1, Math.min(m, 90));
+}
+
 export function advance(cal, cur, texts, { step = 5 } = {}) {
     const all = (Array.isArray(texts) ? texts : [texts]).filter(Boolean);
     const botText = all[all.length - 1] || '';
@@ -539,7 +557,8 @@ export function advance(cal, cur, texts, { step = 5 } = {}) {
         }
         return { t: skip.t, why: 'skip', size: skip.size };
     }
-    if (step > 0) return { t: addMinutes(cal, cur, step), why: 'step', size: step };
+    const n = step === 'auto' ? guessStep(all) : Number(step) || 0;
+    if (n > 0) return { t: addMinutes(cal, cur, n), why: 'step', size: n };
     return { t: cur, why: 'same', size: 0 };
 }
 

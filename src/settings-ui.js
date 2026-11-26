@@ -16,7 +16,7 @@ export function cap(t) {
 }
 
 // Поля, которые хранятся числом.
-export const NUMERIC_KEYS = ['memeEvery', 'shopEvery', 'every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume', 'clockStep'];
+export const NUMERIC_KEYS = ['memeEvery', 'shopEvery', 'every', 'contextMessages', 'catchUpMessages', 'responseLength', 'budgetCap', 'maxChars', 'injectDepth', 'attrDepth', 'volume'];
 
 const TURN_OPTIONS = n([1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30]);
 
@@ -47,7 +47,6 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'onlyPresent', label: 'Экономия: только те, кто сейчас в сцене', hint: 'Остальные персонажи ждут, пока снова не появятся.' },
                 { type: 'group', label: 'Мир истории', hint: 'Время, погода, сны и слухи вокруг героев.' },
                 { type: 'toggle', key: 'clock', label: 'Часы и календарь сцены', hint: 'Дата и время истории над дневником: сами понимают таймскипы и строчки вида «[02:50 | 08.10.1996]», календарь подстраивается под сеттинг, есть праздники и дни рождения.' },
-                { type: 'select', key: 'clockStep', label: 'Часы сцены: шаг за обычный ответ', options: [[0, 'не двигать — только по тексту'], [1, '1 минута'], [2, '2 минуты'], [5, '5 минут'], [10, '10 минут'], [15, '15 минут'], [30, '30 минут']], show: s => s.clock !== false, hint: 'Это время ВНУТРИ истории, а не то, сколько модель думает или пишет. Каждый ответ бота часы сцены двигаются сами: по отметке времени в ответе, по названной дате, по «через два часа» или «наутро». Если в ответе ничего такого нет — на этот шаг: 5 минут подходят для разговора, 0 — если время у вас стоит, пока его не назовут.' },
                 { type: 'range', key: 'memeEvery', label: 'Как часто мемы', min: 1, max: 30, step: 1, fmt: v => (Number(v) === 1 ? 'каждое сообщение' : `раз в ${v} сообщ.`), show: s => s.memes !== false },
                 { type: 'group', label: 'Награды и витрина', hint: 'Очки за желания, лавка, достижения и картинки памятных вещей.' },
                 { type: 'toggle', key: 'points', label: 'Очки и награды', hint: 'За исполненные желания и мечту персонаж получает очки, на них можно купить награды.' },
@@ -139,13 +138,19 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toggle', key: 'ibEvents', label: 'Праздник или день рождения сегодня', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibMoods', label: 'Настроение героев', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibRel', label: 'Шкалы дружбы и романтики', hint: 'Рядом с героем — две маленькие шкалы, как в дневнике: ноль посередине.', show: s => s.infobar !== false && s.ibMoods !== false },
-                { type: 'sub', label: 'Если развернуть', show: s => s.infobar !== false },
-                { type: 'toggle', key: 'ibChanges', label: 'Что изменилось после ответа', hint: 'Новые желания и страхи, что сбылось, что прошло, перемены в отношении к тебе. В строке — значок с числом перемен.', show: s => s.infobar !== false },
+                { type: 'sub', label: 'Если развернуть: у героев', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibAttitude', label: 'Отношение к тебе', hint: 'Совместимость сейчас и что герой о тебе думает.', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibWants', label: 'Желания', show: s => s.infobar !== false },
                 { type: 'toggle', key: 'ibFears', label: 'Страхи', show: s => s.infobar !== false },
-                { type: 'toggle', key: 'ibNight', label: 'Последний сон', show: s => s.infobar !== false },
+                { type: 'toggle', key: 'ibDream', label: 'Мечта жизни', show: s => s.infobar !== false && s.modules.dream !== false },
+                { type: 'toggle', key: 'ibTraits', label: 'Черты характера', show: s => s.infobar !== false && s.modules.traits !== false },
                 { type: 'toggle', key: 'ibFeels', label: 'Чувства и их причины', hint: 'Само настроение и так видно в строке — это подробнее, из-за чего.', show: s => s.infobar !== false },
+                { type: 'toggle', key: 'ibNight', label: 'Последний сон', show: s => s.infobar !== false && s.dreams !== false },
+                { type: 'toggle', key: 'ibLife', label: 'Брак и дети', show: s => s.infobar !== false && s.modules.life !== false },
+                { type: 'sub', label: 'Если развернуть: к этому ответу', show: s => s.infobar !== false },
+                { type: 'toggle', key: 'ibChanges', label: 'Что изменилось после ответа', hint: 'Новые желания и страхи, что сбылось, что прошло, перемены в отношении к тебе. В строке — значок с числом перемен.', show: s => s.infobar !== false },
+                { type: 'toggle', key: 'ibMeme', label: 'Мем к этому ответу', hint: 'Если после ответа появился мем — он будет в инфоблоке этого ответа, а в строке появится значок. Всплывашек о мемах нет.', show: s => s.infobar !== false && s.memes !== false },
+                { type: 'toggle', key: 'ibRumor', label: 'Слух после этого ответа', show: s => s.infobar !== false && s.rumors !== false },
                 { type: 'toggle', key: 'ibSoon', label: 'Ближайшие праздники и дни рождения', show: s => s.infobar !== false },
             ],
         },
@@ -293,7 +298,8 @@ export function renderSettingsForm(s, { variant = 'st', profiles = [], models = 
             }).join('');
         }
         // в дневнике все разделы свёрнуты, в таверне раскрыты; дальше — как оставил пользователь
-        const isOpen = open[sec.id] !== undefined ? open[sec.id] : st;
+        // и в дневнике, и в таверне разделы сначала свёрнуты; дальше — как оставил пользователь
+        const isOpen = open[sec.id] !== undefined ? open[sec.id] : false;
         return `<details class="iw-f-section"${isOpen ? ' open' : ''} data-iw-sec="${sec.id}"><summary>${esc(sec.title)}</summary><div class="iw-f-body">${fields}</div></details>`;
     }).join('');
     const lang = s.language === 'английском' ? 'en' : 'ru';

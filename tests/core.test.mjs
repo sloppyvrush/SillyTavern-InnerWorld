@@ -1541,7 +1541,7 @@ test('мемы: форматы, «никто:», демотиватор, пер�
     assert.equal(C2.cleanMeme({ format: 'macro' }), null);
     const html = renderToast({ type: 'meme', who: 'Мем', text: C2.memePlain(d), meme: d }, 'diary');
     assert.ok(html.includes('iw-meme-demo'));
-    assert.ok(C2.toastAllowed({ toastKinds: { meme: false } }, 'meme') === false);
+    // о мемах всплывашек больше нет — они только в блоке и в инфоблоке
 });
 test('сны разной формы: обрывки, разговор, знак', () => {
     const f = C2.cleanNightDream({ who: 'Марк', form: 'fragments', lines: ['ворон', 'ключ', 'снег'] });
