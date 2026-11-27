@@ -70,7 +70,7 @@ export const DEFAULT_SETTINGS = {
     responseLength: 4000,
     thinking: 'low',
     attrKeys: 'keys',        // притяжение модели: keys — только к месту по последним сообщениям; always — всё всегда
-    diag: false,             // теги влияния под сообщениями (для проверки)
+    diag: false,             // теги влияния под сообщениями (выключено, в настройках больше нет)
     infobar: true,           // инфоблок над чатом
     infobarWhere: 'all',     // инфоблок в каждом ответе бота или только в последнем
     ibTime: true,
@@ -917,6 +917,7 @@ export function mergeSettings(saved) {
     delete s.memeImgKey;
     delete s.memeImgModel;
     delete s.clockStep; // шаг часов теперь по смыслу сцены
+    s.diag = false; // теги влияния и меню проверки убраны
     if (!(saved && saved.achPct) && saved && saved.achRate) s.achPct = achPctOf({ achRate: saved.achRate });
     s.achPct = achPctOf(s);
     // раньше было два переключателя (вещи и подарки) — теперь один
@@ -2015,6 +2016,8 @@ export function carryOwnEdits(base, own, mesId) {
             c.dream = JSON.parse(JSON.stringify(mine.dream));
             if (mine.dreamChangedAt !== undefined) c.dreamChangedAt = mine.dreamChangedAt;
         }
+        // варианты новой мечты ждут выбора, пока мечта та же
+        if (Array.isArray(mine.dreamOptions) && mine.dreamOptions.length && c.dream && mine.dream && c.dream.title === mine.dream.title) c.dreamOptions = JSON.parse(JSON.stringify(mine.dreamOptions));
         // сны, уже записанные к этому сообщению, не теряются при повторном разборе — к ним добавляются новые
         if (Array.isArray(mine.dreams) && mine.dreams.length) {
             const have = Array.isArray(c.dreams) ? c.dreams.slice() : [];
@@ -2286,6 +2289,34 @@ export const MEME_DEFS = {
     saywithout: { name: 'скажи, не говоря', spec: '"title":"Скажи, что ты [кто], не говоря, что ты [кто]", "who":"кто отвечает (герой)", "text":"его ответ — смешное доказательство"' },
     fact: { name: 'интересный факт', spec: 'паблик «интересных фактов»: "title":"Интересный факт" или «Факт №N», "text":"«факт» о герое или мире, звучит научно, но абсурден", "emoji"' },
     rarephoto: { name: 'редкое фото', pic: true, spec: 'старое фото в сепии: "top":"Редкое фото: [кто и что делает]" или «Найдено в архиве: …», "bottom":"подпись мелко" (можно без), картинка' },
+    // нарисованные: человечки и схемы на вёрстке
+    stick: { name: 'комикс с человечками', need: 2, draw: true, spec: '"title" (можно без), "lines":[{"pose":"поза","who":"кто (коротко)","text":"реплика"}] 2–4 кадра; позы человечков: stand, point, facepalm, shrug, cry, rage, happy, think, run, sit, read, buff, weak, smug, wave, dance, sleep, scared, love, cool' },
+    bellcurve: { name: 'колокол IQ', need: 3, draw: true, spec: 'мем с колоколом: "lines":[{"who":"низкий IQ","text":"простая мысль"},{"who":"средний","text":"сложное нытьё"},{"who":"высокий IQ","text":"та же простая мысль"}] — ровно 3' },
+    trolley: { name: 'дилемма вагонетки', need: 2, draw: true, spec: '"title":"выбор", "who":"кто у рычага", "lines":[{"text":"что на одном пути"},{"text":"что на другом"}]' },
+    exit: { name: 'резкий съезд', need: 2, draw: true, spec: 'машина резко сворачивает с трассы: "who":"машина — кто сворачивает", "lines":[{"text":"прямо — разумное"},{"text":"съезд — то, что он выбирает"}]' },
+    pie: { name: 'круговая диаграмма', need: 2, draw: true, spec: '"title":"Из чего состоит [герой/день]", "lines":[{"text":"доля","val":число}] 2–5 долей, сумма 100' },
+    venn: { name: 'диаграмма Венна', need: 2, draw: true, spec: '"lines":[{"text":"левый круг"},{"text":"правый круг"}], "text":"что на пересечении (панчлайн)"' },
+    graph: { name: 'график', need: 2, draw: true, spec: '"title":"заголовок", "who":"подпись оси", "lines":[{"text":"точка","val":0–100}] 3–5 точек по порядку — линия идёт по val' },
+    captcha: { name: 'капча', need: 4, draw: true, spec: '"title":"Выберите все изображения, где [что-то про героя]", "lines":[{"text":"подпись клетки","val":1 если подходит, 0 если нет}] 6–9 клеток, "emoji" можно' },
+    rpg: { name: 'диалог из ретро-игры', draw: true, spec: '"who":"кто говорит", "text":"реплика", "lines":[{"text":"вариант ответа"}] 2–3 варианта (смешные), "emoji":"портрет"' },
+    sms: { name: 'смс на кнопочном', draw: true, spec: '"who":"от кого", "text":"смс капсом или с опечатками, как в 2007-м", "bottom":"время" (можно без)' },
+    tombstone: { name: 'надгробие', draw: true, spec: '"title":"Здесь покоится [что-то: гордость, план, нервы героя]", "text":"годы или эпитафия"' },
+    tearoff: { name: 'объявление с отрывными', need: 2, draw: true, spec: '"title":"ОБЪЯВЛЕНИЕ / СРОЧНО / ОТДАМ", "text":"текст объявления", "lines":[{"text":"на отрывном листочке"}] 3–6' },
+    homework: { name: 'задача из учебника', draw: true, spec: '"title":"Задача №…", "text":"условие про героев", "bottom":"«решение» школьника — абсурдный ответ", "who":"оценка учителя (2, кол, 5+)"' },
+    mock: { name: 'передразнивание', draw: true, spec: '"who":"кто сказал", "top":"что сказал", "text":"то же самое — его передразнивают (регистр поменяется сам)"' },
+    isthis: { name: 'это что, …?', draw: true, spec: '"who":"кто смотрит", "top":"на что смотрит", "text":"Это что, [неверная догадка]?"' },
+    shrug: { name: 'пожать плечами', draw: true, spec: '"top":"ситуация", "text":"реакция героя одной фразой"' },
+    facepalm: { name: 'фейспалм', draw: true, spec: '"top":"что произошло", "who":"кто держится за лицо"' },
+    buff: { name: 'качок / хлюпик', need: 2, draw: true, spec: '"lines":[{"who":"тогда / они / в мечтах","text":"сильная версия"},{"who":"сейчас / мы / в реальности","text":"жалкая версия"}]' },
+    map: { name: 'карта по мнению…', need: 3, draw: true, spec: '"title":"Карта [места] по мнению [героя]", "lines":[{"text":"область"}] 3–6 областей' },
+    week: { name: 'планы на неделю', need: 4, draw: true, spec: '"title":"Планы [героя]", "lines":[{"who":"Пн","text":"план"}] 4–7 дней, последний ломает шаблон' },
+    wikihow: { name: 'инструкция в 3 шага', need: 3, draw: true, spec: '"title":"Как [сделать что-то] за 3 шага", "lines":[{"pose":"поза","text":"шаг"}] ровно 3; позы человечков: stand, point, facepalm, shrug, cry, rage, happy, think, run, sit, read, buff, weak, smug, wave, dance, sleep, scared, love, cool' },
+    scroll: { name: 'свиток истины', draw: true, spec: '"who":"кто читает", "text":"неприятная правда в свитке"' },
+    dating: { name: 'анкета знакомств', draw: true, spec: '"who":"Имя, возраст", "text":"о себе (смешно)", "lines":[{"text":"интерес-тег"}] 2–4, "emoji":"фото"' },
+    sale: { name: 'карточка товара', draw: true, spec: 'маркетплейс или барахолка: "title":"товар (герой или его вещь)", "text":"описание продавца", "who":"цена", "score":оценка 1–5, "lines":[{"text":"отзыв"}] 0–2' },
+    playlist: { name: 'плейлист героя', need: 3, draw: true, spec: '"title":"название плейлиста", "lines":[{"who":"исполнитель (выдуманный)","text":"название трека"}] 3–6' },
+    wrapped: { name: 'итоги года', need: 3, draw: true, spec: '"title":"[Герой]: итоги года", "lines":[{"who":"цифра или топ-1","text":"за что"}] 3–4' },
+    free: { name: 'свой формат', draw: true, spec: 'ПРИДУМАЙ СВОЙ формат по любому мему, который знаешь из интернета (ВК, пикабу, твиттер, тикток, рилсы, двач-юмор без грязи): "name":"как называется формат", "style":{"bg":"white|black|paper|pink|blue|yellow|green|purple|dark","font":"impact|comic|serif|hand|pixel|mono|lobster|round|bold"}, "blocks":[...] 2–8 блоков по порядку сверху вниз. Блоки: {"t":"text","text":"","size":"s|m|l|xl","align":"left|center"}, {"t":"draw","pose":"поза","label":"подпись"}, {"t":"emoji","emoji":"1–3 эмодзи"}, {"t":"row","items":[{"pose":"поза или пусто","emoji":"или эмодзи","label":"подпись"}]} (2–4 в ряд), {"t":"bubble","who":"","text":""}, {"t":"list","items":["",""]}, {"t":"bar","label":"","val":0–100}, {"t":"stamp","text":"печать капсом"}, {"t":"divider"}; позы человечков: stand, point, facepalm, shrug, cry, rage, happy, think, run, sit, read, buff, weak, smug, wave, dance, sleep, scared, love, cool' },
 };
 export const MEME_FORMATS = Object.keys(MEME_DEFS);
 export const MEME_FORMAT_NAMES = Object.fromEntries(MEME_FORMATS.map(k => [k, MEME_DEFS[k].name]));
@@ -2294,12 +2325,48 @@ export const MEME_PIC = MEME_FORMATS.filter(k => MEME_DEFS[k].pic);
 export function pickMemeFormats(recent = [], n = 14, rnd = Math.random) {
     const pool = MEME_FORMATS.filter(f => !recent.includes(f));
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-    const out = pool.slice(0, n);
-    // как в старых пабликах: в каждой горсти хотя бы четыре мема-картинки
+    const out = pool.slice(0, n).filter(f => f !== 'free');
+    // как в старых пабликах: в каждой горсти хотя бы четыре мема-картинки и четыре нарисованных
     for (const f of pool.slice(n)) { if (out.filter(x => MEME_DEFS[x].pic).length >= 4) break; if (MEME_DEFS[f].pic) out.push(f); }
+    for (const f of pool.slice(n)) { if (out.filter(x => MEME_DEFS[x].draw).length >= 4) break; if (MEME_DEFS[f].draw && f !== 'free' && !out.includes(f)) out.push(f); }
+    // свой формат по мемам из интернета — всегда в горсти, если не был только что
+    if (!recent.slice(-2).includes('free')) out.push('free');
     return out;
 }
-const MEME_ALIAS = { 'pikabu': 'story', 'loveisnt': 'loveis', 'bebill': 'bebill', 'belike': 'bebill', 'comics': 'comic', 'meme': 'macro', 'image': 'macro', 'picture': 'macro', 'face': 'reaction', 'myface': 'reaction', 'beforeafter': 'before', 'howitstarted': 'started', 'starterpack': 'starter', 'tierlist': 'tier', 'alignment': 'align', 'redflag': 'redflags', 'greenflag': 'greenflags', 'todo': 'checklist', 'patchnotes': 'patch', 'mastercard': 'priceless', 'progress': 'loading', 'story': 'poll', 'post': 'tweet', 'dialog': 'chat', 'group': 'groupchat', 'google': 'autocomplete' };
+const MEME_ALIAS = { 'custom': 'free', 'own': 'free', 'iq': 'bellcurve', 'bell': 'bellcurve', 'trolleyproblem': 'trolley', 'highway': 'exit', 'chart': 'graph', 'piechart': 'pie', 'tinder': 'dating', 'product': 'sale', 'avito': 'sale', 'tombstone': 'tombstone', 'grave': 'tombstone', 'pikabu': 'story', 'loveisnt': 'loveis', 'bebill': 'bebill', 'belike': 'bebill', 'comics': 'comic', 'meme': 'macro', 'image': 'macro', 'picture': 'macro', 'face': 'reaction', 'myface': 'reaction', 'beforeafter': 'before', 'howitstarted': 'started', 'starterpack': 'starter', 'tierlist': 'tier', 'alignment': 'align', 'redflag': 'redflags', 'greenflag': 'greenflags', 'todo': 'checklist', 'patchnotes': 'patch', 'mastercard': 'priceless', 'progress': 'loading', 'story': 'poll', 'post': 'tweet', 'dialog': 'chat', 'group': 'groupchat', 'google': 'autocomplete' };
+// Позы нарисованных человечков в мемах
+export const MEME_POSES = ['stand', 'point', 'facepalm', 'shrug', 'cry', 'rage', 'happy', 'think', 'run', 'sit', 'read', 'buff', 'weak', 'smug', 'wave', 'dance', 'sleep', 'scared', 'love', 'cool'];
+const POSE_ALIAS = { idle: 'stand', standing: 'stand', pointing: 'point', crying: 'cry', sad: 'cry', angry: 'rage', mad: 'rage', joy: 'happy', thinking: 'think', running: 'run', sitting: 'sit', reading: 'read', strong: 'buff', muscle: 'buff', tired: 'weak', proud: 'smug', hello: 'wave', sleeping: 'sleep', fear: 'scared', shocked: 'scared', heart: 'love' };
+export function memePose(v) {
+    const k = String(v || '').toLowerCase().trim();
+    return MEME_POSES.includes(k) ? k : (POSE_ALIAS[k] || '');
+}
+const FREE_BG = ['white', 'black', 'paper', 'pink', 'blue', 'yellow', 'green', 'purple', 'dark'];
+const FREE_FONT = ['impact', 'comic', 'serif', 'hand', 'pixel', 'mono', 'lobster', 'round', 'bold'];
+// «Свой формат»: модель собирает мем из блоков, а мы проверяем каждый
+function cleanFreeMeme(raw) {
+    const st = raw.style && typeof raw.style === 'object' ? raw.style : {};
+    const bg = String(st.bg || raw.bg || '').toLowerCase(), font = String(st.font || raw.font || '').toLowerCase();
+    const blocks = [];
+    for (const b of (Array.isArray(raw.blocks) ? raw.blocks : []).slice(0, 10)) {
+        if (!b || typeof b !== 'object') continue;
+        const t = String(b.t || b.type || '').toLowerCase();
+        if (t === 'text' && cut(b.text, 200)) blocks.push({ t, text: cut(b.text, 200), size: ['s', 'm', 'l', 'xl'].includes(b.size) ? b.size : 'm', align: b.align === 'left' ? 'left' : 'center' });
+        else if (t === 'draw') blocks.push({ t, pose: memePose(b.pose) || 'stand', label: cut(b.label || b.text, 80) });
+        else if (t === 'emoji' && cut(b.emoji, 12)) blocks.push({ t, emoji: cut(b.emoji, 12) });
+        else if (t === 'row') {
+            const items = (Array.isArray(b.items) ? b.items : []).slice(0, 4).map(x => x && typeof x === 'object' ? { pose: memePose(x.pose), emoji: cut(x.emoji, 8), label: cut(x.label || x.text, 60) } : { label: cut(x, 60) }).filter(x => x.pose || x.emoji || x.label);
+            if (items.length) blocks.push({ t, items });
+        } else if (t === 'bubble' && cut(b.text, 200)) blocks.push({ t, who: capFirst(cut(b.who, 40)), text: cut(b.text, 200) });
+        else if (t === 'list') { const items = (Array.isArray(b.items) ? b.items : []).map(x => cut(typeof x === 'object' && x ? x.text : x, 120)).filter(Boolean).slice(0, 6); if (items.length) blocks.push({ t, items }); }
+        else if (t === 'bar') { const v = Math.round(Number(b.val ?? b.value)); blocks.push({ t, label: cut(b.label || b.text, 80), val: Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50 }); }
+        else if (t === 'stamp' && cut(b.text, 40)) blocks.push({ t, text: cut(b.text, 40) });
+        else if (t === 'divider') blocks.push({ t });
+        if (blocks.length >= 8) break;
+    }
+    if (blocks.filter(b => b.t !== 'divider').length < 2) return null;
+    return { name: cut(raw.name || raw.title, 60), bg: FREE_BG.includes(bg) ? bg : 'white', font: FREE_FONT.includes(font) ? font : 'bold', blocks };
+}
 // Подпись паблика — только у части мемов: если у одного из двух последних уже была, у нового убираем
 export function memePublicGate(mm, list) {
     if (mm && mm.public && (list || []).slice(-2).some(x => x && x.public)) mm.public = '';
@@ -2314,21 +2381,32 @@ export function cleanMeme(raw) {
         .map(l => {
             if (!l || typeof l !== 'object') return { who: '', text: cut(l, 160) };
             const o = { who: capFirst(cut(l.who || l.name || l.label, 40)), text: cut(l.text || l.say, 160) };
+            const ps = memePose(l.pose);
+            if (ps) o.pose = ps;
             const v = num(l.val ?? l.value ?? l.pct);
             if (v !== null) o.val = Math.max(0, Math.min(100, v));
             return o;
         })
-        .filter(l => l.text || ((format === 'nobody' || format === 'stats') && l.who)).slice(0, format === 'bingo' || format === 'align' ? 9 : 6);
+        .filter(l => l.text || ((format === 'nobody' || format === 'stats') && l.who)).slice(0, ['bingo', 'align', 'captcha'].includes(format) ? 9 : format === 'week' ? 7 : 6);
     const need = (MEME_DEFS[format] || {}).need || 0;
     if (need && lines.length < need) format = format === 'align' && lines.length >= 3 ? 'top' : 'macro';
     const top = cut(raw.top, 120), bottom = cut(raw.bottom, 120), title = cut(raw.title, 120), text = cut(raw.text, 280);
     const out = { format, top, bottom, title, text, lines, emoji: cut(raw.emoji, 12), public: capFirst(cut(raw.public || raw.channel, 50)), who: cut(raw.who || raw.author, 60), source: cut(raw.source || raw.handle, 60) };
+    if (format === 'free') {
+        const fr = cleanFreeMeme(raw);
+        if (fr) Object.assign(out, fr);
+        else if (!top && !bottom && !title && !text && !lines.length) return null;
+        else out.format = format = 'macro';
+    }
+    const pose = memePose(raw.pose);
+    if (pose) out.pose = pose;
     // в меме должна быть хоть одна подпись
-    if (!top && !bottom && !title && !text && !lines.length) return null;
+    if (!top && !bottom && !title && !text && !lines.length && !out.blocks) return null;
     for (const k of Object.keys(out)) if (out[k] === '' || (Array.isArray(out[k]) && !out[k].length)) delete out[k];
     out.format = format;
     const sc = num(raw.score ?? raw.level ?? raw.percent ?? raw.stars);
-    if (sc !== null && format === 'story') out.score = Math.max(-999, Math.min(99999, sc));
+    if (sc !== null && format === 'sale') out.score = Math.max(1, Math.min(5, sc));
+    else if (sc !== null && format === 'story') out.score = Math.max(-999, Math.min(99999, sc));
     else if (sc !== null && ['meter', 'loading', 'review', 'battery'].includes(format)) out.score = format === 'review' ? Math.max(1, Math.min(5, sc)) : Math.max(0, Math.min(100, sc));
     const n = v => { const x = Math.round(Number(v)); return Number.isFinite(x) && x > 0 ? Math.min(x, 9999999) : 0; };
     if (format === 'tweet' || format === 'tiktok') { if (n(raw.likes)) out.likes = n(raw.likes); if (n(raw.reposts)) out.reposts = n(raw.reposts); }
@@ -2346,9 +2424,13 @@ export function capFirst(t) {
     return x ? x[0].toLocaleUpperCase('ru') + x.slice(1) : x;
 }
 // Формы слуха: болтовня, подслушанный разговор, газета, глашатай, пост в сети, записка/листовка.
-export const RUMOR_FORMS = ['talk', 'dialog', 'news', 'herald', 'post', 'note'];
-export const RUMOR_FORM_NAMES = { talk: 'сплетня', dialog: 'подслушано', news: 'газета', herald: 'глашатай', post: 'пост', note: 'записка' };
-const RUMOR_FORM_RU = { 'сплетня': 'talk', 'болтовня': 'talk', 'разговор': 'dialog', 'диалог': 'dialog', 'шепот': 'dialog', 'шёпот': 'dialog', 'газета': 'news', 'новость': 'news', 'статья': 'news', 'news': 'news', 'article': 'news', 'глашатай': 'herald', 'указ': 'herald', 'объявление': 'herald', 'пост': 'post', 'твит': 'post', 'tweet': 'post', 'репост': 'post', 'ретвит': 'post', 'инстаграм': 'post', 'instagram': 'post', 'сторис': 'post', 'чат': 'post', 'форум': 'post', 'записка': 'note', 'листовка': 'note', 'письмо': 'note', 'надпись': 'note', 'граффити': 'note', 'letter': 'note' };
+export const RUMOR_FORMS = ['talk', 'whisper', 'dialog', 'report', 'news', 'herald', 'post', 'note'];
+export const RUMOR_FORM_NAMES = { talk: 'сплетня', whisper: 'шепчутся', dialog: 'подслушано', report: 'донесение', news: 'газета', herald: 'глашатай', post: 'пост', note: 'записка' };
+// Эпоха мира — от неё зависит, как слух выглядит: шёпот на балу, газета, пост или перехват в сети
+export const RUMOR_ERAS = ['medieval', 'retro', 'steam', 'modern', 'cyber'];
+const RUMOR_ERA_RU = { 'средневековье': 'medieval', 'фэнтези': 'medieval', 'fantasy': 'medieval', 'ancient': 'medieval', 'древность': 'medieval', 'восток': 'medieval', 'eastern': 'medieval', 'xix': 'retro', 'victorian': 'retro', 'викторианская': 'retro', 'нуар': 'retro', 'noir': 'retro', 'стимпанк': 'steam', 'steampunk': 'steam', 'современность': 'modern', 'present': 'modern', 'киберпанк': 'cyber', 'cyberpunk': 'cyber', 'будущее': 'cyber', 'future': 'cyber', 'scifi': 'cyber', 'космос': 'cyber', 'space': 'cyber', 'постапокалипсис': 'medieval', 'postapoc': 'medieval' };
+export function rumorEra(v) { const k = String(v || '').toLowerCase().trim(); return RUMOR_ERAS.includes(k) ? k : (RUMOR_ERA_RU[k] || ''); }
+const RUMOR_FORM_RU = { 'сплетня': 'talk', 'болтовня': 'talk', 'разговор': 'dialog', 'диалог': 'dialog', 'шепот': 'dialog', 'шёпот': 'dialog', 'доклад': 'report', 'донесение': 'report', 'донос': 'report', 'отчёт': 'report', 'отчет': 'report', 'докладывает': 'report', 'report': 'report', 'газета': 'news', 'новость': 'news', 'статья': 'news', 'news': 'news', 'article': 'news', 'глашатай': 'herald', 'указ': 'herald', 'объявление': 'herald', 'пост': 'post', 'твит': 'post', 'tweet': 'post', 'репост': 'post', 'ретвит': 'post', 'инстаграм': 'post', 'instagram': 'post', 'сторис': 'post', 'чат': 'post', 'форум': 'post', 'записка': 'note', 'листовка': 'note', 'письмо': 'note', 'надпись': 'note', 'граффити': 'note', 'letter': 'note' };
 
 export function cleanRumor(raw) {
     if (!raw || typeof raw !== 'object') return null;
@@ -2357,22 +2439,29 @@ export function cleanRumor(raw) {
     const lines = (Array.isArray(raw.lines) ? raw.lines : [])
         .map(l => (l && typeof l === 'object') ? { who: capFirst(cut(l.who || l.name, 40)), text: capFirst(cut(l.text || l.say, 200)) } : { who: '', text: capFirst(cut(l, 200)) })
         .filter(l => l.text).slice(0, 5);
-    if (!form) form = lines.length >= 2 ? 'dialog' : 'talk';
-    if (form === 'dialog' && lines.length < 2) form = 'talk';
+    const era = rumorEra(raw.era);
+    if (!form) form = lines.length >= 2 ? (era === 'modern' || era === 'cyber' ? 'dialog' : 'whisper') : 'talk';
+    // в мире без сетей и мессенджеров: переписка становится шёпотом, пост — запиской
+    if (['medieval', 'retro', 'steam'].includes(era)) { if (form === 'dialog') form = 'whisper'; if (form === 'post') form = 'note'; }
+    if ((form === 'dialog' || form === 'whisper') && lines.length < 2) form = 'talk';
     let text = cut(raw.text, 240);
-    if (!text && form === 'dialog') text = cut(lines.map(l => `${l.who ? l.who + ': ' : ''}${l.text}`).join(' — '), 240);
+    if (!text && (form === 'dialog' || form === 'whisper')) text = cut(lines.map(l => `${l.who ? l.who + ': ' : ''}${l.text}`).join(' — '), 240);
     if (!text) return null;
     const tr = String(raw.truth ?? '').toLowerCase();
     const about = cut(raw.about, 60);
-    const town = /^(город|город[ае]?|все|всех|двор|столиц|деревн|округ|town|city|everyone)/i.test(about || '');
+    const town = /^(town|city|город|весь город)$/i.test(String(raw.scope || '').trim()) || /^(город|город[ае]?|все|всех|двор|столиц|деревн|округ|town|city|everyone)/i.test(about || '');
     const out = { who: capFirst(cut(raw.who, 60)), about: town ? '' : about, text: capFirst(text), truth: tr === 'true' || tr === 'правда' ? 'true' : (tr === 'false' || tr === 'ложь' ? 'false' : 'half') };
     if (town) out.town = true;
     if (form !== 'talk') out.form = form;
-    if (form === 'dialog') out.lines = lines;
+    if (form === 'dialog' || form === 'whisper') out.lines = lines;
+    if (era) out.era = era;
+    const place = cut(raw.place || raw.where, 60);
+    if (place && form !== 'news' && form !== 'post') out.place = capFirst(place);
+    if (form === 'report') { const to = cut(raw.to || raw.whom || raw.addressee, 60); if (to) out.to = capFirst(to); }
     const title = cut(raw.title || raw.headline, 120);
     if (title && (form === 'news' || form === 'post' || form === 'herald' || form === 'note')) out.title = title;
     const source = cut(raw.source || raw.handle || raw.paper, 60);
-    if (source && form !== 'talk' && form !== 'dialog') out.source = /^@/.test(source) ? source : capFirst(source);
+    if (source && !['talk', 'dialog', 'whisper'].includes(form)) out.source = /^@/.test(source) ? source : capFirst(source);
     if (form === 'post') {
         const via = cut(raw.via || raw.platform, 30);
         if (via) out.via = via;
@@ -2529,12 +2618,12 @@ export function buildSystemPrompt(settings, ctx) {
     if (settings.modules.life !== false) rules.push(`Брак и дети (как в «Симс») — плоскими полями персонажа: want_marry — хочет ли в брак: yes / maybe (не против) / no / unknown; kids_attitude — как относится к детям вообще: love / neutral / dislike / unknown; want_kids — хочет ли своих детей: want / maybe / no / unknown; kids_when — когда: now / later / never / unknown; kids_count — сколько хотел бы, 0 — неизвестно (если want_kids: no — kids_when и kids_count не пиши); family_why — коротко, откуда такие взгляды. Бери из карточки, лорбука и чата; если не ясно — unknown, не выдумывай. Для персонажей с no_family: true и для новых главных эти поля пиши обязательно — даже если всё unknown; персоне игрока, животным и детям — не пиши. Дальше взгляды меняются только по сильному событию истории (предложение, беременность, рождение, развод, потеря, долгий серьёзный разговор): тогда верни эти поля с новыми значениями, family_changed: true и family_why — что случилось. Без такого события не пиши их.`);
     if (ctx.clockNow) rules.push('scene_time — часы сцены, только по сообщениям чата (карточка и лорбук здесь не в счёт, даже если там написана другая дата): в запросе есть [Часы сцены] — какое время сейчас по дневнику. Верни scene_time на верхнем уровне JSON, рядом с characters, только если по последним сообщениям ясно, что время стало другим (прямо названо, наступило утро, прошёл вечер, долгая поездка): {"time":"ЧЧ:ММ","date":"ГГГГ-ММ-ДД" или null,"said":"дословный кусок сообщения, где названа дата, до 8 слов, или null","flashback":false}. Если дата прямо названа в последних сообщениях (в отметке, в повествовании, в письме или газете «сегодня», «наступило 9 мая») и она не совпадает с [Часами сцены] — обязательно верни её с said, даже если дневник сильно отстал или убежал вперёд: дата из чата важнее часов дневника. Если время в последних сообщениях не названо — оцени по самим действиям, сколько примерно прошло с [Часов сцены]: короткий разговор — несколько минут, долгий разговор — полчаса и больше, ужин — около часа, дорога — сколько она обычно занимает, сон — до утра; и если по твоей оценке сейчас другое время (разница больше 10 минут) — верни scene_time с этим временем без said. Без прямо названной даты время только идёт вперёд. Дата в прямой речи о будущем или прошлом («в субботу 9 мая у меня…», «помнишь, в марте…») — не сегодняшняя, её не бери. Если сцена — воспоминание о прошлом, верни flashback: true. Если ничего не ясно — не пиши scene_time.');
     if (settings.achievements !== false && ctx.messages && ctx.messages.length) {
-        rules.push(`achievement — достижение, как в Steam. Пиши его на верхнем уровне JSON, рядом с characters, когда сама ситуация «просится» в ачивку. ${achRule(settings)} Поводы: веха сюжета (первая встреча, первый поцелуй, признание, раскрытая тайна, переломный момент); подвиг — кто-то сделал что-то сверх обычного (спас, рискнул, выиграл безнадёжное, провернул дерзкий план); забавная или абсурдная ситуация (нелепый провал, неловкость, комичное совпадение, кто-то уснул на допросе); милый момент (забота, трогательный жест); мрачное (предательство, потеря, жестокий выбор); тайное (герой узнал то, что от него прятали). Пустой разговор без события или повтор того, что уже было, — не повод: тогда achievement не пиши вовсе. Название — как у ачивок в Steam: коротко, остроумно, с характером, можно с иронией, отсылкой или игрой слов («Чай, а не яд», «Мастер неловких пауз», «Не в этот раз, смерть», «Кто здесь?», «Держи дистанцию… не вышло»), а не скучное описание события. desc — что именно случилось, одной фразой, тоже живо, как подпись к ачивке («Пережить ночь в доме, где кто-то ходит по чердаку»). icon — значок ПО СМЫСЛУ события: ${Object.entries({ trophy: 'победа', star: 'первый раз', crown: 'триумф', heart: 'любовь', lips: 'поцелуй', flower: 'ухаживание', gift: 'подарок', cake: 'праздник', cup: 'чай/кофе', potion: 'алкоголь/зелье', shield: 'спасение', flame: 'драка/страсть', key: 'тайна', lock: 'секрет', ghost: 'мистика/страх', eye: 'слежка', letter: 'письмо', scroll: 'договор', book: 'знание', feather: 'стихи', note: 'песня', dice: 'азарт', coin: 'деньги', gem: 'сокровище', sun: 'утро', moon: 'ночь', clock: 'опоздание', chat: 'болтовня', users: 'компания', sparkle: 'чудо', alert: 'опасность', trash: 'провал' }).map(([k, v]) => `${k} — ${v}`).join(', ')}; для смешного, милого и неловкого — лицо: joy, playful, shy, dazed (пьян/оглушён), confused, surprise, tired, angry, sad, fear, love, flirty, guilt, pride, suspicious. kind — характер: story (сюжет), feat (подвиг), funny (забавное), cute (милое), romance (романтика), dark (мрачное), secret (тайное). tier — bronze (мелочь, шутка, маленький шаг), silver (заметное), gold (крупное, меняет историю). Формат: {"title":"","desc":"","icon":"","kind":"","tier":""}.${ctx.achTitles && ctx.achTitles.length ? ` Уже получены (не повторяй и не перефразируй): ${ctx.achTitles.join('; ')}.` : ''}`);
+        rules.push(`achievement — достижение, как в Steam. Пиши его на верхнем уровне JSON, рядом с characters, когда сама ситуация «просится» в ачивку. ${achRule(settings)} Поводы: веха сюжета (первая встреча, первый поцелуй, признание, раскрытая тайна, переломный момент); подвиг — кто-то сделал что-то сверх обычного (спас, рискнул, выиграл безнадёжное, провернул дерзкий план); забавная или абсурдная ситуация (нелепый провал, неловкость, комичное совпадение, кто-то уснул на допросе); милый момент (забота, трогательный жест); мрачное (предательство, потеря, жестокий выбор); тайное (герой узнал то, что от него прятали). Обычный разговор, мелкий шаг или повтор того, что уже было, — не повод: тогда achievement не пиши вовсе. Название — как у ачивок в Steam: коротко, остроумно, с характером, можно с иронией, отсылкой или игрой слов («Чай, а не яд», «Мастер неловких пауз», «Не в этот раз, смерть», «Кто здесь?», «Держи дистанцию… не вышло»), а не скучное описание события. desc — что именно случилось, одной фразой, тоже живо, как подпись к ачивке («Пережить ночь в доме, где кто-то ходит по чердаку»). icon — значок ПО СМЫСЛУ события: ${Object.entries({ trophy: 'победа', star: 'первый раз', crown: 'триумф', heart: 'любовь', lips: 'поцелуй', flower: 'ухаживание', gift: 'подарок', cake: 'праздник', cup: 'чай/кофе', potion: 'алкоголь/зелье', shield: 'спасение', flame: 'драка/страсть', key: 'тайна', lock: 'секрет', ghost: 'мистика/страх', eye: 'слежка', letter: 'письмо', scroll: 'договор', book: 'знание', feather: 'стихи', note: 'песня', dice: 'азарт', coin: 'деньги', gem: 'сокровище', sun: 'утро', moon: 'ночь', clock: 'опоздание', chat: 'болтовня', users: 'компания', sparkle: 'чудо', alert: 'опасность', trash: 'провал' }).map(([k, v]) => `${k} — ${v}`).join(', ')}; для смешного, милого и неловкого — лицо: joy, playful, shy, dazed (пьян/оглушён), confused, surprise, tired, angry, sad, fear, love, flirty, guilt, pride, suspicious. kind — характер: story (сюжет), feat (подвиг), funny (забавное), cute (милое), romance (романтика), dark (мрачное), secret (тайное). tier — bronze (обычное), silver (заметное), gold (редкое, меняет историю). Формат: {"title":"","desc":"","icon":"","kind":"","tier":""}.${ctx.achTitles && ctx.achTitles.length ? ` Уже получены (не повторяй и не перефразируй): ${ctx.achTitles.join('; ')}.` : ''}`);
     }
     rules.push('Если в [Текущем состоянии] указано, что персонажей нет в сцене, — их не возвращай.');
     if (ctx.clockNow && settings.weather !== false) rules.push(`weather — погода в сцене, на верхнем уровне JSON рядом с characters: {"sky":"${WEATHER_SKIES.join('|')}","temp":"градусы числом или null","note":"2–5 слов, как ощущается"}. Пиши, только если погода прямо описана в последних сообщениях или явно сменилась${ctx.weatherNow ? ` (сейчас в дневнике: ${ctx.weatherNow})` : '; погоды в дневнике ещё нет — можешь назвать правдоподобную по месту, эпохе и времени года'}. Если не ясно и не изменилось — не пиши.`);
     if (settings.dreams !== false && !ctx.firstRun) rules.push(`night_dream — сны. Ночь прошла, если в последних сообщениях кто-то лёг спать, уснул или проснулся, если сцена «наутро» или «на следующий день»${ctx.nightPassed ? ', а ещё — ПО ЧАСАМ СЦЕНЫ ночь уже прошла (см. [Часы сцены])' : ''}. Тогда верни на верхнем уровне JSON список: "night_dream":[{"who":"имя","thought":"о чём думал, засыпая — его голосом, одна фраза","text":"что снилось — 1–2 образные фразы","tone":"${DREAM_TONES.join('|')}","form":"${DREAM_FORMS.join('|')}"}] — по одному сну на каждого главного героя, который спал этой ночью${settings.persona !== false ? `, и на ${user} тоже (сон ${user} — только для дневника игрока: по событиям дня и чувствам, без новых поступков и решений за ${user})` : ''}. Сам сон в чате описывать не обязательно: если ночь прошла, а что снилось — не сказано, придумай сон по событиям дня, страхам и желаниям героя; если сон описан в тексте — бери его. Если ночь не прошла — не пиши. Сны бывают разные — выбирай форму "form" и чередуй её от ночи к ночи: scene — сцена сна (text); fragments — обрывки, "lines":["образ","образ","образ"] 3–4 коротких кадра, как вспоминаешь утром; dialog — разговор во сне, "lines":[{"who":"кто","text":"реплика"}] 2–4 реплики (с кем-то из жизни, умершим, собой в детстве, странным незнакомцем), text — суть в одной фразе; memory — сон-воспоминание о прошлом, "when":"когда это было (в детстве, год назад…)"; symbol — сон-знак, "symbol":"главный образ одним-двумя словами (ключ, ворон, разбитое зеркало)", text — что он значит для героя; recurring — давний повторяющийся сон, который вернулся. Сны — по сеттингу и характеру: у воина — поле боя, у мага — видения, у современного героя — бытовой абсурд вроде экзамена, к которому не готов.${ctx.lastDream ? ` Уже записаны сны: ${ctx.lastDream} — за ту же ночь не повторяй.` : ''}`);
-    if (settings.rumors !== false && !ctx.firstRun && ctx.rumorDue !== 'no') rules.push(`rumor — слух: на верхнем уровне JSON {"form":"talk|dialog|news|herald|post|note","who":"кто разносит","about":"о ком (имя) или «город», если это общее событие","text":"суть слуха","truth":"true|half|false"} и поля по форме. Формы: talk — сплетня одной живой фразой; dialog — подслушанный разговор, "lines":[{"who":"кто","text":"реплика"}] 2–4 реплики (шёпот служанок на кухне, бабки у подъезда, стражники у ворот, коллеги в курилке), text — суть в двух словах; news — заметка, "source":"название газеты/канала","title":"заголовок", text — пара фраз в газетном стиле; herald — глашатай, указ, объявление на площади или по радио, "source":"кто объявляет", text — как зачитывают; post — пост в сети, "source":"автор или @ник","via":"где (X, Instagram, Telegram, форум, чат дома…)", text — сам пост с хэштегами или эмодзи, если к месту, можно "likes" и "reposts" числами (репост, ретвит — тоже post); note — записка, листовка, надпись на стене, анонимное письмо, "source":"где нашли". ВЫБИРАЙ ФОРМУ ПО СЕТТИНГУ И ЭПОХЕ: средневековье и фэнтези — шёпот слуг, глашатай, листовка, сплетни в таверне, никаких соцсетей; XIX — середина XX века — газета, письма, разговоры; современность — посты, репосты, сторис, чаты, бабки у подъезда, новостные каналы; будущее и киберпанк — ленты, форумы, взломанные экраны. Чередуй формы: не повторяй форму прошлого слуха${ctx.rumorForms && ctx.rumorForms.length ? ` (прошлые: ${ctx.rumorForms.join(', ')})` : ''}. Не начинай с «Говорят» и «Ходят слухи» — пиши голосом того, кто разносит. Повод: что-то заметное — героев видели вместе, ссора или скандал на людях, подвиг, странный поступок, новость о важной персоне; или событие, которое касается всех вокруг (пожар, свадьба наследника, приезд гостей, налог, эпидемия, война, ограбление). Слух бывает правдой, полуправдой или выдумкой. ${ctx.rumorDue === 'now' ? 'Слухов давно не было: сейчас напиши один, если в истории или вокруг героев есть хоть что-то, о чём могли бы болтать.' : 'Пиши, только если повод правда есть; если нет — не пиши.'}${ctx.rumorTexts && ctx.rumorTexts.length ? ` Уже ходят (не повторяй): ${ctx.rumorTexts.join('; ')}.` : ''}`);
+    if (settings.rumors !== false && !ctx.firstRun && ctx.rumorDue !== 'no') rules.push(`rumor — слух: на верхнем уровне JSON {"form":"talk|whisper|dialog|report|news|herald|post|note","era":"medieval|retro|steam|modern|cyber","who":"кто разносит","about":"о ком (имя) или «город», если это общее событие","text":"суть слуха","truth":"true|half|false"} и поля по форме. era — эпоха и стиль мира, от неё зависит оформление: medieval — средневековье, фэнтези, древность, восток; retro — XIX — середина XX века, нуар; steam — стимпанк; modern — наши дни; cyber — киберпанк, будущее, космос.${ctx.rumorEra ? ` В этом чате эпоха уже определена: ${ctx.rumorEra} — держись её, если мир не сменился.` : ''} Формы: talk — сплетня одной живой фразой, можно "place":"где болтают"; whisper — перешёптывание на людях о заметных персонах (знатные дамы на балу, придворные в галерее, торговки на рынке, гости на приёме, пассажиры в вагоне), "place":"где именно","lines":[{"who":"кто","text":"реплика шёпотом"}] 2–4 реплики, text — суть в двух словах; dialog — переписка или подслушанный по связи разговор, только для modern и cyber, "lines" как у whisper; report — кто-то докладывает или доносит кому-то (служанка госпоже, шпион хозяину, охранник начальнику, сосед участковому, агент заказчику), "who":"кто докладывает","to":"кому", text — сам доклад его голосом, коротко; news — заметка, "source":"название газеты/канала","title":"заголовок", text — пара фраз в газетном стиле; herald — глашатай, указ, объявление на площади, по радио или на экранах, "source":"кто объявляет", text — как зачитывают; post — пост в сети, только modern и cyber, "source":"автор или @ник","via":"где (X, Instagram, Telegram, форум, чат дома, нейросеть города…)", text — сам пост с хэштегами или эмодзи, если к месту, можно "likes" и "reposts" числами; note — записка, листовка, надпись на стене, анонимное письмо, объявление на доске в таверне, "source":"где нашли". ФОРМА ДОЛЖНА БЫТЬ ВОЗМОЖНОЙ В ЭТОМ МИРЕ: в средневековье и фэнтези — шёпот на балу и в коридорах, интриги, сплетни слуг и в таверне, донесения, глашатай, записка, никаких соцсетей и переписок; в retro и steam — газета, телеграмма, письмо, разговоры в салоне; в modern — посты, сторис, чаты, бабки на лавке у подъезда, новостные каналы; в cyber — ленты, форумы, перехваченные сообщения, экраны на улицах. Если герои — важные персоны (правители, звёзды, главы домов), о них чаще шепчутся на людях. Чередуй формы: не повторяй форму прошлого слуха${ctx.rumorForms && ctx.rumorForms.length ? ` (прошлые: ${ctx.rumorForms.join(', ')})` : ''}. Не начинай с «Говорят» и «Ходят слухи» — пиши голосом того, кто разносит. Слух бывает о героях (о ком-то из них лично) или «по городу» ("scope":"town", "about":"город"): если герой своим поступком задел многих — спас, поджёг, устроил скандал на площади, отменил праздник, издал указ — об этом говорит весь город, и такой слух идёт шире: глашатай, газета, толпа на площади, все каналы. Повод: что-то заметное — героев видели вместе, ссора или скандал на людях, подвиг, странный поступок, новость о важной персоне; или событие, которое касается всех вокруг (пожар, свадьба наследника, приезд гостей, налог, эпидемия, война, ограбление). Слух бывает правдой, полуправдой или выдумкой. ${ctx.rumorDue === 'now' ? 'Слухов давно не было: сейчас напиши один, если в истории или вокруг героев есть хоть что-то, о чём могли бы болтать.' : 'Пиши, только если повод правда есть; если нет — не пиши.'}${ctx.rumorTexts && ctx.rumorTexts.length ? ` Уже ходят (не повторяй): ${ctx.rumorTexts.join('; ')}.` : ''}`);
     if (settings.memes !== false && ctx.memeDue) rules.push(memeRule(Object.assign({}, ctx, { forced: !!ctx.memeFirst })));
     if (ctx.hasGifts) rules.push(`gift_given — если у персонажа есть gift_pending и в последних сообщениях он уже вручил этот подарок ${user}, верни на верхнем уровне JSON, рядом с characters: "gift_given":[{"who":"кто подарил","title":"название подарка дословно","how":"как прошёл момент, одной фразой"}]. Если подарок ещё не вручён — не пиши. Когда подарок вручён, обязательно выдай и achievement про этот момент — в тон подарку и тому, как его вручили и приняли (романтично, мило, забавно, неловко, холодно).`);
     if (ctx.love) rules.push(`[Love Score] — счёт отношения к ${user} из другого расширения, ему доверяй: не противоречь ему. Для этих персонажей impression.now_score и chem_now.score держи по нему: от −100 до 0 ≈ от −3 до 0, от 0 до максимума ≈ от 0 до +3. Тип отношений (романтика, дружба, семья, соперничество, одержимость, ненависть) учитывай в now и в желаниях: например, при дружбе не пиши влюблённость.`);
@@ -3069,22 +3158,48 @@ export function shownAliases(entry) {
 
 // ---------- Мечта: перегенерировать ----------
 
-// Правило для мема: формат из случайной горсти, русский интернет-юмор; «картинка» мема — эмодзи и вёрстка
+// С какой стороны заходить в мем: каждый раз другой угол, чтобы мемы не шли по одному сценарию
+export const MEME_ANGLES = {
+    scene: 'про один конкретный момент из последних сообщений (не самый очевидный, не последнюю реплику)',
+    situation: 'про ситуацию в целом, в которой сейчас оказались герои, а не про одну реплику',
+    story: 'про весь ход истории: как всё начиналось и во что превратилось',
+    hero: 'про характер или типаж одного героя: привычки, странности, манера, вечные проблемы',
+    duo: 'про динамику между героями: как они друг с другом, кто кого бесит, кто кого спасает',
+    world: 'про мир и сеттинг: порядки, быт и абсурд этого мира',
+    persona: 'про персонажа игрока глазами остальных',
+    rp: 'про саму ролевую со стороны: жиза игроков и ботов (длинные посты, свайпы, «бот опять всё понял не так»), но с героями этой истории',
+    life: 'жиза: обычная бытовая ситуация из жизни, перенесённая на героев',
+    future: 'про то, к чему всё идёт: шутка-прогноз или «через год они…»',
+};
+export const MEME_TONES = ['абсурд', 'кринж', 'милота', 'жиза', 'сарказм', 'пафос ради смеха', 'тупой юмор', 'умная шутка с отсылкой', 'лёгкий чёрный юмор', 'сухая ирония', 'хаос'];
+export function pickMemeAngle(seen = [], rnd = Math.random) {
+    const recent = (seen || []).slice(-3).map(x => x && x.angle).filter(Boolean);
+    const pool = Object.keys(MEME_ANGLES).filter(k => !recent.includes(k));
+    return pool[Math.floor(rnd() * pool.length)] || 'scene';
+}
+export function pickMemeTone(seen = [], rnd = Math.random) {
+    const recent = (seen || []).slice(-2).map(x => x && x.tone).filter(Boolean);
+    const pool = MEME_TONES.filter(k => !recent.includes(k));
+    return pool[Math.floor(rnd() * pool.length)] || 'абсурд';
+}
+// Правило для мема: формат из случайной горсти, угол и тон — каждый раз другие
 export function memeRule(ctx = {}) {
     const offer = (ctx.memeOffer && ctx.memeOffer.length ? ctx.memeOffer : pickMemeFormats(ctx.memeRecent || [])).filter(f => MEME_DEFS[f]);
-    return `meme — мем по ситуации. На верхнем уровне JSON "meme":{"format":"один из форматов ниже", ...поля}. Юмор — как в русском интернете у зумеров, в тиктоке и пабликах: смешно, метко, узнаваемо — про героев, их характер, отношения, неловкость, абсурд сцены и мира, контраст ожиданий; можно с самоиронией героя; шутки русские, не переводные. ИМПРОВИЗИРУЙ: не пересказывай сцену и не цитируй реплики из чата дословно — придумай свою шутку, свой поворот, свою подпись, как будто мем сделал фанат истории. Мем — не обязательно про последнюю реплику: можно про героя вообще, про их отношения, про мир или про то, к чему всё идёт. Сленг к месту, а не в каждой строке («база», «кринж», «вайб», «сигма», «ну всё, гг», «это пушка», «я в своём познании настолько преисполнился», «мам, можно…»). Не обидно по признакам людей, без пошлости. Сегодня выбери самый смешной для этой сцены формат из этих: ${offer.map(f => `${f} (${MEME_DEFS[f].name}) — ${MEME_DEFS[f].spec}`).join('; ')}. У строки "lines" поля: "who" — подпись или кто, "text" — текст, "val" — число, если формат его просит. Для форматов с картинкой (${MEME_PIC.join(', ')}) впиши "emoji" — 1–3 эмодзи, которые и будут картинкой мема: реакция, лицо, предмет.${ctx.memeTexts && ctx.memeTexts.length ? ` Уже были (не повторяй шутки): ${ctx.memeTexts.join('; ')}.` : ''}${ctx.forced ? ' Мем нужен обязательно — найди, над чем посмеяться.' : ' Если смешного повода совсем нет — не пиши.'} Мемы должны быть разными, как в старых пабликах ВК и на пикабу: картинки с подписью, комиксы, демотиваторы, списки, переписки — каждый раз другой вид и другая шутка. Иногда, примерно у каждого третьего мема, впиши "public" — смешное название паблика по сеттингу истории (например «Подслушано во дворце», «Типичный Велесгар», «Мемы для оруженосцев»), тогда мем покажется как репост из паблика; у остальных "public" не пиши.`;
+    const angle = MEME_ANGLES[ctx.memeAngle] ? ctx.memeAngle : pickMemeAngle();
+    const tone = ctx.memeTone || pickMemeTone();
+    return `meme — мем по истории. На верхнем уровне JSON "meme":{"format":"один из форматов ниже", ...поля}. Юмор — как в русском интернете: старые паблики ВК, пикабу, твиттер, тикток, рилсы; смешно, метко, узнаваемо; шутки русские, не переводные. В этот раз зайди так: мем ${MEME_ANGLES[angle]}. Тон: ${tone}. ИМПРОВИЗИРУЙ: не пересказывай сцену и не цитируй реплики из чата — придумай свою шутку, свой поворот, свою подпись, как будто мем сделал фанат истории. Сленг к месту, а не в каждой строке. Не обидно по признакам людей, без пошлости. Выбери формат, который лучше всего подходит именно к этой шутке, из этих: ${offer.map(f => `${f} (${MEME_DEFS[f].name}) — ${MEME_DEFS[f].spec}`).join('; ')}. Можешь вместо них взять любой известный тебе мем из интернета и собрать его через free. У строки "lines" поля: "who" — подпись или кто, "text" — текст, "val" — число, если формат его просит, "pose" — поза человечка, если формат с человечками. Для форматов с картинкой (${MEME_PIC.join(', ')}) впиши "emoji" — 1–3 эмодзи, которые станут картинкой мема.${ctx.memeTexts && ctx.memeTexts.length ? ` Уже были, не повторяй ни шутку, ни заход, ни формат: ${ctx.memeTexts.join('; ')}.` : ''}${ctx.forced ? ' Мем нужен обязательно — найди, над чем посмеяться.' : ' Если смешного повода совсем нет — не пиши.'} Иногда, примерно у каждого третьего мема, впиши "public" — смешное название паблика по сеттингу истории (например «Подслушано во дворце», «Типичный Велесгар»), тогда мем покажется как репост из паблика; у остальных "public" не пиши.`;
 }
-// Отдельная просьба: другой мем к той же сцене (кнопка «Другой мем»)
+// Отдельная просьба: другой мем (кнопка «Другой мем» и «Сгенерировать мем»)
 export function buildMemePrompt(info, lang = 'русском') {
     const system = [
         'Ты придумываешь мемы к ролевой истории — как будто её обсуждают в русском интернете.',
         `Отвечай ТОЛЬКО JSON, без пояснений: {"meme":{...}}. Тексты мема — на ${lang} языке.`,
-        memeRule({ memeRecent: info.recent || [], memeTexts: info.texts || [], forced: true }),
-        info.was ? `Прошлый вариант был такой: ${info.was}. Придумай ДРУГОЙ мем: другой формат, другая шутка и другой момент — возьми другой эпизод или деталь из сообщений ниже, черту героя, их отношения или мир истории, а не то, о чём был прошлый мем.` : 'Возьми любой смешной момент или деталь из сообщений ниже, черту героя, их отношения или мир истории.',
+        memeRule({ memeRecent: info.recent || [], memeTexts: info.texts || [], memeAngle: info.angle, memeTone: info.tone, forced: true }),
+        info.was ? `Прошлый вариант был такой: ${info.was}. Придумай ДРУГОЙ мем: другой формат, другая шутка и другой заход — не про тот же момент, что прошлый.` : '',
     ].filter(Boolean).join('\n');
     const parts = [];
     if (info.cast && info.cast.length) parts.push(`[Герои]\n${info.cast.join('\n')}`);
-    if (info.messages && info.messages.length) parts.push(`[Последние сообщения]\n${info.messages.join('\n\n')}`);
+    if (info.messages && info.messages.length) parts.push(`[Сообщения истории]\n${info.messages.join('\n\n')}`);
     parts.push('Верни JSON.');
     return { system, user: parts.join('\n\n') };
 }
@@ -3096,9 +3211,10 @@ export function buildDreamPrompt(info, c, lang = 'русском') {
         `Отвечай ТОЛЬКО JSON, без пояснений. Тексты — на ${lang} языке, коротко.`,
         'Мечта — одна большая личная цель, которая следует из характера, прошлого и ценностей персонажа (по карточке и лорбуку) и из того, что с ним случилось в истории. 3–5 этапов. Если персонаж мрачный или сломленный — мечта может быть тёмной; не делай её шаблонно-светлой.',
         `${user} может быть в мечте только если отношения уже по-настоящему близкие (отношение +2 и выше) и было сильное общее событие. Тогда лучше добавь это в plus («…вместе с ней»), а саму мечту оставь личной.`,
-        c && c.dream && c.dream.title ? `Прошлая мечта была: «${c.dream.title}». Предложи другую, но правдивую для персонажа.` : '',
+        c && c.dream && c.dream.title ? (info.choices ? `Прошлая мечта «${c.dream.title}» исполнилась — все её этапы пройдены. Новая мечта вырастает из того, каким он стал после этого.` : `Прошлая мечта была: «${c.dream.title}». Предложи другую, но правдивую для персонажа.`) : '',
+        info.choices ? `Предложи ${info.choices} РАЗНЫЕ варианта новой мечты на выбор. Каждая — из личности героя, его жизненной позиции, ценностей, прошлого и того, что случилось в истории. Мечты не должны крутиться вокруг ${user}: это его собственные цели в жизни — дело, призвание, семья, свобода, власть, искупление, знание, дом, месть, творчество и так далее; ${user} может быть разве что в plus у одной из них. Варианты из разных сфер жизни, не пересказ одного и того же.` : '',
         info.persona ? `Это персонаж игрока — ${info.botName}. Придумай мечту ИМЕННО ЕГО, по его описанию и тому, что с ним было в истории. Это не мечта ${user}: ${user} здесь — другой персонаж.` : '',
-        'Формат: {"dream":{"title":"мечта","plus":"","steps":[{"text":"этап","done":false}]}}',
+        info.choices ? 'Формат: {"dreams":[{"title":"мечта","plus":"","why":"почему именно она — одной фразой","steps":[{"text":"этап","done":false}]}]}' : 'Формат: {"dream":{"title":"мечта","plus":"","steps":[{"text":"этап","done":false}]}}',
     ].filter(Boolean).join('\n');
     const parts = [];
     if (info.card) parts.push(`[${info.persona ? 'Описание персоны игрока' : 'Карточка'}: ${info.botName}]\n${info.card}`);
@@ -3115,6 +3231,21 @@ export function parseDream(text) {
     const c = cleanCharacter({ name: 'x', dream: raw });
     if (!c || !c.dream) throw new Error('модель не вернула мечту');
     return { title: c.dream.title, plus: c.dream.plus || '', steps: dedupeSteps(c.dream.steps) };
+}
+
+// Несколько вариантов новой мечты на выбор (после исполненной)
+export function parseDreamOptions(text) {
+    const data = extractJson(text);
+    const arr = Array.isArray(data) ? data : (data.dreams || data.options || (data.dream ? [data.dream] : []));
+    const out = [];
+    for (const raw of arr) {
+        const c = cleanCharacter({ name: 'x', dream: raw });
+        if (!c || !c.dream || out.some(o => o.title === c.dream.title)) continue;
+        out.push({ title: c.dream.title, plus: c.dream.plus || '', why: cut(raw && raw.why, 160), steps: dedupeSteps(c.dream.steps).map(s => ({ text: s.text, done: false })) });
+        if (out.length >= 4) break;
+    }
+    if (!out.length) throw new Error('модель не вернула мечты');
+    return out;
 }
 
 // ---------- Что привлекает и отталкивает — отдельной просьбой, если разбор их не дал ----------
@@ -3318,9 +3449,16 @@ export function mergeRoster(old, fresh) {
 
 
 // ---------- Как часто выдавать достижения ----------
-// Процент — просто частота срабатывания: примерно в какой доле ответов выпадает ачивка.
-// Ранг (бронза, серебро, золото) на частоту не влияет — выпадать могут любые.
-export const ACH_RATE_NAMES = { 1: 'редко', 2: 'нечасто', 3: 'обычно', 4: 'чаще', 5: 'часто' };
+// Гарантий «раз в N ответов» нет: процент меняет только то, насколько значимым должно быть событие.
+// 40% — стандарт, как было изначально; ниже — нужно событие крупнее, выше — годятся и мелочи.
+export const ACH_RATE_NAMES = { 1: 'только эпохальное', 2: 'крупные события', 3: 'стандарт', 4: 'чаще', 5: 'часто' };
+export const ACH_RATE_RULE = {
+    1: 'Очень редко: только по-настоящему эпохальное, что переворачивает историю (признание в любви, смерть, свадьба, предательство, раскрытие главной тайны, решающая победа). Почти всегда achievement НЕ пиши. Всё, что меньше, — не повод.',
+    2: 'Редко: только крупные вехи и яркие моменты. Если сомневаешься — не пиши.',
+    3: 'Редко, не чаще раза в несколько сцен.',
+    4: 'Можно чаще: заметные моменты, яркие шутки и маленькие победы тоже годятся, но не каждая сцена.',
+    5: 'Часто: любой заметный, смешной или трогательный момент может стать ачивкой, но не повторяйся.',
+};
 // Старая настройка уровнями 1–5 переводится в проценты.
 const ACH_LEVEL_PCT = { 1: 10, 2: 20, 3: 40, 4: 65, 5: 90 };
 export function achPctOf(s) {
@@ -3329,33 +3467,11 @@ export function achPctOf(s) {
     const v = Math.round(Number(s && s.achRate));
     return ACH_LEVEL_PCT[v] || 40;
 }
-export function achRateOf(s) { const p = achPctOf(s); return p <= 10 ? 1 : p <= 25 ? 2 : p <= 50 ? 3 : p <= 75 ? 4 : 5; }
-// раз в сколько ответов в среднем: 100% — хоть каждый, 50% — каждый второй, 10% — каждый десятый
-export function achEvery(s) { return Math.max(1, Math.round(100 / achPctOf(s))); }
-export function achPctLabel(p) {
-    const n = achEvery({ achPct: p });
-    return `${p}% · ${n === 1 ? 'хоть в каждом ответе' : `раз в ${n} ${plural(n, 'ответ', 'ответа', 'ответов')}`}`;
-}
-// Что говорим модели: на высокой частоте годится почти любой заметный момент, на низкой — она просто
-// предлагает, когда есть повод, а паузу между ачивками держит achGate.
-export function achRule(s) {
-    const p = achPctOf(s);
-    const how = p >= 70 ? 'Часто: почти любой заметный, смешной, милый, неловкий или напряжённый момент годится — предлагай смело.'
-        : p >= 35 ? 'Обычно: заметные моменты, шутки, маленькие победы и вехи годятся, но не каждый ответ.'
-        : 'Предлагай, когда в ответе есть момент, который просится в ачивку; как часто их показывать, решает расширение.';
-    return `${how} Ориентир: ачивка примерно в ${p}% ответов. Ранг на частоту не влияет: выдавай любые — и мелкие бронзовые, и серебро, и золото, по тому, насколько событие крупное.`;
-}
-// Пропускать ли достижение: только пауза между ачивками, без отбора по рангу
-export function achGate(a, list, mes, s) {
-    if (!a) return false;
-    const every = achEvery(s);
-    if (every > 1 && mes !== undefined && Array.isArray(list)) {
-        const last = list.filter(x => x.mes !== undefined && x.mes !== mes && !x.gift).reduce((m, x) => Math.max(m, Number(x.mes) || 0), -1e9);
-        // между ответами бота обычно два сообщения (реплика пользователя и ответ)
-        if (mes - last < every * 2 - 1) return false;
-    }
-    return true;
-}
+export function achRateOf(s) { const p = achPctOf(s); return p <= 15 ? 1 : p <= 30 ? 2 : p <= 50 ? 3 : p <= 75 ? 4 : 5; }
+export function achPctLabel(p) { return `${p}% · ${ACH_RATE_NAMES[achRateOf({ achPct: p })]}`; }
+export function achRule(s) { return ACH_RATE_RULE[achRateOf(s)]; }
+// Достижение от модели принимаем как есть: частоту задаёт порог значимости в подсказке, а не счётчик
+export function achGate(a) { return !!a; }
 
 // ---------- Картинка памятной вещи для витрины ----------
 // Модель рисует маленький SVG-набросок по смыслу вещи и истории. Мы пропускаем только безопасное:

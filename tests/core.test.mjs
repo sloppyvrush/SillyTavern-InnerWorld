@@ -1403,27 +1403,19 @@ test('мультибот: плашка выбора главных, «сдела
     assert.ok(/мультибот/.test(sp));
 });
 
-test('частота ачивок: просто процент срабатывания, ранг не важен', () => {
-    const list = [{ mes: 10 }];
-    // 10% — раз в 10 ответов: любые ранги ждут одинаково, золото без поблажек
-    for (const tier of ['bronze', 'silver', 'gold']) {
-        assert.equal(C2.achGate({ tier }, list, 20, { achPct: 10 }), false);
-        assert.equal(C2.achGate({ tier }, list, 30, { achPct: 10 }), true);
-    }
-    // 100% — хоть каждый ответ, и бронза проходит
-    assert.equal(C2.achGate({ tier: 'bronze' }, list, 12, { achPct: 100 }), true);
-    // 50% — каждый второй ответ
-    assert.equal(C2.achGate({ tier: 'bronze' }, list, 12, { achPct: 50 }), false);
-    assert.equal(C2.achGate({ tier: 'bronze' }, list, 14, { achPct: 50 }), true);
-    // свайп того же сообщения не считается
-    assert.equal(C2.achGate({ tier: 'bronze' }, [{ mes: 10 }], 10, { achPct: 10 }), true);
-    assert.equal(C2.achEvery({ achPct: 20 }), 5);
-    assert.ok(C2.achPctLabel(50).includes('раз в 2 ответа'));
-    assert.ok(C2.achPctLabel(100).includes('каждом'));
+test('частота ачивок: порог значимости, без счётчика и отбора по рангу', () => {
+    for (const tier of ['bronze', 'silver', 'gold']) assert.equal(C2.achGate({ tier }, [{ mes: 10 }], 11, { achPct: 10 }), true);
+    assert.equal(C2.achGate(null), false);
+    assert.equal(C2.achRateOf({}), 3);
+    assert.ok(C2.achPctLabel(40).includes('стандарт'));
+    assert.ok(!C2.achPctLabel(50).includes('раз в'));
     const p10 = C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 10 }), { messages: ['x'] });
-    assert.ok(p10.includes('примерно в 10%') && p10.includes('Ранг на частоту не влияет') && !p10.includes('эпохальн'));
-    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 70 }), { messages: ['x'] }).includes('примерно в 70%'));
+    assert.ok(p10.includes('эпохальное') && !p10.includes('примерно в 10%'));
+    const p40 = C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS), { messages: ['x'] });
+    assert.ok(p40.includes('Редко, не чаще раза в несколько сцен.'));
+    assert.ok(C2.buildSystemPrompt(Object.assign({}, C2.DEFAULT_SETTINGS, { achPct: 90 }), { messages: ['x'] }).includes('Часто: любой заметный'));
     assert.equal(mergeSettings({ achRate: 1 }).achPct, 10);
+    assert.equal(mergeSettings({ diag: true }).diag, false);
 });
 test('картинка памятной вещи: только безопасный SVG, свои id', () => {
     const svg = C2.cleanArt('вот: <svg viewBox="0 0 64 64" onload="x()"><script>alert(1)</script><defs><radialGradient id="g"><stop offset="0" stop-color="#f00"/></radialGradient></defs><circle cx="32" cy="32" r="20" fill="url(#g)" onclick="y"/><image href="http://evil"/><a href="javascript:1"><path d="M0 0"/></a><foreignObject><div>x</div></foreignObject></svg> готово', 'k1');
@@ -1532,7 +1524,12 @@ test('слухи разных форм: разговор, газета, пост
     assert.equal(t.form, undefined);
     assert.equal(t.text, 'Видели дракона');
     const html = renderToast({ type: 'rumor', who: 'служанки', text: d.text, rumor: d }, 'diary');
-    assert.ok(html.includes('iw-rumor-dialog'));
+    assert.ok(html.includes('iw-pf-dialog'));
+    const rep = C2.cleanRumor({ form: 'донесение', era: 'medieval', who: 'горничная', to: 'леди Ортанс', text: 'покои перенесли', truth: 'true' });
+    assert.equal(rep.form, 'report');
+    assert.equal(rep.to, 'Леди Ортанс');
+    const town = C2.cleanRumor({ form: 'herald', scope: 'town', about: 'Кассиан', text: 'праздник отменён', truth: 'true' });
+    assert.equal(town.town, true);
 });
 test('всплывашки можно выключать по видам', () => {
     const s = { toastKinds: { rumor: false } };
@@ -1568,6 +1565,46 @@ test('сны разной формы: обрывки, разговор, знак
     assert.equal(z.symbol, 'Зеркало');
 });
 
+test('календарь: шапка дней без общего «День»', () => {
+    assert.deepEqual(C.weekdayHeads(['День Крома', 'День Таловода', 'День Ветров']), ['Кр', 'Та', 'Ве']);
+    assert.deepEqual(C.weekdayHeads(['Понедельник', 'Вторник']), ['Пн', 'Вт']);
+});
+test('слухи: эпоха мира и шёпот на людях', () => {
+    const w = cleanRumor({ form: 'dialog', era: 'средневековье', place: 'на балу', lines: [{ who: 'Дама', text: 'Видели?' }, { who: 'Графиня', text: 'Трижды!' }], truth: 'true' });
+    assert.equal(w.form, 'whisper'); assert.equal(w.era, 'medieval'); assert.equal(w.place, 'На балу'); assert.equal(w.lines.length, 2);
+    assert.equal(cleanRumor({ form: 'post', era: 'medieval', text: 'пост', truth: 'true' }).form, 'note');
+    assert.equal(cleanRumor({ form: 'dialog', era: 'cyber', lines: [{ who: 'a', text: 'б' }, { who: 'в', text: 'г' }] }).form, 'dialog');
+    assert.equal(cleanRumor({ form: 'whisper', text: 'одна', lines: [{ text: 'x' }] }).form, undefined);
+    const p = C2.buildSystemPrompt({ ...C2.DEFAULT_SETTINGS }, { messages: ['x'], rumorDue: 'now', rumorEra: 'medieval' });
+    assert.ok(p.includes('whisper') && p.includes('эпоха уже определена: medieval'));
+});
+test('мечта исполнена: варианты новой, не вокруг игрока', () => {
+    const o = C2.parseDreamOptions('{"dreams":[{"title":"Открыть школу","why":"хочет учить","steps":[{"text":"найти дом","done":true}]},{"title":"Вернуть родовой замок","steps":[{"text":"а"},{"text":"б"}]},{"title":"Открыть школу","steps":[{"text":"x"}]}]}');
+    assert.equal(o.length, 2);
+    assert.equal(o[0].steps[0].done, false);
+    assert.equal(o[0].why, 'хочет учить');
+    const { system } = C2.buildDreamPrompt({ choices: 4, userName: 'Ева' }, { name: 'Кассиан', dream: { title: 'Мир на севере' } });
+    assert.ok(system.includes('исполнилась') && system.includes('4 РАЗНЫЕ') && system.includes('не должны крутиться вокруг Ева'));
+    assert.throws(() => C2.parseDreamOptions('{"dreams":[]}'));
+});
+test('мемы 2: нарисованные форматы, свой формат, заходы и тон', () => {
+    for (const f of ['stick', 'bellcurve', 'trolley', 'exit', 'pie', 'venn', 'graph', 'captcha', 'rpg', 'sms', 'tombstone', 'tearoff', 'homework', 'mock', 'isthis', 'shrug', 'facepalm', 'buff', 'map', 'week', 'wikihow', 'scroll', 'dating', 'sale', 'playlist', 'wrapped', 'free']) assert.ok(C2.MEME_DEFS[f], f);
+    assert.ok(C2.MEME_FORMATS.length >= 115);
+    const fr = C2.cleanMeme({ format: 'custom', name: 'Я и тоже я', style: { bg: 'pink', font: 'pixel' }, blocks: [{ t: 'text', text: 'а' }, { t: 'draw', pose: 'crying' }, { t: 'hack', text: '<script>' }, { t: 'bar', label: 'x', val: 300 }] });
+    assert.equal(fr.format, 'free'); assert.equal(fr.bg, 'pink'); assert.equal(fr.font, 'pixel');
+    assert.equal(fr.blocks.length, 3); assert.equal(fr.blocks[1].pose, 'cry'); assert.equal(fr.blocks[2].val, 100);
+    assert.equal(C2.cleanMeme({ format: 'free', blocks: [{ t: 'text', text: 'один' }] }), null);
+    assert.equal(C2.cleanMeme({ format: 'free', top: 'подпись', blocks: [] }).format, 'macro');
+    assert.equal(C2.cleanMeme({ format: 'stick', lines: [{ pose: 'facepalm', text: 'a' }, { pose: 'zzz', text: 'b' }] }).lines[1].pose, undefined);
+    assert.equal(C2.cleanMeme({ format: 'captcha', lines: Array.from({ length: 9 }, (_, i) => ({ text: 'к' + i, val: i % 2 })) }).lines.length, 9);
+    assert.ok(C2.pickMemeFormats([], 14, () => 0.3).includes('free'));
+    assert.ok(!C2.pickMemeFormats(['free'], 14, () => 0.3).includes('free'));
+    assert.ok(C2.pickMemeFormats([], 14, () => 0.7).filter(f => C2.MEME_DEFS[f].draw).length >= 4);
+    const a = C2.pickMemeAngle([{ angle: 'scene' }, { angle: 'duo' }, { angle: 'hero' }], () => 0);
+    assert.ok(C2.MEME_ANGLES[a] && !['scene', 'duo', 'hero'].includes(a));
+    const r = C2.memeRule({ memeAngle: 'world', memeTone: 'кринж', memeOffer: ['stick'] });
+    assert.ok(r.includes(C2.MEME_ANGLES.world) && r.includes('Тон: кринж') && r.includes('free'));
+});
 test('мемы: паблик только у части, новые форматы из старых пабликов', () => {
     const a = C2.memePublicGate({ format: 'macro', public: 'Паблик' }, [{ public: 'Был' }, {}]);
     assert.equal(a.public, '');

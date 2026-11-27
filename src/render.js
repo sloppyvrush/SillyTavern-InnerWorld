@@ -144,7 +144,6 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
         <button type="button" class="iw-vol-toggle iw-popups${settings.popups === false ? ' off' : ''}" aria-pressed="${settings.popups !== false}">${icon(settings.popups === false ? 'bell_off' : 'bell')}<span>${settings.popups === false ? 'Всплывашки выключены' : 'Всплывашки включены'}</span></button>
       </div>
     </details>
-    ${TEST_MENU}
     <button type="button" class="iw-tool iw-anim${settings.animations === false ? ' off' : ''}" title="${settings.animations === false ? 'Анимации выключены: нажми, чтобы включить' : 'Выключить анимации'}" aria-label="Анимации" aria-pressed="${settings.animations !== false}">${icon(settings.animations === false ? 'sparkle_off' : 'sparkle')}</button>
     <button type="button" class="iw-tool iw-gear${inSettings ? ' on' : ''}" title="${inSettings ? 'Вернуться к дневнику' : 'Настройки'}" aria-label="Настройки" aria-pressed="${inSettings}">${icon('gear')}</button>
     <button type="button" class="iw-tool iw-close" title="Закрыть" aria-label="Закрыть">${icon('x')}</button>
@@ -385,12 +384,13 @@ function dreamBody(d) {
     if (f === 'memory') return `${d.when ? `<div class="iw-night-when">${esc(d.when)}</div>` : ''}<div class="iw-night-text iw-night-mem">${ce(d.text)}</div>`;
     return `<div class="iw-night-text">${ce(d.text)}</div>`;
 }
-function nightCard(d, i, big = false) {
+export function nightCard(d, i, big = false) {
     const f = d.form || 'scene';
     return `<li class="iw-night${big ? ' iw-night-big' : ''} iw-night-${esc(String(d.tone || '').replace(/\s+/g, '-'))} iw-nf-${esc(f)}">
-      <div class="iw-night-head">${icon(f === 'memory' ? 'clock' : (f === 'dialog' ? 'chat' : (f === 'symbol' ? 'key' : 'moon')))}<span>${DREAM_KIND[f] || 'Сон'}${d.date ? ` · ${esc(d.date)}` : ''}</span>${d.tone ? `<em>${esc(cap1(d.tone))}</em>` : ''}<button type="button" class="iw-del iw-hist-x" data-iw-del="dreams:${i}" title="Убрать этот сон" aria-label="Убрать сон">${icon('x')}</button></div>
+      <div class="iw-night-head">${icon(f === 'memory' ? 'clock' : (f === 'dialog' ? 'chat' : (f === 'symbol' ? 'key' : 'moon')))}<span>${DREAM_KIND[f] || 'Сон'}${d.tone ? ` · ${esc(d.tone)}` : ''}</span><button type="button" class="iw-del iw-hist-x" data-iw-del="dreams:${i}" title="Убрать этот сон" aria-label="Убрать сон">${icon('x')}</button></div>
       ${d.thought ? `<div class="iw-night-thought">Засыпая: «${ce(d.thought)}»</div>` : ''}
       ${dreamBody(d)}
+      ${d.date ? `<div class="iw-night-date">${esc(d.date)}</div>` : ''}
     </li>`;
 }
 const cap1 = t => { const x = String(t ?? ''); return x ? x[0].toLocaleUpperCase('ru') + x.slice(1) : x; };
@@ -419,38 +419,63 @@ function aboutHim(r, name, persona) {
 const tagged = t => esc(t).replace(/(^|\s)([#@][\p{L}\p{N}_]+)/gu, '$1<span class="iw-rp-tag">$2</span>');
 const shortNum = n => (n >= 10000 ? `${Math.round(n / 1000)}k` : (n >= 1000 ? `${(n / 1000).toFixed(1).replace('.0', '')}k` : String(n)));
 
-// Тело слуха — по форме: сплетня, подслушанный разговор, газета, глашатай, пост, записка.
+// Тело слуха — по форме, каждая свёрстана как настоящая вещь: шёпот, «подслушано», газетная вырезка,
+// свиток глашатая, пост, записка
+const initial = v => esc(String(v || '').replace(/^@/, '').replace(/[^\p{L}\d]/gu, '').charAt(0).toUpperCase() || '?');
+const hueOf = v => [...String(v || '')].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+// Эпоха по умолчанию для старых слухов без era — как они выглядели раньше
+const RUMOR_DEF_ERA = { talk: 'modern', whisper: 'medieval', dialog: 'modern', report: 'medieval', news: 'retro', herald: 'medieval', post: 'modern', note: 'modern' };
+const RUMOR_EDITION = { medieval: ['свежий лист', 'цена — медяк'], retro: ['вечерний выпуск', 'цена 5 коп.'], steam: ['экстренный выпуск', 'паровая печать'], modern: ['только что', 'новости'], cyber: ['LIVE', 'лента'] };
+const strips = t => String(t || '').split(/(?<=[.!?…])\s+/).filter(Boolean).map(x => `<span class="iw-g-strip">${esc(x)}</span>`).join(' ');
 export function rumorBody(r) {
     const f = r.form || 'talk';
-    if (f === 'dialog' && Array.isArray(r.lines) && r.lines.length) {
+    const era = r.era || RUMOR_DEF_ERA[f] || 'modern';
+    const box = (form, inner) => `<div class="iw-prop iw-pf-${form} iw-pe-${esc(era)}">${inner}</div>`;
+    const head = (kick, src) => `<div class="iw-g-head"><span class="iw-g-kick">${esc(kick)}</span>${src ? `<span class="iw-g-src">${esc(src)}</span>` : ''}</div>`;
+    const lines = list => {
         const who = [];
-        return `<div class="iw-rumor-dialog">${r.lines.map(l => {
+        return `<div class="iw-g-lines">${list.map(l => {
             let k = who.indexOf(l.who); if (k < 0) { who.push(l.who); k = who.length - 1; }
-            return `<div class="iw-rl iw-rl-${k % 2 ? 'b' : 'a'}">${l.who ? `<b>${esc(l.who)}</b>` : ''}<span>${ce(l.text)}</span></div>`;
+            return `<div class="iw-g-line iw-g-${k % 2 ? 'b' : 'a'}">${l.who ? `<b class="iw-g-who">${esc(l.who)}</b>` : ''}<span class="iw-g-say">${ce(l.text)}</span></div>`;
         }).join('')}</div>`;
+    };
+    const title = r.title ? `<div class="iw-g-title">${ce(r.title)}</div>` : '';
+    if (f === 'whisper' && Array.isArray(r.lines) && r.lines.length) {
+        return box('whisper', `${head('Шепчутся', r.place || '')}${lines(r.lines)}`);
+    }
+    if (f === 'dialog' && Array.isArray(r.lines) && r.lines.length) {
+        const k = era === 'cyber' ? 'Перехват' : 'Подслушано';
+        return box('dialog', `${head(k, r.place || r.who || '')}${lines(r.lines)}`);
+    }
+    if (f === 'report') {
+        const kick = { medieval: 'Донесение', retro: 'Рапорт', steam: 'Донесение', modern: 'Докладывает', cyber: 'Отчёт агента' }[era] || 'Донесение';
+        return box('report', `${head(kick, r.place || '')}<div class="iw-g-route"><span><i>от</i> <b class="iw-g-who">${esc(r.who || 'неизвестного')}</b></span><span><i>кому</i> <b class="iw-g-who">${esc(r.to || '—')}</b></span></div><div class="iw-g-text">${ce(r.text)}</div><span class="iw-g-deco" aria-hidden="true"></span>`);
     }
     if (f === 'news') {
-        return `<div class="iw-rumor-news">${r.source ? `<div class="iw-rn-src">${esc(r.source)}</div>` : ''}${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rn-text">${ce(r.text)}</div></div>`;
+        const ed = RUMOR_EDITION[era] || RUMOR_EDITION.retro;
+        return box('news', `<div class="iw-g-mast">${esc(r.source || 'Городской вестник')}</div><div class="iw-g-dateline"><span>${esc(ed[0])}</span><span>${esc(ed[1])}</span></div>${title}<div class="iw-g-text">${ce(r.text)}</div>`);
     }
     if (f === 'herald') {
-        return `<div class="iw-rumor-herald"><div class="iw-rh-src">${icon('scroll')}<span>${esc(r.source || r.who || 'Объявление')}</span></div>${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rh-text">${ce(r.text)}</div></div>`;
+        return box('herald', `${head(r.source || r.who || 'Слушайте все', '')}${title}<div class="iw-g-text">${ce(r.text)}</div><span class="iw-g-deco" aria-hidden="true"></span>`);
     }
     if (f === 'post') {
         const author = r.who && r.source && r.who !== r.source ? r.who : (r.source || r.who || 'аноним');
         const handle = r.source && r.source !== author ? r.source : '';
-        return `<div class="iw-rumor-post"><div class="iw-rp-head"><span class="iw-rp-ava" aria-hidden="true">${esc(String(author).replace(/^@/, '').charAt(0).toUpperCase() || '?')}</span><span class="iw-rp-names"><b>${esc(author)}</b>${handle || r.via ? `<span>${esc([handle, r.via].filter(Boolean).join(' · '))}</span>` : ''}</span></div>${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rp-text">${tagged(r.text)}</div>${r.likes || r.reposts ? `<div class="iw-rp-foot">${r.reposts ? `<span>${icon('rotate')}${shortNum(r.reposts)}</span>` : ''}${r.likes ? `<span>${icon('heart')}${shortNum(r.likes)}</span>` : ''}</div>` : ''}</div>`;
+        return box('post', `<div class="iw-g-head"><span class="iw-g-ava" aria-hidden="true">${initial(author)}</span><span class="iw-g-names"><b class="iw-g-who">${esc(author)}</b>${handle || r.via ? `<span class="iw-g-src">${esc([handle, r.via].filter(Boolean).join(' · '))}</span>` : ''}</span></div>${title}<div class="iw-g-text">${tagged(r.text)}</div><div class="iw-g-foot"><span>♡ ${shortNum(r.likes || 37 + (hueOf(r.text) % 400))}</span><span>↻ ${shortNum(r.reposts || 3 + (hueOf(author) % 40))}</span></div>`);
     }
     if (f === 'note') {
-        return `<div class="iw-rumor-note">${r.title ? `<div class="iw-rn-title">${ce(r.title)}</div>` : ''}<div class="iw-rnote-text">${esc(r.text)}</div>${r.source ? `<div class="iw-rnote-src">${icon('letter')}<span>${esc(r.source)}</span></div>` : ''}</div>`;
+        const kick = era === 'steam' || era === 'retro' ? 'Телеграмма' : (era === 'cyber' ? 'Зашифровано' : (era === 'modern' ? 'Сообщение' : ''));
+        return box('note', `${kick ? head(kick, r.title || '') : (r.title ? `<div class="iw-g-head"><span class="iw-g-kick">${ce(r.title)}</span></div>` : '')}<div class="iw-g-text">${era === 'steam' || era === 'retro' ? strips(r.text) : esc(r.text)}</div>${r.source ? `<div class="iw-g-foot">${esc(r.source)}</div>` : ''}<span class="iw-g-deco" aria-hidden="true"></span>`);
     }
-    return `<div class="iw-rumor-text">«${ce(r.text)}»</div>`;
+    return box('talk', `<div class="iw-g-text">${ce(r.text)}</div><div class="iw-g-foot">${r.who ? `<b class="iw-g-who">${ce(r.who)}</b>` : '<b class="iw-g-who">Кто-то</b>'}<span>${r.place ? esc(r.place) : 'шепчет'}</span></div>`);
 }
 
-function rumorCard(r, name, persona) {
+export function rumorCard(r, name, persona) {
     const id = r.at || r.text;
-    return `<li class="iw-rumor iw-rumor-${esc(r.truth)} iw-rf-${esc(r.form || 'talk')}">
+    return `<li class="iw-rumor iw-rumor-${esc(r.truth)} iw-rf-${esc(r.form || 'talk')}${r.era ? ` iw-re-${esc(r.era)}` : ''}${r.town ? ' iw-rumor-wide' : ''}">
+        ${r.town ? '<div class="iw-rumor-scope"><span aria-hidden="true">◎</span>Говорит весь город</div>' : ''}
         ${rumorBody(r)}
-        <div class="iw-rumor-meta">${r.town ? '<span class="iw-rumor-town">По городу</span>' : (r.about && persona && nameKey(r.about) !== nameKey(name) ? `<span class="iw-rumor-about">о ${esc(r.about)}</span>` : '')}${r.who ? `<b>${ce(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
+        <div class="iw-rumor-meta">${r.town ? '' : (r.about && persona && nameKey(r.about) !== nameKey(name) ? `<span class="iw-rumor-about">о ${esc(r.about)}</span>` : '')}${r.who && !['talk', 'dialog', 'whisper', 'post', 'report'].includes(r.form || 'talk') ? `<b>${ce(r.who)}</b>` : ''}${r.date ? `<span>${esc(r.date)}</span>` : ''}<span class="iw-rumor-truth">${RUMOR_TRUTH[r.truth] || ''}</span></div>
         <button type="button" class="iw-del iw-hist-x" data-iw-rumor-del="${esc(encodeURIComponent(String(id)))}" title="Убрать этот слух" aria-label="Убрать слух">${icon('x')}</button>
       </li>`;
 }
@@ -487,6 +512,56 @@ const pct = v => Math.max(0, Math.min(100, Number(v) || 0));
 const stripLbl = (t, lbls) => String(t || '').replace(new RegExp(`^(${lbls.filter(Boolean).join('|')})\\s*[:—-]\\s*`, 'i'), '');
 function memeList(m, L, kind, mark) {
     return `<div class="iw-meme-doc iw-mdoc-${kind}">${m.title ? `<div class="iw-mdoc-title">${ce(m.title)}</div>` : ''}<ul class="iw-mdoc-list">${L.map((l, i) => `<li><i aria-hidden="true">${typeof mark === 'function' ? mark(l, i) : mark}</i><span>${ce(l.text)}</span></li>`).join('')}</ul>${m.bottom ? `<div class="iw-mdoc-foot">${ce(m.bottom)}</div>` : ''}</div>`;
+}
+// ---------- Нарисованные человечки для мемов ----------
+// Простые SVG-фигурки в духе комиксов из пабликов: голова, палочки, лицо по настроению
+const D_EYES = { dot: '<circle cx="26" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="34" cy="12" r="1.6" fill="currentColor" stroke="none"/>', closed: '<path d="M23.5 12.5q2.5 2 5 0M31.5 12.5q2.5 2 5 0"/>', big: '<circle cx="26" cy="12" r="3.2"/><circle cx="34" cy="12" r="3.2"/><circle cx="26" cy="12.4" r="1" fill="currentColor" stroke="none"/><circle cx="34" cy="12.4" r="1" fill="currentColor" stroke="none"/>', half: '<path d="M23.5 12h5M31.5 12h5"/><path d="M24 13.5q2 1.2 4 0M32 13.5q2 1.2 4 0" stroke-width="1.6"/>', angry: '<path d="M22.5 8.5l6 2.5M37.5 8.5l-6 2.5" stroke-width="2.2"/><circle cx="26" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="34" cy="13" r="1.5" fill="currentColor" stroke="none"/>', heart: '<path d="M26 14.5l-2.6-2.6a1.5 1.5 0 0 1 2.6-1.6a1.5 1.5 0 0 1 2.6 1.6z" fill="#e8336a" stroke="none"/><path d="M34 14.5l-2.6-2.6a1.5 1.5 0 0 1 2.6-1.6a1.5 1.5 0 0 1 2.6 1.6z" fill="#e8336a" stroke="none"/>', shades: '<path d="M21 10.5h18" stroke-width="1.8"/><rect x="22" y="10.5" width="7" height="4" rx="1.2" fill="currentColor" stroke="none"/><rect x="31" y="10.5" width="7" height="4" rx="1.2" fill="currentColor" stroke="none"/>', sad: '<path d="M23 9.5l5-1.5M37 9.5l-5-1.5" stroke-width="1.8"/><circle cx="26" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="34" cy="13" r="1.5" fill="currentColor" stroke="none"/>' };
+const D_MOUTH = { flat: '<path d="M26 19.5h8"/>', smile: '<path d="M25 17.5q5 5.5 10 0"/>', grin: '<path d="M24.5 17h11q-1 5.5-5.5 5.5t-5.5-5.5z" class="dd-f"/>', frown: '<path d="M25 21q5-4.5 10 0"/>', open: '<ellipse cx="30" cy="19.5" rx="3" ry="3.6" fill="currentColor" stroke="none"/>', yell: '<path d="M25 17h10l-2 6h-6z" fill="currentColor" stroke="none"/>', smirk: '<path d="M26 19.5q5 2.5 9-2.5"/>', wavy: '<path d="M25 19.5q1.7-2 3.3 0t3.4 0t3.3 0"/>' };
+const D_LEGS = { stand: 'M30 58L20 88M30 58L40 88', run: 'M30 58L18 74L10 86M30 58L42 72L52 66', sit: 'M30 58L48 58L48 86M30 58L44 62L44 86', dance: 'M30 58L18 86M30 58L46 70L56 64', wide: 'M30 58L16 88M30 58L44 88', weak: 'M30 60L25 88M30 60L35 88' };
+const D_POSE = {
+    stand: { eyes: 'dot', mouth: 'flat', arms: 'M30 34L18 52M30 34L42 52' },
+    point: { eyes: 'dot', mouth: 'flat', arms: 'M30 34L18 52M30 34L58 28', extra: '<path d="M54 25l4 3l-4 2" stroke-width="2"/>' },
+    facepalm: { eyes: 'closed', mouth: 'frown', arms: 'M30 34L18 52M30 34L42 40L34 12', extra: '<ellipse cx="33.5" cy="11" rx="4.5" ry="3" class="dd-f"/>' },
+    shrug: { eyes: 'half', mouth: 'wavy', arms: 'M30 34L16 32L12 22M30 34L44 32L48 22', extra: '<path d="M22 6.5l5 1M38 6.5l-5 1" stroke-width="1.8"/>' },
+    cry: { eyes: 'sad', mouth: 'frown', arms: 'M30 34L20 52M30 34L40 52', extra: '<path d="M25 15v8M35 15v10" stroke="#3b9cff" stroke-width="2.4"/>' },
+    rage: { eyes: 'angry', mouth: 'yell', arms: 'M30 34L14 26M30 34L46 26', extra: '<circle cx="14" cy="25" r="3" fill="currentColor" stroke="none"/><circle cx="46" cy="25" r="3" fill="currentColor" stroke="none"/><path d="M8 4l4 4M52 4l-4 4M30 -1v4" stroke="#e33" stroke-width="2"/>', head: '#ffd2d2' },
+    happy: { eyes: 'closed', mouth: 'grin', arms: 'M30 34L14 18M30 34L46 18' },
+    think: { eyes: 'dot', mouth: 'flat', arms: 'M30 34L18 52M30 34L42 42L33 22', extra: '<circle cx="46" cy="6" r="2.4"/><circle cx="52" cy="0" r="3.4"/>' },
+    run: { eyes: 'big', mouth: 'open', arms: 'M30 34L16 44M30 34L44 26', legs: 'run', extra: '<path d="M2 50h8M0 58h8M4 66h7" stroke-width="2"/>', lean: 8 },
+    sit: { eyes: 'dot', mouth: 'flat', arms: 'M30 34L44 46M30 34L40 50', legs: 'sit', extra: '<path d="M16 60h36M20 60v28M48 60v28" stroke-width="2.4"/>' },
+    read: { eyes: 'dot', mouth: 'flat', arms: 'M30 34L38 46M30 34L46 46', extra: '<rect x="35" y="38" width="16" height="12" rx="1" class="dd-f"/><path d="M43 38v12"/>' },
+    buff: { eyes: 'angry', mouth: 'smirk', arms: 'M30 32L12 34L10 20M30 32L48 34L50 20', extra: '<circle cx="15" cy="27" r="4.5" class="dd-f"/><circle cx="45" cy="27" r="4.5" class="dd-f"/><path d="M20 28h20l-4 30h-12z" class="dd-f" stroke-width="3"/>', legs: 'wide', width: 4.5 },
+    weak: { eyes: 'sad', mouth: 'wavy', arms: 'M30 36L23 60M30 36L37 60', legs: 'weak', bodyPath: 'M30 25q-4 18 0 35', width: 2.2 },
+    smug: { eyes: 'half', mouth: 'smirk', arms: 'M22 40L40 46M38 40L20 46M30 34L22 40M30 34L38 40' },
+    wave: { eyes: 'dot', mouth: 'smile', arms: 'M30 34L18 52M30 34L46 16', extra: '<path d="M50 10q3 3 0 6M54 7q4 5 0 10" stroke-width="1.8"/>' },
+    dance: { eyes: 'closed', mouth: 'smile', arms: 'M30 34L12 22M30 34L46 46', legs: 'dance', extra: '<path d="M50 6l2-4l2 4M8 40l2-4l2 4" stroke-width="1.6"/>' },
+    sleep: { eyes: 'closed', mouth: 'flat', arms: 'M30 34L22 54M30 34L38 54', extra: '<text x="42" y="8" font-size="10" font-family="Arial" font-weight="700" fill="currentColor" stroke="none">z</text><text x="50" y="0" font-size="13" font-family="Arial" font-weight="700" fill="currentColor" stroke="none">Z</text>' },
+    scared: { eyes: 'big', mouth: 'open', arms: 'M30 34L16 20M30 34L44 20', extra: '<path d="M42 5q3 4 0 6q-3-2 0-6z" fill="#7cc4ff" stroke="none"/>', legs: 'wide' },
+    love: { eyes: 'heart', mouth: 'smile', arms: 'M30 34L14 40M30 34L46 40', extra: '<path d="M50 4l-2.6-2.6a1.6 1.6 0 0 1 2.6-1.8a1.6 1.6 0 0 1 2.6 1.8z" fill="#e8336a" stroke="none"/>' },
+    cool: { eyes: 'shades', mouth: 'smirk', arms: 'M22 40L40 46M38 40L20 46M30 34L22 40M30 34L38 40' },
+};
+export function doodle(pose, cls = '') {
+    const p = D_POSE[pose] || D_POSE.stand;
+    const w = p.width || 3;
+    const body = p.bodyPath || 'M30 24V58';
+    const tilt = p.lean ? ` transform="rotate(${p.lean} 30 58)"` : '';
+    return `<svg class="iw-doodle ${cls}" viewBox="0 -4 60 96" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g${tilt}><circle cx="30" cy="14" r="10" ${p.head ? `fill="${p.head}"` : 'class="dd-f"'} stroke-width="2.6"/><g stroke-width="2">${D_EYES[p.eyes] || D_EYES.dot}${D_MOUTH[p.mouth] || D_MOUTH.flat}</g><path d="${body}"/><path d="${p.arms}"/><path d="${D_LEGS[p.legs || 'stand']}"/>${p.extra || ''}</g></svg>`;
+}
+// «Свой формат»: мем собран моделью из блоков
+function memeFree(m) {
+    const b = (m.blocks || []).map(x => {
+        if (x.t === 'text') return `<div class="iw-mfr-text iw-mfr-${x.size || 'm'}" style="text-align:${x.align === 'left' ? 'left' : 'center'}">${ce(x.text)}</div>`;
+        if (x.t === 'draw') return `<div class="iw-mfr-draw">${doodle(x.pose || 'stand')}${x.label ? `<span>${ce(x.label)}</span>` : ''}</div>`;
+        if (x.t === 'emoji') return `<div class="iw-mfr-emoji" aria-hidden="true">${esc(x.emoji)}</div>`;
+        if (x.t === 'row') return `<div class="iw-mfr-row">${x.items.map(it => `<div class="iw-mfr-item">${it.pose ? doodle(it.pose) : (it.emoji ? `<em aria-hidden="true">${esc(it.emoji)}</em>` : '')}${it.label ? `<span>${ce(it.label)}</span>` : ''}</div>`).join('')}</div>`;
+        if (x.t === 'bubble') return `<div class="iw-mfr-bubble">${x.who ? `<b>${esc(x.who)}</b>` : ''}<span>${ce(x.text)}</span></div>`;
+        if (x.t === 'list') return `<ul class="iw-mfr-list">${x.items.map(i => `<li>${ce(i)}</li>`).join('')}</ul>`;
+        if (x.t === 'bar') return `<div class="iw-mfr-bar"><span>${ce(x.label || '')}</span><i><u style="width:${x.val}%"></u></i><b>${x.val}%</b></div>`;
+        if (x.t === 'stamp') return `<div class="iw-mfr-stamp"><span>${esc(x.text)}</span></div>`;
+        if (x.t === 'divider') return '<hr class="iw-mfr-hr">';
+        return '';
+    }).join('');
+    return `<div class="iw-meme-free iw-mfr-bg-${esc(m.bg || 'white')} iw-mfr-f-${esc(m.font || 'bold')}">${b}</div>`;
 }
 export function memeBody(m, { drawing = false } = {}) {
     const f = m.format || 'macro';
@@ -552,6 +627,46 @@ export function memeBody(m, { drawing = false } = {}) {
     if (f === 'brain') return `<div class="iw-meme-brain">${L.map((l, i) => `<div class="iw-mb-row iw-mb-${Math.min(i, 3)}"><span>${ce(l.text)}</span><i aria-hidden="true">${['🧠', '🧠✨', '🌟🧠🌟', '🌌'][Math.min(i, 3)]}</i></div>`).join('')}</div>`;
     if (f === 'buttons') return `<div class="iw-meme-btns"><div class="iw-mbt-row">${L.slice(0, 2).map(l => `<span class="iw-mbt">${ce(l.text)}</span>`).join('')}</div><div class="iw-mbt-who"><span aria-hidden="true">😰</span>${m.who ? `<b>${esc(m.who)}</b>` : ''}</div></div>`;
     if (f === 'tweet') return `<div class="iw-rumor-post iw-meme-tweet"><div class="iw-rp-head"><span class="iw-rp-ava" aria-hidden="true">${esc(String(m.who || m.source || '?').replace(/^@/, '').charAt(0).toUpperCase())}</span><span class="iw-rp-names"><b>${esc(m.who || m.source || 'аноним')}</b>${m.source && m.source !== m.who ? `<span>${esc(m.source)}</span>` : ''}</span></div><div class="iw-rp-text">${tagged(m.text || '')}</div>${m.likes || m.reposts ? `<div class="iw-rp-foot">${m.reposts ? `<span>${icon('rotate')}${shortNum(m.reposts)}</span>` : ''}${m.likes ? `<span>${icon('heart')}${shortNum(m.likes)}</span>` : ''}</div>` : ''}</div>`;
+    // ----- нарисованные форматы -----
+    const pick = (i, d) => (L[i] && L[i].text) || d;
+    if (f === 'stick') return `<div class="iw-meme-stick">${m.title ? `<div class="iw-mst-title">${ce(m.title)}</div>` : ''}<div class="iw-mst-row iw-mst-n${Math.min(L.length, 4)}">${L.slice(0, 4).map(l => `<div class="iw-mst-cell"><div class="iw-mst-say">${ce(l.text)}</div>${doodle(l.pose || 'stand')}${l.who ? `<small>${esc(l.who)}</small>` : ''}</div>`).join('')}</div></div>`;
+    if (f === 'bellcurve') return `<div class="iw-meme-bell"><svg class="iw-mbl-curve" viewBox="0 0 300 110" preserveAspectRatio="none" aria-hidden="true"><path d="M0 108 C70 108 90 6 150 6 S230 108 300 108" fill="#dfe9ff" stroke="#2b3a67" stroke-width="2"/><path d="M75 108V60M225 108V60" stroke="#2b3a67" stroke-dasharray="4 4"/></svg><div class="iw-mbl-row">${[0, 1, 2].map(i => `<div class="iw-mbl-c iw-mbl-${i}">${doodle(['happy', 'cry', 'cool'][i])}<div class="iw-mbl-say">${ce(pick(i, ''))}</div><small>${esc((L[i] && L[i].who) || ['IQ 55', 'IQ 100', 'IQ 145'][i])}</small></div>`).join('')}</div></div>`;
+    if (f === 'trolley') return `<div class="iw-meme-trolley">${m.title ? `<div class="iw-mtr-title">${ce(m.title)}</div>` : ''}<svg viewBox="0 0 300 120" aria-hidden="true"><path d="M10 60H120L290 20M120 60L290 100" stroke="#555" stroke-width="5" fill="none"/><path d="M10 66H118M124 66L290 106M124 54L290 14" stroke="#999" stroke-width="2" fill="none"/><rect x="24" y="44" width="34" height="18" rx="3" fill="#c0392b"/><circle cx="32" cy="64" r="4" fill="#333"/><circle cx="50" cy="64" r="4" fill="#333"/><path d="M112 40l14 20" stroke="#333" stroke-width="3"/><circle cx="112" cy="38" r="4" fill="#e74c3c"/></svg><div class="iw-mtr-up">${ce(pick(0, ''))}</div><div class="iw-mtr-down">${ce(pick(1, ''))}</div>${m.who ? `<div class="iw-mtr-who">${doodle('think')}<span>${ce(m.who)}</span></div>` : ''}</div>`;
+    if (f === 'exit') return `<div class="iw-meme-exit"><div class="iw-mex-sign"><span class="iw-mex-l">${ce(pick(0, 'прямо'))}<i>↑</i></span><span class="iw-mex-r">${ce(pick(1, 'съезд'))}<i>↗</i></span></div><svg viewBox="0 0 300 110" aria-hidden="true"><path d="M60 110L120 0M240 110L180 0" stroke="#fff" stroke-width="3"/><path d="M150 110V0" stroke="#ffd400" stroke-width="3" stroke-dasharray="12 10"/><path d="M220 110Q230 50 300 30" stroke="#fff" stroke-width="3" fill="none"/><g transform="translate(180 64) rotate(-28)"><rect x="-16" y="-9" width="32" height="18" rx="5" fill="#d33"/><rect x="-6" y="-7" width="12" height="14" rx="2" fill="#bfe3ff"/></g><path d="M172 92q8 -6 14 -2" stroke="#999" stroke-width="2" fill="none"/></svg>${m.who ? `<div class="iw-mex-car">${ce(m.who)}</div>` : ''}</div>`;
+    if (f === 'pie') {
+        const tot = L.reduce((a, l) => a + (Number(l.val) || 0), 0) || 100;
+        const cols = ['#ff6b6b', '#ffd166', '#4ecdc4', '#5c7cfa', '#c084fc'];
+        let acc = 0;
+        const stops = L.slice(0, 5).map((l, i) => { const a0 = acc; acc += (Number(l.val) || Math.round(100 / L.length)) / tot * 100; return `${cols[i]} ${a0}% ${acc}%`; }).join(', ');
+        return `<div class="iw-meme-pie">${m.title ? `<div class="iw-mpi-title">${ce(m.title)}</div>` : ''}<div class="iw-mpi-body"><span class="iw-mpi-disc" style="background:conic-gradient(${stops})" aria-hidden="true"></span><ul>${L.slice(0, 5).map((l, i) => `<li><i style="background:${cols[i]}"></i><span>${ce(l.text)}</span>${Number.isFinite(l.val) ? `<b>${l.val}%</b>` : ''}</li>`).join('')}</ul></div></div>`;
+    }
+    if (f === 'venn') return `<div class="iw-meme-venn"><div class="iw-mvn-pic"><span class="iw-mvn-a">${ce(pick(0, ''))}</span><span class="iw-mvn-b">${ce(pick(1, ''))}</span><b class="iw-mvn-mid">${ce(m.text || '')}</b></div></div>`;
+    if (f === 'graph') {
+        const pts = L.slice(0, 5); const n = pts.length;
+        const xy = pts.map((l, i) => [20 + i * (260 / Math.max(1, n - 1)), 100 - (Number.isFinite(l.val) ? l.val : 50) * 0.85]);
+        const up = n > 1 && xy[n - 1][1] < xy[0][1];
+        return `<div class="iw-meme-graph">${m.title ? `<div class="iw-mgr-title">${ce(m.title)}</div>` : ''}<svg viewBox="0 0 300 120" aria-hidden="true"><path d="M14 4V106H296" stroke="#888" stroke-width="2" fill="none"/><polyline points="${xy.map(p => p.join(',')).join(' ')}" fill="none" stroke="${up ? '#1db954' : '#e63946'}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>${xy.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="#fff" stroke="${up ? '#1db954' : '#e63946'}" stroke-width="2.5"/>`).join('')}</svg><div class="iw-mgr-labels" style="--n:${n}">${pts.map(l => `<span>${ce(l.text)}</span>`).join('')}</div>${m.who ? `<div class="iw-mgr-axis">${ce(m.who)}</div>` : ''}</div>`;
+    }
+    if (f === 'captcha') return `<div class="iw-meme-captcha"><div class="iw-mcp-head">${ce(m.title || 'Выберите все изображения')}<small>Если их нет, нажмите «Пропустить»</small></div><div class="iw-mcp-grid">${L.slice(0, 9).map((l, i) => `<span class="iw-mcp-cell${l.val ? ' iw-on' : ''}"><em aria-hidden="true">${esc([...(m.emoji || '')][i % Math.max(1, [...(m.emoji || '')].length)] || '▦')}</em>${ce(l.text)}</span>`).join('')}</div><div class="iw-mcp-foot"><span>↻ 🎧 ⓘ</span><b>ПОДТВЕРДИТЬ</b></div></div>`;
+    if (f === 'rpg') return `<div class="iw-meme-rpg"><div class="iw-mrp-box"><span class="iw-mrp-ava" aria-hidden="true">${esc(m.emoji || '🙂')}</span><div><b>${esc(m.who || '???')}</b><p>${ce(m.text || '')}</p></div></div>${L.length ? `<ul class="iw-mrp-opts">${L.slice(0, 3).map((l, i) => `<li>${i === 0 ? '▶ ' : '  '}${ce(l.text)}</li>`).join('')}</ul>` : ''}</div>`;
+    if (f === 'sms') return `<div class="iw-meme-sms"><div class="iw-msm-phone"><div class="iw-msm-screen"><div class="iw-msm-top"><span>▮▮▮▯</span><span>${esc(m.bottom || '23:47')}</span><span>▭</span></div><div class="iw-msm-from">✉ ${esc(m.who || 'Номер скрыт')}</div><div class="iw-msm-text">${esc(m.text || m.top || '')}</div><div class="iw-msm-keys"><span>Ответ</span><span>Назад</span></div></div></div></div>`;
+    if (f === 'tombstone') return `<div class="iw-meme-grave"><div class="iw-mgv-stone"><span class="iw-mgv-rip">R.I.P.</span><b>${ce(m.title || m.top || '')}</b>${m.text ? `<small>${ce(m.text)}</small>` : ''}</div><div class="iw-mgv-grass" aria-hidden="true"></div></div>`;
+    if (f === 'tearoff') return `<div class="iw-meme-tear"><div class="iw-mte-sheet"><b>${ce(m.title || 'ОБЪЯВЛЕНИЕ')}</b><p>${ce(m.text || '')}</p></div><div class="iw-mte-tabs">${L.slice(0, 6).map((l, i) => `<span class="${i === 1 ? 'iw-gone' : ''}">${esc(l.text)}</span>`).join('')}</div></div>`;
+    if (f === 'homework') return `<div class="iw-meme-hw"><div class="iw-mhw-task"><b>${ce(m.title || 'Задача №1')}</b> ${ce(m.text || '')}</div>${m.bottom ? `<div class="iw-mhw-ans"><span>Решение:</span> ${ce(m.bottom)}</div>` : ''}${m.who ? `<span class="iw-mhw-mark">${esc(m.who)}</span>` : ''}</div>`;
+    if (f === 'mock') { const mk = String(m.text || m.top || '').split('').map((c, i) => (i % 2 ? c.toLocaleUpperCase('ru') : c.toLocaleLowerCase('ru'))).join(''); return `<div class="iw-meme-mock"><div class="iw-mmk-said"><b>${esc(m.who || 'Он')}:</b> ${ce(m.top || '')}</div><div class="iw-mmk-row">${doodle('smug')}<div class="iw-mmk-text">${esc(mk)}</div></div></div>`; }
+    if (f === 'isthis') return `<div class="iw-meme-isthis"><div class="iw-mis-pic"><span class="iw-mis-me">${doodle('point', 'iw-mis-guy')}${m.who ? `<span class="iw-mis-who">${ce(m.who)}</span>` : ''}</span><span class="iw-mis-obj">${ce(m.top || '')}</span></div><div class="iw-mis-q">${ce(m.text || 'Это что, мем?')}</div></div>`;
+    if (f === 'shrug') return `<div class="iw-meme-shrug">${m.top ? `<div class="iw-msh-top">${ce(m.top)}</div>` : ''}<div class="iw-msh-row">${doodle('shrug')}<div class="iw-msh-text">${ce(m.text || '')}<span aria-hidden="true">¯\\_(ツ)_/¯</span></div></div></div>`;
+    if (f === 'facepalm') return `<div class="iw-meme-facepalm">${doodle('facepalm')}<div class="iw-mfp-text"><span>${ce(m.top || m.text || '')}</span>${m.who ? `<small>— ${esc(m.who)}</small>` : ''}</div></div>`;
+    if (f === 'buff') return `<div class="iw-meme-buff"><div class="iw-mbf-c">${doodle('buff')}<b>${esc((L[0] && L[0].who) || 'Тогда')}</b><span>${ce(pick(0, ''))}</span></div><div class="iw-mbf-c">${doodle('weak')}<b>${esc((L[1] && L[1].who) || 'Сейчас')}</b><span>${ce(pick(1, ''))}</span></div></div>`;
+    if (f === 'map') return `<div class="iw-meme-map">${m.title ? `<div class="iw-mmp-title">${ce(m.title)}</div>` : ''}<div class="iw-mmp-land iw-mmp-n${Math.min(L.length, 6)}">${L.slice(0, 6).map((l, i) => `<span class="iw-mmp-r iw-mmp-r${i}">${ce(l.text)}</span>`).join('')}</div></div>`;
+    if (f === 'week') return `<div class="iw-meme-week">${m.title ? `<div class="iw-mwk-title">${ce(m.title)}</div>` : ''}<ul>${L.slice(0, 7).map((l, i, a) => `<li class="${i === a.length - 1 ? 'iw-last' : ''}"><b>${esc(l.who || ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i])}</b><span>${ce(l.text)}</span></li>`).join('')}</ul></div>`;
+    if (f === 'wikihow') return `<div class="iw-meme-how"><div class="iw-mhow-title">${ce(m.title || 'Как сделать всё за 3 шага')}</div><div class="iw-mhow-steps">${L.slice(0, 3).map((l, i) => `<div class="iw-mhow-step"><div class="iw-mhow-pic">${doodle(l.pose || ['stand', 'think', 'happy'][i])}</div><b>${i + 1}</b><span>${ce(l.text)}</span></div>`).join('')}</div></div>`;
+    if (f === 'scroll') return `<div class="iw-meme-scroll"><div class="iw-msc-row">${doodle('read')}<div class="iw-msc-paper">${ce(m.text || '')}</div></div><div class="iw-msc-row iw-msc-2">${doodle('rage')}<span>${esc(m.who || '')}</span></div></div>`;
+    if (f === 'dating') return `<div class="iw-meme-dating"><div class="iw-mdt-photo" aria-hidden="true">${esc(m.emoji || '🙂')}</div><div class="iw-mdt-info"><b>${esc(m.who || 'Кто-то, 27')}</b><span>${ce(m.text || '')}</span>${L.length ? `<div class="iw-mdt-tags">${L.slice(0, 4).map(l => `<i>${esc(l.text)}</i>`).join('')}</div>` : ''}</div><div class="iw-mdt-btns" aria-hidden="true"><span>✕</span><span>★</span><span>♥</span></div></div>`;
+    if (f === 'sale') { const sc = m.score || 4; return `<div class="iw-meme-sale"><div class="iw-msl-pic" aria-hidden="true">${esc(m.emoji || '📦')}</div><div class="iw-msl-info"><b class="iw-msl-price">${esc(m.who || '999 ₽')}</b><span class="iw-msl-name">${ce(m.title || '')}</span><span class="iw-msl-stars">${'★'.repeat(sc)}${'☆'.repeat(5 - sc)} <small>${L.length || 12} ${plural(L.length || 12, 'отзыв', 'отзыва', 'отзывов')}</small></span>${m.text ? `<p>${ce(m.text)}</p>` : ''}${L.length ? L.slice(0, 2).map(l => `<q>${ce(l.text)}</q>`).join('') : ''}<span class="iw-msl-buy">В корзину</span></div></div>`; }
+    if (f === 'playlist') return `<div class="iw-meme-playlist"><div class="iw-mpl-head"><span class="iw-mpl-cover" aria-hidden="true">${esc(m.emoji || '♫')}</span><div><small>ПЛЕЙЛИСТ</small><b>${ce(m.title || 'Без названия')}</b></div></div><ol>${L.slice(0, 6).map((l, i) => `<li><span>${ce(l.text)}</span><small>${esc(l.who || '')}</small><i>${2 + (i * 7) % 3}:${String(10 + (i * 23) % 49).padStart(2, '0')}</i></li>`).join('')}</ol></div>`;
+    if (f === 'wrapped') return `<div class="iw-meme-wrapped"><div class="iw-mwr-title">${ce(m.title || 'Итоги года')}</div>${L.slice(0, 4).map((l, i) => `<div class="iw-mwr-card iw-mwr-${i}"><b>${esc(l.who || '')}</b><span>${ce(l.text)}</span></div>`).join('')}</div>`;
+    if (f === 'free') return memeFree(m);
     if (f === 'comic') return `<div class="iw-meme-comic">${m.title ? `<div class="iw-mcm-title">${ce(m.title)}</div>` : ''}<div class="iw-mcm-grid iw-mcm-n${Math.min(L.length, 4)}">${L.slice(0, 4).map(l => `<div class="iw-mcm-cell"><span class="iw-mcm-say">${ce(l.text)}</span><span class="iw-mcm-face" aria-hidden="true">${esc(l.who && [...l.who].length <= 4 ? l.who : '😐')}</span></div>`).join('')}</div></div>`;
     if (f === 'bebill') return `<div class="iw-meme-bebill"><span class="iw-mbb-fig" aria-hidden="true"><svg viewBox="0 0 40 80" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round"><circle cx="20" cy="12" r="8"/><path d="M20 20v30M20 28L8 40M20 28l12 12M20 50L10 74M20 50l10 24"/><path d="M14 4h12l-2-4h-8z" fill="#111"/></svg></span><div class="iw-mbb-text"><b>${ce(m.title || 'Это он.')}</b>${L.map(l => `<span>${ce(l.text)}</span>`).join('')}${m.bottom ? `<b>${ce(m.bottom)}</b>` : ''}</div></div>`;
     if (f === 'nothing' || f === 'likeif') return `<div class="iw-meme-vkpic iw-mvp-${f}"><div class="iw-mvp-cap">${ce(m.top || m.text || m.title || '')}</div>${memePic(m, drawing)}${m.bottom ? `<div class="iw-mvp-cap iw-mvp-bot">${ce(m.bottom)}</div>` : ''}${f === 'likeif' ? `<div class="iw-mvp-like" aria-hidden="true">♥ Мне нравится</div>` : ''}</div>`;
@@ -596,14 +711,12 @@ function renderMemes(info, L = {}) {
       <div class="iw-meme-meta iw-meme-first"><button type="button" class="iw-meme-draw${(info.rerolling || []).includes('new') ? ' iw-spin' : ''}" data-iw-meme-again="new"${(info.rerolling || []).includes('new') ? ' disabled' : ''} title="Придумать мем по последней сцене">${icon('sparkle')}<span>${(info.rerolling || []).includes('new') ? 'Придумываю…' : 'Сгенерировать мем'}</span></button></div>
     </section>`;
     }
-    const newest = list.slice().reverse();
-    const older = newest.slice(1);
+    // мем всегда один — его можно только заменить другим
+    const cur = list[list.length - 1];
     return `
     <section class="iw-block iw-b-memes">
       ${blockHead('memes', esc(L.memes || 'Мемы'))}
-      <ul class="iw-memes iw-hist-list">${memeCard(newest[0], info)}</ul>
-      <div class="iw-meme-meta iw-meme-more"><button type="button" class="iw-meme-draw${(info.rerolling || []).includes('new') ? ' iw-spin' : ''}" data-iw-meme-again="new"${(info.rerolling || []).includes('new') ? ' disabled' : ''} title="Придумать ещё один мем по последней сцене">${icon('plus')}<span>${(info.rerolling || []).includes('new') ? 'Придумываю…' : 'Ещё мем'}</span></button></div>
-      ${older.length ? `<details class="iw-hist" data-iw-hist="memes"${HIST_OPEN.memes ? ' open' : ''}><summary class="iw-hist-sum"><span>Прошлые мемы</span><b>${older.length}</b>${icon('chevron')}</summary><ul class="iw-memes iw-hist-list">${older.map(m => memeCard(m, info)).join('')}</ul></details>` : ''}
+      <ul class="iw-memes iw-hist-list">${memeCard(cur, info)}</ul>
     </section>`;
 }
 
@@ -933,6 +1046,18 @@ function dreamTools(c, busy) {
     </span>`;
 }
 
+// Мечта исполнена: большая кнопка «Выбрать новую мечту», потом — варианты на выбор
+function dreamDoneBox(c, opts) {
+    const busy = opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key);
+    const list = c.dreamOptions || [];
+    if (list.length) {
+        return `<div class="iw-dream-done"><div class="iw-dream-done-cap">${icon('sparkle')}<span>Мечта исполнена. Какой будет новая?</span></div>
+        <div class="iw-dream-opts">${list.map((o, i) => `<button type="button" class="iw-dream-opt" data-iw-dream-pick="${i}"${busy ? ' disabled' : ''}><b>${esc(o.title)}${o.plus ? `, <span class="iw-dream-plus">${esc(o.plus)}</span>` : ''}</b>${o.why ? `<small>${ce(o.why)}</small>` : ''}<span class="iw-dream-opt-steps">${o.steps.length} ${plural(o.steps.length, 'этап', 'этапа', 'этапов')}</span></button>`).join('')}</div>
+        <button type="button" class="iw-mini-btn iw-btn iw-dream-more" data-iw-dream="choose"${busy ? ' disabled' : ''}>${icon('dice')}<span>${busy ? 'Придумываю…' : 'Другие варианты'}</span></button></div>`;
+    }
+    return `<div class="iw-dream-done"><div class="iw-dream-done-cap">${icon('sparkle')}<span>Мечта исполнена!</span></div>
+      <button type="button" class="iw-btn iw-dream-new${busy ? ' iw-spin' : ''}" data-iw-dream="choose"${busy ? ' disabled' : ''}>${icon('star')}<span>${busy ? 'Придумываю варианты…' : 'Выбрать новую мечту'}</span></button></div>`;
+}
 function renderDream(c, L, opts = {}) {
     if (!c.dream) {
         return `<section class="iw-block iw-b-dream">${blockHead('dream', esc(L.dream), dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key)))}<div class="iw-muted">Ещё не ясна</div></section>`;
@@ -944,6 +1069,7 @@ function renderDream(c, L, opts = {}) {
       ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key))}`)}
       <div class="iw-dream-title">${esc(c.dream.title)}${c.dream.plus ? `${/^[…,;:—–-]/.test(c.dream.plus.trim()) ? ' ' : ', '}<span class="iw-dream-plus">${esc(c.dream.plus.trim())}</span>` : ''}</div>
       <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${ce(s.text)}</span></li>`).join('')}</ol>
+      ${steps.length && done === steps.length ? dreamDoneBox(c, opts) : ''}
     </section>`;
 }
 
@@ -1584,7 +1710,7 @@ export function renderClock(clock) {
     <span class="iw-clock-date">${esc(clock.date)}</span>
     ${clock.wx ? `<span class="iw-clock-wx" title="${esc(clock.wx.title || '')}">${icon(clock.wx.icon)}<span>${esc(clock.wx.text)}</span></span>` : ''}
     ${today}
-    ${clock.locked ? `<span class="iw-clock-lockmark" title="Часы стоят: сами не двигаются">${icon('lock')}</span>` : ''}
+
     <span class="iw-clock-chev">${icon('chevron')}</span>
   </summary>
   <div class="iw-clock-pop">
@@ -1603,7 +1729,7 @@ export function renderClock(clock) {
           <button type="button" class="iw-btn iw-mini-btn iw-clock-apply" data-iw-clock="set"${changed ? '' : ' disabled'}>${icon('tick')}<span>Поставить</span></button>
           ${changed ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="reset">${icon('back')}<span>Как сейчас</span></button>` : ''}
         </div>
-        <label class="iw-clock-lock"><input type="checkbox" data-iw-clock="lock"${clock.locked ? ' checked' : ''}> <span>Часы стоят — сами не двигаются</span></label>
+        
         <div class="iw-clock-sub iw-clock-evhead"><span class="iw-doodle-mark" aria-hidden="true"></span>Праздники и личные даты<button type="button" class="iw-mini iw-clock-addbtn${clock.addOpen ? ' on' : ''}" data-iw-clock="add-open" title="${clock.addOpen ? 'Свернуть' : 'Добавить свою дату'}" aria-expanded="${!!clock.addOpen}">${icon(clock.addOpen ? 'minus' : 'plus')}</button></div>
         ${clock.addOpen ? `<div class="iw-clock-add">
           <input type="text" class="iw-input" data-iw-clock-in="hname" maxlength="60" placeholder="Название — или «Кассиан: годовщина»">
@@ -1850,7 +1976,7 @@ export function renderToast(ev, theme) {
   <button type="button" class="iw-toast-close" aria-label="Закрыть">${icon('x')}</button>
 </div>`;
     }
-    const RK = { dialog: 'Подслушано', news: 'В газете', herald: 'Объявление', post: 'В сети', note: 'Записка' };
+    const RK = { whisper: 'Шепчутся', report: 'Донесение', dialog: 'Подслушано', news: 'В газете', herald: 'Объявление', post: 'В сети', note: 'Записка' };
     const kicker = ev.type === 'rumor' && ev.rumor && RK[ev.rumor.form] ? RK[ev.rumor.form] : toastKicker(theme, ev.type, eventTitle(ev));
     return `
 <div class="iw-toast-card iw-ev-${ev.type}" role="status">

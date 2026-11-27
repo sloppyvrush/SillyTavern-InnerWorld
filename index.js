@@ -4,7 +4,7 @@ import {
     buildSystemPrompt, buildUserPrompt, buildInjection, buildAttrInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
-    mergeRoster, buildDreamPrompt, parseDream, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut, includeBodyWithThinking,
+    mergeRoster, buildDreamPrompt, parseDream, parseDreamOptions, buildRewardsPrompt, parseRewards, buyReward, carryOwnEdits, restoreTrait, responseBudget, classifyError, looksCut, includeBodyWithThinking,
     extractJson, nameScript, parseBorn, zodiacOf, bornText, ZODIAC, ZODIAC_MID, zodiacOn, zodiacMidOn,
     plural,
     purseOf, claimWant,
@@ -12,7 +12,7 @@ import {
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
-    achGate, memePublicGate, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
+    achGate, memePublicGate, pickMemeAngle, pickMemeTone, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
     toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt, TOKENS_MIN, TOKENS_MAX,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
@@ -28,7 +28,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.8.1';
+const VERSION = '0.8.4';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -639,7 +639,7 @@ function stepClock(messageId) {
     }
     if (!meta.calendar) meta.calendar = cal;
     const cur = prev.t ? normTime(cal, prev.t) : null;
-    if (meta.clockLocked && cur) {
+    if (false && meta.clockLocked && cur) { // «часы стоят» убрано
         writeClock(messageId, { t: cur, prev: cur, why: 'locked', size: 0 });
         return;
     }
@@ -709,7 +709,7 @@ function applySceneTime(messageId, raw) {
     const st = data && !Array.isArray(data) ? data.scene_time : null;
     if (!st) return;
     const meta = chatMeta();
-    if (meta.clockLocked) return;
+    // «часы стоят» убрано — часы всегда идут сами
     const now = clockNow(messageId + 1);
     if (!now || !now.cal || !now.t) return;
     // если в самом ответе есть отметка времени — она главнее
@@ -911,7 +911,7 @@ function clockView() {
         today: ev.filter(e => e.inDays === 0),
         upcoming: ev,
         grid,
-        locked: !!meta.clockLocked,
+        locked: false,
         busy: clockBusy,
         open: clockOpen,
         calOpen: clockCalOpen,
@@ -1942,6 +1942,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             } catch { /* без подсказки */ }
             info.rumorTexts = (meta.rumors || []).slice(-6).map(r => r.text);
             info.rumorForms = (meta.rumors || []).slice(-3).map(r => RUMOR_FORM_NAMES[r.form || 'talk'] || 'сплетня');
+            info.rumorEra = ((meta.rumors || []).slice().reverse().find(r => r && r.era) || {}).era || '';
             // слухи — время от времени: давно не было — пора, только что был — не надо
             {
                 const lastR = (meta.rumors || []).reduce((m, r) => Math.max(m, Number(r.mes) || 0), -1);
@@ -1951,15 +1952,19 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             // мемы — раз в выбранное число сообщений
             {
                 const memes = meta.memes || [];
-                const lastM = memes.reduce((m, x) => Math.max(m, Number(x.mes) || 0), -1);
+                const seen = memeSeenOf(meta);
+                const lastM = Math.max(memes.reduce((m, x) => Math.max(m, Number(x.mes) || 0), -1), Number.isInteger(meta.memeLast) ? meta.memeLast : -1);
                 const every = Math.max(1, Number(s.memeEvery) || 6);
                 // мемов ещё нет — первый пишется сразу (в том числе при самом первом разборе), дальше — раз в выбранное число сообщений
                 const since = lastM < 0 ? (meta.memeFrom === undefined ? Infinity : messageId - Number(meta.memeFrom)) : messageId - lastM;
                 info.memeDue = s.memes !== false && since >= every && !!(msgs && msgs.length);
-                info.memeFirst = info.memeDue && !memes.length;
-                if (info.memeDue && !memes.length) meta.memeFrom = messageId; // не вышло — следующая попытка через выбранное число сообщений
-                info.memeRecent = memes.slice(-8).map(x => x.format);
-                info.memeTexts = memes.slice(-5).map(memePlain).filter(Boolean);
+                info.memeFirst = info.memeDue && lastM < 0;
+                if (info.memeDue && lastM < 0) meta.memeFrom = messageId; // не вышло — следующая попытка через выбранное число сообщений
+                info.memeRecent = seen.slice(-8).map(x => x.f);
+                info.memeTexts = seen.slice(-6).map(x => x.t).filter(Boolean);
+                info.memeAngle = pickMemeAngle(seen);
+                info.memeTone = pickMemeTone(seen);
+                if (info.memeDue) meta.memeNext = { angle: info.memeAngle, tone: info.memeTone };
             }
             // слухи и сны — только по ходу ролевой: при первом разборе (дневник ещё пуст) их не просим
             info.firstRun = !(base.order || []).some(k => base.characters && base.characters[k]) || !(msgs && msgs.length);
@@ -2090,7 +2095,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         // сны, слухи, подарки, собранные по ходу разбора, — вместе с событиями дневника
         const extra = evBatch || [];
         evBatch = null;
-        if (!catchUp && !fromLore) {
+        if (!catchUp && !fromLore && settings().diag === true) {
             try { writeDiag(messageId, { after: diagChanges(base, state, events, extra.filter(x => x.type !== 'achievement')) }); saveChatSoon(); } catch (e) { console.warn('[Внутренний мир] теги', e); }
         }
         if (!catchUp && !fromLore) {
@@ -2355,7 +2360,7 @@ function stepUserClock(messageId) {
     const cal = chatMeta().calendar || prev.cal || null;
     if (!cal) return false;
     const cur = prev.t ? normTime(cal, prev.t) : null;
-    if (!cur || chatMeta().clockLocked) return false;
+    if (!cur) return false;
     const res = advance(cal, cur, [mes.mes], { step: 0 });
     if (!res || !res.t || res.why === 'same') return false;
     writeClock(messageId, { t: res.t, prev: cur, why: res.why, size: toMinutes(cal, res.t) - toMinutes(cal, cur), user: true });
@@ -2380,7 +2385,7 @@ function onGenerationStarted(type, _options, dryRun) {
         updateInjection();
     }
     // что именно ушло модели перед этим ответом — для тегов влияния
-    pendingDiag = snapshotDiag();
+    pendingDiag = settings().diag === true ? snapshotDiag() : null;
     // «Пока бот пишет»: разбираем всё до последней реплики игрока параллельно с ответом бота.
     // К концу ответа дневник уже обновлён; сам ответ бота попадёт в следующий разбор.
     const s = settings();
@@ -2914,17 +2919,28 @@ function takeExtras(raw, state, messageId) {
         changed = true;
         showEvent({ type: 'rumor', who: r.who || r.source || 'Слухи', text: r.text, icon: 'chat', rumor: r, plain: r.form === 'dialog' || r.form === 'news' ? rumorPlain(r) : '' }, 1200);
     }
-    const mm = s.memes !== false && memePublicGate(cleanMeme(data.meme), meta.memes);
-    if (mm && !(meta.memes || []).some(x => memePlain(x) === memePlain(mm))) {
-        const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now() });
-        meta.memes = [...(meta.memes || []), rec].slice(-20);
+    const mm = s.memes !== false && memePublicGate(cleanMeme(data.meme), memeSeenOf(meta).map(x => ({ public: x.p })));
+    if (mm && !memeSeenOf(meta).some(x => x.t === memePlain(mm))) {
+        const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now(), angle: (meta.memeNext || {}).angle, tone: (meta.memeNext || {}).tone });
+        setMeme(meta, rec);
         changed = true;
         // без всплывашки: мем виден в блоке «Мемы» и, если включено, в инфоблоке этого ответа; картинка — только по кнопке
     }
     if (changed) ctx().saveMetadataDebounced?.();
 }
 
-// ---------- Мемы: «Другой мем» и «Сгенерировать мем» ----------
+// ---------- Мемы: один на чат, «Другой мем» и «Сгенерировать мем» ----------
+// Что уже было (формат, текст, заход, тон) — чтобы не повторяться; сами старые мемы не храним
+function memeSeenOf(meta) {
+    if (!Array.isArray(meta.memeSeen)) meta.memeSeen = (meta.memes || []).slice(-12).map(m => ({ f: m.format, t: memePlain(m), a: m.angle || '', tone: m.tone || '', p: m.public ? 1 : 0 }));
+    return meta.memeSeen.map(x => ({ f: x.f, t: x.t, angle: x.a, tone: x.tone, p: x.p ? 'да' : '' }));
+}
+function setMeme(meta, rec) {
+    memeSeenOf(meta);
+    meta.memeSeen = [...meta.memeSeen, { f: rec.format, t: memePlain(rec), a: rec.angle || '', tone: rec.tone || '', p: rec.public ? 1 : 0 }].slice(-12);
+    meta.memes = [rec];
+    if (Number.isInteger(rec.mes)) meta.memeLast = Math.max(Number.isInteger(meta.memeLast) ? meta.memeLast : -1, rec.mes);
+}
 const memeRerolling = new Set();
 // «Другой мем»: отдельная короткая просьба к модели дневника — новый мем к той же сцене на месте старого
 // «Другой мем» (at — какой заменить) и «Сгенерировать мем» (at = 'new' — новый по последней сцене):
@@ -2953,25 +2969,20 @@ async function rerollMeme(at) {
         }
         const st = currentState();
         const cast = (st.order || []).slice(0, 6).map(k => st.characters[k]).filter(Boolean).map(ch => `${ch.name}${ch.persona ? ' (персонаж игрока)' : ''}${ch.mood ? ` — ${ch.mood}` : ''}`);
-        const others = list0.filter(x => x.at !== at).slice(-4).map(memePlain);
-        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: [...(m0 ? [m0.format] : []), ...list0.slice(-6).map(x => x.format)], texts: others, was: m0 ? memePlain(m0) : '' }, settings().language || 'русском');
+        const seen = memeSeenOf(chatMeta());
+        const angle = pickMemeAngle(seen), tone = pickMemeTone(seen);
+        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: seen.slice(-8).map(x => x.f), texts: seen.slice(-6).map(x => x.t).filter(Boolean), was: m0 ? memePlain(m0) : '', angle, tone }, settings().language || 'русском');
         const raw = await callModel(system, user, withBudget('rewards'));
         const data = extractJson(raw);
         const mm = cleanMeme((data && data.meme) || data);
         if (!mm) throw new Error('модель не прислала мем');
         if (ctx().getCurrentChatId?.() !== chatId) return;
         const meta = chatMeta();
-        memePublicGate(mm, (meta.memes || []).filter(x => x.at !== at));
-        if (fresh) {
-            const now = clockNow(upto + 1);
-            const date = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
-            meta.memes = [...(meta.memes || []), Object.assign(mm, { date, mes: upto, at: Date.now() })].slice(-20);
-        } else {
-            const idx = (meta.memes || []).findIndex(x => x.at === at);
-            if (idx < 0) return;
-            const old = meta.memes[idx];
-            meta.memes[idx] = Object.assign(mm, { date: old.date, mes: old.mes, at: Date.now() });
-        }
+        memePublicGate(mm, memeSeenOf(meta).map(x => ({ public: x.p })));
+        // мем всегда один: новый встаёт на место прежнего
+        const now = clockNow(upto + 1);
+        const date = m0 ? m0.date : (now && now.cal && now.t ? fmtDate(now.cal, now.t) : '');
+        setMeme(meta, Object.assign(mm, { date, mes: m0 ? m0.mes : upto, at: Date.now(), angle, tone }));
         ctx().saveMetadataDebounced?.();
         renderInfobar();
     } catch (err) {
@@ -3811,6 +3822,10 @@ async function onPanelClick(e) {
         if (!wishBusy) writeSound();
         return regenWishes();
     }
+    if (t.dataset.iwDreamPick !== undefined) {
+        if (dreamBusy) return;
+        return pickNewDream(viewKey(), Number(t.dataset.iwDreamPick));
+    }
     if (t.dataset.iwDream) {
         if (t.dataset.iwDream === 'regen' && !dreamBusy) writeSound();
         return onDreamAction(t.dataset.iwDream);
@@ -4210,6 +4225,7 @@ async function onDreamAction(action) {
         await saveEditedState(state);
         return renderAll();
     }
+    if (action === 'choose' && !dreamBusy) return chooseNewDream(key);
     if (action === 'regen' && !dreamBusy) {
         if (ch.dream && ch.dream.pinned) return;
         const my = runId;
@@ -4261,6 +4277,72 @@ async function onDreamAction(action) {
             }
         }
     }
+}
+
+// Сведения для мечты: карточка или описание персоны, лорбук, последние сообщения
+async function dreamInfo(key, ch, state) {
+    const info = analysisInfo(8);
+    const c0 = ctx();
+    if (key === personaKeyOf(state)) {
+        const pdesc = c0.powerUserSettings && c0.powerUserSettings.persona_description;
+        const pbook = c0.powerUserSettings && c0.powerUserSettings.persona_description_lorebook;
+        info.persona = true;
+        info.card = cleanMessageText(pdesc || '', 4000);
+        info.botName = ch.name || c0.name1;
+        info.userName = c0.name2;
+        const lore = pbook ? await collectLoreSources().catch(() => []) : [];
+        info.loreMain = lore.filter(x => x.title === `Лорбук: ${pbook}`).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 1);
+    } else {
+        const cached = knowledgeLore(3);
+        if (cached) info.loreMain = cached;
+        else {
+            const lore = await collectLoreSources().catch(() => []);
+            info.loreMain = lore.filter(x => x.title.startsWith('Лорбук')).map(x => `[${x.title}]\n${cleanMessageText(x.text, 4000)}`).slice(0, 3);
+        }
+    }
+    return info;
+}
+// Мечта исполнена: модель предлагает 4 новые, игрок выбирает
+async function chooseNewDream(key) {
+    const state = currentState();
+    const ch = state.characters[key];
+    if (!ch || !ch.dream) return;
+    const my = runId;
+    dreamBusy = key;
+    renderAll();
+    try {
+        const info = await dreamInfo(key, ch, state);
+        info.choices = 4;
+        const { system, user } = buildDreamPrompt(info, ch, settings().language);
+        const raw = await callModel(system, user, withBudget('dream'));
+        const opts = parseDreamOptions(raw);
+        const st = currentState();
+        const c2 = st.characters[key];
+        if (!c2) return;
+        c2.dreamOptions = opts;
+        await saveEditedState(st);
+    } catch (err) {
+        if (err && err.cancelled) return;
+        console.error('[Внутренний мир]', err);
+        showError(classifyError(err, { raw: lastCall.raw, budget: lastCall.budget, cut: looksCut(lastCall.raw), thinking: settings().thinking }), { manual: true, what: 'Новые мечты не придумались' });
+    } finally {
+        if (my === runId) { dreamBusy = false; renderAll(); }
+    }
+}
+async function pickNewDream(key, i) {
+    const st = currentState();
+    const c2 = st.characters[key];
+    const o = c2 && (c2.dreamOptions || [])[i];
+    if (!o) return;
+    const prev = c2.dream;
+    c2.dream = { title: o.title, plus: o.plus || '', steps: o.steps.map(s => ({ text: s.text, done: false })), pinned: false, manual: true, history: prev ? ((prev.history || []).concat([{ title: prev.title, plus: prev.plus || '', done: true }])).slice(-4) : [] };
+    delete c2.dreamOptions;
+    c2.dreamChangedAt = c2.cycle || 0;
+    c2.log = [{ type: 'dream_change', text: `Новая мечта: «${o.title}»`, m: null }].concat(c2.log || []).slice(0, 40);
+    await saveEditedState(st);
+    updateInjection();
+    if (settings().sound !== false) playSound('dream_change', currentTheme);
+    renderAll();
 }
 
 // Разбор не дал «что привлекает / отталкивает» главным героям и персоне — одна короткая просьба, чтобы заполнить.
@@ -5071,7 +5153,7 @@ function addSettings() {
     if (!document.querySelector('link[data-iw-title-font]')) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Marck+Script&family=Comfortaa:wght@700&family=Caveat:wght@600;700&family=Oswald:wght@600;700&display=swap';
+        link.href = 'https://fonts.googleapis.com/css2?family=Marck+Script&family=Comfortaa:wght@700&family=Caveat:wght@600;700&family=Oswald:wght@600;700&family=Lobster&family=Press+Start+2P&family=Rubik+Mono+One&family=Neucha&family=Pangolin&family=PT+Mono&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&display=swap';
         link.dataset.iwTitleFont = '1';
         document.head.appendChild(link);
     }

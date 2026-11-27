@@ -648,8 +648,15 @@ export function ageNow(cal, t, p) {
 // Сетка месяца для календаря в дневнике: недели по строкам, в клетках — число и отметки.
 // Короткие подписи дней недели, как в обычном календаре: «Пн», «Вт»… — две буквы, а если совпадают, то три.
 export function weekdayHeads(list) {
-    const names = (list || []).map(w => String(w || '').trim()).filter(Boolean);
+    let names = (list || []).map(w => String(w || '').trim()).filter(Boolean);
     if (!names.length) return [];
+    // «День Крома», «День Таловода»… — общее первое слово не повторяем в шапке
+    while (names.length > 1) {
+        const first = names.map(w => w.split(/\s+/));
+        const w0 = first[0][0].toLowerCase();
+        if (first.every(p => p.length > 1 && p[0].toLowerCase() === w0)) names = first.map(p => p.slice(1).join(' '));
+        else break;
+    }
     const cap = t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
     // привычные русские дни недели — привычными сокращениями
     const RU = [['пон', 'Пн'], ['вто', 'Вт'], ['сре', 'Ср'], ['чет', 'Чт'], ['пят', 'Пт'], ['суб', 'Сб'], ['вос', 'Вс']];
