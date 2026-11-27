@@ -2,7 +2,6 @@
 import { achPctLabel, TOKENS_MIN, TOKENS_MAX, MODULES, MODULE_NAMES, EXTRA_MODULES, catchUpTokens, applyAttrPower, CONTEXT_OPTIONS, CATCHUP_OPTIONS, BUDGET_CAP_OPTIONS, RESPONSE_LENGTH_OPTIONS, THINKING_OPTIONS, ACH_RATE_NAMES, DEFAULT_SETTINGS, TOAST_KINDS } from './core.js';
 import { THEMES, THEME_IDS, THEME_SWATCHES, THEME_CARDS, THEME_VARIANTS, themeFamily, icon } from './themes.js';
 import { API_KINDS } from './api.js';
-import { isIOS } from './sound.js';
 
 function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -74,8 +73,7 @@ export function settingsSchema(ctx = {}) {
                 { type: 'toastKinds', label: 'Какие всплывашки показывать', show: s => s.toasts !== false && s.popups !== false, hint: 'Выключенные молчат, но события всё равно записываются в дневник, ленту и витрину.' },
                 { type: 'select', key: 'toastPos', label: 'Где всплывают уведомления', options: [['top', 'сверху'], ['bottom', 'снизу']], hint: 'И на компьютере, и на телефоне. Касается и событий, и ошибок дневника.' },
                 { type: 'toggle', key: 'sound', label: 'Звуки', hint: 'Свой звук на каждое событие, а на запись в дневник — свой в каждой теме: карандаш в бумажных, клавиши, часы, карты или блёстки в остальных.' },
-                { type: 'range', key: 'volume', label: 'Громкость звуков', min: 0, max: 100, step: 5, show: s => s.sound },
-                { type: 'toggle', key: 'iosLoud', label: 'iPhone: звуки и в беззвучном режиме', show: s => s.sound && ctx.ios, hint: s => (s.iosLoud ? 'Звуки играют даже при выключенном звонке, но музыка из других приложений (Spotify, Apple Music) при этом встаёт на паузу.' : 'Музыка из других приложений играет дальше, звуки дневника накладываются поверх. Переключатель «Бесшумно» на айфоне звуки дневника глушит.') },
+                { type: 'range', key: 'volume', label: 'Громкость звуков', min: 0, max: 100, step: 1, show: s => s.sound },
                 { type: 'toggle', key: 'animations', label: 'Анимации', hint: 'Если выключить, дневник станет статичным: без движения, мигания и вращения. То же переключается кнопкой со звёздочкой в шапке.' },
                 { type: 'toggle', key: 'liveView', label: 'Показывать, как пишется дневник', hint: 'Пока модель пишет, поверх дневника листок с этапами, а за ним постепенно проступают записи. Если подключение умеет отдавать ответ потоком, видно, как он пишется.' },
                 { type: 'toggle', key: 'fab', label: 'Плавающая кнопка-блокнот', hint: s => (s.fab ? 'Её можно перетащить в любое место экрана.' : 'Дневник открывается из меню расширений у поля ввода (волшебная палочка).') },
@@ -128,6 +126,7 @@ export function settingsSchema(ctx = {}) {
             title: 'Оформление',
             fields: [
                 { type: 'themes', key: 'theme' },
+                { type: 'toggle', key: 'vkMusic', label: 'ВКонтакте: песня в статусе', show: s => String(s.theme || '').startsWith('vk'), hint: 'Строка «сейчас играет» над календарём: после каждого разбора дневника — другая песня из нулевых. Крестик на самой строке тоже её прячет.' },
             ],
         },
         {
@@ -181,7 +180,7 @@ export function rangeLabel(key, v) {
 
 export function renderSettingsForm(s, { variant = 'st', profiles = [], models = [], apiStatus = '', books = [], studied = [], open = {}, booksHtml = '', forgetHtml = '', version = '', updated = '' } = {}) {
     const st = variant === 'st';
-    const schema = settingsSchema({ ios: isIOS(), profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml });
+    const schema = settingsSchema({ profiles, models: models.length ? models : s.apiModels, apiStatus, books, studied, booksHtml, forgetHtml });
     const sections = schema.map(sec => {
         const fieldsRaw = sec.fields.filter(f => !f.only || f.only === variant).map(f => {
             const hidden = f.show && !f.show(s) ? ' hidden' : '';

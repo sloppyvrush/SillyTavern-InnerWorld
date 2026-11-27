@@ -7,11 +7,13 @@ let audio = null;
 let master = null;
 let noiseBuf = null;
 let lastAt = 0;
-let volume = 0.45;
+let volume = 0.15;
 
 // Громкость 0–100 из настроек; по умолчанию звуки тише, чем были.
+// Кривая мягкая: громкость слышится по квадрату, поэтому 50 — спокойно, 5–10 — едва-едва, 100 — громко.
 export function setVolume(v) {
-    volume = Math.max(0, Math.min(100, Number(v) || 0)) / 100;
+    const x = Math.max(0, Math.min(100, Number(v) || 0)) / 100;
+    volume = x * x * 0.6;
     if (master) master.gain.value = volume;
 }
 
@@ -562,7 +564,23 @@ function writePattern(theme) {
     return (PATTERNS.base || {}).write;
 }
 
-export function playSound(kind, theme = '') {
+// «Симулятор жизни»: настоящие звуки из «Симс» на каждое событие (некоторые повторяются по смыслу)
+const SIMS_SOUNDS = {
+    want_done: ['sims-wish', 2.7], dream_step: ['sims-opportunity', 2.5], dream_grow: ['sims-opportunity', 2.5],
+    dream_change: ['sims-select', 1.1], dream_done: ['sims-confident', 3.6], fear_real: ['sims-breaks', 3.6],
+    fear_gone: ['sims-wish', 2.7], trait_new: ['sims-confident', 3.6], trait_up: ['sims-opportunity', 2.5],
+    trait_down: ['sims-unpaid', 3.6], impression: ['sims-hysterical', 3.6], attitude: ['sims-hysterical', 3.6],
+    attitude_down: ['sims-bad', 3.6], reward: ['sims-kaching', 2.6], write: ['sims-select', 1.1], error: ['sims-unpaid', 3.6],
+};
+let simsLoaded = false;
+function simsPattern(kind, ev) {
+    if (!simsLoaded && audio) { simsLoaded = true; for (const [n] of Object.values(SIMS_SOUNDS)) loadSample(audio, n); }
+    const k = kind === 'attitude' && ev && Number(ev.to) < Number(ev.from) ? 'attitude_down' : kind;
+    const x = SIMS_SOUNDS[k];
+    return x ? [{ smp: x[0], t: 0, d: Math.min(x[1], 1.6), v: 0.32 }] : null;
+}
+
+export function playSound(kind, theme = '', ev = null) {
     try {
         if (volume <= 0) return;
         const ac = ctx();
@@ -580,7 +598,8 @@ export function playSound(kind, theme = '') {
         const set = PATTERNS[THEME_SET[baseTheme(theme)]] || PATTERNS.base || {};
         // запись дневника — свой звук у каждой темы (см. writePattern);
         // в «Аське» на все остальные события один звук — «у-оу», во «ВКонтакте» — звук сообщения
-        const pattern = kind === 'write' ? writePattern(theme)
+        const pattern = baseTheme(theme) === 'sims' && simsPattern(kind, ev) ? simsPattern(kind, ev)
+            : kind === 'write' ? writePattern(theme)
             : baseTheme(theme) === 'icq' ? ICQ_ONLY
                 : baseTheme(theme) === 'vk' ? VK_ONLY : (set[kind] || (PATTERNS.base || {})[kind]);
         if (!pattern) return;

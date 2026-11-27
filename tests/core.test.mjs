@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as C from '../src/clock.js';
+import * as C3 from '../src/core.js';
 import { dominantMood, settleMood, purseOf,
     DEFAULT_SETTINGS, mergeSettings, emptyState, parseAnalysis, applyAnalysis, buildInjection, buildAttrInjection, decayState,
     buildSystemPrompt, buildUserPrompt, buildDreamPrompt, cleanMessageText, extractJson, eventText, lowerWord, moodletLeftLabel, mentioned, plural,
@@ -557,7 +558,7 @@ test('новые темы на месте: надписи, шрифты, гро�
     assert.equal(validTheme('grid'), 'grid');
     assert.equal(mergeSettings({ theme: 'grid' }).theme, 'grid');
     assert.equal(mergeSettings({ theme: 'grimoire' }).theme, 'herbal');
-    assert.equal(mergeSettings({}).volume, 45);
+    assert.equal(mergeSettings({}).volume, 50);
     assert.equal(mergeSettings({ volume: 300 }).volume, 100);
 });
 
@@ -1636,5 +1637,40 @@ test('мемы: большой пул, горсть без недавних, р�
     const s = { ...C2.DEFAULT_SETTINGS, memes: true };
     const p = buildSystemPrompt(s, { memeDue: true, memeOffer: ['tier', 'reaction'] });
     assert.ok(/tier \(тир-лист\)/.test(p) && /reaction/.test(p) && !/bingo \(/.test(p));
+});
+test('персона игрока: имя короче или в другом порядке — та же запись; смена персоны — новая запись', () => {
+    assert.ok(C3.samePerson('Ева Лянь', 'Лянь Ева') && C3.samePerson('Ева Лянь', 'Ева') && !C3.samePerson('Ева', 'Евгения'));
+    const mods = { ...C3.DEFAULT_SETTINGS.modules };
+    let st = C3.emptyState();
+    let r = C3.applyAnalysis(st, [{ name: 'Ева', mood: 'спокойна', moodlets: [] }], mods, { userName: 'Ева Лянь', persona: true });
+    const pk = r.state.order.find(k => r.state.characters[k].persona);
+    assert.ok(pk && C3.samePerson(pk, 'Ева Лянь'));
+    r = C3.applyAnalysis(r.state, [{ name: 'Марк', mood: 'устал', moodlets: [] }], mods, { userName: 'Марк', persona: true });
+    const old = r.state.characters[pk];
+    assert.ok(old && !old.persona && old.wasPersona, 'прежняя персона — обычный персонаж с пометкой');
+    assert.ok(r.state.characters['Марк'] && r.state.characters['Марк'].persona, 'у новой персоны — своя запись');
+    assert.equal(C3.genderOfWord('устала'), 'f');
+    assert.equal(C3.genderOfWord('спокоен'), 'm');
+    assert.equal(C3.genderOfWord('в порядке'), '');
+    assert.equal(C3.genderOf('n', 'Эвелин Гринвелл', ''), 'f');
+    assert.equal(C3.genderOf('n', 'Dracula', ''), 'm');
+});
+test('смена персоны: отношения бота к игроку у каждой персоны свои и возвращаются', () => {
+    const st = { order: ['Кассиан', 'Ева'], characters: {
+        'Кассиан': { name: 'Кассиан', impression: { now: 'доверяет', nowScore: 2 }, rel: { friend: 30 } },
+        'Ева': { name: 'Ева', persona: true, mood: 'спокойна' } } };
+    assert.ok(C3.swapPersona(st, 'Элария'));
+    assert.ok(!st.characters['Кассиан'].impression && !st.characters['Кассиан'].rel, 'к новой персоне — с чистого листа');
+    assert.ok(st.characters['Ева'].wasPersona && !st.characters['Ева'].persona);
+    st.characters['Кассиан'].impression = { now: 'насторожен', nowScore: -1 };
+    st.characters['Ева'].mood = undefined; // как будто, пока Ева была НПС, её настроение угасло
+    st.characters['Элария'] = { name: 'Элария', persona: true }; st.order.push('Элария');
+    assert.ok(C3.swapPersona(st, 'Ева'));
+    assert.equal(st.characters['Кассиан'].impression.now, 'доверяет', 'вернулась прежняя персона — вернулось и отношение к ней');
+    assert.ok(st.characters['Ева'].persona && st.characters['Элария'].wasPersona);
+    assert.equal(st.characters['Ева'].mood, 'спокойна', 'дневник прежней персоны вернулся из архива');
+    assert.equal(C3.swapPersona(st, 'Ева'), false, 'повторно ничего не меняет');
+    C3.swapPersona(st, 'Элария');
+    assert.equal(st.characters['Кассиан'].impression.now, 'насторожен');
 });
 console.log(`итого: ${passed} проверок`);

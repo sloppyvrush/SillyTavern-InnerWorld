@@ -1,6 +1,6 @@
 // «Внутренний мир» — желания, страхи, настроение, мечта, черты и первое впечатление персонажей.
 import {
-    MODULES, MODEL_MODULES, MODULE_NAMES, normText, mergeSettings, emptyState, parseAnalysis, applyAnalysis, sameName, decayState,
+    MODULES, MODEL_MODULES, MODULE_NAMES, normText, mergeSettings, emptyState, parseAnalysis, applyAnalysis, sameName, samePerson, swapPersona, decayState,
     buildSystemPrompt, buildUserPrompt, buildInjection, buildAttrInjection, cleanMessageText, mentioned,
     emptyRoster, parseRoster, rosterFind, rosterMentioned, rosterNames, isMain, namesMatch, namesLookAlike, buildRosterPrompt, loreText,
     prepText, mentionedIn, catchUpTokens, CATCHUP_MSG_CHARS, CATCHUP_EXCERPTS, verifyAliases,
@@ -28,7 +28,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.8.7';
+const VERSION = '0.8.8';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -209,7 +209,14 @@ function mainNames() {
 // Персона игрока в дневнике: ключ её записи (если уже разобрана) и имя.
 function personaKeyOf(state) {
     const name = ctx().name1 || '';
-    return state.order.find(k => state.characters[k] && (state.characters[k].persona || (name && sameName(k, name)))) || null;
+    const ok = k => state.characters[k];
+    // запись именно текущей персоны: после смены персоны старая запись — уже не «ты», а прежний герой
+    if (name) {
+        return state.order.find(k => ok(k) && state.characters[k].persona && samePerson(k, name))
+            || state.order.find(k => ok(k) && samePerson(k, name))
+            || null;
+    }
+    return state.order.find(k => ok(k) && state.characters[k].persona) || null;
 }
 
 // Сколько НПС вести в дневнике (выбирается в первой настройке). 99 — все.
@@ -409,6 +416,13 @@ async function studyLore({ mode = 'lore', book = '', keepLive = false } = {}) {
     }
     if (my !== runId) return;
     rosterBusy = false;
+    // мультибот: модель уже знает, кто есть в мире — спрашиваем главных героев прямо сейчас, до записи дневника
+    const rr = settings().rosters[key];
+    if (rr && rr.multi && !rr.picked && !c.groupId) {
+        await pickMainsDialog(rr);
+        if (my !== runId) return;
+        historyCache.key = '';
+    }
     if (live) live.stage = 'prep';
     renderAll();
     // сведения из карточки и лорбука — главному персонажу и тем, кто в сцене
@@ -462,10 +476,28 @@ function findHolder(beforeId) {
     return { index: -1, state: base || null };
 }
 
+// Достижения текущей персоны игрока (старые, без пометки, — общие)
+function myAchievements(list) {
+    const me = ctx().name1 || '';
+    return (Array.isArray(list) ? list : []).filter(x => !x.persona || !me || samePerson(x.persona, me));
+}
+
 function currentState(beforeId) {
     const h = findHolder(beforeId);
     const st = h.state ? clone(h.state) : emptyState();
     if (!st.order) st.order = Object.keys(st.characters || {});
+    // персону сменили (или вернулись к прежней) — отношения персонажей к игроку берутся той персоны, что сейчас
+    if (settings().persona !== false && hasChat()) {
+        const prev = swapPersona(st, ctx().name1 || '');
+        // достижения без пометки — заработаны прежней персоной: помечаем их её именем
+        if (prev) {
+            const meta = chatMeta();
+            if (Array.isArray(meta.achList) && meta.achList.some(x => !x.persona)) {
+                for (const x of meta.achList) if (!x.persona) x.persona = prev;
+                try { ctx().saveMetadataDebounced ? ctx().saveMetadataDebounced() : ctx().saveMetadata(); } catch { /* сохранится со следующим разбором */ }
+            }
+        }
+    }
     return st;
 }
 
@@ -827,6 +859,9 @@ async function detectCalendar({ manual = false, onlyCalendar = false } = {}) {
         const ans = parseCalendarAnswer(extractJson(raw));
         const meta = chatMeta();
         const before = findClock();
+        // свои праздники и даты, которые вписала игрок, при пересборке не теряем
+        const mine = ((meta.calendar && meta.calendar.holidays) || []).filter(h => h && h.user);
+        if (mine.length && ans.calendar && ans.calendar.type !== 'days') ans.calendar.holidays = [...(ans.calendar.holidays || []), ...mine.filter(h => !(ans.calendar.holidays || []).some(x => x.name === h.name && x.m === h.m && x.d === h.d))];
         meta.calendar = ans.calendar;
         // время: дата из чата — главнее всего; если часы уже идут (первый разбор был) — карточка и лорбук их не перебивают;
         // и только в новом чате без даты в сообщениях берём то, что модель нашла в карточке и лорбуке
@@ -1010,7 +1045,7 @@ async function onClockAction(spec) {
         if (!name || !d) return notice('Напиши название и число.');
         if (d > monthDays(cal, 2000, m)) return notice('В этом месяце нет такого числа.');
         // «Виктор: годовщина» — личная дата персонажа
-        const h = { m, d, name };
+        const h = { m, d, name, user: true };
         const who = name.match(/^([^:]{2,40}):\s*(.+)$/);
         if (who) Object.assign(h, { kind: 'canon', who: who[1].trim(), name: who[2].trim() });
         meta.calendar = Object.assign({}, cal, { holidays: [...(cal.holidays || []), h] });
@@ -1357,7 +1392,7 @@ function fillBornFromCards(state) {
         };
         const botKey = Object.keys(state.characters || {}).find(k => !state.characters[k].persona && sameName(k, c.name2));
         if (botKey) fix(state.characters[botKey], cardDescription(c));
-        const pk = Object.keys(state.characters || {}).find(k => state.characters[k].persona);
+        const pk = personaKeyOf(state); // только текущая персона: описание новой не должно лечь на прежнего героя
         if (pk) fix(state.characters[pk], (c.powerUserSettings && c.powerUserSettings.persona_description) || '');
     } catch (e) { console.warn('[Внутренний мир] дата рождения из карточки', e); }
 }
@@ -1395,7 +1430,7 @@ function fillOrientFromCards(state) {
         for (const k of keys) {
             const ch = chars[k];
             if (!ch || ch.orient || ch.orientManual) continue;
-            if (ch.persona) { set(ch, (c.powerUserSettings && c.powerUserSettings.persona_description) || ''); continue; }
+            if (ch.persona) { if (samePerson(ch.name || k, c.name1)) set(ch, (c.powerUserSettings && c.powerUserSettings.persona_description) || ''); continue; }
             const others = names.filter(n => n !== (ch.name || k));
             const isBot = sameName(k, c.name2) || sameName(ch.name || '', c.name2);
             // одна карточка — один герой: читаем её целиком; иначе — только кусок о нём
@@ -1557,13 +1592,15 @@ function onMultiAction(d) {
         const list = cur();
         if (!has(list, d.iwPromote)) list.push(d.iwPromote);
         r.pickedMain = list; r.picked = true;
-        view = 'main:' + d.iwPromote;
+        // остаёмся на странице того же персонажа — теперь это его страница главного героя
+        if (view === 'npc:' + d.iwPromote) view = 'main:' + d.iwPromote;
         notice(`${d.iwPromote} — теперь главный герой`);
     } else if (d.iwDemote !== undefined) {
         const list = cur().filter(x => !namesMatch(x, d.iwDemote));
         if (!list.length) return notice('Должен остаться хотя бы один главный герой.');
         r.pickedMain = list; r.picked = true;
-        view = 'npc';
+        // остаёмся на странице того же персонажа — теперь это его страница в НПС
+        if (view === 'main:' + d.iwDemote || view === 'shop:' + d.iwDemote) view = 'npc:' + d.iwDemote;
         notice(`${d.iwDemote} — теперь в НПС`);
     }
     historyCache.key = '';
@@ -1853,6 +1890,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             persona: kind !== 'chat' && offBooks().includes('__persona') ? '' : personaText(c),
             trackNames: [c.name2, ...trackNames(s)],
             trackPersona: s.persona !== false,
+            prevPersonas: s.persona !== false ? base.order.filter(k => base.characters[k] && base.characters[k].wasPersona).map(k => base.characters[k].name || k) : [],
             messages: msgs,
             mainNames: mn,
             typeHints: typeHintsFor(mn),
@@ -1866,7 +1904,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
             ignored: ignoredNames(),
             lore: [],
             clockNow: kind !== 'lore' && s.clock !== false ? (syncClockFromChat(), clockForAnalysis(messageId)) : '',
-            achTitles: (chatMeta().achList || []).filter(x => x.mes !== messageId).map(x => x.title).slice(-15),
+            achTitles: myAchievements(chatMeta().achList).filter(x => x.mes !== messageId).map(x => x.title).slice(-15),
             love: loveScoreInfo(),
             hasGifts: Object.values(base.characters || {}).some(ch => ch && (ch.buffs || []).some(b => b.kind === 'gift')),
         };
@@ -2101,7 +2139,7 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!catchUp && !fromLore) {
             if (s.toasts) flushEvents([...events, ...extra]);
-            else if (s.sound !== false && events.length) playSound(events[0].type, currentTheme);
+            else if (s.sound !== false && events.length) playSound(events[0].type, currentTheme, events[0]);
         }
         if (events.length && !isOpen()) markFab(true);
         if (!view) view = '';
@@ -2229,7 +2267,7 @@ function showGroup(items) {
     });
     box.appendChild(wrap);
     playSmiles(wrap);
-    if (settings().sound !== false) playSound(sorted[0].type, currentTheme);
+    if (settings().sound !== false) playSound(sorted[0].type, currentTheme, sorted[0]);
     timer = setTimeout(close, 14000);
 }
 
@@ -2267,7 +2305,7 @@ function showEvent(ev, delay = 0) {
         });
         box.appendChild(wrap);
         playSmiles(wrap);
-        if (settings().sound !== false) playSound(ev.type === 'achievement' ? 'dream_done' : ev.type, currentTheme);
+        if (settings().sound !== false) playSound(ev.type === 'achievement' ? 'dream_done' : ev.type, currentTheme, ev);
         setTimeout(close, 9000);
     }, delay);
 }
@@ -2297,7 +2335,7 @@ function showError(info, { manual = false, what = '' } = {}) {
         close();
     });
     box.appendChild(wrap);
-    if (settings().sound !== false) playSound('fear_real', currentTheme);
+    if (settings().sound !== false) playSound(currentTheme && String(currentTheme).startsWith('sims') ? 'error' : 'fear_real', currentTheme);
     setTimeout(close, 15000);
 }
 
@@ -2411,8 +2449,8 @@ function refreshTheme() {
     const parts = themeParts(validTheme(settings().theme));
     currentTheme = parts.base;
     currentDark = parts.dark;
-    setVolume(settings().volume ?? 45);
-    setSilentMode(settings().iosLoud === true, () => settings().sound !== false);
+    setVolume(settings().volume ?? 50);
+    setSilentMode(false, () => settings().sound !== false); // на айфоне — только «фоновый» режим: музыку не глушим, беззвучный режим уважаем
     loadFonts(currentTheme);
     const fab = document.getElementById('iw_fab');
     if (fab) setFabTheme(fab);
@@ -2455,7 +2493,9 @@ function avatarFor(name) {
     const exact = x => labels(x).some(l => names.some(n => sameName(l, n)));
     const close = x => labels(x).some(l => normText(l).split(' ').length > 1 && names.some(n => normText(n).split(' ').length > 1 && namesMatch(l, n)));
     const alike = x => labels(x).some(l => names.some(n => namesLookAlike(l, n)));
-    if (!c.groupId && c.characterId !== undefined && isMain(name, mainNames())) {
+    // мультибот: у карточки одна общая картинка — не раздаём её всем главным героям (только если главный один)
+    const r = roster();
+    if (!c.groupId && c.characterId !== undefined && isMain(name, mainNames()) && !(r && r.multi && mainNames().length > 1)) {
         const cur = c.characters[c.characterId];
         if (cur && cur.avatar) return `/thumbnail?type=avatar&file=${encodeURIComponent(cur.avatar)}`;
     }
@@ -2504,6 +2544,8 @@ function isOpen() {
 
 // ---------- Перетаскивание блоков за «ручку» в заголовке: порядок общий для всех страниц ----------
 let blockDrag = null;
+// карусель главных героев: в какую сторону листнули (для анимации ровно одной перерисовки)
+let carDir = '';
 let dragRenderPending = false;
 function onBlockDragStart(e) {
     const grip = e.target.closest && e.target.closest('.iw-drag');
@@ -2608,8 +2650,13 @@ function renderPanelNow() {
     const showNpc = s.showNpc !== false;
     const personaOn = s.persona !== false && hasChat();
     const persona = personaOn ? { key: personaKey, name: ctx().name1 || 'Ты', avatar: personaAvatarUrl() } : null;
+    // страница персоны — только текущей: после смены персоны старая запись открывается как НПС
+    if (personaOn && view.startsWith('me:') && view !== 'me:' + (personaKey || '')) {
+        const was = view.slice(3);
+        view = was && npcKeys.includes(was) && showNpc ? 'npc:' + was : 'me:' + (personaKey || '');
+    }
     const valid = view === 'settings' || view === 'showcase'
-        || (personaOn && view.startsWith('me:'))
+        || (personaOn && view === 'me:' + (personaKey || ''))
         || (view.startsWith('main:') && mains.includes(view.slice(5)))
         || (view.startsWith('shop:') && !!state.characters[view.slice(5)])
         || (showNpc && view === 'npc')
@@ -2617,11 +2664,18 @@ function renderPanelNow() {
     if (!valid) view = mains.length ? 'main:' + mains[0] : (showNpc ? 'npc' : '');
     el.className = `iw-panel ${themeCls()}${s.animations === false ? ' iw-noanim' : ''}`;
     const keepScroll = readScroll(el);
+    // анимированные стикеры ВК при загрузке: переносим живые узлы в новую разметку, иначе анимация начиналась бы заново при каждой перерисовке
+    const keepStickers = [...el.querySelectorAll('.iw-vk-st')];
     const hs = showNpc ? historySeen() : { seen: [], pending: [] };
     const seenOnly = hs.seen.filter(e => !isIgnored(e.name))
         .filter(e => !npcKeys.some(k => namesMatch(k, e.name) || rosterFind(roster(), k) === e))
         .map(e => Object.assign({}, e, { checked: !hs.pending.includes(e) }));
-    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], rerolling: [...memeRerolling], every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen });
+    el.innerHTML = renderPanel({ state, settings: s, theme: currentTheme, view, busy, busyKind, dreamBusy, shopBusy, status, avatarFor, mains, npcKeys, persona, roster: roster(), rosterBusy, seenOnly, settingsHtml: view === 'settings' ? settingsFormHtml('diary') : '', books: worldNames, picked: pickedBooks(), linked: linkedBooks, off: offBooks(), live, attrMode, attrOpen, attrMore, working: busy || rosterBusy || dreamBusy || shopBusy || !!wishBusy, wishBusy: wishBusy && wishBusy === viewKey() ? wishBusy : '', mobile: isPhone(), clock: safeClockView(), nextIn: nextAnalysisIn(), showcase: showcaseModel(), ignored: hasChat() ? ignoredNames() : [], giftTo, love: loveScoreInfo(), rumors: hasChat() && settings().rumors !== false ? (chatMeta().rumors || []) : null, memes: hasChat() && settings().memes !== false ? { list: chatMeta().memes || [], rerolling: [...memeRerolling], every: Math.max(1, Number(settings().memeEvery) || 6) } : null, nights: settings().dreams !== false, histOpen, carDir });
+    carDir = '';
+    for (const n of el.querySelectorAll('.iw-vk-st')) {
+        const i = keepStickers.findIndex(o => o.className === n.className);
+        if (i >= 0) { n.replaceWith(keepStickers[i]); keepStickers.splice(i, 1); }
+    }
     masonry(el);
     writeScroll(el, keepScroll);
     replaySmiles(el);
@@ -2742,7 +2796,7 @@ function showcaseModel() {
     if (!hasChat()) return null;
     const meta = chatMeta();
     const s = settings();
-    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy, view: ['grid', 'cards'].includes(s.caseView) ? 'grid' : 'list' };
+    return { got: myAchievements(meta.achList), sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy, view: ['grid', 'cards'].includes(s.caseView) ? 'grid' : 'list' };
 }
 
 // ---------- Картинки памятных вещей ----------
@@ -3007,7 +3061,7 @@ function takeAchievement(raw, messageId) {
     if (!giftMoment && !achGate(a, meta.achList, messageId, settings())) return;
     const now = clockNow(messageId + 1);
     const scene = now && now.cal && now.t ? fmtDate(now.cal, now.t) : '';
-    const { list, added } = addAchievement(meta.achList, a, { mes: messageId, scene });
+    const { list, added } = addAchievement(meta.achList, a, { mes: messageId, scene, persona: ctx().name1 || '' });
     meta.achList = list;
     if (!added) return;
     meta.achNew = [...(meta.achNew || []).filter(id => list.some(x => x.id === id)), added.id].slice(-30);
@@ -3423,6 +3477,34 @@ function iwDialog({ title = '', text = '', html = '', input = null, buttons = [{
     });
 }
 
+// Мультибот, первый разбор: всплывашка «Кто здесь главные герои?» посреди разбора — после списка персонажей,
+// до записи дневника. Отмеченные встанут каруселью на главной, остальные — в НПС (поменять можно потом).
+async function pickMainsDialog(r) {
+    const nm = x => (x && typeof x === 'object' ? x.name : x) || '';
+    const names = [];
+    for (const n of [...(r.main || []).map(nm), ...(r.npc || []).map(nm)]) if (n && !names.some(x => namesMatch(x, n))) names.push(n);
+    const pre = (r.main || []).map(nm).filter(Boolean);
+    const sel = new Set(pre);
+    const html = `<p class="iw-modal-text">Это мультибот. Отметь героев, которых ведёт карточка: их дневник будет на главной странице. Остальные уйдут в НПС — любого можно потом поднять кнопкой «сделать главным».</p>
+<div class="iw-mainpick" role="group" aria-label="Главные герои">${names.map(n => `<button type="button" class="iw-mainpick-chip${sel.has(n) ? ' on' : ''}" data-n="${esc(n)}" aria-pressed="${sel.has(n)}">${esc(n)}</button>`).join('')}</div>`;
+    const res = await iwDialog({
+        title: 'Кто здесь главные герои?', html,
+        buttons: [{ text: 'Готово', value: 'ok', kind: 'main' }, { text: 'Как предложила модель', value: 'auto' }],
+        onReady: w => w.querySelector('.iw-mainpick').addEventListener('click', e => {
+            const b = e.target.closest('[data-n]');
+            if (!b) return;
+            const on = !b.classList.contains('on');
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-pressed', String(on));
+            if (on) sel.add(b.dataset.n); else sel.delete(b.dataset.n);
+        }),
+    });
+    r.pickedMain = res === 'ok' && sel.size ? names.filter(n => sel.has(n)) : pre;
+    r.picked = true;
+    saveSettings();
+    notice(`Главные герои: ${r.pickedMain.join(', ')}. Остальные — в НПС.`);
+}
+
 function raiseLayer(on) {
     const host = document.getElementById('iw_host');
     if (host) host.style.setProperty('z-index', on ? '2147483000' : '3050', 'important');
@@ -3494,7 +3576,7 @@ async function testShowcase(kind) {
         const have = (meta.achList || []).map(x => x.title);
         const pickA = TEST_ACH.find(a => !have.includes(a.title)) || TEST_ACH[Math.floor(Math.random() * TEST_ACH.length)];
         const now = clockNow();
-        const { list, added } = addAchievement((meta.achList || []).filter(x => x.title !== pickA.title), Object.assign({}, pickA), { scene: now && now.cal && now.t ? fmtDate(now.cal, now.t) : '' });
+        const { list, added } = addAchievement((meta.achList || []).filter(x => x.title !== pickA.title), Object.assign({}, pickA), { scene: now && now.cal && now.t ? fmtDate(now.cal, now.t) : '', persona: ctx().name1 || '' });
         added.test = true;
         meta.achList = list;
         meta.achNew = [...(meta.achNew || []), added.id].slice(-30);
@@ -3748,6 +3830,12 @@ async function onPanelClick(e) {
     if (t.dataset.iwAttr) return onAttrAction(t.dataset.iwAttr, t);
     if (t.dataset.iwLifePin) return onLifeEdit(null, null);
     if (t.dataset.iwLifeUnlock) return onLifeEdit('unlock:' + t.dataset.iwLifeUnlock, null);
+    if (t.dataset.iwVkmusic) {
+        settings().vkMusic = false;
+        saveSettings();
+        notice('Песня скрыта. Вернуть — в настройках, раздел «Оформление»');
+        return renderAll();
+    }
     if (t.dataset.iwNpcStudy) return studyNpc(t.dataset.iwNpcStudy);
     if (t.dataset.iwLiveHide !== undefined) {
         if (live) live.hidden = true;
@@ -3836,6 +3924,8 @@ async function onPanelClick(e) {
         return regenShop();
     }
     if (t.dataset.iwWantPin !== undefined) return toggleWantPin(Number(t.dataset.iwWantPin));
+    if (t.dataset.iwShopPin) return toggleShopPin(t.dataset.iwShopPin);
+    if (t.dataset.iwWantClaimAll !== undefined) return claimAllWantRewards();
     if (t.dataset.iwWantClaim !== undefined) return claimWantReward(Number(t.dataset.iwWantClaim));
     if (t.dataset.iwFearCross !== undefined) return crossFear(Number(t.dataset.iwFearCross));
     if (t.dataset.iwTrait) return onTraitAction(t.dataset.iwTrait);
@@ -3880,6 +3970,7 @@ async function onPanelClick(e) {
         return renderAll();
     }
     if (t.dataset.iwView) {
+        carDir = t.dataset.iwCardir || '';
         const next = t.dataset.iwView === 'back' ? (viewBefore || '') : t.dataset.iwView;
         if (next === 'showcase' && view !== 'showcase') { viewBefore = view; caseSel = ''; seenAchievements(); }
         view = next;
@@ -4162,6 +4253,8 @@ function missingPersona() {
     const st = currentState();
     // главного героя нет в дневнике (его забыли или дневник очистили) — разбирать есть что
     if (mainNames().some(n => !st.order.some(k => namesMatch(k, n)))) return true;
+    // дневника текущей персоны ещё нет (первый разбор её пропустил или персону сменили) — тоже есть что разбирать
+    if (settings().persona !== false && ctx().name1 && !personaKeyOf(st) && (ctx().chat || []).some(m => m && m.is_user)) return true;
     if (!settings().modules.traits) return false;
     return splitCast(st).mains.some(k => {
         const ch = st.characters[k];
@@ -4457,7 +4550,17 @@ async function regenShop(forKey = null, { quiet = false } = {}) {
         if (!rewards.length) throw new Error('модель не вернула наград');
         const st = currentState();
         if (!st.characters[key]) return;
-        st.characters[key].shop = rewards;
+        // закреплённые награды остаются; новых того же вида — на столько же меньше, чтобы лавка не разрасталась
+        const kept = (st.characters[key].shop || []).filter(r => r && r.pinned);
+        const keptTitles = new Set(kept.map(r => String(r.title || '').toLowerCase()));
+        const room = {};
+        for (const r of kept) room[r.kind] = (room[r.kind] || 0) + 1;
+        const fresh = rewards.filter(r => {
+            if (keptTitles.has(String(r.title || '').toLowerCase())) return false;
+            if (room[r.kind] > 0) { room[r.kind]--; return false; }
+            return true;
+        });
+        st.characters[key].shop = [...kept, ...fresh];
         st.characters[key].shopMes = (ctx().chat || []).length; // от этого сообщения считаем автообновление
         await saveEditedState(st);
     } catch (err) {
@@ -4579,6 +4682,38 @@ async function claimWantReward(i) {
     showEvent({ type: 'reward', who: ch.name, text: `«${text}» — награда получена: +${got.toLocaleString('ru-RU')}`, icon: 'coin' });
 }
 
+// Закрепить награду в лавке: не уходит при «Подобрать заново» и автообновлении
+async function toggleShopPin(id) {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    const r = ch && (ch.shop || []).find(x => x.id === id);
+    if (!r) return;
+    r.pinned = !r.pinned;
+    await saveEditedState(st);
+    renderAll();
+}
+
+// Все несобранные награды за желания — одной кнопкой
+async function claimAllWantRewards() {
+    const key = viewKey();
+    const st = currentState();
+    const ch = key && st.characters[key];
+    if (!ch || !ch.wants) return;
+    let got = 0, n = 0;
+    for (let i = ch.wants.length - 1; i >= 0; i--) {
+        const w = ch.wants[i];
+        if (!w || w.status !== 'done' || !w.unclaimed) continue;
+        const g = claimWant(st, key, i);
+        if (g) { got += g; n++; }
+    }
+    if (!n) return;
+    await saveEditedState(st);
+    updateInjection();
+    renderAll();
+    showEvent({ type: 'reward', who: ch.name, text: `Награды за ${n} ${plural(n, 'желание', 'желания', 'желаний')} получены: +${got.toLocaleString('ru-RU')}`, icon: 'coin' });
+}
+
 // Сбывшийся или прошедший страх вычёркивается рукой — как желание, только без награды
 async function crossFear(i) {
     const key = viewKey();
@@ -4631,7 +4766,7 @@ async function enterCheat() {
     if (!meta.cheated) {
         meta.cheated = true;
         const now = clockNow();
-        const { list, added } = addAchievement(meta.achList, { title: 'Читер поганый', desc: 'Ввести чит-код и надеяться, что никто не заметит. Мы заметили.', icon: 'guilt', tier: 'bronze', kind: 'funny' }, { scene: now && now.cal && now.t ? fmtDate(now.cal, now.t) : '' });
+        const { list, added } = addAchievement(meta.achList, { title: 'Читер поганый', desc: 'Ввести чит-код и надеяться, что никто не заметит. Мы заметили.', icon: 'guilt', tier: 'bronze', kind: 'funny' }, { scene: now && now.cal && now.t ? fmtDate(now.cal, now.t) : '', persona: ctx().name1 || '' });
         meta.achList = list;
         if (added) {
             meta.achNew = [...(meta.achNew || []), added.id].slice(-30);
@@ -5186,7 +5321,7 @@ async function resetAllSettings() {
     refreshTheme();
     addFab();
     syncMenuItem();
-    setVolume(old.volume ?? 45);
+    setVolume(old.volume ?? 50);
     status = 'Настройки сброшены';
     syncSettingsForm();
     updateInjection();

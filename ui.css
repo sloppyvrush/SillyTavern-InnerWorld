@@ -1254,7 +1254,7 @@ ol {
     transform: none;
 }
 
-.iw-theme-sims .iw-list > li {
+.iw-theme-sims .iw-list > li:not(:last-child) {
     border-bottom-style: solid;
 }
 
@@ -8527,9 +8527,9 @@ ol {
 .iw-pt-analyst { --pt: #88619a; }
 .iw-pt-diplomat { --pt: #33a474; }
 .iw-pt-sentinel { --pt: #4298b4; }
-.iw-pt-explorer { --pt: #d39a1c; }
+.iw-pt-explorer { --pt: #b8820f; }
 .iw-tm-choleric { --pt: #d9473a; }
-.iw-tm-sanguine { --pt: #e38a1e; }
+.iw-tm-sanguine { --pt: #cc7414; }
 .iw-tm-phlegmatic { --pt: #3d8db0; }
 .iw-tm-melancholic { --pt: #6b5ca8; }
 
@@ -16007,7 +16007,7 @@ ol {
     border-radius: 999px;
     transform: none;
 }
-.iw-theme-vk .iw-list > li {
+.iw-theme-vk .iw-list > li:not(:last-child) {
     border-bottom-style: solid;
 }
 .iw-theme-vk .iw-toast-card {
@@ -16270,7 +16270,7 @@ ol {
     border-radius: 999px;
     transform: none;
 }
-.iw-theme-telegram .iw-list > li {
+.iw-theme-telegram .iw-list > li:not(:last-child) {
     border-bottom-style: solid;
 }
 .iw-theme-telegram .iw-toast-card {
@@ -16545,7 +16545,7 @@ ol {
     border-radius: 999px;
     transform: none;
 }
-.iw-theme-icq .iw-list > li {
+.iw-theme-icq .iw-list > li:not(:last-child) {
     border-bottom-style: solid;
 }
 .iw-theme-icq .iw-toast-card {
@@ -20190,7 +20190,10 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-mli-text { min-width: 0; }
 
 /* выбор месяца в своём календаре: длинные названия целиком, без горизонтальной прокрутки */
-.iw-pick-month .iw-pick-list { left: 50%; transform: translateX(-50%); min-width: 0; width: min(330px, calc(100vw - 32px)); grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); overflow-x: hidden; }
+/* список месяцев — во всю ширину строки календаря, а не от кнопки месяца: на телефоне он уезжал за левый край */
+.iw-cal-nav { position: relative; }
+.iw-cal-nav .iw-pick-month { position: static; }
+.iw-pick-month .iw-pick-list { left: 0; right: 0; transform: none; min-width: 0; width: auto; box-sizing: border-box; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); overflow-x: hidden; }
 .iw-pick-month .iw-pick-opt { white-space: normal; overflow-wrap: break-word; line-height: 1.2; padding-left: 4px; padding-right: 4px; min-width: 0; }
 
 /* ===== Слухи: у каждой формы своя «вещь» ===== */
@@ -20752,7 +20755,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-dead-mark, .iw-panel.iw-theme-vk .iw-dossier.iw-dead .iw-dead-mark { display: none; }
 .iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-npc-face-wrap { position: relative; }
 .iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-npc-face-wrap > * { visibility: hidden; }
-.iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-npc-face-wrap::after { content: ''; position: absolute; inset: 0; margin: auto; width: 100%; max-width: 64px; aspect-ratio: 1; border-radius: 50%; background: #e1e5eb url('smiles/vk/dog-deleted.webp') center 60% / 82% no-repeat; box-shadow: inset 0 0 0 1px #d3d9de; }
+.iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-npc-face-wrap::after { content: ''; position: absolute; inset: 0; margin: auto; width: 100%; max-width: 64px; aspect-ratio: 1; border-radius: 50%; background: #d5dce5 url('smiles/vk/deleted.svg') center / cover no-repeat; box-shadow: inset 0 0 0 1px #d3d9de; }
 .iw-panel.iw-theme-vk.iw-dark .iw-npc.iw-dead .iw-npc-face-wrap::after { background-color: #2c2d2e; box-shadow: inset 0 0 0 1px #363738; }
 .iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-npc-mood { font-size: 0 !important; }
 .iw-panel.iw-theme-vk .iw-npc.iw-dead .iw-npc-mood::after { content: 'Страница удалена'; font-size: 12px; color: var(--iw-muted); }
@@ -20876,7 +20879,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-face-confused { --si-e: url('icons/sims/e-confused.webp'); }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-face-curious { --si-e: url('icons/sims/e-curious.webp'); }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-face-neutral { --si-e: url('icons/sims/e-neutral.webp'); }
-:is(.iw-panel, .iw-toasts).iw-theme-sims .iw-tab .iw-face, :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-npc .iw-face { background: #fff !important; }
+:is(.iw-panel, .iw-toasts).iw-theme-sims :is(.iw-tab, .iw-npc, .iw-dossier, .iw-npc-title, .iw-feel, .iw-mood-now) .iw-face { background: transparent !important; box-shadow: none !important; border: 0 !important; border-radius: 0 !important; }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-tab .iw-face .iw-face-ico, :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-npc .iw-face .iw-face-ico { width: 80%; height: 80%; }
 .iw-panel.iw-theme-sims .iw-mood-word[class*="iw-face-"]::after { content: ""; display: inline-block; width: 30px; height: 30px; margin-left: 8px; vertical-align: middle; background: var(--si-e) center / contain no-repeat; }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-toast-icon:not(.iw-ach-medal) { background: #fff var(--si-ev, none) center / 74% no-repeat !important; }
@@ -20902,7 +20905,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-ev-meme { --si-ev: url('icons/sims/ev-meme.webp'); }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-ev-note { --si-ev: url('icons/sims/ev-note.webp'); }
 :is(.iw-panel, .iw-toasts).iw-theme-sims .iw-ev-error { --si-ev: url('icons/sims/ev-error.webp'); }
-.iw-panel.iw-theme-sims .iw-block-icon { background: #fff var(--si-b, none) center / 78% no-repeat !important; box-shadow: 0 0 0 2px #2f73c0; width: 30px; height: 30px; }
+.iw-panel.iw-theme-sims .iw-block-icon { background: #fff var(--si-b, none) center / 78% no-repeat !important; box-shadow: 0 0 0 2px #2f73c0; width: 40px; height: 40px; }
 .iw-panel.iw-theme-sims .iw-block-icon:is([style], .iw-si-on) > *, .iw-panel.iw-theme-sims .iw-block:is(.iw-b-mood, .iw-b-impression, .iw-b-attraction, .iw-b-wants, .iw-b-fears, .iw-b-dream, .iw-b-traits, .iw-b-persona, .iw-b-life, .iw-b-chronicle, .iw-b-nights, .iw-b-rumors, .iw-b-memes, .iw-b-heard, .iw-b-shop) > .iw-block-head .iw-block-icon > * { visibility: hidden; }
 .iw-panel.iw-theme-sims .iw-b-mood > .iw-block-head .iw-block-icon { --si-b: url('icons/sims/b-mood.webp'); }
 .iw-panel.iw-theme-sims .iw-b-impression > .iw-block-head .iw-block-icon { --si-b: url('icons/sims/b-impression.webp'); }
@@ -20921,10 +20924,10 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-sims .iw-b-shop > .iw-block-head .iw-block-icon { --si-b: url('icons/sims/b-shop.webp'); }
 .iw-panel.iw-theme-sims.iw-dark .iw-block-icon { background-color: #1d2c3f !important; box-shadow: 0 0 0 2px #4d8fd8; }
 .iw-si { display: none; }
-.iw-panel.iw-theme-sims .iw-si { display: inline-block; flex: none; position: relative; width: 38px; height: 38px; border-radius: 50%; background: var(--si) center / 70% no-repeat, radial-gradient(circle at 35% 30%, #fff 0 45%, #e6f1fb); box-shadow: 0 0 0 2px #8fd14f, 0 2px 5px rgba(30, 70, 120, .18); }
+.iw-panel.iw-theme-sims .iw-si { display: inline-block; flex: none; position: relative; width: 30px; height: 30px; border-radius: 50%; background: var(--si) center / 70% no-repeat, radial-gradient(circle at 35% 30%, #fff 0 45%, #e6f1fb); box-shadow: 0 0 0 2px #8fd14f, 0 2px 5px rgba(30, 70, 120, .18); }
 .iw-panel.iw-theme-sims .iw-want:has(.iw-si-want) > .iw-box, .iw-panel.iw-theme-sims .iw-fear:has(.iw-si-fear) > .iw-fear-mark { display: none; }
-.iw-panel.iw-theme-sims .iw-want, .iw-panel.iw-theme-sims .iw-fear { align-items: center; gap: 12px; }
-.iw-panel.iw-theme-sims .iw-want.done .iw-si-want::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; background: #5cb82e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 72% no-repeat; box-shadow: 0 0 0 2px #fff; }
+.iw-panel.iw-theme-sims .iw-want, .iw-panel.iw-theme-sims .iw-fear { align-items: center; gap: 10px; }
+.iw-panel.iw-theme-sims .iw-want.done .iw-si-want::after { content: ""; position: absolute; right: -5px; bottom: -5px; width: 15px; height: 15px; border-radius: 50%; background: #5cb82e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 72% no-repeat; box-shadow: 0 0 0 2px #fff; }
 .iw-panel.iw-theme-sims .iw-want.dropped .iw-si-want { filter: grayscale(1); opacity: .55; }
 .iw-panel.iw-theme-sims .iw-si-fear { box-shadow: 0 0 0 2px #e0707a, 0 2px 5px rgba(120, 30, 50, .18); background: var(--si) center / 70% no-repeat, radial-gradient(circle at 35% 30%, #fff 0 45%, #fbeaec); }
 .iw-panel.iw-theme-sims .iw-fear.gone .iw-si-fear, .iw-panel.iw-theme-sims .iw-fear.realized .iw-si-fear { filter: grayscale(.8); opacity: .6; }
@@ -20933,7 +20936,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-sims .iw-dream-title { display: flex; align-items: center; gap: 12px; }
 .iw-panel.iw-theme-sims .iw-dream-tt { display: block; min-width: 0; }
 .iw-panel.iw-theme-sims .iw-dream-tt::first-letter { text-transform: uppercase; }
-.iw-panel.iw-theme-sims .iw-si-dream { width: 50px; height: 50px; box-shadow: 0 0 0 3px #f2c94c, 0 3px 8px rgba(160, 120, 20, .25); background: var(--si) center / 70% no-repeat, radial-gradient(circle at 35% 30%, #fffdf3 0 40%, #fbeec4); }
+.iw-panel.iw-theme-sims .iw-si-dream { width: 40px; height: 40px; box-shadow: 0 0 0 3px #f2c94c, 0 3px 8px rgba(160, 120, 20, .25); background: var(--si) center / 70% no-repeat, radial-gradient(circle at 35% 30%, #fffdf3 0 40%, #fbeec4); }
 .iw-panel.iw-theme-sims.iw-dark .iw-si { background: var(--si) center / 70% no-repeat, radial-gradient(circle at 35% 30%, #2d4562 0 45%, #1c2d42); }
 .iw-panel.iw-theme-sims.iw-dark .iw-si-trait { background: var(--si) center / contain no-repeat; }
 .iw-panel.iw-theme-sims .iw-npc.iw-dead .iw-dead-mark { display: none; }
@@ -20992,9 +20995,87 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-vk .iw-vk-status-eq i { width: 3px; height: 100%; border-radius: 1px; background: #5181b8; transform-origin: bottom; animation: iw-vk-eq 1s ease-in-out infinite; }
 .iw-panel.iw-theme-vk .iw-vk-status-eq i:nth-child(2) { animation-delay: -.35s; }
 .iw-panel.iw-theme-vk .iw-vk-status-eq i:nth-child(3) { animation-delay: -.7s; }
+.iw-panel.iw-theme-vk .iw-vk-status-x { order: 6; flex: none; display: grid; place-items: center; width: 24px; height: 24px; margin: -4px -6px -4px 2px; padding: 0; border: 0 !important; border-radius: 50%; background: none !important; box-shadow: none !important; color: #99a2ad; cursor: pointer; font-size: 13px; }
+.iw-panel.iw-theme-vk .iw-vk-status-x:hover { background: #f0f2f5 !important; color: #626d7a; }
+.iw-panel.iw-theme-vk .iw-vk-status-x svg { width: 14px; height: 14px; }
+.iw-panel.iw-theme-vk.iw-dark .iw-vk-status-x:hover { background: #2c2d2e !important; color: #e1e3e6; }
 @keyframes iw-vk-eq { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
 .iw-noanim .iw-vk-status-eq i { animation: none !important; transform: scaleY(.6); }
 @media (prefers-reduced-motion: reduce) { .iw-vk-status-eq i { animation: none !important; } }
+
+
+/* ВКонтакте: страница НПС — как профиль ВК: карточка с рамкой, круглая аватарка, статус и «Информация» */
+.iw-panel.iw-theme-vk .iw-dossier { background: #fff !important; box-shadow: 0 0 0 1px #e7e8ec !important; border: 0 !important; border-radius: 12px !important; padding: 20px 16px 16px !important; margin: 10px 0 14px !important; transform: none !important; }
+.iw-panel.iw-theme-vk .iw-dossier > .iw-tape { display: none; }
+.iw-panel.iw-theme-vk .iw-dossier-face :is(.iw-badge-lg, .iw-npc-face-wrap) { border-radius: 50% !important; overflow: hidden; }
+.iw-panel.iw-theme-vk .iw-dossier .iw-npc-title { font-size: 19px !important; font-weight: 700; color: #000 !important; }
+.iw-panel.iw-theme-vk .iw-dossier-mood { color: #818c99; font-size: 14px; }
+.iw-panel.iw-theme-vk .iw-dossier-mood .iw-hl-main { background: none !important; color: #2a5885 !important; padding: 0 !important; font-weight: 500; box-shadow: none !important; }
+.iw-panel.iw-theme-vk .iw-dossier .iw-whois { background: none !important; border: 0 !important; border-top: 1px solid #e7e8ec !important; border-radius: 0 !important; box-shadow: none !important; margin-top: 12px; padding: 12px 0 0 !important; text-align: left; }
+.iw-panel.iw-theme-vk .iw-dossier .iw-whois-tag { position: static !important; display: block; transform: none !important; background: none !important; box-shadow: none !important; padding: 0 0 4px !important; color: #000 !important; font-size: 14px !important; font-weight: 600; letter-spacing: 0 !important; text-transform: none !important; }
+.iw-panel.iw-theme-vk .iw-dossier .iw-heard-toggle { color: #2a5885; text-decoration: none; border-bottom: 0; }
+.iw-panel.iw-theme-vk .iw-dossier .iw-heard-toggle:hover { text-decoration: underline; }
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier { background: #222222 !important; box-shadow: 0 0 0 1px #363738 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-npc-title, .iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-whois-tag { color: #e1e3e6 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-whois { border-top-color: #363738 !important; }
+.iw-panel.iw-theme-vk.iw-dark :is(.iw-dossier-mood .iw-hl-main, .iw-dossier .iw-heard-toggle) { color: #71aaeb !important; }
+/* удалённая страница: большая заглушка ВК и подпись */
+.iw-panel.iw-theme-vk .iw-dossier.iw-dead .iw-dossier-face { position: relative; }
+.iw-panel.iw-theme-vk .iw-dossier.iw-dead .iw-dossier-face > * { visibility: hidden; }
+.iw-panel.iw-theme-vk .iw-dossier.iw-dead .iw-dossier-face::after { content: ''; position: absolute; inset: 0; margin: auto; width: 120px; height: 120px; max-width: 100%; border-radius: 10px; background: #d5dce5 url('smiles/vk/deleted.svg') center / cover no-repeat; }
+.iw-panel.iw-theme-vk .iw-dossier.iw-dead .iw-npc-title::after { content: 'Страница удалена'; display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: #818c99; }
+.iw-panel.iw-theme-vk .iw-dossier.iw-dead .iw-dead-chip { display: none; }
+
+/* ВК: лавка подарков — как витрина: заголовки разделов с цветным квадратиком, награды белыми карточками */
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) { --vk-rk: #5181b8; --vk-rk-bg: #e5ebf1; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rg-buff { --vk-rk: #4bb34b; --vk-rk-bg: #e3f4e3; --vk-grad: linear-gradient(135deg, #6ccf6c, #3ea53e); }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rg-event { --vk-rk: #f08c1a; --vk-rk-bg: #fff0dc; --vk-grad: linear-gradient(135deg, #ffb93a, #ff8a1f); }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rg-gift { --vk-rk: #e64e7c; --vk-rk-bg: #fde6ee; --vk-grad: linear-gradient(135deg, #ff7aa8, #f0507d); }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rg-collect { --vk-rk: #6a5cf0; --vk-rk-bg: #ecebfd; --vk-grad: linear-gradient(135deg, #8f7bff, #6a5cf0); }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-group { margin-top: 18px; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; border: 0 !important; border-bottom: 1px solid #e7e8ec !important; padding: 0 0 8px !important; margin: 0 0 8px !important; background: none !important; box-shadow: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat::before,
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat::after { content: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name { display: inline-flex; align-items: center; gap: 10px; background: none !important; color: #000 !important; transform: none !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name::before,
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name::after { content: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name .iw-ico { width: 28px; height: 28px; padding: 6px; box-sizing: border-box; border-radius: 8px; background: var(--vk-grad, #5181b8); color: #fff; font-size: 16px; flex: none; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-hint { color: #818c99 !important; font-size: 13px; font-style: normal; width: 100%; padding-left: 38px; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rewards { display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 0; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward { display: grid !important; grid-template-columns: 48px 1fr auto; grid-template-areas: "ico body pin" "ico body buy"; align-items: start; gap: 4px 12px; margin: 0 !important; padding: 12px !important; background: #fff !important; border: 0 !important; border-radius: 12px !important; box-shadow: 0 0 0 1px #e7e8ec !important; transform: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward::before,
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward::after { content: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward.pinned { box-shadow: 0 0 0 2px #5181b8 !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-ico { grid-area: ico; width: 48px; height: 48px; display: grid; place-items: center; border: 0 !important; border-radius: 50% !important; background: var(--vk-rk-bg) !important; color: var(--vk-rk) !important; box-shadow: none !important; font-size: 22px; margin: 0 !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-body { grid-area: body; gap: 3px; align-self: center; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-title { color: #2a5885 !important; font-size: 14px; font-weight: 600; background: none !important; text-decoration: none !important; padding: 0 !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-desc { color: #000; font-size: 13px; line-height: 1.38; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-for { display: block; margin: 0; padding: 0; background: none !important; border-radius: 0; color: #818c99 !important; font-size: 12.5px; font-weight: 400; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-kind { align-self: flex-start; margin-top: 3px; padding: 2px 8px; border-radius: 10px; background: var(--vk-rk-bg); color: var(--vk-rk) !important; font-size: 12px; font-weight: 500; opacity: 1; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin { grid-area: pin; justify-self: end; width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border: 0 !important; border-radius: 8px !important; background: #f0f2f5 !important; color: #818c99 !important; box-shadow: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin:hover { background: #e5ebf1 !important; color: #5181b8 !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin.on { background: #5181b8 !important; color: #fff !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy { grid-area: buy; align-self: end; justify-self: end; display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px !important; border: 0 !important; border-radius: 8px !important; background: #5181b8 !important; color: #fff !important; box-shadow: none !important; font-size: 13px; font-weight: 600; transform: none !important; white-space: nowrap; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy:hover:not(:disabled) { background: #5b88bd !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy:disabled { background: #e5ebf1 !important; color: #818c99 !important; opacity: 1; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward.locked .iw-rw-big { opacity: .55; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-shop-top .iw-btn { background: #e5ebf1 !important; color: #55677d !important; border: 0 !important; border-radius: 8px !important; box-shadow: none !important; font-weight: 500; transform: none !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-shop-top .iw-btn:hover:not(:disabled) { background: #dae2ea !important; }
+
+/* ВК: листочки купленного — карточкой-уведомлением, без скотча и наклона */
+.iw-panel.iw-theme-vk .iw-note { --vk-rk: #4bb34b; --vk-rk-bg: #e3f4e3; width: 100%; box-sizing: border-box; align-items: center; gap: 12px; padding: 10px 40px 10px 12px; background: #fff; color: #000; border-radius: 12px; box-shadow: 0 0 0 1px #e7e8ec; transform: none; }
+.iw-panel.iw-theme-vk .iw-note-event { --vk-rk: #f08c1a; --vk-rk-bg: #fff0dc; }
+.iw-panel.iw-theme-vk .iw-note-gift { --vk-rk: #e64e7c; --vk-rk-bg: #fde6ee; }
+.iw-panel.iw-theme-vk .iw-note-pin { display: none; }
+.iw-panel.iw-theme-vk .iw-note-ico { width: 36px; height: 36px; background: var(--vk-rk-bg); color: var(--vk-rk) !important; font-size: 18px; }
+.iw-panel.iw-theme-vk .iw-note-body b { color: #000; font-weight: 600; }
+.iw-panel.iw-theme-vk .iw-note-body small { color: #818c99; opacity: 1; font-size: 12.5px; }
+.iw-panel.iw-theme-vk .iw-note-x { top: 50%; right: 8px; margin-top: -12px; background: none; color: #99a2ad; }
+.iw-panel.iw-theme-vk .iw-note-x:hover { background: #f0f2f5; color: #5181b8; }
+
+/* Часы: пересобрать календарь — мелкой кнопкой под датами */
+.iw-clock-redo { margin-top: 10px; align-self: flex-start; opacity: .85; }
+.iw-clock-redo:hover:not(:disabled) { opacity: 1; }
 
 /* Знак и ориентация: правка — одним значком в правом верхнем углу рамки, чтобы подписи помещались в строку */
 .iw-panel .iw-persona-card.iw-pc-editable { position: relative; }
@@ -21130,7 +21211,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-theme-cyber [class*="iw-face-"] { --fk-ink: #0b0d14; }
 .iw-panel.iw-theme-dossier [class*="iw-face-"] { --fk-bg: color-mix(in srgb, var(--face-ink, #6b6459) 22%, #efe7d4); --fk-bg2: color-mix(in srgb, var(--face-ink, #6b6459) 12%, #f7f3e8); }
 
-/* --- общие правила в тёмном варианте (437) --- */
+/* --- общие правила в тёмном варианте (445) --- */
 .iw-dark .iw-panel,
 .iw-panel.iw-dark {
     box-shadow: -12px 0 30px rgba(0, 0, 0, 0.35);
@@ -21417,13 +21498,13 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     --pt: #97d8ed;
 }
 .iw-dark .iw-pt-explorer {
-    --pt: #f1d393;
+    --pt: #f6d58e;
 }
 .iw-dark .iw-tm-choleric {
     --pt: #ed9e97;
 }
 .iw-dark .iw-tm-sanguine {
-    --pt: #f1c692;
+    --pt: #f4c490;
 }
 .iw-dark .iw-tm-phlegmatic {
     --pt: #97d3ed;
@@ -22980,8 +23061,38 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     background-image: none;
     background-color: #e7e6f0;
 }
+.iw-dark .iw-panel .iw-dream-fulfilled .iw-dream-stamp,
+.iw-panel.iw-dark .iw-dream-fulfilled .iw-dream-stamp {
+    color: #95e4a9;
+}
+.iw-dark .iw-fab-sims {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+.iw-dark .iw-reward.pinned {
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--iw-accent, #382673) 55%, transparent);
+}
+.iw-dark .iw-reward .iw-shop-pin.on {
+    color: var(--iw-accent, #9f87f3);
+}
+.iw-dark .iw-car-arrow {
+    background-image: none;
+    background-color: color-mix(in srgb, var(--iw-panel-bg, #2d2937) 85%, transparent);
+    box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.35);
+}
+.iw-dark .iw-car-arrow:hover {
+    background-image: none;
+    background-color: color-mix(in srgb, currentColor 12%, var(--iw-panel-bg, #2d2937));
+}
+.iw-dark .iw-car-arrow {
+    background-image: none !important;
+    background-color: color-mix(in srgb, currentColor 14%, var(--iw-bg, rgba(166, 166, 166, 0.35))) !important;
+}
+.iw-dark .iw-modal .iw-mainpick-chip.on,
+.iw-modal.iw-dark .iw-mainpick-chip.on {
+    border-color: var(--iw-accent, #97bfed);
+}
 
-/* --- sims: тёмный вариант (42 правил) --- */
+/* --- sims: тёмный вариант (43 правил) --- */
 .iw-theme-sims.iw-dark {
     --iw-bg: #2a3139;
     --iw-ink: #e1e7ef;
@@ -23140,11 +23251,6 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     border: 2px solid #292f37;
     background-color: color-mix(in srgb, #2f73c0 12%, var(--iw-bg, #292f37));
 }
-:is(.iw-panel, .iw-toasts).iw-theme-sims.iw-dark .iw-tab .iw-face,
-:is(.iw-panel, .iw-toasts).iw-theme-sims.iw-dark .iw-npc .iw-face {
-    background-image: none !important;
-    background-color: #292f37 !important;
-}
 .iw-panel.iw-theme-sims.iw-dark .iw-block-icon {
     background-image: none !important;
     background-color: #292f37 var(--si-b, none) center / 78% no-repeat !important;
@@ -23168,6 +23274,13 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 }
 .iw-panel.iw-theme-sims.iw-dark .iw-npc.iw-dead .iw-npc-face-wrap::after {
     filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+.iw-panel.iw-theme-sims.iw-dark .iw-sign-nick {
+    color: #94bae5 !important;
+}
+.iw-panel.iw-theme-sims.iw-dark .iw-case-ico:has(.iw-si-pict) {
+    background-image: none !important;
+    background-color: #292f37 !important;
 }
 
 /* --- medieval: тёмный вариант (35 правил) --- */
@@ -23337,7 +23450,7 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     }
 }
 
-/* --- vk: тёмный вариант (94 правил) --- */
+/* --- vk: тёмный вариант (129 правил) --- */
 .iw-theme-vk.iw-dark {
     --iw-bg: #141414;
     --iw-ink: #e3e8ed;
@@ -23595,8 +23708,8 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
     --vk-line2: #21262b;
 }
 .iw-panel.iw-theme-vk.iw-dark .iw-npc.iw-dead .iw-npc-face-wrap::after {
-    background-image: url('smiles/vk/dog-deleted.webp');
-    background-color: #1f252a;
+    background-image: url('smiles/vk/deleted.svg');
+    background-color: #1c2125;
     box-shadow: inset 0 0 0 1px #404d59;
 }
 .iw-panel.iw-theme-vk.iw-dark .iw-acts-cap {
@@ -23737,6 +23850,144 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-vk.iw-dark .iw-vk-status-eq i {
     background-image: none;
     background-color: #e1e3e6;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-vk-status-x {
+    color: #404d59;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-vk-status-x:hover {
+    background-image: none !important;
+    background-color: #2c2d2e !important;
+    color: #a8b0b9;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier {
+    background-image: none !important;
+    background-color: #222222 !important;
+    box-shadow: 0 0 0 1px #21262b !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-npc-title {
+    color: #e1e3e6 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier-mood {
+    color: #939da8;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier-mood .iw-hl-main {
+    color: #71aaeb !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-whois {
+    border-top: 1px solid #21262b !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-whois-tag {
+    color: #e1e3e6 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-heard-toggle {
+    color: #71aaeb;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier.iw-dead .iw-dossier-face::after {
+    background-image: url('smiles/vk/deleted.svg');
+    background-color: #1c2125;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier.iw-dead .iw-npc-title::after {
+    color: #939da8;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) {
+    --vk-rk: #e1e3e6;
+    --vk-rk-bg: #2c2d2e;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-buff {
+    --vk-rk: #97ed97;
+    --vk-rk-bg: #2b5f2b;
+    --vk-grad: linear-gradient(135deg, #267326, #97ed97);
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-event {
+    --vk-rk: #f7c58c;
+    --vk-rk-bg: #5f492b;
+    --vk-grad: linear-gradient(135deg, #735826, #ffbf85);
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-gift {
+    --vk-rk: #73263d;
+    --vk-rk-bg: #5f2b3d;
+    --vk-grad: linear-gradient(135deg, #732641, #73263c);
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-collect {
+    --vk-rk: #2d2673;
+    --vk-rk-bg: #2e2b5f;
+    --vk-grad: linear-gradient(135deg, #322673, #2d2673);
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat {
+    border-bottom: 1px solid #21262b !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name {
+    color: #e1e3e6 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name .iw-ico {
+    background-image: none;
+    background-color: var(--vk-grad, #e1e3e6);
+    color: #ffffff;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-hint {
+    color: #939da8 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward {
+    background-image: none !important;
+    background-color: #222222 !important;
+    box-shadow: 0 0 0 1px #21262b !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward.pinned {
+    box-shadow: 0 0 0 2px #97bfed !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-title {
+    color: #71aaeb !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-desc {
+    color: #e1e3e6;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-for {
+    color: #939da8 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin {
+    background-image: none !important;
+    background-color: #2c2d2e !important;
+    color: #939da8 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin:hover {
+    background-image: none !important;
+    background-color: #2c2d2e !important;
+    color: #71aaeb !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin.on {
+    background-image: none !important;
+    background-color: #e1e3e6 !important;
+    color: #ffffff !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy {
+    background-image: none !important;
+    background-color: #e1e3e6 !important;
+    color: #ffffff !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy:disabled {
+    background-image: none !important;
+    background-color: #2c2d2e !important;
+    color: #939da8 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-shop-top .iw-btn {
+    background-image: none !important;
+    background-color: #2c2d2e !important;
+    color: #a6b2c1 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-shop-top .iw-btn:hover:not(:disabled) {
+    background-image: none !important;
+    background-color: #363738 !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-sign-nick {
+    color: #71aaeb !important;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-npc .iw-npc-mood .iw-hl {
+    --hl-c: #e1e3e6;
+}
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-whois {
+    background-image: none !important;
+    background-color: #262c32 !important;
+    border: 1px solid #21262b !important;
 }
 
 /* --- bimbo: тёмный вариант (71 правил) --- */
@@ -24308,3 +24559,227 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-vk.iw-dark .iw-vk-status { background: #222222; box-shadow: 0 0 0 1px #363738; }
 .iw-panel.iw-theme-vk.iw-dark .iw-vk-status-txt { color: #e1e3e6; }
 .iw-panel.iw-theme-vk.iw-dark .iw-vk-status-txt b { color: #71aaeb; }
+/* подпись автора внизу настроек: в темах, где цвет заголовка белый (шапка цветная), ник был белым на белом */
+.iw-panel.iw-theme-vk .iw-sign-nick { color: #2a5885 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-sign-nick { color: #71aaeb !important; }
+.iw-panel.iw-theme-sims .iw-sign-nick { color: #2f73c0 !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-sign-nick { color: #7fb4ee !important; }
+/* «Сейчас он / она …» — главная строка блока: не мельче названий эмоций под ней, во всех темах */
+/* крупнее названий эмоций под ней, но спокойнее заголовка блока */
+.iw-panel .iw-b-mood .iw-mood-now { font-size: max(15px, calc(var(--iw-sub-size, 20px) * .92)) !important; line-height: 1.25; gap: 4px 10px; align-items: center; }
+.iw-panel .iw-b-mood .iw-mood-lead { font-size: .86em !important; }
+.iw-panel .iw-b-mood .iw-mood-now .iw-mood-word, .iw-panel .iw-b-mood .iw-mood-now .iw-mood-word .iw-hl { font-size: 1.04em !important; }
+/* исполненная мечта: сама мечта отмечена — штамп «Исполнена», название приглушено и мягко перечёркнуто, но читается */
+.iw-dream-stamp { display: none; }
+.iw-panel .iw-dream-fulfilled .iw-dream-stamp { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; margin: 6px 0 2px; padding: 3px 10px 3px 7px; border-radius: 999px; background: color-mix(in srgb, #3fae5a 16%, transparent); color: #2f8a46; font-size: 12.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.iw-panel .iw-dream-fulfilled .iw-dream-stamp svg { width: 14px; height: 14px; }
+.iw-panel .iw-dream-fulfilled .iw-dream-title { opacity: .72; text-decoration: line-through; text-decoration-thickness: 1.5px; text-decoration-color: color-mix(in srgb, currentColor 55%, transparent); }
+.iw-panel.iw-dark .iw-dream-fulfilled .iw-dream-stamp, .iw-panel:is(.iw-theme-dark, .iw-theme-cyber, .iw-theme-logbook, .iw-theme-noir, .iw-theme-seance, .iw-theme-nav, .iw-theme-arcana, .iw-theme-herbal) .iw-dream-fulfilled .iw-dream-stamp { background: color-mix(in srgb, #5fd07a 18%, transparent); color: #7fe39a; }
+/* «Симулятор жизни»: значки достижений и памятных вещей из пака */
+.iw-si-pict { display: inline-block; width: 100%; height: 100%; max-width: 44px; max-height: 44px; aspect-ratio: 1; background: var(--si) center / contain no-repeat; }
+.iw-panel.iw-theme-sims .iw-case-ico:has(.iw-si-pict) > :not(.iw-si-pict) { display: none; }
+.iw-panel.iw-theme-sims .iw-case-ico:has(.iw-si-pict) { background: #fff !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-case-ico:has(.iw-si-pict) { background: #1d2c3f !important; }
+.iw-panel.iw-theme-sims .iw-case-grid .iw-case-tile-sum > .iw-case-ico .iw-si-pict { width: 72%; height: 72%; }
+/* «Симулятор жизни» ночью: карточки персонажей — ровные тёмно-синие плашки с тонкой рамкой (без бурого градиента),
+   выбранная — с зелёной подсветкой плюмбоба; главное настроение — спокойная плашка цвета эмоции, без перелива */
+.iw-panel.iw-theme-sims.iw-dark .iw-tab { background: #1e2c3e !important; border: 1.5px solid #324a66 !important; border-radius: 18px !important; box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .6) !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-tab .iw-tab-tint { display: none !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-tab.on { border-color: #6cc24a !important; box-shadow: 0 0 0 3px rgba(108, 194, 74, .18), 0 6px 14px -8px rgba(0, 0, 0, .6) !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-tab-name { color: #eaf2fb !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-tab-mood, .iw-panel.iw-theme-sims.iw-dark .iw-tab-born { color: #9fb3c8 !important; }
+.iw-panel.iw-theme-sims .iw-tab .iw-photo-wrap { margin-bottom: 6px; }
+.iw-panel.iw-theme-sims.iw-dark .iw-mood-word[class*="iw-face-"] .iw-hl { background: color-mix(in srgb, var(--mw-a) 55%, #1e2c3e) !important; color: #fff !important; border: 1.5px solid color-mix(in srgb, var(--mw-a) 85%, #fff); border-radius: 999px !important; padding: 1px 14px 3px !important; box-shadow: none !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-act.iw-act-all { background: #2a3d55 !important; color: #eaf2fb !important; border-color: #4d8fd8 !important; }
+/* «Симулятор жизни»: плавающая кнопка — плюмбоб из пака иконок */
+.iw-fab-sims { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3)); }
+.iw-fab.iw-theme-sims .iw-fab-sims { display: block; }
+.iw-fab.iw-theme-sims :is(.iw-fab-cover, .iw-fab-spine, .iw-fab-ribbon) { display: none !important; }
+.iw-fab.iw-theme-sims:hover:where(:not(.iw-noanim)) .iw-fab-sims { transform: translateY(-2px) rotate(-6deg); transition: transform .25s ease; }
+/* витрина сеткой: длинные названия переносятся по слогам, а не рубятся посреди слова; три строки, дальше — многоточие */
+.iw-b-showcase .iw-case-grid .iw-case-tile-name { hyphens: auto; -webkit-hyphens: auto; overflow-wrap: normal; word-break: normal; -webkit-line-clamp: 3; line-clamp: 3; }
+.iw-b-showcase .iw-case-grid .iw-case-tile[open] .iw-case-tile-name { -webkit-line-clamp: unset; line-clamp: unset; hyphens: manual; }
+
+/* симс: смайлики настроения у карточек и НПС — без квадратной подложки */
+.iw-panel.iw-theme-sims .iw-face, .iw-panel.iw-theme-sims.iw-dark .iw-face { background: transparent !important; box-shadow: none !important; border: 0 !important; }
+.iw-panel.iw-theme-sims .iw-face::before, .iw-panel.iw-theme-sims .iw-face::after { display: none !important; }
+/* «Забрать все награды» — под списком желаний, на всю ширину */
+.iw-panel .iw-claim.iw-claim-all { display: flex; width: 100%; justify-content: center; box-sizing: border-box; margin-top: 10px; }
+/* лавка: закреплённая награда — со значком-булавкой и мягкой рамкой; не уходит при «Подобрать заново» */
+.iw-reward .iw-shop-pin { flex: none; align-self: center; }
+.iw-reward.pinned { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--iw-accent, #8a6cf0) 55%, transparent); border-radius: 12px; }
+.iw-reward .iw-shop-pin.on { color: var(--iw-accent, #8a6cf0); }
+
+/* ===== Мультибот: карусель главных героев (от трёх) — выбранный впереди, соседи сзади по бокам, листается по кругу.
+   Сдвиг и масштаб — через свойства translate/scale, чтобы не спорить с наклоном карточек в темах ===== */
+.iw-car { position: relative; display: flex; flex-direction: column; align-items: center; flex: none; }
+.iw-car-stage { display: grid; place-items: end center; padding: 4px 32px 2px; }
+.iw-car-stage > .iw-car-card { grid-area: 1 / 1; transition: translate .35s cubic-bezier(.3, .7, .2, 1), scale .35s cubic-bezier(.3, .7, .2, 1), opacity .3s, filter .3s; }
+.iw-car-stage > .iw-car-c { z-index: 3; opacity: 1; }
+.iw-car-stage > .iw-car-l, .iw-car-stage > .iw-car-r { z-index: 2; scale: .8; opacity: .55 !important; filter: saturate(.75) brightness(.96); }
+.iw-car-stage > .iw-car-l { translate: -36% 6px; }
+.iw-car-stage > .iw-car-r { translate: 36% 6px; }
+.iw-car-stage > .iw-car-l:hover, .iw-car-stage > .iw-car-r:hover { opacity: .85 !important; filter: none; }
+.iw-car-stage > .iw-car-h { visibility: hidden; opacity: 0 !important; scale: .6; pointer-events: none; z-index: 1; }
+.iw-car-stage > .iw-car-card:not(.iw-car-c) .iw-tab-born { visibility: hidden; }
+.iw-car-arrow { position: absolute; top: calc(50% - 22px); z-index: 5; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 1px solid color-mix(in srgb, currentColor 30%, transparent); background: color-mix(in srgb, var(--iw-panel-bg, #fff) 85%, transparent); color: inherit; cursor: pointer; box-shadow: 0 2px 6px -2px rgba(0, 0, 0, .35); }
+.iw-car-arrow svg { width: 16px; height: 16px; }
+.iw-car-next svg { transform: scaleX(-1); }
+.iw-car-arrow:hover { background: color-mix(in srgb, currentColor 12%, var(--iw-panel-bg, #fff)); }
+.iw-car-dots { display: flex; justify-content: center; gap: 5px; margin-top: 5px; }
+.iw-car-prev { left: 0; }
+.iw-car-next { right: 0; }
+.iw-car-arrow svg { width: 14px !important; height: 14px !important; }
+.iw-car-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .25; transition: opacity .2s, width .2s; }
+.iw-car-dot.on { opacity: .8; width: 14px; border-radius: 3px; }
+/* листнули вперёд: правый выезжает в центр, центральный уходит влево, новый проявляется справа (назад — зеркально) */
+.iw-car[data-dir="next"] .iw-car-c { animation: iw-car-c-from-r .38s cubic-bezier(.3, .7, .2, 1); }
+.iw-car[data-dir="next"] .iw-car-l { animation: iw-car-x-from-c .38s cubic-bezier(.3, .7, .2, 1); }
+.iw-car[data-dir="next"] .iw-car-r { animation: iw-car-r-from-far .38s ease-out; }
+.iw-car[data-dir="prev"] .iw-car-c { animation: iw-car-c-from-l .38s cubic-bezier(.3, .7, .2, 1); }
+.iw-car[data-dir="prev"] .iw-car-r { animation: iw-car-x-from-c .38s cubic-bezier(.3, .7, .2, 1); }
+.iw-car[data-dir="prev"] .iw-car-l { animation: iw-car-l-from-far .38s ease-out; }
+@keyframes iw-car-c-from-r { from { translate: 36% 6px; scale: .8; opacity: .55; } }
+@keyframes iw-car-c-from-l { from { translate: -36% 6px; scale: .8; opacity: .55; } }
+@keyframes iw-car-x-from-c { from { translate: 0 0; scale: 1; opacity: 1; } }
+@keyframes iw-car-r-from-far { from { translate: 70% 10px; scale: .6; opacity: 0; } }
+@keyframes iw-car-l-from-far { from { translate: -70% 10px; scale: .6; opacity: 0; } }
+.iw-noanim .iw-car .iw-car-card { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .iw-car .iw-car-card { animation: none !important; transition: none !important; } }
+@media (max-width: 460px) { .iw-car-stage { padding: 4px 30px 2px; } .iw-car-stage > .iw-car-l { translate: -30% 6px; } .iw-car-stage > .iw-car-r { translate: 30% 6px; } }
+/* фото-заглушка с буквой (у мультибота нет отдельных картинок героев): буква ровно по центру рамки */
+.iw-panel .iw-photo.iw-photo-letter { display: grid !important; place-items: center; line-height: 1; text-align: center; padding: 0 !important; }
+/* стрелки карусели — от цвета текста темы, видны и на светлых, и на тёмных */
+.iw-car-arrow { background: color-mix(in srgb, currentColor 14%, var(--iw-bg, rgba(127, 127, 127, .35))) !important; backdrop-filter: blur(3px); border: 1px solid color-mix(in srgb, currentColor 35%, transparent) !important; color: inherit !important; }
+.iw-car-arrow:hover { background: color-mix(in srgb, currentColor 20%, transparent) !important; }
+
+/* ===== Анимации выключены: стоп всему — переходы, ключевые кадры, анимированные стикеры (вместо них — неподвижный кадр) ===== */
+.iw-noanim, .iw-noanim *, .iw-noanim *::before, .iw-noanim *::after,
+#iw_fab.iw-noanim, #iw_fab.iw-noanim *, #iw_fab.iw-noanim *::before, #iw_fab.iw-noanim *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+}
+.iw-noanim .iw-vk-st-76091 { --vk-load: url('smiles/vk/load-76091-still.webp'); }
+.iw-noanim .iw-vk-st-76098 { --vk-load: url('smiles/vk/load-76098-still.webp'); }
+.iw-noanim .iw-vk-st-76099 { --vk-load: url('smiles/vk/load-76099-still.webp'); }
+.iw-noanim .iw-vk-st-76100 { --vk-load: url('smiles/vk/load-76100-still.webp'); }
+.iw-noanim .iw-vk-st-76101 { --vk-load: url('smiles/vk/load-76101-still.webp'); }
+.iw-noanim .iw-vk-st-76106 { --vk-load: url('smiles/vk/load-76106-still.webp'); }
+.iw-noanim .iw-vk-st-76110 { --vk-load: url('smiles/vk/load-76110-still.webp'); }
+.iw-noanim .iw-vk-st-76115 { --vk-load: url('smiles/vk/load-76115-still.webp'); }
+.iw-noanim .iw-vk-st-79158 { --vk-load: url('smiles/vk/load-79158-still.webp'); }
+.iw-noanim .iw-vk-st-79171 { --vk-load: url('smiles/vk/load-79171-still.webp'); }
+.iw-noanim .iw-vk-st-79186 { --vk-load: url('smiles/vk/load-79186-still.webp'); }
+.iw-noanim .iw-vk-st-79187 { --vk-load: url('smiles/vk/load-79187-still.webp'); }
+.iw-noanim .iw-vk-st-79197 { --vk-load: url('smiles/vk/load-79197-still.webp'); }
+/* мультибот: карусель, НПС и персона — в одну строку, как у одиночного бота */
+.iw-tabs:has(> .iw-car) { flex-wrap: nowrap; gap: 10px; justify-content: center; }
+.iw-tabs:has(> .iw-car) > :is(.iw-npc-sticker, .iw-npc-col, .iw-tab-persona) { flex: none; }
+@media (max-width: 360px) { .iw-tabs:has(> .iw-car) { flex-wrap: wrap; } }
+/* мультибот: карточки героев и персоны — одного размера (и между собой, и с персоной) */
+.iw-tabs:has(> .iw-car) :is(.iw-car-card, .iw-tab-persona) { width: 106px !important; height: 158px !important; min-height: 0 !important; box-sizing: border-box; justify-content: flex-start; overflow: hidden; }
+.iw-tabs:has(> .iw-car) :is(.iw-car-card, .iw-tab-persona) .iw-tab-name { max-width: 100%; }
+@media (max-width: 460px) {
+    .iw-tabs:has(> .iw-car) :is(.iw-car-card, .iw-tab-persona) { width: 90px !important; height: 146px !important; }
+    .iw-tabs:has(> .iw-car) { gap: 6px; }
+    .iw-tabs:has(> .iw-car) .iw-car-stage { padding: 4px 22px 2px; }
+    .iw-tabs:has(> .iw-car) .iw-car-stage > .iw-car-l { translate: -26% 6px; }
+    .iw-tabs:has(> .iw-car) .iw-car-stage > .iw-car-r { translate: 26% 6px; }
+    .iw-tabs:has(> .iw-car) .iw-car-arrow { width: 22px; height: 22px; }
+    .iw-tabs:has(> .iw-car) > :is(.iw-npc-sticker, .iw-npc-col) { max-width: 96px; }
+}
+/* НПС: маркер под настроением — полупрозрачный, чтобы слово читалось и на светлой, и на тёмной */
+.iw-panel .iw-npc .iw-npc-mood .iw-hl { background-image: linear-gradient(transparent 52%, color-mix(in srgb, var(--hl-c, currentColor) 28%, transparent) 52%, color-mix(in srgb, var(--hl-c, currentColor) 28%, transparent) 90%, transparent 90%) !important; }
+.iw-panel.iw-theme-vk .iw-npc .iw-npc-mood .iw-hl { --hl-c: #5181b8; color: inherit; }
+.iw-panel.iw-theme-vk.iw-dark .iw-npc .iw-npc-mood .iw-hl { --hl-c: #71aaeb; }
+/* ВКонтакте ночью: карточки НПС и страница НПС — с заметными рамками, как блоки ВК */
+.iw-panel.iw-theme-vk.iw-dark .iw-npc { background: #222222 !important; box-shadow: 0 0 0 1px #424344 !important; border-radius: 10px !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-npc:hover { box-shadow: 0 0 0 1px #5a5b5d !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier { box-shadow: 0 0 0 1px #424344 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-block { box-shadow: 0 0 0 1px #424344 !important; }
+.iw-panel.iw-theme-vk .iw-dossier .iw-whois { background: #f5f6f8 !important; border: 1px solid #e7e8ec !important; border-radius: 10px !important; padding: 10px 12px !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-dossier .iw-whois { background: #2a2a2b !important; border-color: #424344 !important; }
+/* мультибот: плашка «в НПС / сделать главным» */
+.iw-multi-bar .iw-btn { display: inline-flex; align-items: center; gap: 5px; }
+.iw-multi-bar .iw-btn svg { width: 14px; height: 14px; }
+/* всплывашка «Кто здесь главные герои?» посреди разбора */
+.iw-modal .iw-mainpick { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; max-height: 46vh; overflow: auto; }
+.iw-modal .iw-mainpick-chip { padding: 5px 12px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, currentColor 30%, transparent); background: transparent; color: inherit; font: inherit; font-size: .92em; cursor: pointer; }
+.iw-modal .iw-mainpick-chip.on { background: color-mix(in srgb, var(--iw-accent, #5181b8) 22%, transparent); border-color: var(--iw-accent, #5181b8); font-weight: 700; }
+
+/* Тёмные темы: плашки типа личности/темперамента/стихии светлые — текст на них тёмный */
+.iw-dark .iw-panel:not(.iw-theme-noir, .iw-theme-china) .iw-persona-code,
+.iw-panel.iw-dark:not(.iw-theme-noir, .iw-theme-china) .iw-persona-code { color: #14181e !important; }
+.iw-dark .iw-panel:not(.iw-theme-noir, .iw-theme-china) .iw-persona-code i,
+.iw-panel.iw-dark:not(.iw-theme-noir, .iw-theme-china) .iw-persona-code i { opacity: .75; }
+/* нуар тёмный: у стихий тоже тёмные плашки под светлый текст */
+.iw-panel.iw-dark.iw-theme-noir .iw-zd-fire, .iw-dark .iw-panel.iw-theme-noir .iw-zd-fire { --pt: #7a2d2a; }
+.iw-panel.iw-dark.iw-theme-noir .iw-zd-earth, .iw-dark .iw-panel.iw-theme-noir .iw-zd-earth { --pt: #3f4d22; }
+.iw-panel.iw-dark.iw-theme-noir .iw-zd-air, .iw-dark .iw-panel.iw-theme-noir .iw-zd-air { --pt: #2f4a6e; }
+.iw-panel.iw-dark.iw-theme-noir .iw-zd-water, .iw-dark .iw-panel.iw-theme-noir .iw-zd-water { --pt: #1f4a5a; }
+
+/* ВК тёмная: лавка подарков и листочки */
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat { border-color: #363738 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name { color: #e1e3e6 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-name .iw-ico { background: var(--vk-grad, #5181b8) !important; color: #fff !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rw-cat-hint { color: #8d9399 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-buff { --vk-rk: #6fd06f; --vk-rk-bg: rgba(75, 179, 75, .2); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-event { --vk-rk: #ffad4a; --vk-rk-bg: rgba(255, 160, 40, .18); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-gift { --vk-rk: #ff8bb0; --vk-rk-bg: rgba(240, 80, 125, .2); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-collect { --vk-rk: #aa9dff; --vk-rk-bg: rgba(130, 112, 255, .22); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward { background: #222222 !important; box-shadow: 0 0 0 1px #363738 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward.pinned { box-shadow: 0 0 0 2px #71aaeb !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-ico { background: var(--vk-rk-bg) !important; color: var(--vk-rk) !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-title { color: #71aaeb !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-desc { color: #e1e3e6 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-for { color: #8d9399 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-rw-kind { background: var(--vk-rk-bg) !important; color: var(--vk-rk) !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin { background: #2c2d2e !important; color: #8d9399 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin:hover { background: #333435 !important; color: #71aaeb !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin.on { background: #5181b8 !important; color: #fff !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy { background: #5181b8 !important; color: #fff !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy:hover:not(:disabled) { background: #5b8ac2 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-buy:disabled { background: #2c2d2e !important; color: #76787a !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-shop-top .iw-btn { background: #2c2d2e !important; color: #e1e3e6 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-shop-top .iw-btn:hover:not(:disabled) { background: #333435 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-note { --vk-rk: #6fd06f; --vk-rk-bg: rgba(75, 179, 75, .2); background: #222222; color: #e1e3e6; box-shadow: 0 0 0 1px #363738; }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-event { --vk-rk: #ffad4a; --vk-rk-bg: rgba(255, 160, 40, .18); }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-gift { --vk-rk: #ff8bb0; --vk-rk-bg: rgba(240, 80, 125, .2); }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-ico { background: var(--vk-rk-bg) !important; color: var(--vk-rk) !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-body b { color: #e1e3e6 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-body small { color: #8d9399 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-x { background: none !important; color: #8d9399 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-note-x:hover { background: #2c2d2e !important; color: #71aaeb !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-buff { --vk-grad: linear-gradient(135deg, #6ccf6c, #3ea53e); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-event { --vk-grad: linear-gradient(135deg, #ffb93a, #ff8a1f); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-gift { --vk-grad: linear-gradient(135deg, #ff7aa8, #f0507d); }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-rg-collect { --vk-grad: linear-gradient(135deg, #8f7bff, #6a5cf0); }
+
+/* ВК: кнопки в шапке — в рамочках, как в других темах */
+.iw-panel.iw-theme-vk .iw-head .iw-tool { background: rgba(255, 255, 255, .14) !important; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .42) !important; border-radius: 8px !important; color: #fff !important; }
+.iw-panel.iw-theme-vk .iw-head .iw-tool:hover,
+.iw-panel.iw-theme-vk .iw-head .iw-tool.on,
+.iw-panel.iw-theme-vk .iw-head .iw-vol[open] > .iw-tool { background: rgba(255, 255, 255, .26) !important; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7) !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-head .iw-tool { background: #2c2d2e !important; box-shadow: inset 0 0 0 1px #454647 !important; color: #e1e3e6 !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-head .iw-tool:hover,
+.iw-panel.iw-theme-vk.iw-dark .iw-head .iw-tool.on,
+.iw-panel.iw-theme-vk.iw-dark .iw-head .iw-vol[open] > .iw-tool { background: #333435 !important; box-shadow: inset 0 0 0 1px #71aaeb !important; color: #fff !important; }
+
+/* ВК: у медалей и вещей на витрине без скетчевых звёздочек-каракулей и бликов — значок не наезжает на рисунок */
+.iw-panel.iw-theme-vk .iw-b-showcase :is(.iw-case-ico, .iw-case-card-pic, .iw-case-tile-sum > span:first-child)::before,
+.iw-panel.iw-theme-vk .iw-b-showcase :is(.iw-case-ico, .iw-case-card-pic, .iw-case-tile-sum > span:first-child)::after { content: none !important; display: none !important; }
+.iw-panel.iw-theme-vk .iw-b-showcase .iw-case-ach :is(.iw-case-ico, .iw-case-tile-sum > span:first-child) .iw-ico { position: relative; z-index: 1; font-size: 22px; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-showcase .iw-case-ach :is(.iw-case-ico, .iw-case-tile-sum > span:first-child) { background: radial-gradient(circle, #2c2d2e 0 56%, transparent 57%), var(--vk-tier, #454647) !important; }
+
+/* Лавка во всех темах: «Купить» — справа по центру, как было; булавка — значком на правом верхнем уголке карточки и места не занимает */
+.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) { position: relative; overflow: visible !important; }
+.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-shop-pin { position: absolute !important; grid-area: auto !important; top: -8px; right: 8px; z-index: 2; width: 24px !important; height: 24px !important; min-width: 0; padding: 0 !important; margin: 0 !important; display: grid; place-items: center; font-size: 12px; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); transform: none; }
+.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-buy { align-self: center; justify-self: end; }
+.iw-panel .iw-rewards > li.iw-reward:not(:hover):not(.pinned) > .iw-shop-pin:not(:focus-visible) { opacity: .75; }
+/* ВК: та же раскладка, «Купить» по центру справа */
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-rewards > li.iw-reward { grid-template-columns: 48px minmax(0, 1fr) auto !important; grid-template-areas: none !important; align-items: center; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward :is(.iw-rw-ico, .iw-rw-body, .iw-buy) { grid-area: auto !important; align-self: center !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin { border-radius: 50% !important; box-shadow: 0 0 0 1px #e7e8ec, 0 1px 4px rgba(0, 20, 51, .18) !important; background: #fff !important; }
+.iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin { box-shadow: 0 0 0 1px #454647, 0 1px 4px rgba(0, 0, 0, .5) !important; background: #2c2d2e !important; }
+.iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin.on { background: #5181b8 !important; }

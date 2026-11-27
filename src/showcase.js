@@ -48,11 +48,13 @@ export function cleanAchievement(raw) {
 }
 
 // Добавить на полку: одно достижение на сообщение (при свайпе заменяется), одинаковые названия не повторяются
-export function addAchievement(list, a, { mes, scene = '', who = '' } = {}) {
+// persona — за какую персону игрока получено: у каждой персоны свои достижения
+export function addAchievement(list, a, { mes, scene = '', who = '', persona = '' } = {}) {
     const norm = t => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+    const same = x => !persona || !x.persona || norm(x.persona) === norm(persona);
     const out = (list || []).filter(x => !(mes !== undefined && x.mes === mes));
-    if (out.some(x => norm(x.title) === norm(a.title))) return { list: out, added: null };
-    const item = Object.assign({ id: `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, at: Date.now(), scene, who }, a, mes !== undefined ? { mes } : {});
+    if (out.some(x => norm(x.title) === norm(a.title) && same(x))) return { list: out, added: null };
+    const item = Object.assign({ id: `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, at: Date.now(), scene, who }, a, mes !== undefined ? { mes } : {}, persona ? { persona } : {});
     out.push(item);
     return { list: out.slice(-60), added: item };
 }

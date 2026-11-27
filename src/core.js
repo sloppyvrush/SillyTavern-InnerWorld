@@ -108,7 +108,7 @@ export const DEFAULT_SETTINGS = {
     showNpc: true,           // вести и показывать НПС, а не только главного персонажа
     rosters: {},             // список НПС из лорбука и карточки — по персонажу (аватарке)
     sound: true,             // звуки при событиях
-    iosLoud: false,          // iPhone: играть и в беззвучном режиме (глушит чужую музыку)
+    vkMusic: true,           // ВКонтакте: песня в статусе над календарём
     toastPos: 'top',         // где всплывают уведомления: top | bottom
     collapsed: {},           // свёрнутые блоки дневника: { mood: true, … }
     blockOrder: null,        // свой порядок блоков дневника (перетаскиванием); null — обычный
@@ -117,7 +117,7 @@ export const DEFAULT_SETTINGS = {
     attrDepth: 4,            // выводится из attrPower: глубина подсказки
     animations: true,        // анимации в дневнике; выключить — всё статично
     liveView: true,          // живой листок: как модель пишет дневник (потоком, если подключение умеет)
-    volume: 45,              // громкость звуков, 0–100
+    volume: 50,              // громкость звуков, 0–100 (кривая мягкая: 50 — спокойно)
     analyzeWhen: 'after',    // after — после ответа бота; parallel — пока бот пишет (быстрее, отстаёт на ответ)
     clock: true,             // часы и календарь сцены
     clockInject: true,       // подсказывать модели время сцены
@@ -907,7 +907,7 @@ export function mergeSettings(saved) {
     if (s.source === 'profile') { s.source = 'custom'; s.apiKind = 'profile'; }
     if (!['русском', 'английском'].includes(s.language)) s.language = 'русском';
     if (!Array.isArray(s.apiModels)) s.apiModels = [];
-    s.volume = Math.max(0, Math.min(100, Number.isFinite(Number(s.volume)) ? Number(s.volume) : 45));
+    s.volume = Math.max(0, Math.min(100, Number.isFinite(Number(s.volume)) ? Number(s.volume) : 50));
     if (!['auto', 'fixed'].includes(s.budgetMode)) s.budgetMode = 'auto';
     s.budgetCap = Math.max(2000, Math.min(TOKENS_MAX, Number(s.budgetCap) || 16000));
     // старый потолок 8000 думающим моделям мал — один раз поднимаем до 16000 (это только потолок: платишь за написанное)
@@ -962,6 +962,71 @@ export function normText(s) {
 
 export function sameName(a, b) {
     return normText(a) === normText(b);
+}
+
+// Смена персоны: отношения персонажей к игроку (впечатление, дружба и романтика, совместимость, знакомство) у каждой
+// персоны свои. Уходя с персоны, кладём их в c.byPersona[имя], к новой — достаём её прежние (или начинаем с чистого листа).
+// Прежний герой игрока становится обычным персонажем, вернувшийся — снова «ты». Повторный вызов ничего не меняет.
+const PERSONA_REL = ['impression', 'rel', 'relLog', 'attitude', 'chem', 'chemNow', 'met', 'heard', 'unmet', 'heardV'];
+export function swapPersona(state, userName) {
+    if (!state || !state.characters || !userName) return false;
+    const chars = state.characters;
+    let prev = state.personaName;
+    if (!prev) {
+        const k = Object.keys(chars).find(x => chars[x] && chars[x].persona);
+        prev = k ? (chars[k].name || k) : '';
+    }
+    if (!prev || samePerson(prev, userName)) {
+        if (!state.personaName) state.personaName = userName;
+        return false;
+    }
+    // дневник прежней персоны целиком откладываем в архив: пока она обычный персонаж, его не тронут ни разборы, ни угасание
+    const archive = state.personaArchive && typeof state.personaArchive === 'object' ? state.personaArchive : (state.personaArchive = {});
+    const backKey = Object.keys(archive).find(n => samePerson(n, userName));
+    if (!Array.isArray(state.order)) state.order = Object.keys(chars);
+    if (backKey && !Object.keys(chars).some(k => samePerson(k, userName) || samePerson(chars[k] && chars[k].name, userName))) {
+        const rec = archive[backKey];
+        const key = rec.name || userName;
+        chars[key] = rec;
+        if (!state.order.includes(key)) state.order.push(key);
+    }
+    for (const [k, c] of Object.entries(chars)) {
+        if (!c) continue;
+        if (samePerson(k, prev) || samePerson(c.name, prev)) {
+            if (c.persona) archive[normText(prev)] = JSON.parse(JSON.stringify(Object.assign({}, c, { persona: true })));
+            delete c.persona;
+            c.wasPersona = true;
+            continue;
+        }
+        if (samePerson(k, userName) || samePerson(c.name, userName)) {
+            if (backKey) { chars[k] = Object.assign(JSON.parse(JSON.stringify(archive[backKey])), { persona: true }); delete chars[k].wasPersona; }
+            else { c.persona = true; delete c.wasPersona; }
+            continue;
+        }
+        const bag = c.byPersona && typeof c.byPersona === 'object' ? c.byPersona : (c.byPersona = {});
+        const snap = {};
+        for (const f of PERSONA_REL) if (c[f] !== undefined) snap[f] = c[f];
+        bag[normText(prev)] = snap;
+        for (const f of PERSONA_REL) delete c[f];
+        const back = Object.keys(bag).find(n => samePerson(n, userName));
+        if (back) Object.assign(c, bag[back]);
+    }
+    state.personaName = userName;
+    return prev;
+}
+
+// Тот же ли это человек: «Ева Лянь» = «Лянь Ева» = «Ева» (модель иногда пишет имя игрока короче или в другом порядке).
+// Только для персоны игрока: одно общее слово из имени длиной от трёх букв, а у однословного — совпадение целиком.
+export function samePerson(a, b) {
+    if (!a || !b) return false;
+    if (sameName(a, b)) return true;
+    const tok = x => normText(x).split(/[\s.,«»"'()-]+/).filter(w => w.length >= 3);
+    const A = tok(a), B = tok(b);
+    if (!A.length || !B.length) return false;
+    const setA = new Set(A), setB = new Set(B);
+    if (A.length === B.length && A.every(w => setB.has(w))) return true;
+    const short = A.length <= B.length ? A : B, long = A.length <= B.length ? setB : setA;
+    return short.length === 1 && long.has(short[0]);
 }
 
 // «Усталость.» → «усталость»: эмоции и настроение пишутся со строчной и без точки в конце.
@@ -1086,7 +1151,7 @@ export function cleanCharacter(raw, opts = {}) {
     if (!raw || typeof raw !== 'object') return null;
     const name = str(raw.name, 60);
     if (!name) return null;
-    const c = { name, g: oneOf(raw.g, ['m', 'f', 'n'], 'n') };
+    const c = { name, g: normGender(raw.g) };
     if (raw.who) c.who = str(raw.who, 160);
     const pt = cleanPtype(raw.ptype);
     if (pt) c.ptype = pt;
@@ -1510,7 +1575,7 @@ export function settleMood(c) {
     c.moodKey = dom.key;
     c.moodLevel = dom.level;
     c.face = dom.face;
-    c.mood = moodWordFor(dom, c.g, c.moodSaid, c.faceSaid);
+    c.mood = moodWordFor(dom, genderOf(c.g, c.name, c.who), c.moodSaid, c.faceSaid);
     return c;
 }
 
@@ -1737,7 +1802,10 @@ export function mergeGoals(oldList, freshList, { done, dropped, cycle = 0, maxNe
 export function mergeCharacter(old, fresh, modules, mopts = {}) {
     const out = old ? JSON.parse(JSON.stringify(old)) : { name: fresh.name };
     out.name = old ? old.name : fresh.name;
-    if (fresh.g && fresh.g !== 'n') out.g = fresh.g;
+    // род: надёжнее всего — слово настроения, которое модель пишет в роде персонажа («устал» / «устала»); потом — поле g
+    const wordG = genderOfWord(fresh.mood);
+    if (wordG) out.g = wordG;
+    else if (fresh.g && fresh.g !== 'n') out.g = fresh.g;
     if (!out.who && fresh.who) out.who = fresh.who;
     // тип личности и темперамент — устойчивые: раз определённые, не переписываются при повторных разборах
     if (fresh.ptype && !out.ptype) out.ptype = fresh.ptype;
@@ -1931,13 +1999,27 @@ export function applyAnalysis(state, freshList, modules, opts = {}) {
         }
     }
     let purseGot = 0;
+    // Смена персоны посреди истории: прежний герой игрока остаётся в дневнике обычным персонажем (с пометкой),
+    // а новый получает свою запись. Вернётся игрок к старой персоне — запись снова станет его дневником.
+    if (userName && opts.persona) {
+        for (const k of next.order) {
+            const c = next.characters[k];
+            if (!c || !c.persona) continue;
+            if (samePerson(k, userName) || samePerson(c.name, userName)) continue;
+            delete c.persona;
+            c.wasPersona = true;
+        }
+    }
     for (const fresh of freshList) {
         // персона игрока ведётся только если это включено; в лимит персонажей она не входит
-        const isPersona = !!(userName && sameName(fresh.name, userName));
+        const isPersona = !!(userName && samePerson(fresh.name, userName));
         if (isPersona && !opts.persona) continue;
         const key = isPersona
-            ? (Object.keys(next.characters).find(k => next.characters[k].persona || sameName(k, userName)) || userName)
+            ? (Object.keys(next.characters).find(k => next.characters[k].persona && samePerson(k, userName))
+                || Object.keys(next.characters).find(k => samePerson(k, userName))
+                || userName)
             : (Object.keys(next.characters).find(k => sameName(k, fresh.name) && !next.characters[k].persona) || fresh.name);
+        if (isPersona) fresh.name = next.characters[key] ? next.characters[key].name : userName;
         const old = next.characters[key];
         // «знаком ли лично» — только про НПС: у персоны и главного персонажа этого поля нет
         if (isPersona || (opts.mains && isMain(fresh.name, opts.mains))) delete fresh.met;
@@ -2126,6 +2208,14 @@ export function diffCharacter(old, now, modules) {
         const is = now.impression.nowScore ?? was;
         const flipped = (was > 0 && is < 0) || (was < 0 && is > 0);
         if (Math.abs(is - was) >= 2 || flipped) ev.push({ type: 'attitude', who, text: now.impression.now, from: was, to: is });
+    }
+    // отношения по шкалам (знакомые → друзья, помолвлены…): одинаково для главного героя и НПС; только запись этого же разбора
+    if (modules.impression && old && !now.persona) {
+        const log = (now.relLog || [])[(now.relLog || []).length - 1];
+        const oldLast = (old.relLog || [])[(old.relLog || []).length - 1];
+        if (log && log.c === now.cycle && log.to && log.from !== log.to && !(oldLast && oldLast.c === log.c && oldLast.to === log.to)) {
+            ev.push({ type: 'attitude', rel: true, who, text: log.from ? `${log.from} → ${log.to}` : log.to, why: log.why || '' });
+        }
     }
     return ev;
 }
@@ -2507,7 +2597,7 @@ export function eventText(ev) {
         case 'dream_grow': return `«${ev.text}»${ev.why ? ` — ${ev.why}` : ''}`;
         case 'reward': return ev.text || '';
         case 'impression': return `${ev.text} (${signed(ev.score)})${ev.why ? ` — ${ev.why}` : ''}`;
-        case 'attitude': return `${signed(ev.from)} → ${signed(ev.to)}${ev.text ? `: ${ev.text}` : ''}`;
+        case 'attitude': return ev.rel ? `${ev.text}${ev.why ? ` — ${ev.why}` : ''}` : `${signed(ev.from)} → ${signed(ev.to)}${ev.text ? `: ${ev.text}` : ''}`;
         default: return ev.text || '';
     }
 }
@@ -2575,8 +2665,9 @@ export function buildSystemPrompt(settings, ctx) {
         'Ты ведёшь «внутренний мир» персонажей ролевой истории, как в симуляторе жизни. По последним сообщениям обнови их состояние.',
         `Отвечай ТОЛЬКО JSON, без пояснений и без markdown. Все тексты — на ${lang} языке, коротко.`,
         ctx.trackPersona
-            ? `Кого вести: ${who}. Кроме них ВСЕГДА веди и ${user} — это персона игрока: отдельный персонаж с name "${user}". Её состояние выводи только из её описания и из того, что она сама сказала и сделала в сообщениях; не придумывай ей поступков и мыслей. У ${user} impression — её отношение к ${ctx.botName} (а не к игроку).`
+            ? `Кого вести: ${who}. Кроме них ВСЕГДА веди и ${user} — это персона игрока: отдельный персонаж с name "${user}" (имя пиши ровно так, полностью; запись игрока нужна в КАЖДОМ ответе, даже в самом первом разборе). Её состояние выводи только из её описания и из того, что она сама сказала и сделала в сообщениях; не придумывай ей поступков и мыслей. У ${user} impression — её отношение к ${ctx.botName} (а не к игроку).`
             : `Кого вести: ${who}. ${user} — это игрок: его внутренний мир не веди и в список не включай.`,
+        ...(ctx.prevPersonas && ctx.prevPersonas.length ? [`Игрок сменил персону. Раньше он играл за ${ctx.prevPersonas.join(', ')} — теперь это обычные персонажи истории (их сообщения в чате — от них). Сейчас персона игрока — ${user}: впечатление (impression), отношения (rel), совместимость и всё «к игроку» пиши про ${user}, с чистого листа, если с ${user} ещё не знакомы; события и заслуги прежней персоны ${user} не приписывай.`] : []),
         'Если у персонажа уже есть пункты, повторяй их текст дословно, пока они не изменились. Ничего не выдумывай сверх того, что следует из текста и карточки.',
         'who — только для персонажа, которого ещё нет в текущем состоянии: кто это одной строкой. Начинай с короткого статуса — кем он приходится героям, с именем в родительном падеже («мама Вити», «друг Евы», «начальник Громова»), потом через запятую роль. У известных персонажей who не пиши.',
         'g — пол персонажа: m или f. Бери его из карточки, лорбука или текста (она сказала, он ушёл, окончания глаголов, имя). Все слова о персонаже (mood, feel, why, ended, who, traits, about, ptype_note, temper_note, желания и страхи) пиши в его роде: «встревожена», «успела», «сама», «недоверчивая», «ранима». Это касается и персоны игрока.',
@@ -2697,7 +2788,9 @@ export function compactState(state, modules, onlyKeys, opts = {}) {
     if (!keys.length) return '';
     const list = keys.map(k => {
         const c = state.characters[k];
-        const o = { name: c.name, g: genderOf(c.g, c.name, c.who) };
+        // пол отдаём модели, только если он известен наверняка: догадка по имени (Dracula → «она») иначе возвращалась бы назад как факт
+        const o = { name: c.name };
+        if (c.g === 'm' || c.g === 'f') o.g = c.g;
         const npc = !c.persona && !(opts.mains && isMain(c.name, opts.mains));
         if (npc && !c.role) o.no_role = true;
         const pend = (c.buffs || []).filter(b => b.kind === 'gift').map(b => b.title);
@@ -2913,10 +3006,31 @@ export function buildAttrInjection(state, userName, level = 'medium', { mode = '
 
 // Пол персонажа для склонений: из лорбука или ответа модели (m/f), иначе догадка
 // по описанию («девушка», «сестра») и по имени (Маша, Анна Петровна, Смирнова).
-const MALE_A = new Set(['никита', 'илья', 'кузьма', 'фома', 'лука', 'савва', 'данила', 'гаврила', 'фрол', 'миша', 'мишка', 'петя', 'ваня', 'дима', 'серёжа', 'сережа', 'лёша', 'леша', 'алёша', 'алеша', 'гоша', 'паша', 'костя', 'толя', 'вова', 'володя', 'слава', 'боря', 'гриша', 'федя', 'стёпа', 'степа', 'тёма', 'тема', 'юра', 'витя', 'коля', 'сеня', 'лёва', 'лева', 'гена', 'жора', 'рома', 'вася', 'тоша', 'кеша', 'эзра', 'джошуа', 'андреа', 'luka', 'ezra', 'joshua', 'nikita', 'ilya', 'misha']);
+const MALE_A = new Set(['dracula', 'дракула', 'luca', 'andrea', 'nikolai', 'ezra', 'никита', 'илья', 'кузьма', 'фома', 'лука', 'савва', 'данила', 'гаврила', 'фрол', 'миша', 'мишка', 'петя', 'ваня', 'дима', 'серёжа', 'сережа', 'лёша', 'леша', 'алёша', 'алеша', 'гоша', 'паша', 'костя', 'толя', 'вова', 'володя', 'слава', 'боря', 'гриша', 'федя', 'стёпа', 'степа', 'тёма', 'тема', 'юра', 'витя', 'коля', 'сеня', 'лёва', 'лева', 'гена', 'жора', 'рома', 'вася', 'тоша', 'кеша', 'эзра', 'джошуа', 'андреа', 'luka', 'ezra', 'joshua', 'nikita', 'ilya', 'misha']);
 const UNISEX_A = new Set(['саша', 'женя', 'валя', 'шура', 'сашка', 'sasha']);
-const FEMALE_WHO = /(^|[^а-яё])(девушк|девочк|девчонк|женщин|дам[аы]|леди|сестр|мать|мама|матер|дочь|дочк|дочер|жена|жён|невест|подруг|бабушк|бабк|тётя|тетя|тётк|тетк|госпожа|королев|принцесс|княжн|княгин|ведьм|колдунь|служанк|горничн|официантк|актрис|певиц|студентк|школьниц|медсестр|секретарш|хозяйк|вдов|героин|она[^а-яё]|она$)/;
-const MALE_WHO = /(^|[^а-яё])(парен|парн|мужчин|мальчик|мальчишк|юнош|сударь|господин|брат|отец|папа|сын|муж[^с]|муж$|жених|дедушк|дед[^у]|дед$|дядя|дядьк|король|принц[^е]|принц$|князь|колдун[^ь]|колдун$|слуга|студент[^к]|студент$|вдовец|он[^а-яё]|он$)/;
+// женские имена на согласную (Эвелин, Рэйчел, Изабель) — по одному окончанию их не отличить от мужских
+const FEMALE_C = new Set(['эвелин', 'эвелинн', 'кэролин', 'каролин', 'жаклин', 'мэрилин', 'мерилин', 'эшлин', 'кейтлин', 'кэйтлин', 'мадлен', 'элен', 'хелен', 'ирэн', 'ирен', 'кармен', 'рэйчел', 'рейчел', 'изабель', 'аннабель', 'кристабель', 'мирабель', 'бель', 'николь', 'мишель', 'габриэль', 'эстер', 'эсфирь', 'рут', 'ассоль', 'любовь', 'нинель', 'гвен', 'джейн', 'кейт', 'кэт', 'шарлотт', 'бриджит', 'астрид', 'ингрид', 'зигрид', 'сигрид', 'эдит', 'юдифь', 'рахиль', 'агарь', 'адель', 'аврил', 'эйприл', 'жизель', 'мюриэль', 'ариэль', 'эрин', 'кэрин', 'мэрион', 'элисон', 'эллисон', 'гвендолин', 'вивьен', 'жасмин', 'ясмин', 'лилит', 'юдит', 'evelyn', 'carolyn', 'jacqueline', 'marilyn', 'madeline', 'helen', 'irene', 'carmen', 'rachel', 'isabel', 'isabelle', 'annabel', 'nicole', 'michelle', 'esther', 'ruth', 'gwen', 'jane', 'kate', 'astrid', 'ingrid', 'edith', 'lilith', 'erin', 'allison', 'vivien', 'jasmine']);
+const FEMALE_WHO = /(^|[^а-яё])(девушк|девочк|девчонк|женщин|дам[аы]|леди|сестр|мать|мама|матер|дочь|дочк|дочер|жена|жён|невест|подруг|бабушк|бабк|тётя|тетя|тётк|тетк|госпожа|королев|принцесс|княжн|княгин|графин|баронесс|императриц|цариц|вампирш|ведьм|колдунь|служанк|горничн|официантк|актрис|певиц|студентк|школьниц|медсестр|секретарш|хозяйк|вдов|героин|она[^а-яё]|она$)/;
+const MALE_WHO = /(^|[^а-яё])(парен|парн|мужчин|мальчик|мальчишк|юнош|сударь|господин|брат|отец|папа|сын|муж[^с]|муж$|жених|дедушк|дед[^у]|дед$|дядя|дядьк|король|принц[^е]|принц$|князь|граф[^и]|граф$|барон[^е]|барон$|импера[тд]ор|царь|лорд|рыцар|вампир[^ш]|вампир$|колдун[^ь]|колдун$|слуга|студент[^к]|студент$|вдовец|он[^а-яё]|он$)/;
+// Пол из ответа модели: m/f, но и «male», «ж», «она» и т. п.
+export function normGender(v) {
+    const t = String(v ?? '').trim().toLowerCase();
+    if (!t || t.includes('|')) return 'n';
+    if (/^(m|male|man|he|м|муж|мужской|мужчина|он|парень)\.?$/.test(t)) return 'm';
+    if (/^(f|female|woman|she|ж|жен|женский|женщина|она|девушка)\.?$/.test(t)) return 'f';
+    return 'n';
+}
+// Род по краткому прилагательному или причастию настроения: «устал», «спокоен» — он; «устала», «спокойна» — она.
+export function genderOfWord(w) {
+    const t = String(w || '').trim().toLowerCase().replace(/ё/g, 'е');
+    if (!t || /^(в |не в |на |без |как |под |вне |сам не)/.test(t)) return '';
+    const x = t.split(/[\s,;]+/).filter(Boolean)[0] || '';
+    if (x.length < 3 || /(ый|ий|ой|ая|яя|ое|ее|ые|ие|ся|сь)$/.test(x)) return '';
+    if (/(ла|на|та|ва|да|жа|ша|ща|ча|ра|ка|за|ба|па|ма)$/.test(x)) return 'f';
+    if (/(ен|ан|ял|ал|ил|ыл|ел|ол|ул|ят|ит|ат|ет|ут|ад|ов|ев|ив|ер|ор|ар|ок|ек|ив|ым|ем|оч|ащ|ух|ох)$/.test(x) || /^(рад|зол|горд|бодр|сыт|пьян|болен|жив|мертв|глуп|тих|лих|хмур|груст|счастлив|влюблен|смущен|растерян|напуган|встревожен|спокоен|доволен|недоволен|возбужден|воодушевлен|сосредоточен|задумчив|ревнив|игрив|печален|обижен|зол|сердит|взволнован)$/.test(x)) return 'm';
+    return '';
+}
+
 export function genderOf(g, name = '', who = '') {
     if (g === 'm' || g === 'f') return g;
     const w = String(who || '').toLowerCase();
@@ -2935,6 +3049,7 @@ export function genderOf(g, name = '', who = '') {
         if (/(ов|ев|ёв|ин|ын|ский|цкий|ой|ый)$/.test(x)) return 'm';
     }
     const first = words[0];
+    if (FEMALE_C.has(first)) return 'f';
     if (UNISEX_A.has(first) || MALE_A.has(first)) return MALE_A.has(first) ? 'm' : 'n';
     if (/[ая]$/.test(first) || /[a-z]a$/.test(first) || /(ия|ья|ie|ine|elle|ette|lyn|lynn)$/.test(first)) return 'f';
     if (/[а-яё]$/.test(first) && /[бвгджзклмнпрстфхцчшщй]$/.test(first)) return 'm';

@@ -147,8 +147,8 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
       <summary class="iw-tool" title="Звук и громкость" aria-label="Звук и громкость">${icon(sound ? 'sound' : 'mute')}</summary>
       <div class="iw-vol-menu">
         <button type="button" class="iw-vol-toggle iw-sound${sound ? '' : ' off'}" aria-pressed="${sound}">${icon(sound ? 'sound' : 'mute')}<span>${sound ? 'Звук включён' : 'Звук выключен'}</span></button>
-        <div class="iw-vol-row"><span>Громкость</span><output class="iw-range-val">${Number(settings.volume ?? 45)}%</output></div>
-        <input type="range" class="iw-range iw-vol-range" data-iw-volume min="0" max="100" step="5" value="${Number(settings.volume ?? 45)}" aria-label="Громкость звуков"${sound ? '' : ' disabled'}>
+        <div class="iw-vol-row"><span>Громкость</span><output class="iw-range-val">${Number(settings.volume ?? 50)}%</output></div>
+        <input type="range" class="iw-range iw-vol-range" data-iw-volume min="0" max="100" step="1" value="${Number(settings.volume ?? 50)}" aria-label="Громкость звуков"${sound ? '' : ' disabled'}>
         <button type="button" class="iw-vol-toggle iw-popups${settings.popups === false ? ' off' : ''}" aria-pressed="${settings.popups !== false}">${icon(settings.popups === false ? 'bell_off' : 'bell')}<span>${settings.popups === false ? 'Всплывашки выключены' : 'Всплывашки включены'}</span></button>
         ${TEST_PICK}
       </div>
@@ -305,12 +305,38 @@ function tabBorn(c, clock, key = '') {
     return `<span class="iw-tab-born${today ? ' iw-born-today' : ''}"${edit} title="Нажми, чтобы поправить. День рождения: ${esc(bornText(c.born, CAL_NOW))}${age !== null ? `, ${age} ${plural(age, 'год', 'года', 'лет')}` : ''}">${icon('cake')}<span>${c.born.d} ${mShort}${age !== null ? ` · ${age}` : ''}</span></span>`;
 }
 
-export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null, customOrder = false }) {
-    const tabs = mains.map(key => {
+// Мультибот с двумя и больше главными героями: карусель — выбранный герой впереди, соседи по бокам на заднем плане;
+// стрелки и клик по соседу листают по кругу. Последнего показанного героя помним, пока открыты НПС или персона.
+let CAR_LAST = '';
+export function renderTabs({ state, mains, view, avatarFor, npc, busyKind = '', persona = null, labels = {}, books = [], picked = [], linked = [], working = false, off = [], noActs = false, clock = null, customOrder = false, carDir = '' }) {
+    const tab = (key, extra = '', attrs = '') => {
         const c = state.characters[key] || { name: key };
         const on = view === 'main:' + key || view === 'shop:' + key;
-        return `<button type="button" class="iw-tab${on ? ' on' : ''}" data-iw-view="main:${esc(key)}" aria-pressed="${on}">${tabTint(c)}<span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(shortName(c.name))}" title="${esc(c.name)}">${esc(shortName(c.name))}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}${state.characters[key] ? tabBorn(c, clock, key) : ''}</button>`;
-    }).join('');
+        return `<button type="button" class="iw-tab${on ? ' on' : ''}${extra}" data-iw-view="main:${esc(key)}" aria-pressed="${on}"${attrs}>${tabTint(c)}<span class="iw-tape"></span><span class="iw-photo-wrap">${photoHtml(c, avatarFor)}${faceBadge(c)}</span><span class="iw-tab-name${nameFit(shortName(c.name))}" title="${esc(c.name)}">${esc(shortName(c.name))}</span>${c.mood ? `<span class="iw-tab-mood">${ce(c.mood)}</span>` : ''}${state.characters[key] ? tabBorn(c, clock, key) : ''}</button>`;
+    };
+    let tabs;
+    if (mains.length >= 2) {
+        const shown = mains.find(k => view === 'main:' + k || view === 'shop:' + k);
+        if (shown) CAR_LAST = shown;
+        const n = mains.length;
+        const cur = Math.max(0, mains.indexOf(CAR_LAST));
+        const at = d => mains[(cur + d + n) % n];
+        const cards = mains.map((key, i) => {
+            const d = (i - cur + n) % n;
+            const pos = d === 0 ? 'c' : d === 1 ? 'r' : d === n - 1 ? 'l' : 'h';
+            const dir = pos === 'r' ? 'next' : pos === 'l' ? 'prev' : '';
+            return tab(key, ` iw-car-card iw-car-${pos}`, `${dir ? ` data-iw-cardir="${dir}"` : ''}${pos === 'h' ? ' tabindex="-1" aria-hidden="true"' : ''}`);
+        }).join('');
+        const dots = mains.map((k, i) => `<span class="iw-car-dot${i === cur ? ' on' : ''}"></span>`).join('');
+        tabs = `<div class="iw-car"${carDir ? ` data-dir="${esc(carDir)}"` : ''} role="group" aria-label="Главные герои: ${n}">
+          <button type="button" class="iw-car-arrow iw-car-prev" data-iw-view="main:${esc(at(-1))}" data-iw-cardir="prev" title="${esc(shortName((state.characters[at(-1)] || { name: at(-1) }).name))}" aria-label="Предыдущий герой">${icon('back')}</button>
+          <div class="iw-car-stage">${cards}</div>
+          <button type="button" class="iw-car-arrow iw-car-next" data-iw-view="main:${esc(at(1))}" data-iw-cardir="next" title="${esc(shortName((state.characters[at(1)] || { name: at(1) }).name))}" aria-label="Следующий герой">${icon('back')}</button>
+          <div class="iw-car-dots" aria-hidden="true">${dots}</div>
+        </div>`;
+    } else {
+        tabs = mains.map(key => tab(key)).join('');
+    }
     const sticker = npc
         ? `<button type="button" class="iw-npc-sticker${view.startsWith('npc') ? ' on' : ''}" data-iw-view="npc" aria-pressed="${view.startsWith('npc')}">
              <span class="iw-npc-sticker-title">${icon('users')} ${esc(labels.npc || 'НПС')}</span>
@@ -1093,6 +1119,13 @@ function renderWants(c, L) {
     <section class="iw-block iw-b-wants">
       ${blockHead('wants', esc(L.wants), wishTools('wants'))}
       ${items ? `<ul class="iw-list">${items}</ul>` : '<div class="iw-muted">Ничего особенного</div>'}
+      ${(() => {
+        // несколько несобранных наград — одна кнопка на все сразу
+        const open = (c.wants || []).filter(w => w.status === 'done' && w.unclaimed);
+        if (open.length < 2) return '';
+        const sum = open.reduce((n, w) => n + (Number(w.unclaimed) || 0), 0);
+        return `<button type="button" class="iw-claim iw-claim-all" data-iw-want-claim-all title="Забрать награды за все сбывшиеся желания: монеты придут в кошелёк, желания уйдут из списка">${icon('gift')}<span>Забрать все награды · ${open.length}</span><b>+${sum.toLocaleString('ru-RU')}${icon('coin')}</b></button>`;
+      })()}
     </section>`;
 }
 
@@ -1143,10 +1176,12 @@ function renderDream(c, L, opts = {}) {
     }
     const steps = dedupeSteps(c.dream.steps); // старые дневники могли записать один этап дважды
     const done = steps.filter(s => s.done).length;
+    const fulfilled = steps.length > 0 && done === steps.length;
     return `
-    <section class="iw-block iw-b-dream${c.dream.pinned ? ' pinned' : ''}">
+    <section class="iw-block iw-b-dream${c.dream.pinned ? ' pinned' : ''}${fulfilled ? ' iw-dream-fulfilled' : ''}">
       ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key))}`)}
       <div class="iw-dream-title">${simsIco('d', c.dream.title + ' ' + (c.dream.plus || ''), 'iw-si-dream')}${REL_THEME === 'sims' ? '<span class="iw-dream-tt">' : ''}${esc(c.dream.title)}${c.dream.plus ? `${/^[…,;:—–-]/.test(c.dream.plus.trim()) ? ' ' : ', '}<span class="iw-dream-plus">${esc(c.dream.plus.trim())}</span>` : ''}${REL_THEME === 'sims' ? '</span>' : ''}</div>
+      ${fulfilled ? `<div class="iw-dream-stamp">${icon('check')}<span>Исполнена</span></div>` : ''}
       <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${ce(s.text)}</span></li>`).join('')}</ol>
       ${steps.length && done === steps.length ? dreamDoneBox(c, opts) : ''}
     </section>`;
@@ -1347,9 +1382,10 @@ export function renderShop(c, theme, key, { shopBusy = false, purse = null, pers
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who));
     const pts = purse ?? (c.points || 0);
     const row = r => `
-      <li class="iw-reward iw-rk-${r.kind}${pts < r.cost || buyBlock(c, r.kind, buyOne) ? ' locked' : ''}">
+      <li class="iw-reward iw-rk-${r.kind}${pts < r.cost || buyBlock(c, r.kind, buyOne) ? ' locked' : ''}${r.pinned ? ' pinned' : ''}">
         <span class="iw-rw-ico iw-rw-big">${icon(r.icon || 'gift')}</span>
         <span class="iw-rw-body"><b class="iw-rw-title">${ce(r.title)}</b>${r.forUser ? `<span class="iw-rw-for">для ${esc(personaName || 'тебя')}</span>` : ''}<span class="iw-rw-desc">${ce(r.desc || r.effect || '')}</span>${r.kind === 'buff' ? `<span class="iw-rw-kind">действует ${r.turns} ${plural(r.turns, 'ответ', 'ответа', 'ответов')}</span>` : ''}</span>
+        <button type="button" class="iw-mini iw-shop-pin${r.pinned ? ' on' : ''}" data-iw-shop-pin="${esc(r.id)}" title="${r.pinned ? 'Закреплено: останется в лавке при «Подобрать заново» и после разборов — можно купить позже. Нажми, чтобы открепить' : 'Закрепить: награда не пропадёт при «Подобрать заново», можно купить позже'}" aria-pressed="${!!r.pinned}">${icon(r.pinned ? 'pin' : 'unpin')}</button>
         <button type="button" class="iw-buy" data-iw-buy="${esc(r.id)}"${pts < r.cost || buyBlock(c, r.kind, buyOne) ? ' disabled' : ''} title="${esc(buyBlock(c, r.kind, buyOne) || (pts < r.cost ? 'Не хватает очков' : 'Купить'))}">${icon(currencyIcon(theme))}<span>${r.cost}</span></button>
       </li>`;
     // купленное уходит с полки: действующее висит листочком, памятная вещь — уже на витрине
@@ -1395,7 +1431,16 @@ const SHOP_FIRST = {
 const TIER_STARS = { bronze: 1, silver: 2, gold: 3 };
 // значок достижения: обычный рисунок или лицо-эмоция (для смешных и милых)
 export function achIcon(name) {
+    const sims = simsPict(name || 'trophy');
+    if (sims) return sims;
     return ACH_FACES.includes(name) ? faceIcon(name, 'iw-ach-face') : pictIcon(name || 'trophy');
+}
+// «Симулятор жизни»: значки достижений и вещей — из пака иконок игры
+const SIMS_PICT = new Set(['trophy', 'star', 'crown', 'heart', 'lips', 'flower', 'gift', 'ribbon', 'cake', 'cup', 'potion', 'shield', 'flame', 'key', 'lock', 'ghost', 'eye', 'letter', 'scroll', 'book', 'feather', 'note', 'dice', 'coin', 'gem', 'sun', 'moon', 'clock', 'chat', 'users', 'sparkle', 'alert', 'trash']);
+function simsPict(name) {
+    if (REL_THEME !== 'sims') return '';
+    const file = SIMS_PICT.has(name) ? `a-${name}` : (ACH_FACES.includes(name) ? `e-${name}` : '');
+    return file ? `<span class="iw-si-pict" style="--si:url('icons/sims/${file}.webp')" aria-hidden="true"></span>` : '';
 }
 // Витрина: два сворачиваемых раздела — достижения (внутри по золоту, серебру, бронзе) и памятные вещи.
 // Что открыто, а что свёрнуто — запоминается. Памятные вещи могут быть нарисованы моделью (настройка «Рисовать…»).
@@ -1421,7 +1466,7 @@ function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = tru
     const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
     const stars = (t, word = true) => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}${word ? `<em>${esc(TIER_NAMES_RU[t] || '')}</em>` : ''}</span>`;
     const kindTag = a => (a.kind && ACH_KINDS[a.kind] ? `<span class="iw-ach-kind iw-ach-${a.kind}">${esc(ACH_KINDS[a.kind])}</span>` : '');
-    const pic = x => (art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : `<span class="iw-case-ico">${pictIcon(x.icon || 'gift')}</span>`);
+    const pic = x => (art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : `<span class="iw-case-ico">${simsPict(x.icon || 'gift') || pictIcon(x.icon || 'gift')}</span>`);
     const achDel = a => `<button type="button" class="iw-mini iw-case-x" data-iw-achdel="${esc(a.id)}" title="Убрать с витрины" aria-label="Убрать с витрины">${icon('x')}</button>`;
     const achMeta = a => `${a.scene ? `<span>${esc(a.scene)}</span>` : ''}${a.mes !== undefined ? `<span>сообщение #${esc(a.mes)}</span>` : ''}`;
     const owner = x => (x.pending ? `${esc(x.owner)} подарит в ближайшей сцене` : (x.gift ? `подарок · ${esc(x.desc && /^Подарок от ([^:]+)/.test(x.desc) ? x.desc.match(/^Подарок от ([^:]+)/)[1] : x.owner)}` : `в коллекции: ${esc(x.owner)}`));
@@ -1458,10 +1503,10 @@ function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = tru
       </li>`;
     const itemCard = (x, cls) => `
       <li class="iw-case-card ${cls}${art && x.art ? ' iw-has-art' : ''}${x.pending ? ' iw-case-pending' : ''}">
-        <span class="iw-case-card-pic">${art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : pictIcon(x.icon || 'gift')}</span>
+        <span class="iw-case-card-pic">${art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : (simsPict(x.icon || 'gift') || pictIcon(x.icon || 'gift'))}</span>
         <span class="iw-case-card-body"><b class="iw-rw-title">${ce(x.title)}</b>${itemDesc(x) ? `<span class="iw-rw-desc">${ce(itemDesc(x))}</span>` : ''}<span class="iw-rw-kind">${owner(x)}</span>${drawBtn(x, art, artBusy)}</span>
       </li>`;
-    const ul = (rows, f, cls = '') => `<ul class="iw-list iw-rewards${grid ? ' iw-case-grid' : ''}">${rows.map(x => f(x, cls)).join('')}</ul>`;
+    const ul = (rows, f, cls = '') => `<ul class="iw-list iw-rewards${grid ? ' iw-case-grid' : ''}" lang="ru">${rows.map(x => f(x, cls)).join('')}</ul>`;
     const tiers = ['gold', 'silver', 'bronze'].map(tier => {
         const rows = list.filter(a => (a.tier || 'bronze') === tier);
         if (!rows.length) return '';
@@ -1576,7 +1621,7 @@ function vkSong(c) {
 function vkStatus(c) {
     if (REL_THEME !== 'vk' || !c) return '';
     const [who, title] = vkSong(c);
-    return `<div class="iw-vk-status" title="Статус: сейчас играет. Меняется после каждого разбора дневника"><span class="iw-vk-status-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M9 17.5a3 3 0 1 1-2-2.83V5.6c0-.7.46-1.3 1.13-1.48l9-2.4A1.5 1.5 0 0 1 19 3.17v11.83a3 3 0 1 1-2-2.83V6.9l-8 2.13z"/></svg></span><span class="iw-vk-status-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="iw-vk-status-txt"><b>${esc(who)}</b> — ${esc(title)}</span></div>`;
+    return `<div class="iw-vk-status" title="Статус: сейчас играет. Меняется после каждого разбора дневника"><span class="iw-vk-status-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M9 17.5a3 3 0 1 1-2-2.83V5.6c0-.7.46-1.3 1.13-1.48l9-2.4A1.5 1.5 0 0 1 19 3.17v11.83a3 3 0 1 1-2-2.83V6.9l-8 2.13z"/></svg></span><span class="iw-vk-status-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="iw-vk-status-txt"><b>${esc(who)}</b> — ${esc(title)}</span><button type="button" class="iw-vk-status-x" data-iw-vkmusic="hide" title="Скрыть песню. Вернуть — в настройках оформления" aria-label="Скрыть песню">${icon('x')}</button></div>`;
 }
 
 export function renderCharacter(c, modules, theme, opts = {}) {
@@ -1607,7 +1652,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     blocks.sort((a, b) => order.indexOf(kindOf(a)) - order.indexOf(kindOf(b)));
     const collapsed = FOLD.collapsed;
     FOLD = { collapsed: {} };
-    return `${vkStatus(c)}${opts.key ? buffNotes(c, opts.key) : ''}<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
+    return `${opts.key ? buffNotes(c, opts.key) : ''}<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
@@ -1704,7 +1749,7 @@ export function renderNpcList({ state, npcKeys, roster, rosterBusy, avatarFor, s
   </div>
   ${cards.length && heardCards.length ? `<div class="iw-group">${groupHead(`Знакомы лично${personaName ? ` с ${esc(personaName)}` : ''} · ${cards.length}`, 'встречались в сцене или знакомы до истории')}</div>` : ''}
   ${cards.length ? `<div class="iw-npc-grid">${cards.join('')}</div>` : (heardCards.length ? '' : unknown.length ? '<div class="iw-muted">Пока никто из них не появлялся в сцене.</div>' : '<div class="iw-empty">Пока никого. Нажми «Изучить лорбук и карточку» — и я узнаю, кто живёт в этом мире. В дневнике они появятся, когда придут в сцену.</div>')}
-  ${heardCards.length ? `<div class="iw-group iw-group-heard">${groupHead(`Знает понаслышке · ${heardCards.length}`, `${personaName ? esc(personaName) : 'твой герой'} с ними лично не ${gw(personaG, 'встречался', 'встречалась', 'встречался')} — только ${gw(personaG, 'слышал', 'слышала', 'слышал')}: из рассказов, слухов, газет`)}<div class="iw-npc-grid">${heardCards.join('')}</div></div>` : ''}
+  ${heardCards.length ? `<div class="iw-group iw-group-heard">${groupHead(`${REL_THEME === 'vk' ? 'Возможно, вы знакомы' : 'Знает понаслышке'} · ${heardCards.length}`, `${personaName ? esc(personaName) : 'твой герой'} с ними лично не ${gw(personaG, 'встречался', 'встречалась', 'встречался')} — только ${gw(personaG, 'слышал', 'слышала', 'слышал')}: из рассказов, слухов, газет`)}<div class="iw-npc-grid">${heardCards.join('')}</div></div>` : ''}
   ${unknown.length ? `<div class="iw-group">${groupHead(`Ещё не встречались · ${unknown.length}`, 'появятся, когда придут в сцену')}<div class="iw-npc-unknowns">${unknownTiles}</div></div>` : ''}
   ${ignored.length ? `<div class="iw-group iw-group-ignored">${groupHead(`Забыты навсегда · ${ignored.length}`, 'дневник их не ведёт; стрелочка — вернуть')}<div class="iw-forget-ignored">${ignored.map(n => `<button type="button" class="iw-btn iw-forget-chip iw-unignore" data-iw-unignore="${esc(n)}" title="Вернуть: дневник снова будет замечать ${esc(n)}">${esc(n)} ${icon('undo')}</button>`).join('')}</div></div>` : ''}
 </div>`;
@@ -1864,6 +1909,7 @@ export function renderClock(clock) {
           <div class="iw-muted iw-clock-add-hint">Праздник для всех — просто название. Личная дата героя — «Имя: что за дата».</div>
         </div>` : ''}
         ${events}
+        <button type="button" class="iw-btn iw-mini-btn iw-clock-redo${clock.busy ? ' busy' : ''}" data-iw-clock="detect"${clock.busy ? ' disabled' : ''} title="Заново составить календарь по карточке и лорбуку: месяцы, дни недели и праздники под сеттинг. Дата и время в истории останутся, свои праздники — тоже">${icon(clock.busy ? 'rotate' : 'dice')}<span>${clock.busy ? 'Составляю…' : 'Пересобрать календарь'}</span></button>
       </div>
       ${evMore}
     </div>
@@ -1871,7 +1917,8 @@ export function renderClock(clock) {
 </details>`;
 }
 
-export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, memes = null, nights = true, wishBusy = '', histOpen = {} }) {
+export function renderPanel({ state, settings, theme, view, busy, busyKind = '', dreamBusy = false, shopBusy = false, status, avatarFor, mains, npcKeys, persona = null, roster, rosterBusy, seenOnly = [], noChat = false, settingsHtml = '', books = [], picked = [], linked = [], working = false, off = [], live = null, attrMode = 'likes', attrOpen = false, attrMore = {}, mobile = false, clock = null, nextIn = 0, showcase = null, ignored = [], giftTo = 'owner', love = null, rumors = null, memes = null, nights = true, wishBusy = '', histOpen = {}, carDir = '' }) {
+    REL_THEME = theme;
     HIST_OPEN = histOpen || {};
     CAL_NOW = clock && clock.cal ? clock.cal : null;
     MULTI_NOW = !!(roster && roster.multi);
@@ -1909,6 +1956,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
     const showNpc = settings.showNpc !== false;
     let body;
     let current = null;
+    let topStatus = '';
     let personaNote = false;
     // пока дневник ни разу не заполнялся — на всех вкладках (персонаж, НПС, твой герой) одна и та же подсказка
     const diaryEmpty = !(state.order || []).some(k => state.characters[k]);
@@ -1940,7 +1988,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         const why = dead
             ? `${esc(c.name)} нет в живых, поэтому настроения, желаний и отношения здесь нет — только память о ${gw(g, 'нём', 'ней', 'нём')}.`
             : `${esc(pName)} с ${gw(g, 'ним', 'ней', 'ним')} лично не ${gw(pg, 'встречался', 'встречалась', 'встречался')}, поэтому отношения к тебе здесь нет. Когда они познакомятся в сцене, дневник заведёт полную запись — или заведи её сейчас: характер, желания, страхи, мечта.`;
-        body = `
+        body = `${roster && roster.multi && !c.dead ? `<div class="iw-multi-bar iw-multi-npc">${icon('users')}<span>Персонаж мультибота · сейчас в НПС</span><button type="button" class="iw-mini-btn iw-btn" data-iw-promote="${esc(key)}" title="Сделать ${esc(c.name)} главным героем: встанет в карусель наверху, с полным дневником">${icon('star')}<span>сделать главным</span></button></div>` : ''}
 <button type="button" class="iw-back iw-back-npc" data-iw-view="npc">${icon('back')}<span>все НПС</span></button>
 <section class="iw-dossier iw-dossier-tight iw-dossier-heard${dead ? ' iw-dead' : ''}">
   <span class="iw-tape" aria-hidden="true"></span>
@@ -1977,6 +2025,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
         const aliases = shownAliases(entry);
         body = `
 <button type="button" class="iw-back iw-back-npc" data-iw-view="npc">${icon('back')}<span>все НПС</span></button>
+${roster && roster.multi && !c.dead ? `<div class="iw-multi-bar iw-multi-npc">${icon('users')}<span>Персонаж мультибота · сейчас в НПС</span><button type="button" class="iw-mini-btn iw-btn" data-iw-promote="${esc(key)}" title="Сделать ${esc(c.name)} главным героем: встанет в карусель наверху, с полным дневником">${icon('star')}<span>сделать главным</span></button></div>` : ''}
 <section class="iw-dossier iw-dossier-tight">
   <span class="iw-tape" aria-hidden="true"></span>
   <div class="iw-dossier-face">${npcBadge(badgeInfo(c, entry), 'iw-badge-lg')}</div>
@@ -1989,7 +2038,7 @@ export function renderPanel({ state, settings, theme, view, busy, busyKind = '',
       <div class="iw-whois-text">${who ? ce(who) : '<span class="iw-muted">Пока неизвестно</span>'}</div>
       ${loreTraits.length ? `<div class="iw-whois-traits"><span class="iw-muted">${esc(LL.whoisTraits)}:</span> ${esc(loreTraits.join(', '))}</div>` : ''}
     </div>
-    <div class="iw-dossier-acts">${roster && roster.multi ? `<button type="button" class="iw-heard-toggle iw-promote" data-iw-promote="${esc(key)}" title="Мультибот: ${esc(c.name)} станет главным героем — вкладкой наверху, с полным дневником">${icon('star')}<span>сделать главным</span></button>` : ''}<button type="button" class="iw-heard-toggle" data-iw-dead="${esc(key)}:1" title="Отметить, что ${esc(c.name)} нет в живых: карточка станет серой, настроение и желания уберутся">нет в живых?</button>${persona ? `<button type="button" class="iw-heard-toggle" data-iw-met="${esc(key)}:0" title="Если ${esc(persona.name)} и ${esc(c.name)} лично не встречались — дневник оставит только то, что о ${esc(c.name)} слышно">не знакомы лично?</button>` : ''}</div>
+    <div class="iw-dossier-acts"><button type="button" class="iw-heard-toggle" data-iw-dead="${esc(key)}:1" title="Отметить, что ${esc(c.name)} нет в живых: карточка станет серой, настроение и желания уберутся">нет в живых?</button>${persona ? `<button type="button" class="iw-heard-toggle" data-iw-met="${esc(key)}:0" title="Если ${esc(persona.name)} и ${esc(c.name)} лично не встречались — дневник оставит только то, что о ${esc(c.name)} слышно">не знакомы лично?</button>` : ''}</div>
   </div>
 </section>
 ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, opts))}`;
@@ -2003,16 +2052,22 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
             current = key;
             personaNote = true;
             body = `${renderCharacter(pc, settings.modules, theme, Object.assign({ key, persona: true, botName, botG, rumors, memes, nights, relOf: bot || null }, opts))}`;
+            if (settings.vkMusic !== false) topStatus = vkStatus(pc);
         } else {
-            body = `<div class="iw-waiting"><div class="iw-waiting-text"><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p><p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
+            body = `<div class="iw-waiting"><div class="iw-waiting-text"><p>${(() => { const pg = genderOf('n', (persona && persona.name) || '', ''); const his = gw(pg, 'его', 'её', 'его'); return `Дневник твоего героя заполнится после следующего разбора: ${his} настроение, желания, страхи, мечта, черты и то, как ${gw(pg, 'он', 'она', 'герой')} относится к ${gw(botG, 'нему', 'ней', 'персонажу')}${botName ? ` (${esc(botName)})` : ''}.`; })()} Описание персоны и её лорбук дневник прочитает при «Лорбук» и «Всё сразу».</p>${(() => {
+                // персону сменили посреди истории: прежний герой игрока остаётся в дневнике обычным персонажем
+                const prev = state.order.map(k => state.characters[k]).find(x => x && (x.persona || x.wasPersona) && x.name && !(persona && persona.name && String(x.name).toLowerCase() === String(persona.name).toLowerCase()));
+                return prev ? `<p class="iw-muted">Похоже, ты сменила персону. ${esc(prev.name)} остаётся в дневнике обычным персонажем — среди НПС, а у новой персоны${persona && persona.name ? ` — ${esc(persona.name)} —` : ''} будет свой дневник. Вернёшься к прежней персоне — её дневник продолжится с того же места.</p>` : '';
+            })()}<p class="iw-muted">Он только для тебя: на ответы бота не влияет. Выключить можно в настройках, раздел «Главное».</p></div></div>`;
         }
     } else if (view.startsWith('shop:') && state.characters[view.slice(5)]) {
         const key = view.slice(5);
-        const pKey = state.order.find(k => state.characters[k] && state.characters[k].persona);
+        const pKey = (persona && persona.key) || null;
         body = renderShop(state.characters[key], theme, key, { shopBusy, purse: settings.points !== false ? purseOf(state) : null, personaName: (persona && persona.name) || '', personaOwned: pKey ? (state.characters[pKey].collection || []).map(x => x.title) : [], buyOne: settings.buyOne !== false });
     } else if (view.startsWith('main:') && state.characters[view.slice(5)]) {
         current = view.slice(5);
         body = renderCharacter(state.characters[current], settings.modules, theme, Object.assign({ key: current, first: current === mains[0], rumors, memes, nights }, opts));
+        if (settings.vkMusic !== false) topStatus = vkStatus(state.characters[current]);
         if (roster && roster.multi) body = `<div class="iw-multi-bar">${icon('users')}<span>Главный герой мультибота</span><button type="button" class="iw-mini-btn iw-btn" data-iw-demote="${esc(current)}" title="Перенести ${esc(state.characters[current].name)} в НПС: вкладка уйдёт, дневник сохранится">в НПС</button></div>${body}`;
     } else if (view.startsWith('main:')) {
         body = renderWaiting(view.slice(5), settings, theme, roster);
@@ -2033,8 +2088,8 @@ ${renderCharacter(c, settings.modules, theme, Object.assign({ key, npc: true }, 
   <div class="iw-margin" aria-hidden="true"></div>
   ${renderHeader(settings, theme, busy, false, wallet, shopKey ? { key: shopKey, on: view.startsWith('shop:') } : null, mobile ? analyzeButtons(busyKind, L, books, picked, linked, working || !!busyKind, off, !!persona) : '')}
   ${ROUGH_FILTER}
-  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off, noActs: mobile, clock: clock && clock.t ? clock : null, customOrder: Array.isArray(settings.blockOrder) && settings.blockOrder.length > 0 })}
-  <div class="iw-body${live && !live.hidden ? ' iw-live-on' : ''}">${live && !live.hidden ? renderLive(live, theme, L) : ''}${live && live.hidden ? livePeek(live) : ''}${renderClock(clock)}${body}</div>
+  ${renderTabs({ state, mains, view, avatarFor, npc: npcInfo, busyKind, persona, labels: L, books, picked, linked, working, off, noActs: mobile, clock: clock && clock.t ? clock : null, customOrder: Array.isArray(settings.blockOrder) && settings.blockOrder.length > 0, carDir })}
+  <div class="iw-body${live && !live.hidden ? ' iw-live-on' : ''}">${live && !live.hidden ? renderLive(live, theme, L) : ''}${live && live.hidden ? livePeek(live) : ''}${topStatus}${renderClock(clock)}${body}</div>
   ${footHtml()}
 </div>`;
 }
@@ -2413,6 +2468,7 @@ export function renderFab() {
   <span class="iw-fab-spine"></span>
   <span class="iw-fab-cover">${icon('heart', 'iw-fab-heart')}</span>
   <img class="iw-fab-app" src="${FAB_IMG_BASE}img/vk-fab.png" alt="" draggable="false">
+  <img class="iw-fab-sims" src="${FAB_IMG_BASE}icons/sims/fab.webp" alt="" draggable="false">
   <svg class="iw-fab-flower" viewBox="0 0 64 64"><g fill="#6cc24a" stroke="#2f7a1f" stroke-width="2.2"><ellipse cx="32" cy="15" rx="9" ry="13" transform="rotate(0 32 32)"/><ellipse cx="32" cy="15" rx="9" ry="13" transform="rotate(72 32 32)"/><ellipse cx="32" cy="15" rx="9" ry="13" transform="rotate(144 32 32)"/><ellipse cx="32" cy="15" rx="9" ry="13" transform="rotate(216 32 32)"/><ellipse cx="32" cy="15" rx="9" ry="13" transform="rotate(288 32 32)"/></g><circle cx="32" cy="32" r="8" fill="#ffe36b" stroke="#2f7a1f" stroke-width="2.2"/></svg>
   <span class="iw-fab-ribbon"></span>
 </span>

@@ -538,3 +538,17 @@
 .iw-tok-st .iw-tok-own input.text_pole { width: 110px; margin: 0; }
 #iw_fab.iw-theme-noir { --iwf-bg: #120d11; --iwf-paper: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(229, 138, 174, .35), transparent 70%); --iwf-ink: #e8a0b8; --iwf-spine: #c77a97; --iwf-accent: #e8a0b8; }
 #iw_fab.iw-theme-noir .iw-fab-cover { border-radius: 10px; box-shadow: 0 0 12px rgba(229, 138, 174, .45); }
+
+/* Название в списке расширений — только текст, без подложки: светлый перелив + тонкая тёмная обводка-ореол.
+   На тёмной теме таверны читается за счёт яркого перелива, на светлой — за счёт обводки; от цвета фона не зависит */
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-main {
+    font-size: 1.6em;
+    background: linear-gradient(100deg, #b9a2ff 0%, #e08cff 32%, #ff7fb6 66%, #ffb27a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 .6px rgba(28, 12, 46, .95)) drop-shadow(0 0 .6px rgba(28, 12, 46, .95)) drop-shadow(0 1px 1.5px rgba(0, 0, 0, .45));
+}
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-sub { background: linear-gradient(100deg, #ff7fb6 0%, #ffb27a 100%); -webkit-background-clip: text; background-clip: text; }
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-spark { color: #c9a8ff; text-shadow: 0 0 1px rgba(28, 12, 46, .9), 0 0 1px rgba(28, 12, 46, .9); }
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-ico { filter: drop-shadow(0 0 .6px rgba(28, 12, 46, .9)) drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
