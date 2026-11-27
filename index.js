@@ -12,7 +12,7 @@ import {
     loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
-    achGate, memePublicGate, pickMemeAngle, pickMemeTone, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
+    achGate, memePublicGate, pickMemeAngle, pickMemeTone, pickMemeHook, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
     toastAllowed, rumorPlain, RUMOR_FORM_NAMES, buildBuyInjection, cleanMeme, memePlain, MEME_FORMAT_NAMES, buildMemePrompt, TOKENS_MIN, TOKENS_MAX,
 } from './src/core.js';
 import { cleanAchievement, addAchievement } from './src/showcase.js';
@@ -28,7 +28,7 @@ import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortN
 import { renderSettingsForm, applySettingChange, rangeLabel } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.8.4';
+const VERSION = '0.8.7';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1960,11 +1960,12 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
                 info.memeDue = s.memes !== false && since >= every && !!(msgs && msgs.length);
                 info.memeFirst = info.memeDue && lastM < 0;
                 if (info.memeDue && lastM < 0) meta.memeFrom = messageId; // не вышло — следующая попытка через выбранное число сообщений
-                info.memeRecent = seen.slice(-8).map(x => x.f);
-                info.memeTexts = seen.slice(-6).map(x => x.t).filter(Boolean);
+                info.memeRecent = seen.slice(-24).map(x => x.f);
+                info.memeTexts = seen.slice(-12).map(x => String(x.t || '').slice(0, 90)).filter(Boolean);
                 info.memeAngle = pickMemeAngle(seen);
                 info.memeTone = pickMemeTone(seen);
-                if (info.memeDue) meta.memeNext = { angle: info.memeAngle, tone: info.memeTone };
+                info.memeHook = pickMemeHook(seen);
+                if (info.memeDue) meta.memeNext = { angle: info.memeAngle, tone: info.memeTone, hook: info.memeHook };
             }
             // слухи и сны — только по ходу ролевой: при первом разборе (дневник ещё пуст) их не просим
             info.firstRun = !(base.order || []).some(k => base.characters && base.characters[k]) || !(msgs && msgs.length);
@@ -2411,7 +2412,7 @@ function refreshTheme() {
     currentTheme = parts.base;
     currentDark = parts.dark;
     setVolume(settings().volume ?? 45);
-    setSilentMode(true, () => settings().sound !== false);
+    setSilentMode(settings().iosLoud === true, () => settings().sound !== false);
     loadFonts(currentTheme);
     const fab = document.getElementById('iw_fab');
     if (fab) setFabTheme(fab);
@@ -2741,7 +2742,7 @@ function showcaseModel() {
     if (!hasChat()) return null;
     const meta = chatMeta();
     const s = settings();
-    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy, view: s.caseView === 'grid' ? 'grid' : 'list' };
+    return { got: Array.isArray(meta.achList) ? meta.achList : [], sel: caseSel, fresh: (meta.achNew || []).length, fold: s.caseFold || {}, art: s.caseArt !== false, artBusy, view: ['grid', 'cards'].includes(s.caseView) ? 'grid' : 'list' };
 }
 
 // ---------- Картинки памятных вещей ----------
@@ -2921,7 +2922,7 @@ function takeExtras(raw, state, messageId) {
     }
     const mm = s.memes !== false && memePublicGate(cleanMeme(data.meme), memeSeenOf(meta).map(x => ({ public: x.p })));
     if (mm && !memeSeenOf(meta).some(x => x.t === memePlain(mm))) {
-        const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now(), angle: (meta.memeNext || {}).angle, tone: (meta.memeNext || {}).tone });
+        const rec = Object.assign(mm, { date: dateText, mes: messageId, at: Date.now(), angle: (meta.memeNext || {}).angle, tone: (meta.memeNext || {}).tone, hook: (meta.memeNext || {}).hook });
         setMeme(meta, rec);
         changed = true;
         // без всплывашки: мем виден в блоке «Мемы» и, если включено, в инфоблоке этого ответа; картинка — только по кнопке
@@ -2932,12 +2933,12 @@ function takeExtras(raw, state, messageId) {
 // ---------- Мемы: один на чат, «Другой мем» и «Сгенерировать мем» ----------
 // Что уже было (формат, текст, заход, тон) — чтобы не повторяться; сами старые мемы не храним
 function memeSeenOf(meta) {
-    if (!Array.isArray(meta.memeSeen)) meta.memeSeen = (meta.memes || []).slice(-12).map(m => ({ f: m.format, t: memePlain(m), a: m.angle || '', tone: m.tone || '', p: m.public ? 1 : 0 }));
-    return meta.memeSeen.map(x => ({ f: x.f, t: x.t, angle: x.a, tone: x.tone, p: x.p ? 'да' : '' }));
+    if (!Array.isArray(meta.memeSeen)) meta.memeSeen = (meta.memes || []).slice(-40).map(m => ({ f: m.format, t: memePlain(m), a: m.angle || '', tone: m.tone || '', h: m.hook || '', p: m.public ? 1 : 0 }));
+    return meta.memeSeen.map(x => ({ f: x.f, t: x.t, angle: x.a, tone: x.tone, hook: x.h || '', p: x.p ? 'да' : '' }));
 }
 function setMeme(meta, rec) {
     memeSeenOf(meta);
-    meta.memeSeen = [...meta.memeSeen, { f: rec.format, t: memePlain(rec), a: rec.angle || '', tone: rec.tone || '', p: rec.public ? 1 : 0 }].slice(-12);
+    meta.memeSeen = [...meta.memeSeen, { f: rec.format, t: String(memePlain(rec) || '').slice(0, 160), a: rec.angle || '', tone: rec.tone || '', h: rec.hook || '', p: rec.public ? 1 : 0 }].slice(-40);
     meta.memes = [rec];
     if (Number.isInteger(rec.mes)) meta.memeLast = Math.max(Number.isInteger(meta.memeLast) ? meta.memeLast : -1, rec.mes);
 }
@@ -2970,8 +2971,8 @@ async function rerollMeme(at) {
         const st = currentState();
         const cast = (st.order || []).slice(0, 6).map(k => st.characters[k]).filter(Boolean).map(ch => `${ch.name}${ch.persona ? ' (персонаж игрока)' : ''}${ch.mood ? ` — ${ch.mood}` : ''}`);
         const seen = memeSeenOf(chatMeta());
-        const angle = pickMemeAngle(seen), tone = pickMemeTone(seen);
-        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: seen.slice(-8).map(x => x.f), texts: seen.slice(-6).map(x => x.t).filter(Boolean), was: m0 ? memePlain(m0) : '', angle, tone }, settings().language || 'русском');
+        const angle = pickMemeAngle(seen), tone = pickMemeTone(seen), hook = pickMemeHook(seen);
+        const { system, user } = buildMemePrompt({ messages: msgs, cast, recent: seen.slice(-24).map(x => x.f), texts: seen.slice(-12).map(x => String(x.t || '').slice(0, 90)).filter(Boolean), was: m0 ? memePlain(m0) : '', angle, tone, hook }, settings().language || 'русском');
         const raw = await callModel(system, user, withBudget('rewards'));
         const data = extractJson(raw);
         const mm = cleanMeme((data && data.meme) || data);
@@ -2982,7 +2983,7 @@ async function rerollMeme(at) {
         // мем всегда один: новый встаёт на место прежнего
         const now = clockNow(upto + 1);
         const date = m0 ? m0.date : (now && now.cal && now.t ? fmtDate(now.cal, now.t) : '');
-        setMeme(meta, Object.assign(mm, { date, mes: m0 ? m0.mes : upto, at: Date.now(), angle, tone }));
+        setMeme(meta, Object.assign(mm, { date, mes: m0 ? m0.mes : upto, at: Date.now(), angle, tone, hook }));
         ctx().saveMetadataDebounced?.();
         renderInfobar();
     } catch (err) {

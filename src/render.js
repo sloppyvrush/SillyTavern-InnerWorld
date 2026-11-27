@@ -97,13 +97,21 @@ function renderWallet(wallet, theme = '') {
       </div></details>`;
 }
 
-// ВРЕМЕННО: меню проверки уведомлений и звуков. Потом убрать вместе с обработчиком data-iw-test в index.js.
+// Проверка звуков и всплывашек: прячется под «Проверить» в меню громкости
 const TEST_EVENTS = [
     ['want_done', 'Желание сбылось'], ['dream_step', 'Шаг к мечте'], ['dream_grow', 'Мечта дополнилась'], ['dream_change', 'Мечта изменилась'],
     ['dream_done', 'Мечта сбылась'], ['fear_real', 'Страх сбылся'], ['fear_gone', 'Страх отступил'], ['trait_new', 'Новая черта'],
     ['trait_up', 'Черта сильнее'], ['trait_down', 'Черта слабее'], ['impression', 'Первое впечатление'], ['attitude', 'Отношение'],
-    ['reward', 'Покупка'], ['write', 'Карандаш (разбор)'], ['error', 'Ошибка'],
+    ['reward', 'Покупка'], ['write', 'Запись в дневник'], ['error', 'Ошибка'],
 ];
+const TEST_PICK = `<details class="iw-vol-test"><summary>▶ Проверить звуки и всплывашки</summary><div class="iw-vol-test-body">
+        <button type="button" class="iw-test-all" data-iw-test="all">▶ Все по очереди</button>
+        <div class="iw-test-grid">${TEST_EVENTS.map(([k, n]) => `<button type="button" data-iw-test="${k}">${n}</button>`).join('')}</div>
+        <div class="iw-vol-row"><span>Сны и слухи</span></div>
+        <div class="iw-test-grid"><button type="button" data-iw-test="night">Сон боту</button><button type="button" data-iw-test="rumor">Слух</button><button type="button" data-iw-test="meme">Мем</button></div>
+        <div class="iw-vol-row"><span>Витрина</span></div>
+        <div class="iw-test-grid"><button type="button" data-iw-test="ach">Достижение</button><button type="button" data-iw-test="keep">Памятная вещь</button><button type="button" data-iw-test="clearcase">Стереть тестовые</button></div>
+      </div></details>`;
 const TEST_MENU = `<details class="iw-vol iw-testmenu">
       <summary class="iw-tool" title="Проверка уведомлений и звуков (временно)" aria-label="Проверка уведомлений и звуков">${'<svg class="iw-ico" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>'}</summary>
       <div class="iw-vol-menu iw-test-menu">
@@ -142,6 +150,7 @@ export function renderHeader(settings, theme, busy, inSettings = false, wallet =
         <div class="iw-vol-row"><span>Громкость</span><output class="iw-range-val">${Number(settings.volume ?? 45)}%</output></div>
         <input type="range" class="iw-range iw-vol-range" data-iw-volume min="0" max="100" step="5" value="${Number(settings.volume ?? 45)}" aria-label="Громкость звуков"${sound ? '' : ' disabled'}>
         <button type="button" class="iw-vol-toggle iw-popups${settings.popups === false ? ' off' : ''}" aria-pressed="${settings.popups !== false}">${icon(settings.popups === false ? 'bell_off' : 'bell')}<span>${settings.popups === false ? 'Всплывашки выключены' : 'Всплывашки включены'}</span></button>
+        ${TEST_PICK}
       </div>
     </details>
     <button type="button" class="iw-tool iw-anim${settings.animations === false ? ' off' : ''}" title="${settings.animations === false ? 'Анимации выключены: нажми, чтобы включить' : 'Выключить анимации'}" aria-label="Анимации" aria-pressed="${settings.animations !== false}">${icon(settings.animations === false ? 'sparkle_off' : 'sparkle')}</button>
@@ -235,6 +244,17 @@ function nextBadge() {
     return `<span class="iw-act-next" title="${t}" aria-label="${t}">${icon('clock')}<b>${NEXT_IN}</b></span>`;
 }
 
+// ВКонтакте: пока дневник пишется — случайный стикер у надписи и на листке загрузки (один на весь разбор)
+const VK_CAP = [79197, 79186, 76100, 76115, 76098, 76106];
+const VK_SHEET = [79158, 79171, 79187, 76110, 76099, 76091, 76101];
+const VK_LOAD = { on: false, cap: VK_CAP[0], sheet: VK_SHEET[0] };
+function vkLoadPick(working) {
+    if (working && !VK_LOAD.on) {
+        VK_LOAD.cap = VK_CAP[Math.floor(Math.random() * VK_CAP.length)];
+        VK_LOAD.sheet = VK_SHEET[Math.floor(Math.random() * VK_SHEET.length)];
+    }
+    VK_LOAD.on = !!working;
+}
 function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked = [], working = false, off = [], hasPersona = false) {
     const btn = (kind, ic, label, title) => {
         // Кнопка, которая сейчас работает, сама становится «Стоп» — на том же месте и того же размера.
@@ -243,8 +263,9 @@ function analyzeButtons(busyKind, labels = {}, books = [], picked = [], linked =
         }
         return `<button type="button" class="iw-act iw-act-${kind}" data-iw-analyze="${kind}" title="${title}"${working ? ' disabled' : ''}>${icon(ic)}<span>${label}</span>${kind === 'chat' && !working ? nextBadge() : ''}</button>`;
     };
+    vkLoadPick(working);
     const cap = working
-        ? `<span class="iw-loader" aria-hidden="true"><i></i><i></i><i></i><b></b></span><span class="iw-cap-text">${esc(labels.analyzing || 'Записываю')}</span>`
+        ? `<span class="iw-loader" aria-hidden="true"><i></i><i></i><i></i><b></b></span><span class="iw-cap-text">${esc(labels.analyzing || 'Записываю')}</span><span class="iw-vk-st iw-vk-st-${VK_LOAD.cap}" aria-hidden="true"></span>`
         : `<span class="iw-cap-text">${esc(labels.analyze || 'Проанализировать')}</span><span class="iw-cap-arrow" aria-hidden="true">${icon('pointer')}</span>`;
     return `
   <div class="iw-acts-wrap">
@@ -920,37 +941,32 @@ const REL_GROUP = {
     cool: 'storm', dislike: 'storm', enemy: 'storm', nemesis: 'storm', rivals: 'storm', ex: 'broken', exspouse: 'broken',
     awkward: 'storm', repel: 'storm', despise: 'storm',
 };
-// Рисованные зарисовки по схемам автора: в шапке линия с петелькой приходит слева к мотиву (viewBox 150×48)
-const REL_DOODLE = {
-    love: '<path class="t" d="M2 40C14 42 18 30 28 32S40 44 50 36 58 18 70 20 84 34 92 26C98 20 94 12 89 15S88 26 98 24 108 14 112 12"/><path d="M128.0 36.7C123.3 33.0 115.0 26.4 115.0 21.3C115.0 13.8 125.9 12.4 128.0 19.9C130.1 12.4 141.0 13.8 141.0 21.3C141.0 26.4 133.2 32.5 128.8 37.4"/><path class="t" d="M44.0 18.9C42.0 17.4 38.5 14.6 38.5 12.4C38.5 9.2 43.1 8.7 44.0 11.8C44.9 8.7 49.5 9.2 49.5 12.4C49.5 14.6 46.2 17.2 44.3 19.2"/><path class="t" d="M110 6l2-3M146 12l3-1M144 40l3 2"/>',
-    ring: '<path class="t" d="M2 38C16 40 22 26 34 30S48 42 58 32C64 26 60 18 54 21S54 34 66 33 86 22 98 26 108 30 110 26"/><circle cx="120" cy="26" r="11"/><circle cx="134" cy="24" r="11"/><path class="t" d="M106.0 5.0Q107.1 7.9 110.0 9.0Q107.1 10.1 106.0 13.0Q104.9 10.1 102.0 9.0Q104.9 7.9 106.0 5.0z"/>',
-    friends: '<path class="t" d="M2 36C14 38 20 26 32 28S46 40 58 32C64 28 61 20 56 23S56 34 68 34 88 26 100 30"/><path d="M119.0 16.2A10 10 0 1 0 126.7 24.5A10 10 0 0 0 122.5 18.0"/><path d="M113.7 23.8v.1M120.3 23.8v.1" stroke-width="2.6"/><path d="M112.8 28.2Q117.0 32.2 121.2 27.8"/><path d="M141.8 15.2A9 9 0 1 0 148.7 22.6A9 9 0 0 0 144.9 16.8"/><path d="M136.6 22.2h1.8M143.0 22.0v.1" stroke-width="2.6"/><path d="M136.2 26.0Q140.0 29.6 143.8 25.6"/><path class="t" d="M103.0 6.0Q104.1 8.9 107.0 10.0Q104.1 11.1 103.0 14.0Q101.9 11.1 99.0 10.0Q101.9 8.9 103.0 6.0z"/>',
-    hello: '<path class="t" stroke-dasharray="3 4" d="M2 40C16 42 22 28 36 30S52 42 64 34C70 30 67 22 62 25S62 36 74 36 94 28 108 26"/><path d="M112 26L146 10 134 40 126 31z"/><path d="M126 31L146 10"/><path class="t" d="M98.0 8.0Q99.1 10.9 102.0 12.0Q99.1 13.1 98.0 16.0Q96.9 13.1 94.0 12.0Q96.9 10.9 98.0 8.0z"/>',
-    storm: '<path class="t" d="M2 34C12 30 16 40 26 38S36 26 46 30 52 42 62 36C68 32 65 24 60 27S60 38 72 38 92 34 102 36"/><path d="M105.8 34.0h32.3a6.6 6.6 0 0 0 0.9 -13.3a9.5 9.5 0 0 0 -17.1 -5.7a7.6 7.6 0 0 0 -13.3 4.8a7.1 7.1 0 0 0 -2.8 14.2z"/><path class="t" d="M122.0 36.0l-2.8 5.0h3.9l-3.3 6.1"/><path class="t" d="M96 10c4-2 8 2 12 0M92 18c3-1 5 1 8 0"/>',
-    broken: '<path class="t" d="M2 38C14 40 20 28 32 30S46 42 58 34C64 30 61 22 56 25S56 36 68 36 88 28 100 32"/><g transform="rotate(-6 122 27)"><path d="M124.0 38.7C119.3 35.0 111.0 28.4 111.0 23.3C111.0 15.8 121.9 14.4 124.0 21.9C126.1 14.4 137.0 15.8 137.0 23.3C137.0 28.4 129.2 34.5 124.8 39.4"/></g><path class="t" d="M124 15l-4 6 5 4-4 6 3 5"/><path class="t" d="M104 12l3 3M146 40l2 3"/>',
-    home: '<path class="t" d="M2 40C14 42 20 30 32 32S46 44 58 36C64 32 61 24 56 27S56 38 68 38 88 32 104 38"/><path d="M108 26l18-15 18 15"/><path d="M112 23v19h28V23"/><path d="M122 42v-9h8v9"/><path d="M134 14v-6h4v9"/><path class="t" d="M136 6c-3-3 2-4 0-7"/>',
-};
 
-// Фон под наброском: длинные линии с петлями тянутся на всю свободную высоту листка
-const REL_LINES = {
-    love: '<path d="M0 88C9 76 12 52 22 44S34 46 40 32 54 12 64 12 76 4 86 6 96 16 100 14"/><path d="M0 98C10 97 13 86 22 87S32 98 42 84 58 92 68 80C76 70 78 58 87 55 97 56 94 68 88 66 83 62 88 46 100 34"/>',
-    ring: '<path d="M70 0C54 2 30 2 14 10 2 18 4 36 12 38S22 30 16 26 8 38 14 52 18 80 10 92 2 100 0 100"/><path d="M4 100C12 82 22 74 40 76S66 84 76 64 92 62 94 50 100 22 96 16 88 14 90 22 100 18 100 10"/>',
-    friends: '<path d="M0 30C8 18 18 14 30 16S48 22 56 0"/><path d="M42 98C56 88 66 80 76 66 82 56 86 44 84 44S78 52 82 54 92 48 94 30 96 10 100 6"/>',
-    hello: '<path stroke-dasharray="2 4" d="M0 80C14 70 20 88 34 76S44 50 58 54 70 76 82 60 92 30 100 22"/>',
-    storm: '<path d="M6 14C10 22 22 24 30 22 40 20 42 8 36 12S36 24 48 22 60 18 70 14"/><path d="M12 62C20 56 28 60 34 50 38 42 34 36 30 40S32 54 40 52"/><path d="M64 58C70 60 76 52 78 40S80 26 74 28 72 38 82 36 92 26 96 14"/>',
-    broken: '<path d="M6 4C12 8 16 16 12 22S2 30 6 40 16 56 6 66 2 80 8 92"/><path d="M84 6C90 10 92 18 88 26S86 40 94 50 100 64 98 80 100 92 100 96"/><path d="M22 26C28 30 30 36 34 40M26 64C32 62 36 60 40 62"/><path d="M76 40C72 34 70 28 72 22M62 60C68 64 72 64 76 60"/>',
-    home: '<path d="M0 26C12 18 22 30 34 24S46 6 58 12 74 30 86 22 96 10 100 14"/><path d="M0 84C14 78 22 90 36 84S52 72 66 80 84 92 100 82" stroke-dasharray="2 4"/>',
-};
 
-// Центральный мотив под шкалами (viewBox 200×92), не тянется
+// Центральный мотив под шкалами (viewBox 200×92): аккуратная виньетка — мотив по центру,
+// симметричные завитки по бокам и пунктир снизу; всё внутри рамки, ничего не обрезается
+const REL_FLANK = '<path class="t" d="M66 50C56 50 50 43 41 43C33 43 28 49 31 54C34 58 40 56 39 51"/><path class="t" d="M134 50C144 50 150 43 159 43C167 43 172 49 169 54C166 58 160 56 161 51"/><path class="t" d="M48 64C42 64 38 61 36 57M152 64C158 64 162 61 164 57"/><path class="t" stroke-dasharray=".1 6" stroke-width="2.4" d="M72 82H128"/>';
+const SPARK = (x, y, r = 5) => `<path class="t" d="M${x} ${y - r}Q${x + r * .25} ${y - r * .25} ${x + r} ${y}Q${x + r * .25} ${y + r * .25} ${x} ${y + r}Q${x - r * .25} ${y + r * .25} ${x - r} ${y}Q${x - r * .25} ${y - r * .25} ${x} ${y - r}z"/>`;
+const HEART = (x, y, k = 1) => `<path d="M${x} ${y + 15 * k}C${x - 9 * k} ${y + 8 * k} ${x - 15 * k} ${y + 2 * k} ${x - 15 * k} ${y - 5 * k}C${x - 15 * k} ${y - 13 * k} ${x - 3 * k} ${y - 15 * k} ${x} ${y - 6 * k}C${x + 3 * k} ${y - 15 * k} ${x + 15 * k} ${y - 13 * k} ${x + 15 * k} ${y - 5 * k}C${x + 15 * k} ${y + 2 * k} ${x + 9 * k} ${y + 8 * k} ${x} ${y + 15 * k}z"/>`;
 const REL_ART = {
-    love: '<path class="t" d="M40 76L78 57M124 34L156 18M40 76l9 .5M40 76l5-7.5M154.2 18.9l6.7 2.2M154.2 18.9l2.2-6.7M149.7 21.1l6.7 2.2M149.7 21.1l2.2-6.7"/><path d="M100.0 67.6C91.4 60.7 76.0 48.6 76.0 39.1C76.0 25.3 96.2 22.7 100.0 36.5C103.8 22.7 124.0 25.3 124.0 39.1C124.0 48.6 109.6 59.8 101.4 68.9"/><path d="M38.0 28.8C35.3 26.6 30.5 22.8 30.5 19.8C30.5 15.5 36.8 14.7 38.0 19.0C39.2 14.7 45.5 15.5 45.5 19.8C45.5 22.8 41.0 26.3 38.5 29.2"/><path class="t" d="M162.0 75.4C159.8 73.7 156.0 70.6 156.0 68.3C156.0 64.8 161.0 64.2 162.0 67.6C163.0 64.2 168.0 64.8 168.0 68.3C168.0 70.6 164.4 73.5 162.4 75.7"/><path class="t" d="M30 46v.1M172 38v.1M60 14l2-3"/>',
-    ring: '<circle cx="88" cy="48" r="19"/><circle cx="113" cy="44" r="19"/><path class="t" d="M52.0 45.0Q54.0 50.0 59.0 52.0Q54.0 54.0 52.0 59.0Q50.0 54.0 45.0 52.0Q50.0 50.0 52.0 45.0z"/><path class="t" d="M150.0 34.0Q151.7 38.3 156.0 40.0Q151.7 41.7 150.0 46.0Q148.3 41.7 144.0 40.0Q148.3 38.3 150.0 34.0z"/><path class="t" d="M120 18l3-4M127 22l4-2"/>',
-    friends: '<path d="M83.4 31.3A17 17 0 1 0 96.5 45.5A17 17 0 0 0 89.3 34.4"/><path d="M74.4 44.3v.1M85.6 44.3v.1" stroke-width="2.6"/><path d="M72.9 51.7Q80.0 58.5 87.1 51.1"/><path d="M124.4 29.3A17 17 0 1 0 137.5 43.5A17 17 0 0 0 130.3 32.4"/><path d="M114.5 42.6h3.4M126.6 42.3v.1" stroke-width="2.6"/><path d="M113.9 49.7Q121.0 56.5 128.1 49.1"/><path class="t" d="M46.0 38.0Q48.2 43.8 54.0 46.0Q48.2 48.2 46.0 54.0Q43.8 48.2 38.0 46.0Q43.8 43.8 46.0 38.0z"/><path class="t" d="M156.0 23.0Q158.0 28.0 163.0 30.0Q158.0 32.0 156.0 37.0Q154.0 32.0 149.0 30.0Q154.0 28.0 156.0 23.0z"/>',
-    hello: '<path d="M86 50L150 22 128 72 116 58z"/><path d="M116 58L150 22"/><path class="t" stroke-dasharray="3 5" d="M84 52C64 58 52 70 40 62S36 42 48 44 52 64 30 74"/><path class="t" d="M160.0 56.0Q161.7 60.3 166.0 62.0Q161.7 63.7 160.0 68.0Q158.3 63.7 154.0 62.0Q158.3 60.3 160.0 56.0z"/><path class="t" d="M62.0 19.0Q63.4 22.6 67.0 24.0Q63.4 25.4 62.0 29.0Q60.6 25.4 57.0 24.0Q60.6 22.6 62.0 19.0z"/>',
-    storm: '<path d="M74.2 56.0h52.7a10.8 10.8 0 0 0 1.6 -21.7a15.5 15.5 0 0 0 -27.9 -9.3a12.4 12.4 0 0 0 -21.7 7.8a11.6 11.6 0 0 0 -4.7 23.2z"/><path class="t" d="M94.0 60.0l-6.2 11.2h8.8l-7.5 13.8"/><path class="t" d="M122.0 58.0l-5.5 9.9h7.7l-6.6 12.1"/><path class="t" d="M30 70c6 2 10-2 14 0M150 70c6 2 10-2 14 0"/>',
-    broken: '<g transform="translate(-3 1) rotate(-4 100 46)"><path d="M100.0 68.5C91.0 61.3 75.0 48.7 75.0 38.8C75.0 24.4 96.0 21.7 100.0 36.1C104.0 21.7 125.0 24.4 125.0 38.8C125.0 48.7 110.0 60.4 101.5 69.8"/></g><path class="t" d="M99 26l-6 9 8 6-7 9 6 8 -3 7"/><path class="t" d="M48 32c4 3 8 4 12 8M150 32c-4 3-8 4-12 8M54 70c6-3 10-3 16-1M146 70c-6-3-10-3-16-1"/>',
-    home: '<path d="M72 48l28-24 28 24"/><path d="M78 44v34h44V44"/><path d="M93 78V62h14v16"/><path d="M114 30v-8h6v12"/><path class="t" d="M117 18c-4-4 3-6 0-10"/><path d="M44.0 59.2C41.1 56.9 36.0 52.9 36.0 49.7C36.0 45.1 42.7 44.2 44.0 48.8C45.3 44.2 52.0 45.1 52.0 49.7C52.0 52.9 47.2 56.6 44.5 59.6"/><path class="t" d="M158.0 56.3C155.5 54.3 151.0 50.8 151.0 48.0C151.0 44.0 156.9 43.2 158.0 47.2C159.1 43.2 165.0 44.0 165.0 48.0C165.0 50.8 160.8 54.0 158.4 56.7"/><path class="t" d="M150.0 17.0Q151.4 20.6 155.0 22.0Q151.4 23.4 150.0 27.0Q148.6 23.4 145.0 22.0Q148.6 20.6 150.0 17.0z"/>',
+    love: REL_FLANK + HEART(100, 44, 1.45) + `<g class="t">${HEART(128, 22, .45)}</g>` + SPARK(74, 24, 4) + SPARK(132, 70, 3),
+    ring: REL_FLANK + '<circle cx="90" cy="48" r="17"/><circle cx="112" cy="48" r="17"/><path class="t" d="M101 22l4-6 4 6-4 4z"/>' + SPARK(72, 24, 4) + SPARK(132, 22, 3),
+    friends: REL_FLANK + '<circle cx="86" cy="46" r="15"/><path d="M80 43v.1M92 43v.1" stroke-width="3"/><path d="M79 51Q86 57 93 51"/><circle cx="116" cy="46" r="15"/><path d="M110 43v.1M122 43v.1" stroke-width="3"/><path d="M109 51Q116 57 123 51"/>' + SPARK(101, 20, 4),
+    hello: REL_FLANK + '<path d="M80 52L124 30 110 66 102 56z"/><path d="M102 56L124 30"/><path class="t" stroke-dasharray="3 5" d="M78 54C72 56 70 62 74 66"/>' + SPARK(130, 66, 3.5) + SPARK(76, 26, 3),
+    storm: REL_FLANK + '<path d="M80 54h40a9 9 0 0 0 1-18 13 13 0 0 0-24-6 10 10 0 0 0-18 7 9 9 0 0 0 1 17z"/><path class="t" d="M96 58l-5 9h7l-5 10M110 58l-4 7h6l-4 8"/>',
+    broken: REL_FLANK + '<g transform="rotate(-4 100 46)">' + HEART(100, 44, 1.45) + '</g><path class="t" d="M101 30l-5 8 7 6-6 8 5 7"/>',
+    home: REL_FLANK + '<path d="M78 48l22-19 22 19"/><path d="M83 44v28h34V44"/><path d="M95 72V60h10v12"/><path d="M111 34v-7h5v11"/>' + SPARK(130, 24, 3.5),
+};
+
+const REL_LEAD = '<path class="t" stroke-dasharray=".1 6" stroke-width="2.4" d="M60 28H104"/>';
+const REL_DOODLE = {
+    love: REL_LEAD + HEART(128, 24, .95) + SPARK(146, 8, 3),
+    ring: REL_LEAD + '<circle cx="121" cy="26" r="10"/><circle cx="135" cy="26" r="10"/>' + SPARK(112, 8, 3),
+    friends: REL_LEAD + '<circle cx="118" cy="25" r="9"/><path d="M114.5 23v.1M121.5 23v.1" stroke-width="2.6"/><path d="M114 28Q118 31.5 122 28"/><circle cx="139" cy="25" r="9"/><path d="M135.5 23v.1M142.5 23v.1" stroke-width="2.6"/><path d="M135 28Q139 31.5 143 28"/>',
+    hello: REL_LEAD + '<path d="M112 28L146 12 136 40 128 32z"/><path d="M128 32L146 12"/>',
+    storm: REL_LEAD + '<path d="M110 32h28a6.5 6.5 0 0 0 1-13 9 9 0 0 0-17-4 7 7 0 0 0-12 5 6.5 6.5 0 0 0 0 12z"/><path class="t" d="M124 34l-3 5h4l-3 6"/>',
+    broken: REL_LEAD + '<g transform="rotate(-6 128 25)">' + HEART(128, 24, .95) + '</g><path class="t" d="M128 15l-3 5 4 4-3 5 2 4"/>',
+    home: REL_LEAD + '<path d="M112 26l16-13 16 13"/><path d="M116 23v18h24V23"/><path d="M125 41v-8h6v8"/>',
 };
 
 // Кто они друг другу + две шкалы, как в «Симс 4»: дружба (зелёная) и романтика (розовая); в минусе — красные, около нуля — серые
@@ -974,7 +990,6 @@ function relPlate(c) {
     // в «классических» темах — рисунки от руки; в остальных — свой набор под стиль темы
     const th = REL_THEMED[REL_THEME];
     const doodle = th ? `${th.link}<g transform="translate(104 2) scale(.9)">${th.m[grp]}</g>` : REL_DOODLE[grp];
-    const lines = th ? th.lines : REL_LINES[grp];
     const art = th ? `${th.acc}<g transform="translate(64 10) scale(1.5)">${th.m[grp]}</g>` : REL_ART[grp];
     return `
       <div class="iw-rel iw-rel-${esc(st.key)}">
@@ -988,8 +1003,72 @@ function relPlate(c) {
           ${bar('iw-rel-fr', 'handshake', 'Дружба', fl[1], f, tone(f, 20), `Дружба: ${signed(f)} — ${fl[1]}. Как в «Симс»: ноль посередине, вправо — теплее, влево — хуже`)}
           ${bar('iw-rel-ro', 'heart', 'Романтика', rl[1], r, tone(r, 10), `Романтика: ${signed(r)} — ${rl[1]}. Ноль — романтики нет; вправо — симпатия и любовь, влево — неловкость и отвращение`)}
         </div>
-        <div class="iw-rel-art${th ? ' iw-rel-th' : ''}" aria-hidden="true"><svg class="iw-rel-lines" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">${lines}</svg><svg class="iw-rel-main" viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${art}</svg></div>
+        <div class="iw-rel-art${th ? ' iw-rel-th' : ''}" aria-hidden="true"><svg class="iw-rel-main" viewBox="0 0 200 92" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${art}</svg></div>
       </div>`;
+}
+
+// ===== «Симулятор жизни»: значки из пака иконок — у желаний, страхов, мечты и черт (по смыслу текста) =====
+const SIMS_W = [
+    [/брак|свадьб|жени|замуж|помолв|кольц|невест|жених/, 'ring'], [/поцел|губ/, 'lips'], [/обня|прижа|согре|тепл|утеш/, 'hug'],
+    [/защит|оград|спас|охран|уберечь|прикры/, 'shield'], [/денег|деньг|богат|заработ|золот|монет|долг|казн/, 'money'],
+    [/власт|трон|корон|импер|корол|правит|двор[ауео ]|престол/, 'crown'], [/тайн|секрет|выясн|узна|расслед|разгад|понять/, 'search'],
+    [/книг|учи|изуч|прочит|знани|науч/, 'book'], [/работ|карьер|служб|договор|контракт|сделк|дел[оа]\b|поручен/, 'work'],
+    [/ед[аыу]\b|поесть|ужин|обед|завтрак|приготов|накорм/, 'food'], [/выпи|вин[оа]|бокал|напит/, 'wine'], [/ча[йя]\b|кофе/, 'tea'],
+    [/спать|выспа|отдох|отдых|покой|сон\b/, 'bed'], [/побед|выигр|лучш|соревн|турнир|превзойти/, 'trophy'],
+    [/друз|дружб|друг/, 'friends'], [/подар/, 'gift'], [/драк|удар|бой|сраж|отомст|месть|наказ|проучи/, 'fight'],
+    [/музык|песн|спе[тл]|сыгра/, 'music'], [/рисов|картин|творч/, 'paint'], [/путеш|уехать|сбеж|дорог|поход|увидеть мир/, 'trip'],
+    [/дом\b|дома\b|домой|уют/, 'home'], [/ребён|ребен|дет[еи]|сын|доч/, 'baby'], [/смех|рассмеш|шут|весел|позабав/, 'joke'],
+    [/довери|уваж|приня|признан/, 'trust'], [/танц/, 'dance'], [/письм|записк|напис/, 'letter'], [/ключ|отпер|открыть/, 'key'],
+    [/цвет[ыо]|букет|роз[уаы]/, 'flower'], [/любв|любим|сердц|роман|свидан|влюб|нрав/, 'heart'], [/поговор|разговор|сказать|призна|объясн|расспрос|говор/, 'talk'],
+];
+const SIMS_W_ANY = ['star', 'cloud', 'shoot', 'bulb', 'rainbow', 'hearts', 'chest'];
+const SIMS_F = [
+    [/смерт|умер|умр|погиб|убьют|убит|гибел|казн/, 'death'], [/одиноч|один\b|одна\b|брош|покину|оставят|никому не нуж/, 'alone'],
+    [/отверж|расстав|измен|разлюб|разбит|сердц|любов/, 'heart'], [/позор|стыд|унижен|насмеш|опозор|смешн/, 'shame'],
+    [/суд\b|суда|закон|приговор|тюрьм|арест|казн/, 'law'], [/работ|карьер|должност|служб/, 'work'],
+    [/отец|отц|мать|матер|семь|род[ауе ]/, 'family'], [/призрак|дух[аи ]|прошл|кошмар/, 'ghost'], [/огон|пожар|плам|сгор/, 'fire'],
+    [/вод[аыу]|утон|мор[еяю]/, 'water'], [/холод|снег|зим|бур[яи]/, 'cold'], [/учеб|экзам|школ/, 'school'],
+    [/осуд|мнени|осужд|взгляд|люд[ие]|толп|сплетн/, 'judge'], [/чудовищ|монстр|зверь|звер[яи]/, 'beast'], [/тьм|темнот|мрак|безум|сойти с ума|себя/, 'dark'],
+    [/провал|не справ|неуда|утрат|потер|разруш|распад|рухн|слаб|сил[уы]/, 'fail'],
+];
+const SIMS_F_ANY = ['fail', 'judge', 'ghost', 'alone', 'dark'];
+const SIMS_T = [
+    [/добр|заботл|милосерд|отзывч|ласков/, 'kind'], [/романт|нежн|чувствен/, 'romantic'], [/страст|пылк/, 'passion'],
+    [/умн|гени|интелл|аналит|рассудит|проницат|мудр/, 'smart'], [/амбиц|честолюб|целеустрем|властн/, 'ambition'],
+    [/зл[оаы]|жесток|безжалост|бессердеч/, 'evil'], [/вспыльч|импульс|горяч|гнев|взрывн/, 'hot'], [/агресс|груб|вражд|резк/, 'mean'],
+    [/весел|жизнерад|оптим|бодр|позитив|солнеч/, 'cheer'], [/шутн|игрив|озорн|дурач|насмешл/, 'goof'], [/творч|артист|креатив|мечтат|фантаз/, 'creative'],
+    [/активн|спорт|энерг|подвиж/, 'active'], [/лен[иья]|безделн/, 'lazy'], [/общит|дружел|открыт|обаят|харизм|приветл|компан/, 'social'],
+    [/одино|замкн|скрыт|нелюдим|интроверт|отстран|сдержан|молчал/, 'loner'], [/ревнив|завист/, 'jealous'],
+    [/верн|предан|надёжн|надежн|ответств|долг/, 'loyal'], [/аккурат|педант|перфекц|порядоч|дисципл|пунктуал/, 'perfect'],
+    [/горд|высокомер|сноб|надмен|аристокр|изыскан|тщесл/, 'snob'], [/уверен|смел|отваж|храбр|решител|прямолин|дерзк/, 'bold'],
+    [/суров|строг|серьёзн|серьезн|мрачн|угрюм|холодн/, 'gloomy'], [/подозрит|осторож|недовер|параноид|бдител/, 'suspect'],
+    [/хитр|коварн|манипул|лжив|интриг|расчётл|расчетл/, 'sly'], [/любопыт|любозн/, 'curious'], [/жадн|меркант|скуп/, 'greedy'],
+    [/чистопл|опрят/, 'neat'], [/неряш/, 'slob'], [/книж|начитан|учён|учен/, 'bookworm'], [/музык/, 'music'], [/природ|лесн/, 'nature'],
+    [/семейн|материн|отцовск/, 'family'], [/гурман|прожор/, 'foodie'], [/нервн|тревож|пуглив|робк|застенч|стеснит/, 'shy'],
+    [/стойк|выносл|упрям|непоколеб|твёрд|тверд|сильн/, 'tough'], [/чест|справедл|прав[ды]/, 'honest'], [/благород|самоотвер|жертвен/, 'noble'],
+    [/спокойн|невозмут|хладнокров|терпел|уравнов/, 'calm'], [/инфантил|ребяч|капризн/, 'childish'], [/тусов|гуляк|кутил/, 'party'],
+    [/мил[аы]?[йя]?\b|очаров|кротк|послушн|покорн/, 'sweet'], [/громк|болтлив|шумн/, 'loud'], [/сонлив/, 'sleepy'], [/дик|звер|волч/, 'wolf'],
+];
+const SIMS_T_ANY = ['ambition', 'creative', 'kind', 'cheer', 'bold', 'smart', 'social', 'loyal', 'honest', 'sweet'];
+const SIMS_D = [
+    [/любов|семь|брак|свадьб|сердц/, 'heart'], [/мир[ауе ]?\b|импер|стран|народ|королевств|госуд|город/, 'world'],
+    [/богат|деньг|состояни|золот/, 'gold'], [/знани|наук|истин|тайн|мудр/, 'mind'], [/сил[уаы]|мощ|воин|бой|сильн|побед/, 'power'],
+    [/творч|искусств|музык|песн|картин/, 'art'], [/слав|извест|призна|сцен/, 'fame'], [/свобод|путеш|вырваться|сбежать/, 'free'],
+    [/дом\b|дома|уют|покой/, 'home'], [/друз|люд[ие]|общин|команд/, 'people'], [/дет[еия]|ребён|ребен|сын|доч/, 'family'],
+    [/спас|защит|помо|исцел|добр/, 'angel'], [/кухн|готов|повар/, 'chef'], [/природ|лес|сад/, 'nature'], [/маск|себя|человеком|собой/, 'mask'],
+];
+const SIMS_D_ANY = ['bulb', 'coin', 'book', 'gold'];
+function simsHash(t) { let h = 0; for (const ch of String(t || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
+function simsPick(text, map, any) {
+    const t = String(text || '').toLowerCase().replace(/ё/g, 'е');
+    for (const [re, k] of map) if (re.test(t)) return k;
+    return any[simsHash(t) % any.length];
+}
+function simsIco(prefix, text, cls = '') {
+    if (REL_THEME !== 'sims') return '';
+    const map = { w: [SIMS_W, SIMS_W_ANY], f: [SIMS_F, SIMS_F_ANY], t: [SIMS_T, SIMS_T_ANY], d: [SIMS_D, SIMS_D_ANY] }[prefix];
+    const k = simsPick(text, map[0], map[1]);
+    return `<span class="iw-si${cls ? ' ' + cls : ''}" style="--si:url('icons/sims/${prefix}-${k}.webp')" aria-hidden="true"></span>`;
 }
 
 function renderWants(c, L) {
@@ -1005,7 +1084,7 @@ function renderWants(c, L) {
             : '';
         return `
       <li class="iw-want${done ? ' done' : ''}${dropped ? ' dropped' : ''}${w.pinned && !done ? ' pinned' : ''}">
-        <span class="iw-box">${done ? ICON_CHECK : ''}</span>
+        <span class="iw-box">${done ? ICON_CHECK : ''}</span>${simsIco('w', w.text, 'iw-si-want')}
         <span class="iw-want-text">${ce(w.text)}${done && !w.unclaimed ? ' <b class="iw-tag">Сбылось</b>' : ''}${dropped ? ' <b class="iw-tag">Уже неважно</b>' : ''}${done && w.unclaimed ? `<br><button type="button" class="iw-claim" data-iw-want-claim="${i}" title="Желание сбылось! Забрать награду — монеты придут в кошелёк, желание уйдёт из списка">${icon('gift')}<span>Забрать награду</span><b>+${Number(w.unclaimed)}${icon('coin')}</b></button>` : ''}</span>
         <span class="iw-row-tools">${pin}${done && w.unclaimed ? '' : delBtn('wants', i)}</span>
       </li>`;
@@ -1025,7 +1104,7 @@ const FEAR_POWER = { 1: 'слабый', 2: 'сильный', 3: 'очень си
 function renderFears(c, L) {
     const items = (c.fears || []).map((f, i) => `
       <li class="iw-fear iw-fs-${f.strength}${f.status !== 'active' ? ' ' + f.status : ''}">
-        <span class="iw-fear-mark" aria-hidden="true">${icon('ghost')}</span>
+        <span class="iw-fear-mark" aria-hidden="true">${icon('ghost')}</span>${simsIco('f', f.text, 'iw-si-fear')}
         <span class="iw-fear-text">${ce(f.text)}${f.status === 'realized' ? ' <b class="iw-tag">Сбылся</b>' : ''}${f.status === 'gone' ? ' <b class="iw-tag">Прошёл</b>' : ''}${f.status !== 'active' ? `<br><button type="button" class="iw-claim iw-fear-cross" data-iw-fear-cross="${i}" title="${f.status === 'realized' ? 'Страх сбылся — вычеркнуть его из списка' : 'Страх прошёл — вычеркнуть его из списка'}">${icon('check')}<span>Вычеркнуть</span></button>` : ''}</span>
         <span class="iw-row-tools"><span class="iw-fear-power">${ce(f.level || FEAR_POWER[f.strength])}</span>${delBtn('fears', i)}</span>
       </li>`).join('');
@@ -1067,7 +1146,7 @@ function renderDream(c, L, opts = {}) {
     return `
     <section class="iw-block iw-b-dream${c.dream.pinned ? ' pinned' : ''}">
       ${blockHead('dream', esc(L.dream), `<span class="iw-count">${done} из ${steps.length}</span>${dreamTools(c, opts.dreamBusy === true || (!!opts.dreamBusy && opts.dreamBusy === opts.key))}`)}
-      <div class="iw-dream-title">${esc(c.dream.title)}${c.dream.plus ? `${/^[…,;:—–-]/.test(c.dream.plus.trim()) ? ' ' : ', '}<span class="iw-dream-plus">${esc(c.dream.plus.trim())}</span>` : ''}</div>
+      <div class="iw-dream-title">${simsIco('d', c.dream.title + ' ' + (c.dream.plus || ''), 'iw-si-dream')}${REL_THEME === 'sims' ? '<span class="iw-dream-tt">' : ''}${esc(c.dream.title)}${c.dream.plus ? `${/^[…,;:—–-]/.test(c.dream.plus.trim()) ? ' ' : ', '}<span class="iw-dream-plus">${esc(c.dream.plus.trim())}</span>` : ''}${REL_THEME === 'sims' ? '</span>' : ''}</div>
       <ol class="iw-steps">${steps.map(s => `<li class="iw-step${s.done ? ' done' : ''}"><span class="iw-star">${s.done ? '★' : '☆'}</span><span>${ce(s.text)}</span></li>`).join('')}</ol>
       ${steps.length && done === steps.length ? dreamDoneBox(c, opts) : ''}
     </section>`;
@@ -1084,19 +1163,18 @@ function traitChip(t, i) {
     // «Подробнее»: откуда черта у персонажа, а у приобретённой — какое событие её породило.
     const more = [];
     if (t.about) more.push(`<p>${esc(t.about)}</p>`);
-    if (t.why && (t.kept || t.kind === 'base')) more.push(`<p class="iw-trait-origin"><b>Появилась:</b> ${ce(t.why)}</p>`);
+    if (t.why) more.push(`<p class="iw-trait-origin"><b>${t.kind === 'up' ? 'Усилилась' : (t.kind === 'down' ? 'Слабеет' : (gone ? 'Ушла' : 'Появилась'))}:</b> ${ce(t.why)}</p>`);
     if (!more.length) more.push(`<p class="iw-muted">${acquired ? 'Подробности появятся после следующего разбора.' : 'Откуда эта черта, станет ясно после разбора «Всё сразу» или «Лорбук».'}</p>`);
     return `
       <span class="iw-trait iw-k-${t.kind}${acquired ? ' iw-acquired' : ''}">
         <span class="iw-trait-head">
         <details class="iw-trait-det">
-          <summary class="iw-trait-name" title="Подробнее о черте"><span class="iw-trait-label">${ce(t.name)}</span><span class="iw-trait-chev" aria-hidden="true">${icon('chevron')}</span>${mark}</summary>
+          <summary class="iw-trait-name" title="Подробнее о черте">${simsIco('t', t.name, 'iw-si-trait')}<span class="iw-trait-label">${ce(t.name)}</span><span class="iw-trait-chev" aria-hidden="true">${icon('chevron')}</span>${mark}</summary>
           <span class="iw-trait-more">${more.join('')}</span>
         </details>
         <span class="iw-trait-tools">${tools}</span>
         </span>
         ${t.kept ? '<span class="iw-trait-kept">Приобретена</span>' : ''}
-        ${t.why && t.kind !== 'base' && !t.kept ? `<span class="iw-trait-why">${ce(t.why)}</span>` : ''}
         ${left}
       </span>`;
 }
@@ -1166,7 +1244,7 @@ function renderPersona(c, L, opts = {}) {
     }
     const z = ZODIAC[c.zodiac];
     // дату рождения можно вписать или поправить руками — она же попадает в календарь и на карточку
-    const bornBtn = opts.key ? `<button type="button" class="iw-born-edit iw-pc-edit" data-iw-born="${esc(opts.key)}" title="${c.born ? 'Поправить дату рождения или знак зодиака' : 'Вписать дату рождения или выбрать знак зодиака'}">${icon('feather')}<span>${c.born ? 'Изменить' : 'Вписать'}</span></button>` : '';
+    const bornBtn = opts.key ? `<button type="button" class="iw-born-edit iw-pc-edit" data-iw-born="${esc(opts.key)}" title="${c.born ? 'Поправить дату рождения или знак зодиака' : 'Вписать дату рождения или выбрать знак зодиака'}" aria-label="${c.born ? 'Изменить' : 'Вписать'}">${icon('feather')}</button>` : '';
     {
         const born = c.born ? `${gw(g, 'Родился', 'Родилась', 'День рождения:')} ${esc(bornText(c.born, CAL_NOW))}` : 'Дата рождения не указана';
         cards.push(`
@@ -1183,7 +1261,7 @@ function renderPersona(c, L, opts = {}) {
         // ориентация — из карточки, лорбука или описания персоны; если не названа, можно выбрать самой
         const ok = ORIENTS[c.orient] ? c.orient : '';
         const opts2 = ['<option value="">не указана</option>'].concat(Object.keys(ORIENTS).map(k => `<option value="${k}"${k === ok ? ' selected' : ''}>${esc(orientName(k, g))}</option>`)).join('');
-        const pick = opts.key ? `<label class="iw-orient-pick iw-pc-edit" title="Выбрать ориентацию вручную — модель её больше не поменяет">${icon('feather')}<span>${ok ? 'Изменить' : 'Выбрать'}</span><select data-iw-orient="${esc(opts.key)}" aria-label="Ориентация">${opts2}</select></label>` : '';
+        const pick = opts.key ? `<label class="iw-orient-pick iw-pc-edit" title="Выбрать ориентацию вручную — модель её больше не поменяет">${icon('feather')}<select data-iw-orient="${esc(opts.key)}" aria-label="Ориентация">${opts2}</select></label>` : '';
         const src = ok ? (c.orientManual ? 'выбрано вручную' : 'из карточки и лорбука') : 'в карточке не указана';
         cards.push(`
         <div class="iw-persona-card iw-pc-editable iw-or-${ok || 'none'}">
@@ -1337,7 +1415,8 @@ function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = tru
     for (const [k, c] of Object.entries((state && state.characters) || {})) ((c && c.buffs) || []).forEach((b, bi) => { if (b && b.kind === 'gift') pending.push({ title: b.title, icon: b.icon, desc: b.desc || '', owner: c.name, key: k, pending: true, bi, art: b.art || '' }); });
     const gifts = all.filter(x => x.gift).concat(pending);
     const items = all.filter(x => !x.gift);
-    const grid = view === 'grid';
+    const grid = view === 'grid' || view === 'cards'; // «Карточками» больше нет — показываем сеткой
+    const cards = false;
     const isOpen = k => (fold && fold[k] !== undefined ? !!fold[k] : CASE_FOLD_DEFAULT[k]);
     const list = (Array.isArray(got) ? got : []).slice().sort((a, b) => (b.at || 0) - (a.at || 0));
     const stars = (t, word = true) => `<span class="iw-case-stars iw-tier-${t}" title="${esc(TIER_NAMES_RU[t] || '')}">${Array.from({ length: TIER_STARS[t] || 1 }, () => icon('star')).join('')}${word ? `<em>${esc(TIER_NAMES_RU[t] || '')}</em>` : ''}</span>`;
@@ -1368,8 +1447,20 @@ function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = tru
     const itemTile = (x, cls) => `
       <li class="iw-case-cell ${cls}${x.pending ? ' iw-case-pending' : ''}"><details class="iw-case-tile" data-iw-tile="i:${esc(x.key)}:${x.i ?? 'p'}:${esc(x.title)}"${sel === `i:${x.key}:${x.i ?? 'p'}:${x.title}` ? ' open' : ''}>
         <summary class="iw-case-tile-sum">${pic(x)}<span class="iw-case-tile-name">${ce(x.title)}</span></summary>
-        <div class="iw-case-tile-more">${itemDesc(x) ? `<p class="iw-case-tile-desc">${ce(itemDesc(x))}</p>` : ''}<div class="iw-case-tile-meta"><span>${owner(x)}</span></div></div>
-      </details>${drawBtn(x, art, artBusy)}</li>`;
+        <div class="iw-case-tile-more">${itemDesc(x) ? `<p class="iw-case-tile-desc">${ce(itemDesc(x))}</p>` : ''}<div class="iw-case-tile-meta"><span>${owner(x)}</span></div>${drawBtn(x, art, artBusy)}</div>
+      </details></li>`;
+    // карточками по две в ряд: крупная картинка сверху, под ней всё о вещи
+    const achCard = a => `
+      <li class="iw-case-card iw-case-ach iw-tier-${a.tier}">
+        <span class="iw-case-card-pic">${achIcon(a.icon)}</span>
+        <span class="iw-case-card-body"><b class="iw-rw-title">${ce(a.title)}</b>${stars(a.tier)}${kindTag(a)}${a.desc ? `<span class="iw-rw-desc">${ce(a.desc)}</span>` : ''}<span class="iw-case-card-meta">${achMeta(a)}</span></span>
+        ${achDel(a)}
+      </li>`;
+    const itemCard = (x, cls) => `
+      <li class="iw-case-card ${cls}${art && x.art ? ' iw-has-art' : ''}${x.pending ? ' iw-case-pending' : ''}">
+        <span class="iw-case-card-pic">${art && x.art ? `<span class="iw-case-art" aria-hidden="true">${x.art}</span>` : pictIcon(x.icon || 'gift')}</span>
+        <span class="iw-case-card-body"><b class="iw-rw-title">${ce(x.title)}</b>${itemDesc(x) ? `<span class="iw-rw-desc">${ce(itemDesc(x))}</span>` : ''}<span class="iw-rw-kind">${owner(x)}</span>${drawBtn(x, art, artBusy)}</span>
+      </li>`;
     const ul = (rows, f, cls = '') => `<ul class="iw-list iw-rewards${grid ? ' iw-case-grid' : ''}">${rows.map(x => f(x, cls)).join('')}</ul>`;
     const tiers = ['gold', 'silver', 'bronze'].map(tier => {
         const rows = list.filter(a => (a.tier || 'bronze') === tier);
@@ -1391,12 +1482,12 @@ function renderShowcase({ state, theme, got = [], sel = '', fold = {}, art = tru
     const toolbar = `<div class="iw-case-bar">
     <div class="iw-case-views" role="group" aria-label="Как показывать витрину">
       <button type="button" class="iw-case-vbtn${grid ? '' : ' on'}" data-iw-caseview="list" aria-pressed="${!grid}" title="Столбиком: всё сразу подробно">${icon('list')}<span>Столбиком</span></button>
-      <button type="button" class="iw-case-vbtn${grid ? ' on' : ''}" data-iw-caseview="grid" aria-pressed="${grid}" title="Сеткой: значок, название и ранг; нажми на плитку, чтобы раскрыть">${icon('grid')}<span>Сеткой</span></button>
+      <button type="button" class="iw-case-vbtn${grid ? ' on' : ''}" data-iw-caseview="grid" aria-pressed="${grid}" title="Сеткой: значки с названиями; нажми, чтобы раскрыть">${icon('grid')}<span>Сеткой</span></button>
     </div>
   </div>`;
     return `
 <button type="button" class="iw-back" data-iw-view="back">${icon('back')}<span>к дневнику</span></button>
-<section class="iw-block iw-b-shop iw-b-showcase${grid ? ' iw-case-gridview' : ''}">
+<section class="iw-block iw-b-shop iw-b-showcase${grid ? ' iw-case-gridview' : ''}${cards ? ' iw-case-cardview' : ''}">
   ${blockHead('rewards', 'Витрина', `<span class="iw-points iw-case-count" title="Достижений: ${list.length}">${icon('trophy')}<b>${list.length}</b></span>`)}
   <div class="iw-muted">Памятные вещи, подарки и достижения истории. Достижения появляются сами, когда случается что-то по-настоящему важное.</div>
   ${toolbar}
@@ -1454,6 +1545,40 @@ export function layoutBlocks(blocks, collapsed = {}) {
     return out.join('');
 }
 
+// ===== ВКонтакте: «сейчас играет» в статусе, как в старом ВК. Песни 2006–2010, что крутили школьники и студенты;
+// после каждого разбора дневника выпадает другая (меняется вместе с записями персонажа) =====
+const VK_SONGS = [
+    ['Stigmata', 'Сентябрь'], ['Tokio Hotel', 'Durch den Monsun'], ['Tokio Hotel', 'Schrei'], ['Tokio Hotel', 'Rette mich'], ['Tokio Hotel', 'Spring nicht'],
+    ['Звери', 'Районы-кварталы'], ['Звери', 'Всё, что тебя касается'], ['Звери', 'Напитки покрепче'], ['Uma2rmaH', 'Проститься'], ['Uma2rmaH', 'Ночной дозор'],
+    ['Серебро', 'Song #1'], ['Серебро', 'Дыши'], ['Ранетки', 'Ангелы'], ['Ранетки', 'О тебе'], ['Город 312', 'Останусь'], ['Город 312', 'Вне зоны доступа'],
+    ['Банд\'Эрос', 'Коламбия Пикчерз не представляет'], ['Банд\'Эрос', 'Манхэттен'], ['Дима Билан', 'Невозможное возможно'], ['Дима Билан', 'Believe'],
+    ['МакSим', 'Знаешь ли ты'], ['МакSим', 'Трудный возраст'], ['МакSим', 'Нежность'], ['МакSим', 'Отпускаю'], ['Винтаж', 'Плохая девочка'], ['Винтаж', 'Ева'],
+    ['Нюша', 'Выбирать чудо'], ['Animal ДжаZ', 'Три полоски'], ['Lumen', 'Сид и Нэнси'], ['Lumen', 'Гореть'], ['Мельница', 'Ночная кобыла'], ['Мельница', 'Дракон'],
+    ['Земфира', 'Хочешь?'], ['Земфира', 'Небомореоблака'], ['Би-2', 'Полковнику никто не пишет'], ['Сплин', 'Выхода нет'], ['Ёлка', 'Девушка из высшего общества'],
+    ['Каста', 'Вокруг шум'], ['Тимати', 'Не сходи с ума'], ['Ангина', 'Болела'], ['Кукрыниксы', 'По раскрашенной душе'], ['Король и Шут', 'Лесник'],
+    ['Пропаганда', 'Мелом'], ['Корни', 'Ты узнаешь её'], ['Фабрика', 'Про любовь'], ['ВИА Гра', 'Поцелуи'], ['Т.А.Т.у.', 'Нас не догонят'], ['Ленинград', 'WWW'],
+    ['Smash!!', 'Freeway'], ['Мумий Тролль', 'Невеста?'], ['Ночные Снайперы', '31-я весна'], ['Найк Борзов', 'Лошадка'], ['Агата Кристи', 'Как на войне'],
+    ['Evanescence', 'Bring Me to Life'], ['Evanescence', 'My Immortal'], ['Linkin Park', 'What I\'ve Done'], ['Linkin Park', 'Numb'], ['Linkin Park', 'Leave Out All the Rest'],
+    ['My Chemical Romance', 'Welcome to the Black Parade'], ['My Chemical Romance', 'Helena'], ['Fall Out Boy', 'Sugar, We\'re Goin Down'], ['Panic! at the Disco', 'I Write Sins Not Tragedies'],
+    ['30 Seconds to Mars', 'The Kill'], ['30 Seconds to Mars', 'From Yesterday'], ['The Rasmus', 'In the Shadows'], ['Green Day', 'Boulevard of Broken Dreams'],
+    ['Green Day', 'Wake Me Up When September Ends'], ['Avril Lavigne', 'Girlfriend'], ['Avril Lavigne', 'When You\'re Gone'], ['Rihanna', 'Umbrella'], ['Timbaland', 'Apologize'],
+    ['Nelly Furtado', 'Say It Right'], ['Lady Gaga', 'Poker Face'], ['Katy Perry', 'Hot n Cold'], ['Akon', 'Lonely'], ['Gwen Stefani', 'The Sweet Escape'],
+    ['Placebo', 'Running Up That Hill'], ['HIM', 'Wings of a Butterfly'], ['Muse', 'Supermassive Black Hole'], ['The Pretty Reckless', 'Make Me Wanna Die'],
+    ['Billy Talent', 'Fallen Leaves'], ['Simple Plan', 'Welcome to My Life'], ['Kerli', 'Walking on Air'], ['Within Temptation', 'What Have You Done'],
+    ['Lordi', 'Hard Rock Hallelujah'], ['Scooter', 'Jumping All Over the World'], ['Basshunter', 'Now You\'re Gone'], ['Alexander Rybak', 'Fairytale'], ['Gotan Project', 'Diferente'],
+];
+function vkSong(c) {
+    const seed = `${c.name || ''}|${(c.log || []).length}|${c.moodSaid || c.mood || ''}|${(c.feels || c.moodlets || []).length}`;
+    let h = 2166136261;
+    for (const ch of seed) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    return VK_SONGS[h % VK_SONGS.length];
+}
+function vkStatus(c) {
+    if (REL_THEME !== 'vk' || !c) return '';
+    const [who, title] = vkSong(c);
+    return `<div class="iw-vk-status" title="Статус: сейчас играет. Меняется после каждого разбора дневника"><span class="iw-vk-status-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M9 17.5a3 3 0 1 1-2-2.83V5.6c0-.7.46-1.3 1.13-1.48l9-2.4A1.5 1.5 0 0 1 19 3.17v11.83a3 3 0 1 1-2-2.83V6.9l-8 2.13z"/></svg></span><span class="iw-vk-status-eq" aria-hidden="true"><i></i><i></i><i></i></span><span class="iw-vk-status-txt"><b>${esc(who)}</b> — ${esc(title)}</span></div>`;
+}
+
 export function renderCharacter(c, modules, theme, opts = {}) {
     REL_THEME = theme;
     const L = themeLabels(theme, genderOf(c.g, c.name, c.who), bimboNicks(c.name, !!opts.first));
@@ -1482,7 +1607,7 @@ export function renderCharacter(c, modules, theme, opts = {}) {
     blocks.sort((a, b) => order.indexOf(kindOf(a)) - order.indexOf(kindOf(b)));
     const collapsed = FOLD.collapsed;
     FOLD = { collapsed: {} };
-    return `${opts.key ? buffNotes(c, opts.key) : ''}<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
+    return `${vkStatus(c)}${opts.key ? buffNotes(c, opts.key) : ''}<div class="iw-grid">${layoutBlocks(blocks, collapsed)}</div>`;
 }
 
 // Список НПС: встреченные — карточками, ещё не появлявшиеся — знаками вопроса.
@@ -1619,9 +1744,11 @@ function clockWhen(e) {
 function evDateBox(e) {
     const txt = String(e.dateText || '');
     const m = txt.match(/^([\d–-]+)\s+(.+)$/);
-    if (!m) return `<span class="iw-ev-date iw-ev-date-text">${esc(txt)}</span>`;
+    // значок вида даты (торт, подарок, сердце) — уголком на самом листке, чтобы справа было больше места под название
+    const ico = `<span class="iw-ev-ico iw-ev-corner" aria-hidden="true">${calIcon(e.kind)}</span>`;
+    if (!m) return `<span class="iw-ev-date iw-ev-date-text">${esc(txt)}${ico}</span>`;
     const mon = m[2].split(/[\s–-]+/)[0];
-    return `<span class="iw-ev-date"><b>${esc(m[1])}</b><i>${esc(mon.length > 4 ? mon.slice(0, 3) + '.' : mon)}</i></span>`;
+    return `<span class="iw-ev-date"><b>${esc(m[1])}</b><i>${esc(mon.length > 4 ? mon.slice(0, 3) + '.' : mon)}</i>${ico}</span>`;
 }
 
 const EVENT_ICON = { birthday: 'cake', canon: 'feather', holiday: 'gift', anniv: 'heart' };
@@ -1694,7 +1821,7 @@ export function renderClock(clock) {
     const mins = Array.from({ length: 12 }, (_, i) => [i * 5, pad2(i * 5), i * 5 === d.mi - (d.mi % 5)]);
     const changed = clock.draftChanged;
     // ближайшие праздники и личные даты: первые четыре видны сразу, остальные — «ещё»
-    const evRow = e => `<li class="iw-clock-ev iw-ev2 iw-clock-${e.kind}${e.inDays === 0 ? ' iw-ev-now' : ''}" title="${esc([e.dateText, e.about].filter(Boolean).join(' — '))}">${evDateBox(e)}<span class="iw-ev-body"><span class="iw-ev-name"><span class="iw-ev-ico">${calIcon(e.kind)}</span><span class="iw-ev-title">${esc(clockEventText(e))}</span></span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em class="iw-ev-in">${esc(clockWhen(e))}</em>${e.key ? `<button type="button" class="iw-mini iw-clock-x iw-ev-del" data-iw-clock="ev-del:${esc(encodeURIComponent(e.key))}" title="Убрать эту дату" aria-label="Убрать">${icon('x')}</button>` : ''}</li>`;
+    const evRow = e => `<li class="iw-clock-ev iw-ev2 iw-clock-${e.kind}${e.inDays === 0 ? ' iw-ev-now' : ''}" title="${esc([e.dateText, e.about].filter(Boolean).join(' — '))}">${evDateBox(e)}<span class="iw-ev-body"><span class="iw-ev-name"><span class="iw-ev-title">${esc(clockEventText(e))}</span></span>${e.about ? `<small>${esc(e.about)}</small>` : ''}</span><em class="iw-ev-in">${esc(clockWhen(e))}</em>${e.key ? `<button type="button" class="iw-mini iw-clock-x iw-ev-del" data-iw-clock="ev-del:${esc(encodeURIComponent(e.key))}" title="Убрать эту дату" aria-label="Убрать">${icon('x')}</button>` : ''}</li>`;
     const evAll = clock.upcoming || [];
     // справа — ближайшие; «ещё» раскрывается под календарём и часами двумя столбиками: правый продолжает список, слева добавляется
     const SHOWN = 3;
@@ -1724,10 +1851,10 @@ export function renderClock(clock) {
           <b class="iw-clock-colon">:</b>
           ${clockPick('mi', pad2(d.mi), mins, 'iw-pick-grid iw-pick-mi')}
           <span class="iw-muted iw-clock-partof">${esc(clock.draftPart)}</span>
-        </div>
-        <div class="iw-clock-row">
-          <button type="button" class="iw-btn iw-mini-btn iw-clock-apply" data-iw-clock="set"${changed ? '' : ' disabled'}>${icon('tick')}<span>Поставить</span></button>
-          ${changed ? `<button type="button" class="iw-btn iw-mini-btn" data-iw-clock="reset">${icon('back')}<span>Как сейчас</span></button>` : ''}
+          <span class="iw-clock-applyrow">
+            <button type="button" class="iw-btn iw-mini-btn iw-clock-apply" data-iw-clock="set"${changed ? '' : ' disabled'} title="Поставить это время и дату в истории" aria-label="Поставить">${icon('tick')}<span>Поставить</span></button>
+            ${changed ? `<button type="button" class="iw-btn iw-mini-btn iw-clock-reset" data-iw-clock="reset" title="Вернуть как сейчас в истории" aria-label="Как было">${icon('back')}<span>Как было</span></button>` : ''}
+          </span>
         </div>
         
         <div class="iw-clock-sub iw-clock-evhead"><span class="iw-doodle-mark" aria-hidden="true"></span>Праздники и личные даты<button type="button" class="iw-mini iw-clock-addbtn${clock.addOpen ? ' on' : ''}" data-iw-clock="add-open" title="${clock.addOpen ? 'Свернуть' : 'Добавить свою дату'}" aria-expanded="${!!clock.addOpen}">${icon(clock.addOpen ? 'minus' : 'plus')}</button></div>
@@ -1941,7 +2068,7 @@ function renderLive(live, theme, L) {
       <div class="iw-live-card" ${delay}>
         <span class="iw-tape" aria-hidden="true"></span>
         <div class="iw-live-head">
-          <span class="iw-live-title">${esc(L.analyzing || 'Записываю')}</span>
+          ${theme === 'vk' ? `<span class="iw-vk-st iw-vk-sheet iw-vk-st-${VK_LOAD.sheet}" aria-hidden="true"></span>` : ''}<span class="iw-live-title">${esc(L.analyzing || 'Записываю')}</span>
           ${theme === 'icq' ? `<div class="iw-runner" aria-hidden="true"><span class="iw-runner-go" ${delay}>${smileHtml('cw', 'iw-play')}</span></div>` : ''}
           <span class="iw-live-time"><span class="iw-live-secs">${secs}</span> с</span>
           <button type="button" class="iw-mini iw-mini-stop iw-live-stop" data-iw-stop title="Остановить: модель перестанет думать и писать, дневник останется как был" aria-label="Остановить">${icon('stop')}</button>
