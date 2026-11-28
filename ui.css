@@ -18185,7 +18185,7 @@ ol {
         pointer-events: auto;
         display: inline-flex; align-items: center; justify-content: center;
         width: 38px; height: 38px;
-        margin: -6px -10px 0 0;
+        margin: -4px 4px 0 0;
         padding: 0;
         border-radius: 50%;
         border: 1.5px solid color-mix(in srgb, var(--iw-ink) 35%, transparent);
@@ -24772,9 +24772,9 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-vk .iw-b-showcase .iw-case-ach :is(.iw-case-ico, .iw-case-tile-sum > span:first-child) .iw-ico { position: relative; z-index: 1; font-size: 22px; }
 .iw-panel.iw-theme-vk.iw-dark .iw-b-showcase .iw-case-ach :is(.iw-case-ico, .iw-case-tile-sum > span:first-child) { background: radial-gradient(circle, #2c2d2e 0 56%, transparent 57%), var(--vk-tier, #454647) !important; }
 
-/* Лавка во всех темах: «Купить» — справа по центру, как было; булавка — значком на правом верхнем уголке карточки и места не занимает */
+/* Лавка во всех темах: «Купить» — справа по центру, как было; булавка — значком на левом верхнем уголке карточки и места не занимает */
 .iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) { position: relative; overflow: visible !important; }
-.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-shop-pin { position: absolute !important; grid-area: auto !important; top: -8px; right: 8px; z-index: 2; width: 24px !important; height: 24px !important; min-width: 0; padding: 0 !important; margin: 0 !important; display: grid; place-items: center; font-size: 12px; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); transform: none; }
+.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-shop-pin { position: absolute !important; grid-area: auto !important; top: -9px; left: -9px; right: auto; z-index: 2; width: 24px !important; height: 24px !important; min-width: 0; padding: 0 !important; margin: 0 !important; display: grid; place-items: center; font-size: 12px; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); transform: none; }
 .iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-buy { align-self: center; justify-self: end; }
 .iw-panel .iw-rewards > li.iw-reward:not(:hover):not(.pinned) > .iw-shop-pin:not(:focus-visible) { opacity: .75; }
 /* ВК: та же раскладка, «Купить» по центру справа */
@@ -24783,3 +24783,78 @@ details[open] > summary .iw-case-pm .iw-ico + .iw-ico { display: inline-block; }
 .iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin { border-radius: 50% !important; box-shadow: 0 0 0 1px #e7e8ec, 0 1px 4px rgba(0, 20, 51, .18) !important; background: #fff !important; }
 .iw-panel.iw-theme-vk.iw-dark .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin { box-shadow: 0 0 0 1px #454647, 0 1px 4px rgba(0, 0, 0, .5) !important; background: #2c2d2e !important; }
 .iw-panel.iw-theme-vk .iw-b-shop:not(.iw-b-showcase) .iw-reward .iw-shop-pin.on { background: #5181b8 !important; }
+
+/* «Лорбук» со стрелкой меню: подпись не заезжает под стрелку — кнопке больше места, а если совсем тесно, подпись сокращается многоточием */
+.iw-panel .iw-acts > .iw-act-split { flex-grow: 1.45; }
+.iw-panel .iw-acts:has(> .iw-act-split) { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+.iw-panel .iw-acts > .iw-act-chat { padding-left: 6px; padding-right: 6px; }
+.iw-panel .iw-act-split > .iw-act { padding-left: 5px; gap: 4px; }
+.iw-panel .iw-act-split > .iw-act > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* булавка на левом уголке: наклонена, как воткнутая; закреплённая — цветная */
+.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-shop-pin .iw-ico { transform: rotate(-35deg); transition: transform .15s; }
+.iw-panel .iw-rewards > li.iw-reward:has(> .iw-shop-pin) > .iw-shop-pin.on .iw-ico { transform: rotate(0deg); }
+
+/* «ещё N» / «свернуть» в «Что привлекает»: стрелка вниз — развернуть, вверх — свернуть */
+.iw-attr-more .iw-ico { transition: transform .2s; }
+.iw-attr-more.on .iw-ico { transform: rotate(180deg); }
+
+/* Симс: во время разбора крутится тот же зелёный кристалл, что висит над карточками персонажей — у надписи над кнопками и на листке разбора */
+.iw-panel.iw-theme-sims .iw-loader i { display: none; }
+.iw-panel.iw-theme-sims .iw-loader b,
+.iw-panel.iw-theme-sims .iw-sims-spin {
+    display: inline-block !important;
+    flex: none;
+    width: 13px !important;
+    height: 20px !important;
+    margin: 0 2px;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: linear-gradient(135deg, #b8f59a, #4caf2f 60%, #2d7a1a) !important;
+    background-size: auto !important;
+    clip-path: polygon(50% 0, 100% 45%, 50% 100%, 0 45%);
+    filter: none;
+    animation: iw-sims-spin 1.5s linear infinite;
+}
+.iw-panel.iw-theme-sims .iw-sims-spin { width: 18px !important; height: 28px !important; margin: 0 8px 0 4px; }
+.iw-panel.iw-theme-sims.iw-dark :is(.iw-loader b, .iw-sims-spin) { background: linear-gradient(135deg, #83ee4f, #4caf2f 60%, #2d7a1a) !important; }
+@keyframes iw-sims-spin {
+    0% { transform: perspective(80px) rotateY(0deg) translateY(0); }
+    50% { transform: perspective(80px) rotateY(180deg) translateY(-3px); }
+    100% { transform: perspective(80px) rotateY(360deg) translateY(0); }
+}
+.iw-noanim .iw-panel.iw-theme-sims :is(.iw-loader b, .iw-sims-spin),
+.iw-panel.iw-noanim.iw-theme-sims :is(.iw-loader b, .iw-sims-spin) { animation: none !important; }
+/* Симс: рисованная стрелка от «Проанализировать» к кнопкам — цветом надписи (раньше была прозрачной) */
+.iw-panel.iw-theme-sims .iw-acts-cap .iw-cap-arrow { color: inherit; }
+
+/* Симс тёмная: читаемость на светлых плашках и звёздочки мечты */
+.iw-panel.iw-theme-sims.iw-dark :is(.iw-qopt, .iw-attr-opt).on { color: #15233a !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-rw-cat-name { color: #15233a !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-rw-cat-name .iw-ico { color: #15233a !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-steps .iw-star { color: #ffd45c !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-steps .iw-step:not(.done) .iw-star { color: #8fa3bd !important; }
+.iw-panel.iw-theme-sims.iw-dark .iw-rel-cap em { color: #ff9cc6 !important; }
+
+/* Тёмные темы: светлые пастельные плашки разделов витрины и лавки — тёмным текстом; подпись отношения — светлее */
+.iw-panel.iw-dark:not(.iw-theme-vk) .iw-b-shop .iw-rw-cat-name,
+.iw-panel.iw-dark:not(.iw-theme-vk) .iw-b-shop .iw-rw-cat-name .iw-ico { color: #1a1d26 !important; }
+.iw-panel.iw-dark .iw-rel-cap em { color: color-mix(in srgb, var(--rel-bar) 55%, #fff) !important; }
+.iw-panel.iw-theme-vk.iw-dark :is(.iw-qopt, .iw-attr-opt).on { color: #15181f !important; }
+
+/* приписка к заголовку блока («Дуров, верни стену») — мелко и справа */
+.iw-panel .iw-block-head .iw-label-aside { margin-left: auto; padding: 0 6px; font-size: 12px; font-weight: 400; font-style: italic; letter-spacing: 0; text-transform: none; color: var(--iw-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.iw-panel .iw-block-head .iw-label-aside + .iw-fold { margin-left: 0; }
+.iw-panel.iw-theme-vk .iw-block-head .iw-label-aside { color: #818c99; font-style: normal; }
+.iw-panel.iw-theme-vk.iw-dark .iw-block-head .iw-label-aside { color: #8d9399; }
+/* Симс светлая: заголовок листка разбора («Загрузка») был белым на белом */
+.iw-panel.iw-theme-sims:not(.iw-dark) .iw-live-head > .iw-live-title { color: #1d3557 !important; }
+
+/* Симс: смешная подсказка под заголовком листка разбора */
+.iw-panel .iw-sims-tip { margin: 4px 2px 2px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, #4caf2f 12%, transparent); color: #2b6a1c; font-size: 12.5px; font-weight: 600; font-style: italic; line-height: 1.35; }
+.iw-panel.iw-dark .iw-sims-tip { background: rgba(108, 192, 74, .16); color: #b9eea1; }
+.iw-panel .iw-sims-tip.iw-tip-in { animation: iw-tip-in .45s ease both; }
+@keyframes iw-tip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.iw-noanim .iw-panel .iw-sims-tip, .iw-panel.iw-noanim .iw-sims-tip { animation: none !important; }

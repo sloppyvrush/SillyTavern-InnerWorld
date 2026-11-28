@@ -1673,4 +1673,10 @@ test('смена персоны: отношения бота к игроку у 
     C3.swapPersona(st, 'Элария');
     assert.equal(st.characters['Кассиан'].impression.now, 'насторожен');
 });
+test('пустые НПС: просим дозаполнить основу', () => {
+    const sp = C3.buildSystemPrompt(C3.mergeSettings({}), { botName: 'Кассиан', userName: 'Ева', fillNpc: ['Камилла Лапочкина'] });
+    assert.ok(sp.includes('Камилла Лапочкина') && /профиль пока пустой/.test(sp), 'в промпте есть просьба заполнить');
+    const sp2 = C3.buildSystemPrompt(C3.mergeSettings({}), { botName: 'Кассиан', userName: 'Ева' });
+    assert.ok(!/профиль пока пустой/.test(sp2), 'без пустых НПС правила нет');
+});
 console.log(`итого: ${passed} проверок`);

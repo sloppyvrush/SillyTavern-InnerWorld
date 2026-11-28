@@ -9,7 +9,7 @@ import {
     plural,
     purseOf, claimWant,
     cancelReward,
-    loveToAttitude, loveFor, npcWeight, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
+    loveToAttitude, loveFor, npcWeight, isShortRecord, cleanWeather, cleanNightDream, cleanNightDreams, cleanRumor, bornFromText,
     eventTitle, signed, WEIGHT_NAMES, moodFaces, CHEM_NOW_NAMES, relStatus, seedRel, genderOf, gw,
     orientFromText, textAbout,
     achGate, memePublicGate, pickMemeAngle, pickMemeTone, pickMemeHook, cleanArt, buildArtPrompt, ACH_RATE_NAMES, buildWishesPrompt, parseWishes, buildAttractionPrompt, parseAttraction,
@@ -24,11 +24,11 @@ import {
 import { playSound, setVolume, setSilentMode } from './src/sound.js';
 import { THEMES, THEME_IDS, validTheme, themeFontUrls, themeParts, icon as iconHtml } from './src/themes.js';
 import { lifeText as lifeTextIb } from './src/core.js';
-import { renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortName, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
+import { simsTipAt, renderPanel, renderToast, renderGroupToast, renderInfobarHtml, ibShortName, renderErrorToast, renderFab, renderBooksField, setSignInfo, esc, orderOfBlocks } from './src/render.js';
 import { renderSettingsForm, applySettingChange, rangeLabel } from './src/settings-ui.js';
 import { chatRequest, fetchModels, missingFields } from './src/api.js';
 
-const VERSION = '0.8.9';
+const VERSION = '1.0.0';
 const UPDATED = '26.11.2026'; // дата последнего обновления — видна внизу дневника и настроек
 setSignInfo(VERSION, UPDATED);
 const UI_CSS = new URL('./ui.css', import.meta.url).href;
@@ -1740,6 +1740,12 @@ function setLive(next) {
         liveTimer = setInterval(() => {
             const el = panelEl().querySelector('.iw-live-secs');
             if (el && live) el.textContent = String(Math.round((Date.now() - live.t0) / 1000));
+            // Симс: подсказка на листке сменяется сама
+            const tip = live && panelEl().querySelector('.iw-sims-tip');
+            if (tip) {
+                const next = simsTipAt(live.t0);
+                if (tip.textContent !== next) { tip.textContent = next; tip.classList.remove('iw-tip-in'); void tip.offsetWidth; tip.classList.add('iw-tip-in'); }
+            }
         }, 1000);
     }
 }
@@ -1925,6 +1931,27 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         // персона игрока всегда «в сцене»: это её реплики
         const pk = s.persona !== false ? personaKeyOf(base) : null;
         if (present && pk && !present.includes(pk)) present.push(pk);
+        // НПС с пустым профилем (завели, но ни черт, ни желаний, ни страхов, ни мечты): дозаполняем основу понемногу —
+        // при разборе лорбука и «всё сразу» до 6 за раз, при обычном разборе чата — по 2, самые важные первыми
+        if (s.showNpc !== false) {
+            const mods = s.modules || {};
+            const hollow = k => {
+                const ch = base.characters && base.characters[k];
+                if (!ch || ch.persona || ch.met === false || isShortRecord(ch) || isMain(ch.name, mainNames())) return false;
+                const gaps = [mods.traits !== false && !(ch.traits || []).length, mods.wants !== false && !(ch.wants || []).some(w => w.status === 'active'),
+                    mods.fears !== false && !(ch.fears || []).some(f => f.status === 'active'), mods.dream !== false && !ch.dream].filter(Boolean).length;
+                return gaps >= 2;
+            };
+            const ROLE_W = { key: 3, major: 2, minor: 1 };
+            const fill = (base.order || []).filter(k => hollow(k) && !(present && present.includes(k)) && !(catchUp && catchUp.length))
+                .sort((a, b) => (ROLE_W[base.characters[b].role] || 1.5) - (ROLE_W[base.characters[a].role] || 1.5))
+                .slice(0, kind === 'chat' ? 2 : 6);
+            const inSceneHollow = present ? present.filter(hollow) : [];
+            if (fill.length || inSceneHollow.length) {
+                info.fillNpc = [...inSceneHollow, ...fill].map(k => base.characters[k].name);
+                if (present) present.push(...fill);
+            }
+        }
         // знакомые по предыстории (друзья, бывшие, родня главного героя или игрока) — заводим им записи при разборе лорбука
         // лимит НПС: сколько ещё можно завести, самые важные — первыми
         let npcRoom = Math.max(0, npcCap() - splitCast(base).npcKeys.length - (catchUp ? catchUp.length : 0));
@@ -2078,7 +2105,10 @@ async function analyze(messageId, { manual = false, catchUp = null, fromLore = n
         }
         if (!fresh.length) throw new Error('Модель не вернула ни одного персонажа');
         evBatch = [];
-        const { state, events } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, claimWants: s.points !== false && s.claimAuto !== true, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
+        const { state, events: rawEvents } = applyAnalysis(base, fresh, s.modules, { maxChars: Number(s.maxChars) || 4, userName: c.name1, mains: mn, noChat: !(msgs && msgs.length), mesId: messageId, points: s.points !== false, claimWants: s.points !== false && s.claimAuto !== true, persona: s.persona !== false, rebuild: kind !== 'chat' || !!(catchUp && catchUp.length), force: study || null });
+        // дозаполненным НПС не в сцене новые желания, страхи и черты всплывашками не объявляем — это основа, а не событие
+        const quiet = (info.fillNpc || []).filter(n => !(present && present.some(k => sameName(k, n)) && inScene(n)));
+        const events = quiet.length ? rawEvents.filter(ev => !(ev && ev.who && quiet.some(n => sameName(n, ev.who)) && /^(want|fear|dream|trait)/.test(ev.type || ''))) : rawEvents;
         fillBornFromCards(state);
         fillOrientFromCards(state);
         fixZodiacs(state);

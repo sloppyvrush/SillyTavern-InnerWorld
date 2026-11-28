@@ -72,7 +72,10 @@ function blockHead(kind, label, extra = '') {
     const folded = !!FOLD.collapsed[kind];
     const grip = FOLD.drag ? `<span class="iw-drag" data-iw-drag="${kind}" title="Перетащить блок" aria-label="Перетащить блок">${icon('grip')}</span>` : '';
     const btn = kind === 'rewards' ? '' : `<button type="button" class="iw-fold" data-iw-fold="${kind}" title="${folded ? 'Развернуть' : 'Свернуть'}" aria-label="${folded ? 'Развернуть' : 'Свернуть'}" aria-expanded="${!folded}">${icon(folded ? 'plus' : 'minus')}</button>`;
-    return `<div class="iw-block-head">${grip}<span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label">${label}</span>${folded ? '' : extra}${btn}</div>`;
+    // приписка в скобках («Стена (Дуров, верни стену)») — мелко, справа от заголовка
+    const m = /^(.+?)\s*\(([^()]+)\)$/.exec(String(label));
+    const aside = m ? `<span class="iw-label-aside">${m[2]}</span>` : '';
+    return `<div class="iw-block-head">${grip}<span class="iw-block-icon">${icon(BLOCK_ICONS[kind])}</span><span class="iw-label">${m ? m[1] : label}</span>${aside}${folded ? '' : extra}${btn}</div>`;
 }
 
 function groupHead(label, hint = '') {
@@ -877,7 +880,7 @@ function renderAttraction(c, L, opts = {}) {
     const row = (list, cap, items) => `
         <div class="iw-attr-row iw-attr-row-${list}">
           <span class="iw-attr-cap">${icon(list === 'likes' ? 'heart' : 'x')}<span>${cap}</span><span class="iw-attr-count">${items.length || ''}</span></span>
-          <div class="iw-attr-chips">${items.length ? items.map((t, i) => (i < ATTR_SHOWN || (opts.attrMore && opts.attrMore[list]) ? chip(list, t, i) : '')).join('') : '<span class="iw-muted">Пока ничего</span>'}${items.length > ATTR_SHOWN ? `<button type="button" class="iw-attr-more" data-iw-attr="more:${list}">${opts.attrMore && opts.attrMore[list] ? 'свернуть' : `ещё ${items.length - ATTR_SHOWN}`}${icon('chevron')}</button>` : ''}</div>
+          <div class="iw-attr-chips">${items.length ? items.map((t, i) => (i < ATTR_SHOWN || (opts.attrMore && opts.attrMore[list]) ? chip(list, t, i) : '')).join('') : '<span class="iw-muted">Пока ничего</span>'}${items.length > ATTR_SHOWN ? `<button type="button" class="iw-attr-more${opts.attrMore && opts.attrMore[list] ? ' on' : ''}" data-iw-attr="more:${list}" aria-expanded="${!!(opts.attrMore && opts.attrMore[list])}">${opts.attrMore && opts.attrMore[list] ? 'свернуть' : `ещё ${items.length - ATTR_SHOWN}`}${icon('chevron')}</button>` : ''}</div>
         </div>`;
     const have = new Set((mode === 'likes' ? likes : dislikes).map(x => x.toLowerCase()));
     const other = new Set((mode === 'likes' ? dislikes : likes).map(x => x.toLowerCase()));
@@ -2101,6 +2104,41 @@ function livePeek(live) {
 }
 
 // Живой листок, пока модель пишет дневник: этап, секунды, что уже готово. За ним — размытый черновик.
+// Симс: смешные подсказки на листке разбора, сменяются каждые несколько секунд (свои, в духе загрузочных экранов)
+export const SIMS_TIPS = [
+    'Пересчитываем бабочек в животе…',
+    'Взбиваем подушки для ночных снов…',
+    'Ищем, куда герой спрятал свои страхи…',
+    'Подметаем крошки от недосказанностей…',
+    'Совет: не оставляйте НПС одних надолго — они начинают сплетничать.',
+    'Полируем кристалл настроения…',
+    'Сверяем желания с семейным бюджетом…',
+    'Совет: если персонаж грустит, поговорите с ним. Или подарите кота.',
+    'Раскладываем эмоции по полочкам…',
+    'Учим черты характера вести себя прилично…',
+    'Поливаем мечту жизни…',
+    'Совет: чем дольше история, тем гуще слухи.',
+    'Договариваемся с совестью персонажа…',
+    'Заводим часы сюжета…',
+    'Распутываем любовный треугольник…',
+    'Выдаём НПС их маленькие мечты…',
+    'Проверяем, не пригорел ли ужин в сцене…',
+    'Подбираем подарок, который точно не передарят…',
+    'Совет: страхи сами не уходят — их нужно прожить.',
+    'Перекладываем воспоминания из коробки в коробку…',
+    'Считаем, сколько раз он на тебя посмотрел…',
+    'Совет: слишком много драмы утомляет даже героев.',
+    'Подкручиваем шкалу симпатии…',
+    'Сушим слёзы после прошлой сцены…',
+    'Генерируем неловкую паузу…',
+    'Прячем дневник от любопытных НПС…',
+    'Совет: лучшее время для признания — когда никто не ждёт.',
+    'Будим вдохновение. Оно просило ещё пять минут…',
+    'Расставляем мебель в чертогах разума…',
+    'Совет: желания сбываются чаще, если их записать.',
+];
+export const simsTipAt = (t0, now = Date.now()) => SIMS_TIPS[(Math.floor(((Number(t0) || 0) / 1000) % SIMS_TIPS.length) + Math.floor((now - (Number(t0) || now)) / 4500)) % SIMS_TIPS.length];
+
 const LIVE_STEPS = ['prep', 'think', 'write', 'done'];
 const fmtTok = n => (Number(n) || 0).toLocaleString('ru-RU');
 function renderLive(live, theme, L) {
@@ -2123,12 +2161,13 @@ function renderLive(live, theme, L) {
       <div class="iw-live-card" ${delay}>
         <span class="iw-tape" aria-hidden="true"></span>
         <div class="iw-live-head">
-          ${theme === 'vk' ? `<span class="iw-vk-st iw-vk-sheet iw-vk-st-${VK_LOAD.sheet}" aria-hidden="true"></span>` : ''}<span class="iw-live-title">${esc(L.analyzing || 'Записываю')}</span>
+          ${theme === 'vk' ? `<span class="iw-vk-st iw-vk-sheet iw-vk-st-${VK_LOAD.sheet}" aria-hidden="true"></span>` : ''}${theme === 'sims' ? `<span class="iw-sims-spin" ${delay} aria-hidden="true"></span>` : ''}<span class="iw-live-title">${esc(L.analyzing || 'Записываю')}</span>
           ${theme === 'icq' ? `<div class="iw-runner" aria-hidden="true"><span class="iw-runner-go" ${delay}>${smileHtml('cw', 'iw-play')}</span></div>` : ''}
           <span class="iw-live-time"><span class="iw-live-secs">${secs}</span> с</span>
           <button type="button" class="iw-mini iw-mini-stop iw-live-stop" data-iw-stop title="Остановить: модель перестанет думать и писать, дневник останется как был" aria-label="Остановить">${icon('stop')}</button>
           <button type="button" class="iw-mini iw-live-hide" data-iw-live-hide title="Свернуть листок: разбор продолжится" aria-label="Свернуть">${icon('x')}</button>
         </div>
+        ${theme === 'sims' ? `<div class="iw-sims-tip" aria-hidden="true">${esc(simsTipAt(live.t0))}</div>` : ''}
         <svg class="iw-live-scribble" viewBox="0 0 220 14" preserveAspectRatio="none" aria-hidden="true"><path ${delay} d="M2 8c14-6 22 5 36 0s22-6 36 0 22 5 36 0 22-6 36 0 22 5 36 0 20-5 34 0"/></svg>
         <div class="iw-live-scroll">
           <ol class="iw-live-steps">${list}${calStep}</ol>
