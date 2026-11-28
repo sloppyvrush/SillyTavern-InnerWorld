@@ -397,7 +397,15 @@
 
 /* Плавающая кнопка: в «ВКонтакте» — синяя плитка-приложение, в «Аське» — цветочек, в остальных — блокнот */
 #iw_fab .iw-fab-app,
-#iw_fab .iw-fab-flower { display: none; position: absolute; inset: 0; width: 100%; height: 100%; }
+#iw_fab .iw-fab-sims,
+#iw_fab .iw-fab-flower { display: none; position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; border: 0; object-fit: contain; pointer-events: none; user-select: none; }
+/* плитка ВК и плюмбоб — квадратные, не растягиваются по блокноту */
+#iw_fab .iw-fab-app,
+#iw_fab .iw-fab-sims { inset: 50% auto auto 50%; width: auto; height: 100%; aspect-ratio: 1; transform: translate(-50%, -50%); }
+#iw_fab .iw-fab-app { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .3)); }
+#iw_fab.iw-theme-sims .iw-fab-book { transform: none; }
+#iw_fab.iw-theme-sims :is(.iw-fab-cover, .iw-fab-spine, .iw-fab-ribbon) { display: none; }
+#iw_fab.iw-theme-sims .iw-fab-sims { display: block; }
 #iw_fab:is(.iw-theme-vk, .iw-theme-icq) .iw-fab-book { transform: none; }
 #iw_fab:is(.iw-theme-vk, .iw-theme-icq) :is(.iw-fab-cover, .iw-fab-spine, .iw-fab-ribbon) { display: none; }
 #iw_fab.iw-theme-vk .iw-fab-app { display: block; }
@@ -539,16 +547,47 @@
 #iw_fab.iw-theme-noir { --iwf-bg: #120d11; --iwf-paper: radial-gradient(ellipse 80% 60% at 50% 100%, rgba(229, 138, 174, .35), transparent 70%); --iwf-ink: #e8a0b8; --iwf-spine: #c77a97; --iwf-accent: #e8a0b8; }
 #iw_fab.iw-theme-noir .iw-fab-cover { border-radius: 10px; box-shadow: 0 0 12px rgba(229, 138, 174, .45); }
 
-/* Название в списке расширений — только текст, без подложки: светлый перелив + тонкая тёмная обводка-ореол.
-   На тёмной теме таверны читается за счёт яркого перелива, на светлой — за счёт обводки; от цвета фона не зависит */
+/* Название в списке расширений — только текст, без подложки.
+   Яркость перелива берётся из цвета текста темы таверны (на тёмной теме — светлый, на светлой — тёмный),
+   а оттенки и насыщенность — свои: сирень → розовый → коралл → персик. Шрифт — плотный рукописный Lobster, чтобы буквы не тонули. */
+.iw-settings .inline-drawer-header .iw-drawer-title {
+    --iw-dt-ink: var(--SmartThemeBodyColor, #e6e0ee);
+    --iw-dt-c1: oklch(from var(--iw-dt-ink) clamp(.42, l, .82) .17 300);
+    --iw-dt-c2: oklch(from var(--iw-dt-ink) clamp(.42, l, .80) .19 345);
+    --iw-dt-c3: oklch(from var(--iw-dt-ink) clamp(.45, l, .80) .16 20);
+    --iw-dt-c4: oklch(from var(--iw-dt-ink) clamp(.48, l, .84) .13 60);
+    --iw-dt-shade: oklch(from var(--iw-dt-ink) calc(1 - l) 0 0 / .55);
+    align-items: center;
+    gap: 7px;
+}
 .iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-main {
-    font-size: 1.6em;
-    background: linear-gradient(100deg, #b9a2ff 0%, #e08cff 32%, #ff7fb6 66%, #ffb27a 100%);
+    font-family: 'Lobster', 'Marck Script', 'Segoe Script', cursive;
+    font-weight: 400;
+    font-size: 1.5em;
+    line-height: 1.2;
+    letter-spacing: .01em;
+    /* запас снизу и справа: у «у» и «р» хвостики уходят ниже строки — перелив их не обрезает */
+    padding: 0 .12em .16em 0;
+    margin-bottom: -.16em;
+    background: linear-gradient(100deg, var(--iw-dt-c1) 0%, var(--iw-dt-c2) 45%, var(--iw-dt-c3) 80%, var(--iw-dt-c4) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 .6px rgba(28, 12, 46, .95)) drop-shadow(0 0 .6px rgba(28, 12, 46, .95)) drop-shadow(0 1px 1.5px rgba(0, 0, 0, .45));
+    -webkit-text-stroke: 0;
+    filter: drop-shadow(0 1px 0 var(--iw-dt-shade));
 }
-.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-sub { background: linear-gradient(100deg, #ff7fb6 0%, #ffb27a 100%); -webkit-background-clip: text; background-clip: text; }
-.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-spark { color: #c9a8ff; text-shadow: 0 0 1px rgba(28, 12, 46, .9), 0 0 1px rgba(28, 12, 46, .9); }
-.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-ico { filter: drop-shadow(0 0 .6px rgba(28, 12, 46, .9)) drop-shadow(0 1px 1px rgba(0, 0, 0, .35)); }
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-sub {
+    margin-left: 0;
+    background: linear-gradient(100deg, var(--iw-dt-c3) 0%, var(--iw-dt-c4) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-spark { color: var(--iw-dt-c1); text-shadow: none; filter: drop-shadow(0 1px 0 var(--iw-dt-shade)); font-size: 1.1em; }
+.iw-settings .inline-drawer-header .iw-drawer-title .iw-dt-ico { filter: drop-shadow(0 1px 0 var(--iw-dt-shade)); width: 1.9em; height: 1.5em; }
+.iw-settings .inline-drawer-header .iw-drawer-title #iwDtGrad stop:nth-child(1) { stop-color: var(--iw-dt-c1); }
+.iw-settings .inline-drawer-header .iw-drawer-title #iwDtGrad stop:nth-child(2) { stop-color: var(--iw-dt-c2); }
+.iw-settings .inline-drawer-header .iw-drawer-title #iwDtGrad stop:nth-child(3) { stop-color: var(--iw-dt-c4); }
+/* Таверна вешает на весь текст тень того же размера, что и буквы (text-shadow 0 0 0). У перелива буквы прозрачные,
+   и эта тень просвечивала сквозь них — надпись темнела и мутнела. Здесь тень убираем. */
+.iw-settings .iw-drawer-title,
+.iw-settings .iw-drawer-title * { text-shadow: none !important; }
